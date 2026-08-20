@@ -35,7 +35,7 @@ struct MainTabView: View {
                     showAddTransaction = true
                 }
             )
-            .padding(.bottom, 12)
+            .padding(.bottom, 4)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showAddTransaction) {
