@@ -57,15 +57,12 @@ struct AnalyticsView: View {
             }
             .padding(.top, 8)
             
-            Picker("Time Range", selection: $selectedRange) {
-                ForEach(AnalyticsTimeRange.allCases) { range in
-                    Text(range.rawValue).tag(range)
-                }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: selectedRange) { _, _ in
-                HapticsManager.shared.trigger(.selection)
-            }
+            GlassSegmentedPicker(
+                selection: $selectedRange,
+                items: AnalyticsTimeRange.allCases,
+                titleFor: { $0.rawValue },
+                activeTint: SpendyColors.primaryBlue
+            )
         }
     }
     

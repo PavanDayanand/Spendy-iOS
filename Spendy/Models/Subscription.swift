@@ -67,10 +67,5 @@ struct Subscription: Identifiable, Codable, Hashable {
     }
     
     // MARK: - Default Subscriptions
-    static let samples: [Subscription] = [
-        Subscription(name: "iCloud+ Storage", amount: 2.99, cycle: .monthly, sfSymbol: SFIcons.cloudStorage, colorHex: "#007AFF"),
-        Subscription(name: "Apple Music", amount: 10.99, cycle: .monthly, sfSymbol: SFIcons.music, colorHex: "#FF2D55"),
-        Subscription(name: "ChatGPT Plus", amount: 20.00, cycle: .monthly, sfSymbol: SFIcons.artificialIntelligence, colorHex: "#30D158"),
-        Subscription(name: "GitHub Pro", amount: 4.00, cycle: .monthly, sfSymbol: SFIcons.freelance, colorHex: "#AF52DE")
-    ]
+    static let samples: [Subscription] = []
 }

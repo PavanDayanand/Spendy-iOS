@@ -118,11 +118,11 @@ final class ExpenseStore {
         self.soundEnabled = true
         self.accounts = Account.defaultAccounts
         self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
-        self.subscriptions = Subscription.samples
-        self.transactions = Transaction.samples
+        self.subscriptions = []
+        self.transactions = []
         self.budget = Budget()
-        self.currencySymbol = "$"
-        self.currencyCode = "USD"
+        self.currencySymbol = "₹"
+        self.currencyCode = "INR"
         saveToDisk()
     }
     
@@ -154,6 +154,22 @@ final class ExpenseStore {
     /// Total Net Worth across all active accounts
     var totalBalance: Double {
         accountBalances.values.reduce(0, +)
+    }
+    
+    /// Get balance for a specific account id (or total balance if nil / "all")
+    func filteredBalance(for accountId: String?) -> Double {
+        guard let id = accountId, id != "all" else {
+            return totalBalance
+        }
+        return balance(for: id)
+    }
+    
+    /// Get transactions filtered for a specific account (or all transactions if nil / "all")
+    func filteredTransactions(for accountId: String?) -> [Transaction] {
+        guard let id = accountId, id != "all" else {
+            return transactions
+        }
+        return transactions.filter { $0.accountId == id || $0.toAccountId == id }
     }
     
     /// Transactions in the current calendar month
@@ -278,8 +294,15 @@ final class ExpenseStore {
         }
     }
     
-    func deleteAccount(id: String) {
+    func deleteAccount(id: String, fallbackId: String? = nil) {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            if let fallbackId = fallbackId {
+                for i in 0..<transactions.count {
+                    if transactions[i].accountId == id {
+                        transactions[i].accountId = fallbackId
+                    }
+                }
+            }
             accounts.removeAll(where: { $0.id == id })
         }
         HapticsManager.shared.trigger(.medium)
@@ -290,6 +313,15 @@ final class ExpenseStore {
             categories.append(category)
         }
         HapticsManager.shared.trigger(.success)
+    }
+    
+    func updateCategory(_ category: Category) {
+        if let index = categories.firstIndex(where: { $0.id == category.id }) {
+            withAnimation(.spring(response: 0.35)) {
+                categories[index] = category
+            }
+            HapticsManager.shared.trigger(.light)
+        }
     }
     
     func deleteCategory(id: String) {

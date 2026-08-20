@@ -90,6 +90,256 @@ struct NativeLiquidGlassPillModifier: ViewModifier {
     }
 }
 
+// MARK: - Native Liquid Glass Capsule Modifier
+struct NativeLiquidGlassCapsuleModifier: ViewModifier {
+    var isInteractive: Bool = false
+    var tintColor: Color? = nil
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            if isInteractive {
+                if let tint = tintColor {
+                    content
+                        .glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+                } else {
+                    content
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                }
+            } else {
+                if let tint = tintColor {
+                    content
+                        .glassEffect(.regular.tint(tint), in: .capsule)
+                } else {
+                    content
+                        .glassEffect(.regular, in: .capsule)
+                }
+            }
+        } else {
+            content
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            if let tint = tintColor {
+                                Capsule(style: .continuous)
+                                    .fill(tint.opacity(0.14))
+                            }
+                        }
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.50),
+                                            Color.white.opacity(0.18),
+                                            Color.white.opacity(0.06)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.8
+                                )
+                        }
+                }
+        }
+    }
+}
+
+// MARK: - Native Liquid Glass Circle Modifier
+struct NativeLiquidGlassCircleModifier: ViewModifier {
+    var isInteractive: Bool = true
+    var tintColor: Color? = nil
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            if let tint = tintColor {
+                content
+                    .glassEffect(.regular.tint(tint).interactive(), in: .circle)
+            } else {
+                content
+                    .glassEffect(.regular.interactive(), in: .circle)
+            }
+        } else {
+            content
+                .background {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            if let tint = tintColor {
+                                Circle()
+                                    .fill(tint.opacity(0.18))
+                            }
+                        }
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.55),
+                                            Color.white.opacity(0.18),
+                                            Color.white.opacity(0.06)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.8
+                                )
+                        }
+                }
+        }
+    }
+}
+
+// MARK: - Native Apple Liquid Glass Toggle Style
+struct GlassToggleStyle: ToggleStyle {
+    var tintColor: Color = SpendyColors.primaryBlue
+    
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                    configuration.isOn.toggle()
+                }
+                HapticsManager.shared.trigger(.selection)
+            }) {
+                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                    // Glass Pill Track
+                    Capsule(style: .continuous)
+                        .fill(configuration.isOn ? tintColor : Color.white.opacity(0.12))
+                        .overlay {
+                            if !configuration.isOn {
+                                Capsule(style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            }
+                        }
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(configuration.isOn ? 0.50 : 0.25),
+                                            Color.white.opacity(0.08)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.8
+                                )
+                        }
+                        .frame(width: 50, height: 30)
+                        .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.15), radius: 6, y: 2)
+                    
+                    // Specular Thumb Knob
+                    Circle()
+                        .fill(Color.white)
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.8), lineWidth: 0.5)
+                        }
+                        .frame(width: 26, height: 26)
+                        .padding(.horizontal, 2)
+                        .shadow(color: Color.black.opacity(0.30), radius: 3, x: 0, y: 1.5)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+extension ToggleStyle where Self == GlassToggleStyle {
+    static var liquidGlass: GlassToggleStyle { GlassToggleStyle() }
+    static func liquidGlass(tint: Color) -> GlassToggleStyle { GlassToggleStyle(tintColor: tint) }
+}
+
+// MARK: - Native Apple Liquid Glass Segmented Picker
+struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
+    @Binding var selection: T
+    let items: [T]
+    var titleFor: (T) -> String
+    var iconFor: ((T) -> String?)? = nil
+    var activeTint: Color = SpendyColors.primaryBlue
+    
+    @Namespace private var segmentNamespace
+    
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(items) { item in
+                let isSelected = selection == item
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.76)) {
+                        selection = item
+                    }
+                    HapticsManager.shared.trigger(.selection)
+                }) {
+                    HStack(spacing: 5) {
+                        if let icon = iconFor?(item) {
+                            Image(systemName: icon)
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        Text(titleFor(item))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                    }
+                    .foregroundStyle(isSelected ? .white : Color.white.opacity(0.55))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 36)
+                    .background {
+                        if isSelected {
+                            Capsule(style: .continuous)
+                                .fill(activeTint)
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.55),
+                                                    Color.white.opacity(0.12)
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            ),
+                                            lineWidth: 0.8
+                                        )
+                                }
+                                .shadow(color: activeTint.opacity(0.40), radius: 8, y: 2)
+                                .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background {
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.04))
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.20),
+                                    Color.white.opacity(0.06)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.8
+                        )
+                }
+        }
+    }
+}
+
 // MARK: - View Extension Conveniences
 extension View {
     func nativeLiquidGlass(
@@ -99,6 +349,26 @@ extension View {
     ) -> some View {
         modifier(NativeLiquidGlassModifier(
             cornerRadius: cornerRadius,
+            isInteractive: isInteractive,
+            tintColor: tint
+        ))
+    }
+    
+    func nativeLiquidGlassCapsule(
+        isInteractive: Bool = false,
+        tint: Color? = nil
+    ) -> some View {
+        modifier(NativeLiquidGlassCapsuleModifier(
+            isInteractive: isInteractive,
+            tintColor: tint
+        ))
+    }
+    
+    func nativeLiquidGlassCircle(
+        isInteractive: Bool = true,
+        tint: Color? = nil
+    ) -> some View {
+        modifier(NativeLiquidGlassCircleModifier(
             isInteractive: isInteractive,
             tintColor: tint
         ))

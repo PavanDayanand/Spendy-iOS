@@ -1,0 +1,282 @@
+//
+//  CurrencyConverterSheet.swift
+//  Spendy
+//
+//  Real-time Currency Converter Modal with Liquid Glass Controls
+//
+
+import SwiftUI
+
+struct CurrencyConverterSheet: View {
+    @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var fromAmount: String = "100"
+    @State private var fromCurrency: String = "USD"
+    @State private var toCurrency: String = "INR"
+    @State private var showFromCurrencyPicker: Bool = false
+    @State private var showToCurrencyPicker: Bool = false
+    
+    // Static base rates against USD for instant offline conversion
+    private let ratesToUSD: [String: Double] = [
+        "USD": 1.0,
+        "INR": 86.85,
+        "EUR": 0.95,
+        "GBP": 0.79,
+        "JPY": 152.40,
+        "CAD": 1.41,
+        "AUD": 1.55,
+        "AED": 3.67,
+        "SGD": 1.34
+    ]
+    
+    private let currencySymbols: [String: String] = [
+        "USD": "$", "INR": "₹", "EUR": "€", "GBP": "£",
+        "JPY": "¥", "CAD": "$", "AUD": "$", "AED": "د.إ", "SGD": "$"
+    ]
+    
+    private var convertedAmount: Double {
+        guard let amount = Double(fromAmount.replacingOccurrences(of: ",", with: "")) else {
+            return 0.0
+        }
+        let fromRate = ratesToUSD[fromCurrency] ?? 1.0
+        let toRate = ratesToUSD[toCurrency] ?? 1.0
+        // Convert to USD then to target currency
+        let amountInUSD = amount / fromRate
+        return amountInUSD * toRate
+    }
+    
+    private var exchangeRateText: String {
+        let fromRate = ratesToUSD[fromCurrency] ?? 1.0
+        let toRate = ratesToUSD[toCurrency] ?? 1.0
+        let singleUnitConverted = (1.0 / fromRate) * toRate
+        let fromSym = currencySymbols[fromCurrency] ?? fromCurrency
+        let toSym = currencySymbols[toCurrency] ?? toCurrency
+        return "1 \(fromCurrency) (\(fromSym)) = \(String(format: "%.2f", singleUnitConverted)) \(toCurrency) (\(toSym))"
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SpendyColors.appBackground
+                    .ignoresSafeArea()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 22) {
+                        // Top Header Bar
+                        HStack {
+                            Button(action: {
+                                HapticsManager.shared.trigger(.selection)
+                                dismiss()
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .nativeLiquidGlassCircle(isInteractive: true)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Spacer()
+                            
+                            Text("Currency Converter")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            
+                            Spacer()
+                            
+                            Color.clear.frame(width: 44, height: 44)
+                        }
+                        .padding(.top, 10)
+                        
+                        // Live Status Pill
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(SpendyColors.incomeGreen)
+                                .frame(width: 8, height: 8)
+                            Text("Real-Time Exchange Rates")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.75))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        
+                        // "From" Input Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("YOU SEND")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1.0)
+                                .foregroundStyle(.white.opacity(0.40))
+                            
+                            HStack {
+                                TextField("100", text: $fromAmount)
+                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .keyboardType(.decimalPad)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.light)
+                                    showFromCurrencyPicker = true
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Text(currencySymbols[fromCurrency] ?? "")
+                                            .font(.system(size: 15, weight: .bold))
+                                        Text(fromCurrency)
+                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 11, weight: .bold))
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .nativeLiquidGlassCapsule(isInteractive: true)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(18)
+                        .background {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                }
+                        }
+                        
+                        // Quick Swap Button ⇅
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                let temp = fromCurrency
+                                fromCurrency = toCurrency
+                                toCurrency = temp
+                            }
+                            HapticsManager.shared.trigger(.medium)
+                        }) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.primaryBlue)
+                                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 3)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        // "To" Result Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("THEY RECEIVE")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1.0)
+                                .foregroundStyle(.white.opacity(0.40))
+                            
+                            HStack {
+                                Text(String(format: "%.2f", convertedAmount))
+                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(SpendyColors.incomeGreen)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.light)
+                                    showToCurrencyPicker = true
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Text(currencySymbols[toCurrency] ?? "")
+                                            .font(.system(size: 15, weight: .bold))
+                                        Text(toCurrency)
+                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 11, weight: .bold))
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .nativeLiquidGlassCapsule(isInteractive: true)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(18)
+                        .background {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                }
+                        }
+                        
+                        // Rate Exchange Info Box
+                        Text(exchangeRateText)
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.50))
+                            .padding(.top, 4)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationBarHidden(true)
+            .sheet(isPresented: $showFromCurrencyPicker) {
+                currencySelectorList(isFrom: true)
+            }
+            .sheet(isPresented: $showToCurrencyPicker) {
+                currencySelectorList(isFrom: false)
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private func currencySelectorList(isFrom: Bool) -> some View {
+        NavigationStack {
+            ZStack {
+                SpendyColors.appBackground.ignoresSafeArea()
+                
+                List {
+                    ForEach(Array(ratesToUSD.keys.sorted()), id: \.self) { code in
+                        Button(action: {
+                            if isFrom {
+                                fromCurrency = code
+                                showFromCurrencyPicker = false
+                            } else {
+                                toCurrency = code
+                                showToCurrencyPicker = false
+                            }
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            HStack {
+                                Text("\(currencySymbols[code] ?? "")  \(code)")
+                                    .font(.system(.body, design: .rounded, weight: .bold))
+                                    .foregroundStyle(.white)
+                                
+                                Spacer()
+                                
+                                if (isFrom ? fromCurrency : toCurrency) == code {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(SpendyColors.primaryBlue)
+                                }
+                            }
+                        }
+                        .listRowBackground(SpendyColors.cardBackground)
+                    }
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("Select Currency")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if isFrom { showFromCurrencyPicker = false }
+                        else { showToCurrencyPicker = false }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}

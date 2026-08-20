@@ -28,7 +28,7 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            // Floating Liquid Glass Tab Bar + Separated Quick Add (+) Button
+            // Unified Floating Liquid Glass Navigation Bar (4 Tabs + Quick Add Button)
             GlassTabBar(
                 selectedTab: $selectedTab,
                 onQuickAdd: {

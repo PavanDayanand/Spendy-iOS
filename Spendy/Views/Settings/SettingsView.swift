@@ -2,38 +2,21 @@
 //  SettingsView.swift
 //  Spendy
 //
-//  Apple Native Settings & Preferences with Full React Parity
+//  Settings & Preferences matching the Spendy React App with Liquid Glass Design
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
-    // Sheets and Dialogs
+    // Sheets & Dialogs
     @State private var showNameEdit: Bool = false
     @State private var tempName: String = ""
-    
     @State private var showCurrencyPicker: Bool = false
-    @State private var showAddAccountSheet: Bool = false
-    
-    @State private var editingAccountForName: Account? = nil
-    @State private var tempAccountName: String = ""
-    
-    @State private var editingAccountForBalance: Account? = nil
-    @State private var tempAccountBalance: String = ""
-    
-    @State private var accountToDelete: Account? = nil
-    
-    @State private var showClearConfirm: Bool = false
-    @State private var showExportShareSheet: Bool = false
-    @State private var exportFileURL: URL? = nil
-    @State private var showFileImporter: Bool = false
-    @State private var importAlertMessage: String? = nil
-    
-    @State private var biometricLockEnabled: Bool = false
+    @State private var showWhatsNewSheet: Bool = false
+    @State private var showCoffeeSheet: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -42,40 +25,37 @@ struct SettingsView: View {
                     .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // 1. Account & Cloud Profile Header
-                        accountCloudCard
+                    VStack(spacing: 22) {
+                        // Top Header Bar with Circular Glass Close Button
+                        headerBar
                         
-                        // 2. Accounts Hub Section
-                        accountsSection
+                        // Suggest a Feature Banner (from React app)
+                        featureSuggestionBanner
                         
-                        // 3. Preferences Section
+                        // User Profile Card
+                        userProfileCard
+                        
+                        // 1. Manage Section (Accounts & Categories)
+                        manageSection
+                        
+                        // 2. Preferences Section (Currency & Sound Effects)
                         preferencesSection
                         
-                        // 4. Data & Backup Section
+                        // 3. Data & Backup Section (Export, Import, Reset)
                         dataBackupSection
                         
-                        // 5. Community & Developer Links
-                        aboutAndSocialSection
+                        // 4. About & Community Section (Instagram, Web, Buy Me Coffee, Changelog)
+                        aboutSection
                         
-                        // Footer App Info
-                        appFooter
+                        // 5. Footer App Branding
+                        footerSection
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    .padding(.top, 10)
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .font(.system(.body, design: .rounded, weight: .semibold))
-                }
-            }
+            .navigationBarHidden(true)
             // MARK: - Modals & Sheets
             .sheet(isPresented: $showNameEdit) {
                 editNameSheet
@@ -83,131 +63,130 @@ struct SettingsView: View {
             .sheet(isPresented: $showCurrencyPicker) {
                 currencyPickerSheet
             }
-            .sheet(isPresented: $showAddAccountSheet) {
-                AddAccountSheet()
+            .sheet(isPresented: $showWhatsNewSheet) {
+                whatsNewSheet
             }
-            .sheet(item: $editingAccountForName) { acc in
-                renameAccountSheet(for: acc)
-            }
-            .sheet(item: $editingAccountForBalance) { acc in
-                editBalanceSheet(for: acc)
-            }
-            .confirmationDialog(
-                "Delete Account?",
-                isPresented: Binding(
-                    get: { accountToDelete != nil },
-                    set: { if !$0 { accountToDelete = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Delete \(accountToDelete?.label ?? "Account")", role: .destructive) {
-                    if let acc = accountToDelete {
-                        store.deleteAccount(id: acc.id)
-                    }
-                    accountToDelete = nil
-                }
-            } message: {
-                Text("This account will be permanently removed. Transactions tied to this account will remain.")
-            }
-            .confirmationDialog(
-                "Erase All Local Data?",
-                isPresented: $showClearConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Erase All Data", role: .destructive) {
-                    store.clearAllTransactions()
-                    HapticsManager.shared.trigger(.warning)
-                }
-            } message: {
-                Text("This will permanently delete all your transactions. This action cannot be undone.")
-            }
-            .fileImporter(
-                isPresented: $showFileImporter,
-                allowedContentTypes: [.json],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let fileURL = urls.first else { return }
-                    if fileURL.startAccessingSecurityScopedResource() {
-                        defer { fileURL.stopAccessingSecurityScopedResource() }
-                        if let data = try? Data(contentsOf: fileURL) {
-                            let success = store.importJSONData(data: data)
-                            importAlertMessage = success ? "Data imported successfully!" : "Failed to parse JSON backup."
-                        }
-                    }
-                case .failure(let error):
-                    importAlertMessage = "Import failed: \(error.localizedDescription)"
-                }
-            }
-            .alert("Backup Status", isPresented: Binding(
-                get: { importAlertMessage != nil },
-                set: { if !$0 { importAlertMessage = nil } }
-            )) {
-                Button("OK") { importAlertMessage = nil }
-            } message: {
-                Text(importAlertMessage ?? "")
+            .sheet(isPresented: $showCoffeeSheet) {
+                coffeeSheet
             }
         }
     }
     
-    // MARK: - 1. Account & Cloud Profile Header
-    private var accountCloudCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(SpendyColors.primaryBlue.opacity(0.15))
-                        .frame(width: 48, height: 48)
-                    
-                    Text(store.userName.isEmpty ? "S" : String(store.userName.prefix(1)).uppercased())
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(SpendyColors.primaryBlue)
-                }
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.userName.isEmpty ? "Spendy User" : store.userName)
-                        .font(.system(.headline, design: .rounded, weight: .bold))
+    // MARK: - Top Header Bar
+    private var headerBar: some View {
+        HStack {
+            // Circular Glass Close Button
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                dismiss()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .nativeLiquidGlassCircle(isInteractive: true)
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
+            
+            Text("Settings")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            
+            Spacer()
+            
+            Color.clear.frame(width: 44, height: 44)
+        }
+    }
+    
+    // MARK: - Feature Suggestion Banner
+    private var featureSuggestionBanner: some View {
+        Link(destination: URL(string: "https://spendy.featurebase.app/")!) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Suggest a Feature")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                     
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(SpendyColors.incomeGreen)
-                            .frame(width: 6, height: 6)
-                        
-                        Text("Local Storage • Offline First")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
+                    Text("or report bugs & feedback")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.60))
                 }
                 
                 Spacer()
+                
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            
-            Divider()
-                .overlay(Color.white.opacity(0.08))
-            
-            // Cloud Sync Placeholder Info
-            HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: "icloud.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.accentCyan)
-                    
-                    Text("Cloud Sync")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                
-                Spacer()
-                
-                Text("Offline Mode")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.4))
+            .padding(14)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.10), lineWidth: 0.8)
+                    }
             }
         }
-        .padding(18)
+    }
+    
+    // MARK: - User Profile Card
+    private var userProfileCard: some View {
+        HStack(spacing: 16) {
+            // Profile Photo Circle
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [SpendyColors.primaryBlue, SpendyColors.accentCyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 2)
+                
+                if !store.userName.isEmpty {
+                    Text(String(store.userName.prefix(1)).uppercased())
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                } else {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.userName.isEmpty ? "Your Name" : store.userName)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                
+                Text("Local-First & Offline Ready")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                tempName = store.userName
+                HapticsManager.shared.trigger(.light)
+                showNameEdit = true
+            }) {
+                Image(systemName: SFIcons.edit)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .nativeLiquidGlassCircle(isInteractive: true)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(SpendyColors.cardBackground)
@@ -218,163 +197,84 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - 2. Accounts Hub Section
-    private var accountsSection: some View {
+    // MARK: - 1. Manage Section (Accounts & Categories)
+    private var manageSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("ACCOUNTS & WALLETS", systemImage: SFIcons.wallet)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .tracking(1.0)
-                    .foregroundStyle(.white.opacity(0.45))
-                
-                Spacer()
-            }
-            .padding(.horizontal, 4)
-            
-            VStack(spacing: 1) {
-                ForEach(store.accounts) { account in
-                    let balance = store.balance(for: account.id)
-                    
-                    HStack(spacing: 12) {
-                        CategoryIconBadge(
-                            sfSymbol: account.sfSymbol,
-                            tintColor: account.color,
-                            size: .small
-                        )
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(account.label)
-                                .font(.system(.body, design: .rounded, weight: .semibold))
-                                .foregroundStyle(.white)
-                            
-                            Text("Balance: \(balance.formattedCurrency(symbol: store.currencySymbol))")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.5))
-                        }
-                        
-                        Spacer()
-                        
-                        // Edit actions menu
-                        Menu {
-                            Button {
-                                tempAccountName = account.label
-                                editingAccountForName = account
-                            } label: {
-                                Label("Rename Account", systemImage: "pencil")
-                            }
-                            
-                            Button {
-                                tempAccountBalance = String(format: "%.2f", balance)
-                                editingAccountForBalance = account
-                            } label: {
-                                Label("Edit Balance", systemImage: "dollarsign.circle")
-                            }
-                            
-                            if store.accounts.count > 1 {
-                                Divider()
-                                Button(role: .destructive) {
-                                    accountToDelete = account
-                                } label: {
-                                    Label("Delete Account", systemImage: SFIcons.delete)
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.5))
-                                .frame(width: 32, height: 32)
-                                .background(Color.white.opacity(0.06), in: Circle())
-                        }
-                    }
-                    .padding(14)
-                    .background(SpendyColors.cardBackground)
-                    
-                    if account.id != store.accounts.last?.id {
-                        Divider().overlay(Color.white.opacity(0.06))
-                    }
-                }
-                
-                // Add Account Button
-                Divider().overlay(Color.white.opacity(0.06))
-                
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showAddAccountSheet = true
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: SFIcons.plus)
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Add Account")
-                            .font(.system(.body, design: .rounded, weight: .semibold))
-                    }
-                    .foregroundStyle(SpendyColors.primaryBlue)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(SpendyColors.cardBackground)
-                }
-                .buttonStyle(.plain)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-            }
-        }
-    }
-    
-    // MARK: - 3. Preferences Section
-    private var preferencesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("PREFERENCES", systemImage: "slider.horizontal.3")
+            Text("MANAGE")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.45))
                 .padding(.horizontal, 4)
             
-            VStack(spacing: 1) {
-                // Name Row
-                Button(action: {
-                    tempName = store.userName
-                    showNameEdit = true
-                }) {
-                    settingRow(
-                        icon: "person.fill",
+            VStack(spacing: 0) {
+                // Accounts Hub Link
+                NavigationLink(destination: AccountsSettingsView()) {
+                    rowItem(
+                        icon: "building.columns.fill",
                         iconColor: SpendyColors.primaryBlue,
-                        title: "Your Name",
-                        detail: store.userName.isEmpty ? "Set Name" : store.userName,
-                        showChevron: true
+                        title: "Accounts & Wallets",
+                        badgeText: "\(store.accounts.count)"
                     )
                 }
-                .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06))
+                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
                 
-                // Currency Row
+                // Categories Link
+                NavigationLink(destination: CategoriesSettingsView()) {
+                    rowItem(
+                        icon: "square.grid.2x2.fill",
+                        iconColor: SpendyColors.incomeGreen,
+                        title: "Categories",
+                        badgeText: "\(store.categories.count)"
+                    )
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+        }
+    }
+    
+    // MARK: - 2. Preferences Section
+    private var preferencesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("PREFERENCES")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1.0)
+                .foregroundStyle(.white.opacity(0.45))
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                // Currency Selector
                 Button(action: {
+                    HapticsManager.shared.trigger(.light)
                     showCurrencyPicker = true
                 }) {
-                    settingRow(
-                        icon: "dollarsign.circle.fill",
-                        iconColor: SpendyColors.incomeGreen,
+                    rowItem(
+                        icon: "globe",
+                        iconColor: SpendyColors.primaryBlue,
                         title: "Currency",
-                        detail: "\(store.currencySymbol) (\(store.currencyCode))",
-                        showChevron: true
+                        badgeText: "\(store.currencySymbol) (\(store.currencyCode))"
                     )
                 }
                 .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06))
+                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
                 
-                // Sound & Haptics
-                HStack(spacing: 12) {
-                    CategoryIconBadge(
-                        sfSymbol: "speaker.wave.2.fill",
-                        tintColor: SpendyColors.warningOrange,
-                        size: .small
-                    )
+                // Sound Effects & Haptics Toggle
+                HStack(spacing: 14) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(SpendyColors.warningOrange)
+                        .frame(width: 28, height: 28)
                     
-                    Text("Sound & Haptics")
-                        .font(.system(.body, design: .rounded, weight: .medium))
+                    Text("Sound Effects")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(.white)
                     
                     Spacer()
@@ -384,369 +284,187 @@ struct SettingsView: View {
                         set: { store.soundEnabled = $0 }
                     ))
                     .labelsHidden()
-                    .tint(SpendyColors.primaryBlue)
+                    .toggleStyle(.liquidGlass(tint: SpendyColors.warningOrange))
                 }
                 .padding(14)
-                .background(SpendyColors.cardBackground)
-                
-                Divider().overlay(Color.white.opacity(0.06))
-                
-                // Face ID / App Lock
-                HStack(spacing: 12) {
-                    CategoryIconBadge(
-                        sfSymbol: "faceid",
-                        tintColor: SpendyColors.accentCyan,
-                        size: .small
-                    )
-                    
-                    Text("Face ID Protection")
-                        .font(.system(.body, design: .rounded, weight: .medium))
-                        .foregroundStyle(.white)
-                    
-                    Spacer()
-                    
-                    Toggle("", isOn: $biometricLockEnabled)
-                        .labelsHidden()
-                        .tint(SpendyColors.primaryBlue)
-                }
-                .padding(14)
-                .background(SpendyColors.cardBackground)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
             }
         }
     }
     
-    // MARK: - 4. Data & Backup Section
+    // MARK: - 3. Data & Backup Section
     private var dataBackupSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("DATA & BACKUP", systemImage: "externaldrive.fill")
+            Text("DATA & BACKUP")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.45))
                 .padding(.horizontal, 4)
             
-            VStack(spacing: 1) {
-                // Export JSON
-                Button(action: {
-                    exportData()
-                }) {
-                    settingRow(
-                        icon: "square.and.arrow.up.fill",
-                        iconColor: SpendyColors.primaryBlue,
-                        title: "Export JSON Backup",
-                        detail: "Save or share",
-                        showChevron: true
-                    )
-                }
-                .buttonStyle(.plain)
-                
-                Divider().overlay(Color.white.opacity(0.06))
-                
-                // Import JSON
-                Button(action: {
-                    showFileImporter = true
-                }) {
-                    settingRow(
-                        icon: "square.and.arrow.down.fill",
+            VStack(spacing: 0) {
+                NavigationLink(destination: DataManagementView()) {
+                    rowItem(
+                        icon: "cylinder.split.1x2.fill",
                         iconColor: SpendyColors.incomeGreen,
-                        title: "Import JSON Backup",
-                        detail: "Restore state",
-                        showChevron: true
+                        title: "Backup & Restore",
+                        badgeText: "JSON"
                     )
                 }
-                .buttonStyle(.plain)
-                
-                Divider().overlay(Color.white.opacity(0.06))
-                
-                // Erase Local Data
-                Button(action: {
-                    showClearConfirm = true
-                }) {
-                    HStack(spacing: 12) {
-                        CategoryIconBadge(
-                            sfSymbol: SFIcons.delete,
-                            tintColor: SpendyColors.expenseRed,
-                            size: .small
-                        )
-                        
-                        Text("Erase All Transactions")
-                            .font(.system(.body, design: .rounded, weight: .medium))
-                            .foregroundStyle(SpendyColors.expenseRed)
-                        
-                        Spacer()
-                    }
-                    .padding(14)
-                    .background(SpendyColors.cardBackground)
-                }
-                .buttonStyle(.plain)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
             }
         }
     }
     
-    // MARK: - 5. Community & Developer Links
-    private var aboutAndSocialSection: some View {
+    // MARK: - 4. About & Community Section
+    private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("COMMUNITY & ABOUT", systemImage: "info.circle.fill")
+            Text("ABOUT")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.45))
                 .padding(.horizontal, 4)
             
-            VStack(spacing: 1) {
-                // Suggest a feature
-                Link(destination: URL(string: "https://spendy.featurebase.app/")!) {
-                    linkRow(
-                        icon: "lightbulb.fill",
-                        iconColor: SpendyColors.warningOrange,
-                        title: "Suggest a Feature",
-                        subtitle: "Featurebase board"
-                    )
+            VStack(spacing: 0) {
+                Button(action: { showWhatsNewSheet = true }) {
+                    rowItem(icon: "sparkles", iconColor: Color(hex: "#FFD60A"), title: "What's New in Spendy", badgeText: "v2.0.0")
                 }
+                .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06))
+                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
                 
-                // Instagram
+                Button(action: { showCoffeeSheet = true }) {
+                    rowItem(icon: "cup.and.saucer.fill", iconColor: SpendyColors.warningOrange, title: "Buy Me a Coffee", badgeText: "Support")
+                }
+                .buttonStyle(.plain)
+                
+                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                
                 Link(destination: URL(string: "https://www.instagram.com/pav6n?igsh=ZWg1aW1saW83NzZm&utm_source=qr")!) {
-                    linkRow(
-                        icon: "camera.fill",
-                        iconColor: Color(hex: "#E1306C"),
-                        title: "Instagram",
-                        subtitle: "@pav6n"
-                    )
+                    rowExternalItem(icon: "camera.fill", iconColor: Color(hex: "#FF375F"), title: "Instagram", value: "@pav6n")
                 }
                 
-                Divider().overlay(Color.white.opacity(0.06))
+                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
                 
-                // Developer Website
                 Link(destination: URL(string: "https://studiopavan.netlify.app")!) {
-                    linkRow(
-                        icon: "globe",
-                        iconColor: SpendyColors.accentCyan,
-                        title: "Developer Website",
-                        subtitle: "studiopavan.netlify.app"
-                    )
-                }
-                
-                Divider().overlay(Color.white.opacity(0.06))
-                
-                // Buy Me a Coffee
-                Link(destination: URL(string: "https://www.buymeacoffee.com/spendy")!) {
-                    linkRow(
-                        icon: "cup.and.saucer.fill",
-                        iconColor: Color(hex: "#FFDD00"),
-                        title: "Support Spendy",
-                        subtitle: "Buy me a coffee"
-                    )
+                    rowExternalItem(icon: "globe", iconColor: SpendyColors.primaryBlue, title: "Developer Website", value: "studiopavan")
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
             }
         }
     }
     
-    // MARK: - App Footer
-    private var appFooter: some View {
-        VStack(spacing: 4) {
-            Text("Spendy for iOS")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
+    // MARK: - 5. Footer App Branding
+    private var footerSection: some View {
+        VStack(spacing: 12) {
+            Text("made with ❤️ by Pavan")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.45))
             
-            Text("Version 1.0.0 • Liquid Glass Edition")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.3))
+            Image("SpendyLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 2)
+            
+            VStack(spacing: 2) {
+                Text("Spendy")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                
+                Text("Version 2.0.0 • Liquid Glass")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.40))
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 10)
+        .padding(.top, 12)
+        .padding(.bottom, 20)
     }
     
-    // MARK: - Row Helpers
-    private func settingRow(icon: String, iconColor: Color, title: String, detail: String, showChevron: Bool) -> some View {
-        HStack(spacing: 12) {
-            CategoryIconBadge(sfSymbol: icon, tintColor: iconColor, size: .small)
+    // MARK: - Helper Row Items
+    private func rowItem(icon: String, iconColor: Color, title: String, badgeText: String?) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(iconColor)
+                .frame(width: 28, height: 28)
             
             Text(title)
-                .font(.system(.body, design: .rounded, weight: .medium))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
                 .foregroundStyle(.white)
             
             Spacer()
             
-            Text(detail)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
-            
-            if showChevron {
-                Image(systemName: SFIcons.chevronRight)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.3))
+            if let badge = badgeText {
+                Text(badge)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.40))
             }
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.30))
         }
         .padding(14)
-        .background(SpendyColors.cardBackground)
     }
     
-    private func linkRow(icon: String, iconColor: Color, title: String, subtitle: String) -> some View {
-        HStack(spacing: 12) {
-            CategoryIconBadge(sfSymbol: icon, tintColor: iconColor, size: .small)
+    private func rowExternalItem(icon: String, iconColor: Color, title: String, value: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(iconColor)
+                .frame(width: 28, height: 28)
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(.body, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white)
-                
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+            Text(title)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(.white)
             
             Spacer()
             
+            Text(value)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.40))
+            
             Image(systemName: "arrow.up.right")
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.white.opacity(0.35))
         }
         .padding(14)
-        .background(SpendyColors.cardBackground)
     }
     
-    // MARK: - Sheets
-    private var editNameSheet: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    TextField("Enter your name", text: $tempName)
-                        .font(.system(.body, design: .rounded, weight: .semibold))
-                        .padding(16)
-                        .background(SpendyColors.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 20)
-                        .padding(.top, 24)
-                    
-                    Spacer()
-                }
-            }
-            .navigationTitle("Update Display Name")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showNameEdit = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        store.setUserName(tempName.trimmingCharacters(in: .whitespacesAndNewlines))
-                        showNameEdit = false
-                    }
-                }
-            }
-        }
-        .presentationDetents([.fraction(0.35)])
-    }
-    
-    private func renameAccountSheet(for acc: Account) -> some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    TextField("Account Name", text: $tempAccountName)
-                        .font(.system(.body, design: .rounded, weight: .semibold))
-                        .padding(16)
-                        .background(SpendyColors.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 20)
-                        .padding(.top, 24)
-                    
-                    Spacer()
-                }
-            }
-            .navigationTitle("Rename Account")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { editingAccountForName = nil }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let name = tempAccountName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !name.isEmpty {
-                            store.updateAccountName(id: acc.id, newName: name)
-                        }
-                        editingAccountForName = nil
-                    }
-                }
-            }
-        }
-        .presentationDetents([.fraction(0.35)])
-    }
-    
-    private func editBalanceSheet(for acc: Account) -> some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Current Balance")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
-                        
-                        TextField("0.00", text: $tempAccountBalance)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .keyboardType(.decimalPad)
-                            .padding(16)
-                            .background(SpendyColors.cardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 24)
-                    
-                    Spacer()
-                }
-            }
-            .navigationTitle("Edit Balance")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { editingAccountForBalance = nil }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        if let val = Double(tempAccountBalance) {
-                            store.updateAccountBalance(id: acc.id, newBalance: val)
-                        }
-                        editingAccountForBalance = nil
-                    }
-                }
-            }
-        }
-        .presentationDetents([.fraction(0.35)])
-    }
-    
+    // MARK: - Currency Picker Sheet
     private var currencyPickerSheet: some View {
-        let currencies: [(symbol: String, code: String, name: String)] = [
-            ("$", "USD", "US Dollar"),
-            ("₹", "INR", "Indian Rupee"),
-            ("€", "EUR", "Euro"),
-            ("£", "GBP", "British Pound"),
-            ("¥", "JPY", "Japanese Yen"),
-            ("C$", "CAD", "Canadian Dollar"),
-            ("A$", "AUD", "Australian Dollar"),
-            ("CHF", "CHF", "Swiss Franc"),
-            ("AED", "AED", "UAE Dirham"),
-            ("SGD", "SGD", "Singapore Dollar")
+        let currencies = [
+            (symbol: "₹", code: "INR", name: "Indian Rupee"),
+            (symbol: "$", code: "USD", name: "US Dollar"),
+            (symbol: "€", code: "EUR", name: "Euro"),
+            (symbol: "£", code: "GBP", name: "British Pound"),
+            (symbol: "¥", code: "JPY", name: "Japanese Yen"),
+            (symbol: "$", code: "CAD", name: "Canadian Dollar"),
+            (symbol: "$", code: "AUD", name: "Australian Dollar"),
+            (symbol: "د.إ", code: "AED", name: "UAE Dirham"),
+            (symbol: "$", code: "SGD", name: "Singapore Dollar")
         ]
         
         return NavigationStack {
@@ -756,6 +474,7 @@ struct SettingsView: View {
                 List(currencies, id: \.code) { item in
                     Button(action: {
                         store.updateCurrency(symbol: item.symbol, code: item.code)
+                        HapticsManager.shared.trigger(.selection)
                         showCurrencyPicker = false
                     }) {
                         HStack {
@@ -789,21 +508,139 @@ struct SettingsView: View {
                 }
             }
         }
+        .presentationDetents([.medium, .large])
     }
     
-    // MARK: - Export Logic
-    private func exportData() {
-        guard let data = store.exportJSONData() else { return }
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("spendy_backup.json")
-        do {
-            try data.write(to: tempURL)
-            let av = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first?.rootViewController {
-                rootVC.present(av, animated: true, completion: nil)
+    // MARK: - Edit Name Sheet
+    private var editNameSheet: some View {
+        NavigationStack {
+            ZStack {
+                SpendyColors.appBackground.ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    TextField("Enter your name", text: $tempName)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(16)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(SpendyColors.cardBackground)
+                        }
+                    
+                    Spacer()
+                }
+                .padding(20)
             }
-        } catch {
-            print("Failed to export backup: \(error.localizedDescription)")
+            .navigationTitle("Your Name")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showNameEdit = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        showNameEdit = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.fraction(0.35)])
+    }
+    
+    // MARK: - What's New Sheet
+    private var whatsNewSheet: some View {
+        NavigationStack {
+            ZStack {
+                SpendyColors.appBackground.ignoresSafeArea()
+                
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("What's New in Spendy 2.0")
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.top, 10)
+                    
+                    VStack(alignment: .leading, spacing: 16) {
+                        featureBullet(title: "Liquid Glass Bottom Bar", desc: "True native iOS floating glass navigation bar.")
+                        featureBullet(title: "Real-Time Accounts Hub", desc: "Net worth calculation with sparkline curves and balance adjustment.")
+                        featureBullet(title: "Category Management", desc: "Expense and income category groups with quick search.")
+                        featureBullet(title: "Data Backup & Restore", desc: "One-tap export and import of your transactions JSON.")
+                    }
+                    
+                    Spacer()
+                }
+                .padding(24)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showWhatsNewSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+    
+    // MARK: - Buy Me A Coffee Sheet
+    private var coffeeSheet: some View {
+        NavigationStack {
+            ZStack {
+                SpendyColors.appBackground.ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(SpendyColors.warningOrange)
+                        .padding(.top, 24)
+                    
+                    Text("Buy Me a Coffee")
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                    
+                    Text("Support Spendy independent development and help keep it ad-free and privacy-first!")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                    
+                    Link(destination: URL(string: "https://www.buymeacoffee.com/spendy")!) {
+                        Text("Open Buy Me a Coffee ☕")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color(hex: "#FFDD00"), in: Capsule())
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    
+                    Spacer()
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { showCoffeeSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func featureBullet(title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(SpendyColors.incomeGreen)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(desc)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
         }
     }
 }

@@ -3,7 +3,7 @@
 //  Spendy
 //
 //  Ultra-Refined Liquid Glass Bottom Navigation matching Apple Design System
-//  Featuring a 4-Tab Frosted Glass Pill with Matched Geometry Toggle & Separated Circular Quick-Add Button
+//  Featuring 4 navigation tabs in one floating capsule with a detached Quick-Add button
 //
 
 import SwiftUI
@@ -42,152 +42,124 @@ struct GlassTabBar: View {
     @Namespace private var tabNamespace
     
     var body: some View {
-        HStack(spacing: 10) {
-            // MARK: - 4 Navigation Tabs Liquid Glass Pill Container
-            HStack(spacing: 4) {
-                ForEach(AppTab.allCases) { tab in
-                    tabButton(for: tab)
+        HStack(spacing: 12) {
+            tabPill
+            
+            quickAddButton
+        }
+        .padding(.horizontal, 16)
+    }
+    
+    private var tabPill: some View {
+        HStack(spacing: 4) {
+            ForEach(AppTab.allCases) { tab in
+                TabButton(
+                    title: tab.label,
+                    systemImage: tab.sfSymbol,
+                    isSelected: selectedTab == tab,
+                    namespace: tabNamespace
+                ) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                        selectedTab = tab
+                    }
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .frame(height: 62)
-            .background {
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                    }
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.55),
-                                        Color.white.opacity(0.18),
-                                        Color.white.opacity(0.05)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.0
-                            )
-                    }
-                    .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 8)
-            }
-            
-            // MARK: - Separated Quick Add (+) Liquid Glass Circular Button
-            Button(action: {
-                HapticsManager.shared.trigger(.medium)
-                onQuickAdd()
-            }) {
-                ZStack {
+        }
+        .padding(6)
+        .frame(height: 64)
+        .nativeLiquidGlassCapsule(isInteractive: true)
+        .shadow(color: Color.black.opacity(0.18), radius: 18, x: 0, y: 10)
+    }
+    
+    private var quickAddButton: some View {
+        Button(action: {
+            HapticsManager.shared.trigger(.medium)
+            onQuickAdd()
+        }) {
+            Image(systemName: SFIcons.quickAdd)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 58, height: 58)
+                .background {
                     Circle()
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            Circle()
-                                .fill(Color.white.opacity(0.06))
-                        }
+                        .fill(SpendyColors.primaryBlue)
                         .overlay {
                             Circle()
                                 .stroke(
                                     LinearGradient(
                                         colors: [
                                             Color.white.opacity(0.55),
-                                            Color.white.opacity(0.18),
-                                            Color.white.opacity(0.05)
+                                            Color.white.opacity(0.12)
                                         ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     ),
-                                    lineWidth: 1.0
+                                    lineWidth: 0.8
                                 )
                         }
-                        .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 8)
-                    
-                    Image(systemName: "plus")
-                        .font(.system(size: 21, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
                 }
-                .frame(width: 62, height: 62)
-            }
-            .buttonStyle(ScaleTouchButtonStyle())
+                .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.primaryBlue)
+                .shadow(color: SpendyColors.primaryBlue.opacity(0.34), radius: 16, x: 0, y: 8)
         }
-        .padding(.horizontal, 16)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add transaction")
     }
+}
+
+// MARK: - Subcomponent for Individual Tab Buttons
+struct TabButton: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+    let namespace: Namespace.ID
+    let action: () -> Void
     
-    // MARK: - Individual Tab Button Item
-    private func tabButton(for tab: AppTab) -> some View {
-        let isSelected = selectedTab == tab
-        
-        return Button(action: {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.74)) {
-                selectedTab = tab
-            }
+    var body: some View {
+        Button(action: {
             HapticsManager.shared.trigger(.selection)
+            action()
         }) {
-            VStack(spacing: 3) {
-                ZStack {
-                    if isSelected {
-                        // Liquid Glass Blue Circle Badge for active icon (matches reference screenshot)
-                        Circle()
-                            .fill(SpendyColors.primaryBlue)
-                            .frame(width: 28, height: 28)
-                            .shadow(color: SpendyColors.primaryBlue.opacity(0.45), radius: 6, y: 2)
-                            .transition(.scale.combined(with: .opacity))
-                        
-                        Image(systemName: tab.sfSymbol)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                    } else {
-                        Image(systemName: tab.sfSymbol)
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.50))
-                            .frame(width: 28, height: 28)
-                    }
-                }
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 19, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(height: 24)
                 
-                Text(tab.label)
-                    .font(.system(size: 10, weight: isSelected ? .bold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? SpendyColors.primaryBlue : Color.white.opacity(0.45))
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
             }
+            .foregroundStyle(isSelected ? .white : Color.white.opacity(0.68))
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background {
                 if isSelected {
-                    // Floating Liquid Glass Selection Capsule
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.14))
+                        .fill(SpendyColors.primaryBlue.opacity(0.92))
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.40),
-                                            Color.white.opacity(0.08)
+                                            Color.white.opacity(0.50),
+                                            Color.white.opacity(0.10)
                                         ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     ),
                                     lineWidth: 0.8
                                 )
                         }
-                        .matchedGeometryEffect(id: "activeTabGlassHighlight", in: tabNamespace)
+                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
+                        .shadow(color: SpendyColors.primaryBlue.opacity(0.30), radius: 10, x: 0, y: 4)
                 }
             }
-            .contentShape(Rectangle())
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Smooth Scale Touch Button Style
-struct ScaleTouchButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.90 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

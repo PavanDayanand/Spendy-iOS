@@ -35,11 +35,12 @@ struct AddSubscriptionSheet: View {
                         TextField("Amount (\(store.currencySymbol))", text: $amountString)
                             .keyboardType(.decimalPad)
                         
-                        Picker("Billing Cycle", selection: $cycle) {
-                            ForEach(BillingCycle.allCases) { c in
-                                Text(c.label).tag(c)
-                            }
-                        }
+                        GlassSegmentedPicker(
+                            selection: $cycle,
+                            items: BillingCycle.allCases,
+                            titleFor: { $0.label },
+                            activeTint: SpendyColors.primaryBlue
+                        )
                     }
                     .listRowBackground(SpendyColors.cardBackground)
                     

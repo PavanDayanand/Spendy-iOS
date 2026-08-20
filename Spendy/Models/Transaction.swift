@@ -76,47 +76,5 @@ struct Transaction: Identifiable, Codable, Hashable {
     }
     
     // MARK: - Sample Data
-    static let samples: [Transaction] = [
-        Transaction(
-            title: "Supermarket & Groceries",
-            amount: 64.50,
-            type: .expense,
-            categoryId: "groceries",
-            accountId: "bank",
-            date: Date()
-        ),
-        Transaction(
-            title: "Client Project Payment",
-            amount: 1450.00,
-            type: .income,
-            categoryId: "freelance",
-            accountId: "bank",
-            date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-        ),
-        Transaction(
-            title: "Blue Bottle Coffee",
-            amount: 6.75,
-            type: .expense,
-            categoryId: "food",
-            accountId: "bank",
-            date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-        ),
-        Transaction(
-            title: "Uber Ride",
-            amount: 24.80,
-            type: .expense,
-            categoryId: "transport",
-            accountId: "bank",
-            date: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date()
-        ),
-        Transaction(
-            title: "Savings Transfer",
-            amount: 300.00,
-            type: .transfer,
-            categoryId: "savings",
-            accountId: "bank",
-            toAccountId: "savings",
-            date: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()
-        )
-    ]
+    static let samples: [Transaction] = []
 }

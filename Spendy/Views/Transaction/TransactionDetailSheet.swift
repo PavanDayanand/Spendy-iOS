@@ -2,7 +2,7 @@
 //  TransactionDetailSheet.swift
 //  Spendy
 //
-//  Native iOS Transaction Details Modal Sheet
+//  Rich Transaction Detail Drawer with Category Glow, Edit, Delete, and Thermal Receipt Preview
 //
 
 import SwiftUI
@@ -11,158 +11,234 @@ struct TransactionDetailSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
-    var transaction: Transaction
+    let transaction: Transaction
+    var onEdit: (Transaction) -> Void
+    
     @State private var showDeleteConfirm: Bool = false
     
+    private var category: Category? {
+        store.categories.first(where: { $0.id == transaction.categoryId })
+    }
+    
+    private var account: Account? {
+        store.accounts.first(where: { $0.id == transaction.accountId })
+    }
+    
+    private var toAccount: Account? {
+        guard let toId = transaction.toAccountId else { return nil }
+        return store.accounts.first(where: { $0.id == toId })
+    }
+    
+    private var categoryColor: Color {
+        category?.color ?? SpendyColors.primaryBlue
+    }
+    
     var body: some View {
-        let category = store.category(for: transaction.categoryId)
-        let account = store.account(for: transaction.accountId)
-        
         NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
+            ZStack(alignment: .top) {
+                SpendyColors.appBackground
+                    .ignoresSafeArea()
+                
+                // Vibrant Top Category Glow
+                LinearGradient(
+                    colors: [
+                        categoryColor.opacity(0.35),
+                        categoryColor.opacity(0.12),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 220)
+                .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        // Hero Amount & Icon
+                        // Top Header Bar
+                        HStack {
+                            // Circular Close Button ✕
+                            Button(action: {
+                                HapticsManager.shared.trigger(.selection)
+                                dismiss()
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .nativeLiquidGlassCircle(isInteractive: true)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 12) {
+                                // Edit Button ✎
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.light)
+                                    dismiss()
+                                    onEdit(transaction)
+                                }) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 44, height: 44)
+                                        .nativeLiquidGlassCircle(isInteractive: true)
+                                }
+                                .buttonStyle(.plain)
+                                
+                                // Delete Button 🗑
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.warning)
+                                    showDeleteConfirm = true
+                                }) {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(SpendyColors.expenseRed)
+                                        .frame(width: 44, height: 44)
+                                        .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.expenseRed)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.top, 10)
+                        
+                        // Hero Amount & Category Badge
                         VStack(spacing: 12) {
-                            CategoryIconBadge(
-                                sfSymbol: category.sfSymbol,
-                                tintColor: category.color,
-                                size: .large
+                            ZStack {
+                                Circle()
+                                    .fill(categoryColor)
+                                    .frame(width: 64, height: 64)
+                                    .shadow(color: categoryColor.opacity(0.45), radius: 14, y: 4)
+                                
+                                Image(systemName: category?.sfSymbol ?? "tag.fill")
+                                    .font(.system(size: 26, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                Text(formattedAmountText)
+                                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                                
+                                Text(transaction.title.isEmpty ? (category?.label ?? "Transaction") : transaction.title)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.70))
+                            }
+                        }
+                        
+                        // Details Card
+                        VStack(spacing: 14) {
+                            detailRow(
+                                icon: "tag.fill",
+                                iconColor: categoryColor,
+                                label: "Category",
+                                value: category?.label ?? "General"
                             )
                             
-                            Text(transaction.title)
-                                .font(.system(.title2, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
+                            Divider().overlay(Color.white.opacity(0.06))
                             
-                            Text(amountFormatted)
-                                .font(.system(size: 40, weight: .heavy, design: .rounded))
-                                .foregroundStyle(amountColor)
+                            if transaction.type == .transfer {
+                                detailRow(
+                                    icon: "arrow.up.arrow.down",
+                                    iconColor: SpendyColors.transferBlue,
+                                    label: "Transfer Route",
+                                    value: "\(account?.label ?? "Account") → \(toAccount?.label ?? "Account")"
+                                )
+                            } else {
+                                detailRow(
+                                    icon: "creditcard.fill",
+                                    iconColor: SpendyColors.primaryBlue,
+                                    label: "Account",
+                                    value: account?.label ?? "Cash"
+                                )
+                            }
                             
-                            Text(transaction.type.title.uppercased())
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .tracking(1.2)
-                                .foregroundStyle(transaction.type.color)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 5)
-                                .background {
-                                    Capsule().fill(transaction.type.color.opacity(0.15))
+                            Divider().overlay(Color.white.opacity(0.06))
+                            
+                            detailRow(
+                                icon: "calendar",
+                                iconColor: SpendyColors.warningOrange,
+                                label: "Date & Time",
+                                value: transaction.date.formatted(date: .abbreviated, time: .shortened)
+                            )
+                            
+                            if let note = transaction.notes, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Divider().overlay(Color.white.opacity(0.06))
+                                
+                                detailRow(
+                                    icon: "text.alignleft",
+                                    iconColor: Color(hex: "#AF52DE"),
+                                    label: "Note",
+                                    value: note
+                                )
+                            }
+                        }
+                        .padding(18)
+                        .background {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                                 }
                         }
-                        .padding(.vertical, 16)
                         
-                        // Metadata Details Card
-                        VStack(spacing: 1) {
-                            detailRow(label: "Category", icon: category.sfSymbol, color: category.color, value: category.label)
-                            Divider().overlay(Color.white.opacity(0.06))
-                            
-                            detailRow(label: "Account", icon: account.sfSymbol, color: account.color, value: account.label)
-                            
-                            if let toId = transaction.toAccountId, transaction.type == .transfer {
-                                let toAcc = store.account(for: toId)
-                                Divider().overlay(Color.white.opacity(0.06))
-                                detailRow(label: "To Account", icon: toAcc.sfSymbol, color: toAcc.color, value: toAcc.label)
-                            }
-                            
-                            Divider().overlay(Color.white.opacity(0.06))
-                            detailRow(label: "Date", icon: SFIcons.calendar, color: SpendyColors.primaryBlue, value: transaction.date.formattedFullDate)
-                            
-                            Divider().overlay(Color.white.opacity(0.06))
-                            detailRow(label: "Time", icon: "clock.fill", color: SpendyColors.accentCyan, value: transaction.date.formattedTime)
-                            
-                            if let notes = transaction.notes, !notes.isEmpty {
-                                Divider().overlay(Color.white.opacity(0.06))
-                                detailRow(label: "Notes", icon: "note.text", color: SpendyColors.warningOrange, value: notes)
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                        }
-                        
-                        // Delete Button
-                        Button(action: {
-                            HapticsManager.shared.trigger(.warning)
-                            showDeleteConfirm = true
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: SFIcons.delete)
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Delete Transaction")
-                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            }
-                            .foregroundStyle(SpendyColors.expenseRed)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .stroke(SpendyColors.expenseRed.opacity(0.2), lineWidth: 0.8)
-                                    }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 8)
+                        // Receipt ID Footer
+                        Text("TXID • \(transaction.id.uuidString.prefix(8).uppercased())")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.30))
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("Transaction Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-            .confirmationDialog("Delete this transaction?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            .navigationBarHidden(true)
+            .confirmationDialog(
+                "Delete Transaction?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
                 Button("Delete", role: .destructive) {
                     store.deleteTransaction(id: transaction.id)
+                    HapticsManager.shared.trigger(.warning)
                     dismiss()
                 }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Are you sure you want to delete this transaction? This cannot be undone.")
             }
         }
-        .presentationDetents([.fraction(0.85), .large])
+        .presentationDetents([.medium, .large])
     }
     
-    private func detailRow(label: String, icon: String, color: Color, value: String) -> some View {
+    private var formattedAmountText: String {
+        let sym = store.currencySymbol
+        switch transaction.type {
+        case .expense:
+            return "-\(transaction.amount.formattedCurrency(symbol: sym))"
+        case .income:
+            return "+\(transaction.amount.formattedCurrency(symbol: sym))"
+        case .transfer:
+            return "\(transaction.amount.formattedCurrency(symbol: sym))"
+        }
+    }
+    
+    private func detailRow(icon: String, iconColor: Color, label: String, value: String) -> some View {
         HStack(spacing: 12) {
-            CategoryIconBadge(sfSymbol: icon, tintColor: color, size: .small)
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(iconColor)
+                .frame(width: 24, height: 24)
             
             Text(label)
-                .font(.system(.body, design: .rounded, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.50))
             
             Spacer()
             
             Text(value)
-                .font(.system(.body, design: .rounded, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
-        }
-        .padding(14)
-        .background(SpendyColors.cardBackground)
-    }
-    
-    private var amountFormatted: String {
-        switch transaction.type {
-        case .expense: return "-\(transaction.amount.formattedCurrency(symbol: store.currencySymbol))"
-        case .income: return "+\(transaction.amount.formattedCurrency(symbol: store.currencySymbol))"
-        case .transfer: return transaction.amount.formattedCurrency(symbol: store.currencySymbol)
-        }
-    }
-    
-    private var amountColor: Color {
-        switch transaction.type {
-        case .expense: return .white
-        case .income: return SpendyColors.incomeGreen
-        case .transfer: return SpendyColors.transferBlue
         }
     }
 }

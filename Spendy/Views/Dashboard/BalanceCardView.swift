@@ -22,7 +22,7 @@ struct BalanceCardView: View {
                             .tracking(1.0)
                             .foregroundStyle(.white.opacity(0.5))
                         
-                        // Privacy Eye Button
+                        // Privacy Eye Button (Liquid Glass)
                         Button(action: {
                             withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                                 isBalanceHidden.toggle()
@@ -31,8 +31,10 @@ struct BalanceCardView: View {
                         }) {
                             Image(systemName: isBalanceHidden ? "eye.slash.fill" : "eye.fill")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(isBalanceHidden ? SpendyColors.warningOrange : .white.opacity(0.6))
+                                .padding(6)
                         }
+                        .buttonStyle(.glass)
                     }
                     
                     if isBalanceHidden {

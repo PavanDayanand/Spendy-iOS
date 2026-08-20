@@ -39,6 +39,7 @@ struct ManageView: View {
     @State private var showAddAccount: Bool = false
     @State private var showAddCategory: Bool = false
     @State private var showAddSubscription: Bool = false
+    @State private var categoryToEdit: Category? = nil
     
     // Category Sub-filter (Expense vs Income)
     @State private var categoryTypeFilter: TransactionType = .expense
@@ -58,20 +59,16 @@ struct ManageView: View {
                                 .foregroundStyle(.white)
                             Spacer()
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 10)
                         
-                        // Native Segmented Control
-                        Picker("Section", selection: $selectedSection) {
-                            ForEach(ManageSection.allCases) { section in
-                                Text(section.title).tag(section)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: selectedSection) { _, _ in
-                            HapticsManager.shared.trigger(.selection)
-                        }
+                        // Section Selector
+                        GlassSegmentedPicker(
+                            selection: $selectedSection,
+                            items: ManageSection.allCases,
+                            titleFor: { $0.title }
+                        )
                         
-                        // Section Content
+                        // Active Section Content
                         switch selectedSection {
                         case .accounts:
                             accountsSection
@@ -91,6 +88,9 @@ struct ManageView: View {
             }
             .sheet(isPresented: $showAddCategory) {
                 AddCategorySheet(defaultType: categoryTypeFilter)
+            }
+            .sheet(item: $categoryToEdit) { cat in
+                AddCategorySheet(categoryToEdit: cat)
             }
             .sheet(isPresented: $showAddSubscription) {
                 AddSubscriptionSheet()
@@ -177,11 +177,12 @@ struct ManageView: View {
     private var categoriesSection: some View {
         VStack(spacing: 14) {
             HStack {
-                Picker("Category Type", selection: $categoryTypeFilter) {
-                    Text("Expense").tag(TransactionType.expense)
-                    Text("Income").tag(TransactionType.income)
-                }
-                .pickerStyle(.segmented)
+                GlassSegmentedPicker(
+                    selection: $categoryTypeFilter,
+                    items: [TransactionType.expense, TransactionType.income],
+                    titleFor: { $0.title },
+                    activeTint: categoryTypeFilter == .expense ? SpendyColors.expenseRed : SpendyColors.incomeGreen
+                )
                 
                 Button(action: {
                     HapticsManager.shared.trigger(.light)
@@ -193,6 +194,7 @@ struct ManageView: View {
                         .padding(8)
                         .background(SpendyColors.primaryBlue, in: Circle())
                 }
+                .buttonStyle(.glass)
                 .padding(.leading, 6)
             }
             
@@ -200,30 +202,42 @@ struct ManageView: View {
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(filtered) { cat in
-                    HStack(spacing: 10) {
-                        CategoryIconBadge(
-                            sfSymbol: cat.sfSymbol,
-                            tintColor: cat.color,
-                            size: .small
-                        )
-                        
-                        Text(cat.label)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        
-                        Spacer(minLength: 0)
+                    Button(action: {
+                        HapticsManager.shared.trigger(.light)
+                        categoryToEdit = cat
+                    }) {
+                        HStack(spacing: 10) {
+                            CategoryIconBadge(
+                                sfSymbol: cat.sfSymbol,
+                                tintColor: cat.color,
+                                size: .small
+                            )
+                            
+                            Text(cat.label)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            
+                            Spacer(minLength: 0)
+                        }
+                        .padding(12)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                }
+                        }
                     }
-                    .padding(12)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(SpendyColors.cardBackground)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                            }
-                    }
+                    .buttonStyle(.plain)
                     .contextMenu {
+                        Button {
+                            categoryToEdit = cat
+                        } label: {
+                            Label("Edit Category", systemImage: SFIcons.edit)
+                        }
+                        
                         Button(role: .destructive) {
                             store.deleteCategory(id: cat.id)
                         } label: {
