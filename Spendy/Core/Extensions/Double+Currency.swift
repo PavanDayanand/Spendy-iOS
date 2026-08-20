@@ -1,0 +1,50 @@
+//
+//  Double+Currency.swift
+//  Spendy
+//
+//  Currency and Number Formatting Extension
+//
+
+import Foundation
+
+extension Double {
+    /// Formats a double value with a currency symbol (e.g., "$1,250.00" or "₹1,250.00")
+    func formattedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = decimals
+        formatter.maximumFractionDigits = decimals
+        
+        let formattedNumber = formatter.string(from: NSNumber(value: abs(self))) ?? String(format: "%.\(decimals)f", abs(self))
+        let sign = self < 0 ? "-" : ""
+        return "\(sign)\(symbol)\(formattedNumber)"
+    }
+    
+    /// Formats with a clear +/- sign (e.g. "+$500.00" or "-$45.50")
+    func formattedSignedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = decimals
+        formatter.maximumFractionDigits = decimals
+        
+        let formattedNumber = formatter.string(from: NSNumber(value: abs(self))) ?? String(format: "%.\(decimals)f", abs(self))
+        if self > 0 {
+            return "+\(symbol)\(formattedNumber)"
+        } else if self < 0 {
+            return "-\(symbol)\(formattedNumber)"
+        } else {
+            return "\(symbol)\(formattedNumber)"
+        }
+    }
+    
+    /// Compact formatted amount for charts and cards (e.g., "$1.2k", "$450")
+    func formattedCompactCurrency(symbol: String = "$") -> String {
+        if abs(self) >= 1_000_000 {
+            return String(format: "\(symbol)%.1fM", self / 1_000_000)
+        } else if abs(self) >= 1_000 {
+            return String(format: "\(symbol)%.1fk", self / 1_000)
+        } else {
+            return formattedCurrency(symbol: symbol, decimals: 0)
+        }
+    }
+}
