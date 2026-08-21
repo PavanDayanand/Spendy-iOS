@@ -8,132 +8,109 @@
 import SwiftUI
 
 struct InsightItem: Identifiable, Hashable {
-    let id = UUID()
-    let title: String
-    let description: String
-    let sfSymbol: String
-    let tintColor: Color
-    let score: Int // Priority score for sorting
+    var id: String
+    var family: String
+    var scope: String
+    var personaFit: [String]
+    var confidence: Double
+    var severity: Double
+    var eligibility: Bool
+    
+    // UI details
+    var title: String
+    var value: String
+    var desc: String
+    var icon: String
+    var colorHex: String
+    var categoryId: String? = nil
+    
+    var color: Color {
+        Color(hex: colorHex)
+    }
+}
+
+// Facts generated from data
+struct InsightFacts {
+    let periodStart: Date
+    let periodEnd: Date
+    let currentTotal: Double
+    let prevTotal: Double
+    let txCount: Int
+    let catTotals: [String: Double]
+    let prevCatTotals: [String: Double]
+    let dayCount: [Int: Int]
+    let weekendTotal: Double
+    let weekdayTotal: Double
+    let weekendCount: Int
+    let weekdayCount: Int
+    let maxStreak: Int
+    let budgetPacing: BudgetPacing?
+    let dataDensity: Double
+    let elapsedDays: Int
+    let transactions: [Transaction]
+}
+
+struct BudgetPacing {
+    let percentSpent: Double
+    let safePace: Double
+    let overPace: Double
+    let remaining: Double
+    let limit: Double
+    let daysInMonth: Int
+    let currentDay: Int
+    let remainingDays: Int
+    let avgDailySpend: Double
+    let projectedTotal: Double
+    let daysToExhaustion: Double
+    let safeDailyRemaining: Double
 }
 
 struct InsightsEngine {
-    static func generateInsights(
+    
+    // MARK: - 1. Facts Layer
+    static func buildInsightFacts(
         transactions: [Transaction],
-        categories: [Category],
         budget: Budget,
-        currencySymbol: String
-    ) -> [InsightItem] {
-        var insights: [InsightItem] = []
+        periodStart: Date,
+        periodEnd: Date,
+        prevStart: Date,
+        prevEnd: Date,
+        dataType: TransactionType
+    ) -> InsightFacts {
         let calendar = Calendar.current
         let now = Date()
         
-        let monthTxs = transactions.filter {
-            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
-            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
-        }
-        let expenseTxs = monthTxs.filter { $0.type == .expense }
-        let totalExpense = expenseTxs.reduce(0.0) { $0 + $1.amount }
-        
-        // 1. Empty / Beginner Insight
-        if expenseTxs.isEmpty {
-            insights.append(
-                InsightItem(
-                    title: "Ready to Track",
-                    description: "Add your first expense to unlock smart spending velocity & category trends.",
-                    sfSymbol: "sparkles",
-                    tintColor: SpendyColors.primaryBlue,
-                    score: 100
-                )
-            )
-            return insights
+        let currentTxs = transactions.filter {
+            $0.type == dataType && $0.date >= periodStart && $0.date <= periodEnd
         }
         
-        // 2. Budget Pacing Insight
-        if budget.monthlyBudget > 0 {
-            let limit = budget.monthlyBudget
-            let percentSpent = (totalExpense / limit) * 100
-            let day = calendar.component(.day, from: now)
-            let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
-            let expectedPace = (Double(day) / Double(daysInMonth)) * 100
-            let remaining = max(0, limit - totalExpense)
-            
-            if percentSpent > 100 {
-                insights.append(
-                    InsightItem(
-                        title: "Budget Exceeded",
-                        description: "You've exceeded your \(currencySymbol)\(Int(limit)) monthly budget by \(currencySymbol)\(Int(totalExpense - limit)).",
-                        sfSymbol: "exclamationmark.triangle.fill",
-                        tintColor: SpendyColors.expenseRed,
-                        score: 95
-                    )
-                )
-            } else if percentSpent > expectedPace + 15 {
-                insights.append(
-                    InsightItem(
-                        title: "Fast Pacing",
-                        description: "You've spent \(Int(percentSpent))% of your budget on day \(day) of \(daysInMonth). Slow down to stay within \(currencySymbol)\(Int(limit)).",
-                        sfSymbol: "speedometer",
-                        tintColor: SpendyColors.warningOrange,
-                        score: 90
-                    )
-                )
-            } else {
-                insights.append(
-                    InsightItem(
-                        title: "Budget on Track",
-                        description: "You're pacing well! \(currencySymbol)\(Int(remaining)) safe to spend for the next \(daysInMonth - day) days.",
-                        sfSymbol: "checkmark.shield.fill",
-                        tintColor: SpendyColors.incomeGreen,
-                        score: 85
-                    )
-                )
-            }
+        let prevTxs = transactions.filter {
+            $0.type == dataType && $0.date >= prevStart && $0.date <= prevEnd
         }
         
-        // 3. Top Category Insight
-        var catSpend: [String: Double] = [:]
-        for t in expenseTxs {
-            catSpend[t.categoryId, default: 0] += t.amount
-        }
-        if let topCatId = catSpend.max(by: { $0.value < $1.value }), totalExpense > 0 {
-            let catObj = categories.first(where: { $0.id == topCatId.key })
-            let catName = catObj?.label ?? "Everyday"
-            let pct = Int((topCatId.value / totalExpense) * 100)
-            
-            insights.append(
-                InsightItem(
-                    title: "Top Category: \(catName)",
-                    description: "\(catName) accounts for \(pct)% (\(currencySymbol)\(Int(topCatId.value))) of this month's spending.",
-                    sfSymbol: catObj?.sfSymbol ?? "chart.pie.fill",
-                    tintColor: catObj?.color ?? SpendyColors.primaryBlue,
-                    score: 80
-                )
-            )
+        let currentTotal = currentTxs.reduce(0) { $0 + $1.amount }
+        let prevTotal = prevTxs.reduce(0) { $0 + $1.amount }
+        
+        var catTotals: [String: Double] = [:]
+        for t in currentTxs {
+            catTotals[t.categoryId, default: 0] += t.amount
         }
         
-        // 4. Largest Transaction
-        if let largest = expenseTxs.max(by: { $0.amount < $1.amount }), largest.amount > 0 {
-            let catObj = categories.first(where: { $0.id == largest.categoryId })
-            insights.append(
-                InsightItem(
-                    title: "Largest Expense",
-                    description: "\(largest.title.isEmpty ? (catObj?.label ?? "Expense") : largest.title) was \(currencySymbol)\(Int(largest.amount)).",
-                    sfSymbol: "arrow.up.right.circle.fill",
-                    tintColor: SpendyColors.expenseRed,
-                    score: 70
-                )
-            )
+        var prevCatTotals: [String: Double] = [:]
+        for t in prevTxs {
+            prevCatTotals[t.categoryId, default: 0] += t.amount
         }
         
-        // 5. Weekend vs Weekday Habit
+        var dayCount: [Int: Int] = [:]
         var weekendTotal = 0.0
         var weekdayTotal = 0.0
         var weekendCount = 0
         var weekdayCount = 0
         
-        for t in expenseTxs {
-            let weekday = calendar.component(.weekday, from: t.date)
-            if weekday == 1 || weekday == 7 { // Sunday or Saturday
+        for t in currentTxs {
+            let weekday = calendar.component(.weekday, from: t.date) // 1 = Sunday, 7 = Saturday
+            dayCount[weekday, default: 0] += 1
+            if weekday == 1 || weekday == 7 {
                 weekendTotal += t.amount
                 weekendCount += 1
             } else {
@@ -142,23 +119,445 @@ struct InsightsEngine {
             }
         }
         
-        if weekendCount >= 2 && weekdayCount >= 2 {
-            let weekendAvg = weekendTotal / Double(weekendCount)
-            let weekdayAvg = weekdayTotal / Double(weekdayCount)
-            if weekendAvg > weekdayAvg * 1.4 {
-                let ratio = Int((weekendAvg / max(weekdayAvg, 1)) * 100) - 100
-                insights.append(
-                    InsightItem(
-                        title: "Weekend Spending Peak",
-                        description: "You spend ~\(ratio)% more per transaction on weekends compared to weekdays.",
-                        sfSymbol: "calendar.badge.clock",
-                        tintColor: SpendyColors.warningOrange,
-                        score: 60
-                    )
-                )
+        // Streaks
+        var daySet: Set<String> = []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        for t in currentTxs {
+            daySet.insert(formatter.string(from: t.date))
+        }
+        
+        let elapsed = max(1, calendar.dateComponents([.day], from: periodStart, to: now).day ?? 1)
+        var maxStreak = 0
+        var currentStreak = 0
+        for i in 0...elapsed {
+            guard let d = calendar.date(byAdding: .day, value: i, to: periodStart) else { continue }
+            let dStr = formatter.string(from: d)
+            if !daySet.contains(dStr) {
+                currentStreak += 1
+                maxStreak = max(maxStreak, currentStreak)
+            } else {
+                currentStreak = 0
             }
         }
         
-        return insights.sorted(by: { $0.score > $1.score })
+        // Budget
+        var budgetPacing: BudgetPacing? = nil
+        let daysInMonth = calendar.range(of: .day, in: .month, for: periodStart)?.count ?? 30
+        // Determine if period is roughly a month (checking if periodStart and periodEnd are a month apart)
+        let isMonthPeriod = (calendar.dateComponents([.day], from: periodStart, to: periodEnd).day ?? 0) >= 28
+        
+        if budget.isActive && budget.amount > 0 && isMonthPeriod && dataType == .expense {
+            let limit = budget.period == .yearly ? budget.amount / 12.0 : budget.amount
+            let percentSpent = (currentTotal / limit) * 100
+            let currentDay = min(daysInMonth, max(1, (calendar.dateComponents([.day], from: periodStart, to: now).day ?? 0) + 1))
+            let safePace = (Double(currentDay) / Double(daysInMonth)) * 100
+            let remainingDays = max(0, daysInMonth - currentDay)
+            let avgDailySpend = currentTotal / Double(currentDay)
+            let projectedTotal = avgDailySpend * Double(daysInMonth)
+            let daysToExhaustion = avgDailySpend > 0 ? (limit / avgDailySpend) : Double(daysInMonth)
+            let safeDailyRemaining = remainingDays > 0 ? max(0, limit - currentTotal) / Double(remainingDays) : 0
+            
+            budgetPacing = BudgetPacing(
+                percentSpent: percentSpent,
+                safePace: safePace,
+                overPace: percentSpent - safePace,
+                remaining: limit - currentTotal,
+                limit: limit,
+                daysInMonth: daysInMonth,
+                currentDay: currentDay,
+                remainingDays: remainingDays,
+                avgDailySpend: avgDailySpend,
+                projectedTotal: projectedTotal,
+                daysToExhaustion: daysToExhaustion,
+                safeDailyRemaining: safeDailyRemaining
+            )
+        }
+        
+        return InsightFacts(
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            currentTotal: currentTotal,
+            prevTotal: prevTotal,
+            txCount: currentTxs.count,
+            catTotals: catTotals,
+            prevCatTotals: prevCatTotals,
+            dayCount: dayCount,
+            weekendTotal: weekendTotal,
+            weekdayTotal: weekdayTotal,
+            weekendCount: weekendCount,
+            weekdayCount: weekdayCount,
+            maxStreak: maxStreak,
+            budgetPacing: budgetPacing,
+            dataDensity: min(Double(currentTxs.count) / 10.0, 1.0),
+            elapsedDays: elapsed,
+            transactions: currentTxs
+        )
+    }
+    
+    // MARK: - 2. Mindset Layer
+    static func inferUserMindset(facts: InsightFacts, budget: Budget) -> String {
+        if facts.txCount < 5 || facts.dataDensity < 0.3 {
+            return "beginner"
+        }
+        
+        if budget.isActive && budget.amount > 0 && facts.budgetPacing != nil {
+            return "guardian"
+        }
+        
+        let wAvg = facts.weekendCount > 0 ? facts.weekendTotal / Double(facts.weekendCount) : 0
+        let dAvg = facts.weekdayCount > 0 ? facts.weekdayTotal / Double(facts.weekdayCount) : 0
+        let ratio = wAvg / max(dAvg, 1)
+        if ratio > 1.5 || facts.maxStreak >= 3 {
+            return "habit-focused"
+        }
+        
+        return "reflector"
+    }
+    
+    // MARK: - 3. Generators
+    
+    static func generateBudgetInsights(facts: InsightFacts, currencySymbol: String) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        guard let pacing = facts.budgetPacing else { return insights }
+        
+        if pacing.percentSpent >= 100 {
+            insights.append(InsightItem(
+                id: "budget_exceeded", family: "budget", scope: "global", personaFit: ["guardian", "planner", "reflector"],
+                confidence: 1.0, severity: 1.0, eligibility: true,
+                title: "Budget Exceeded", value: "\(Int(pacing.percentSpent))%", desc: "Monthly limit exceeded.",
+                icon: "exclamationmark.octagon.fill", colorHex: "#ff453a"
+            ))
+        } else if pacing.projectedTotal > pacing.limit {
+            let daysToExhaust = Int(pacing.daysToExhaustion)
+            let exhaustionDate = Calendar.current.date(byAdding: .day, value: daysToExhaust, to: facts.periodStart) ?? facts.periodStart
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            let formattedDate = formatter.string(from: exhaustionDate)
+            
+            insights.append(InsightItem(
+                id: "budget_exhaustion_risk", family: "budget", scope: "global", personaFit: ["guardian", "planner", "reflector"],
+                confidence: 0.9, severity: 0.85, eligibility: true,
+                title: "Exhaustion Risk", value: formattedDate, desc: "Budget runs out on \(formattedDate) at this pace.",
+                icon: "exclamationmark.triangle.fill", colorHex: "#ff9500"
+            ))
+            
+            if pacing.remainingDays > 0 {
+                insights.append(InsightItem(
+                    id: "budget_recovery_allowance", family: "budget", scope: "global", personaFit: ["guardian", "optimizer"],
+                    confidence: 0.85, severity: 0.5, eligibility: true,
+                    title: "Daily Limit", value: "\(currencySymbol)\(Int(max(0, pacing.safeDailyRemaining)))",
+                    desc: "Safe daily spend for next \(pacing.remainingDays) days.",
+                    icon: "pills.fill", colorHex: "#ffd60a" // Close enough to piggy bank
+                ))
+            }
+        } else if pacing.overPace > 15 {
+            insights.append(InsightItem(
+                id: "budget_burn_rate", family: "budget", scope: "global", personaFit: ["guardian", "planner"],
+                confidence: 0.9, severity: 0.8, eligibility: true,
+                title: "High Burn Rate", value: "+\(Int(pacing.overPace))%", desc: "Spending is faster than cycle pace.",
+                icon: "waveform.path.ecg", colorHex: "#ff9500"
+            ))
+        } else if pacing.overPace <= 0 && pacing.percentSpent > 20 {
+            insights.append(InsightItem(
+                id: "budget_pacing_good", family: "budget", scope: "global", personaFit: ["guardian", "optimizer"],
+                confidence: 0.8, severity: 0.2, eligibility: true,
+                title: "On Track", value: "\(Int(pacing.percentSpent))%", desc: "Pacing is safely within budget.",
+                icon: "checkmark.shield.fill", colorHex: "#30d158"
+            ))
+        }
+        
+        return insights
+    }
+    
+    static func generateBehaviorInsights(facts: InsightFacts, dataType: TransactionType) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        let wAvg = facts.weekendCount > 0 ? facts.weekendTotal / Double(facts.weekendCount) : 0
+        let dAvg = facts.weekdayCount > 0 ? facts.weekdayTotal / Double(facts.weekdayCount) : 0
+        
+        if dataType == .income {
+            if facts.weekendCount >= 1 && wAvg > dAvg {
+                insights.append(InsightItem(
+                    id: "weekend_hustle", family: "behavior", scope: "global", personaFit: ["optimizer", "habit-focused"],
+                    confidence: max(0.6, facts.dataDensity), severity: 0.1, eligibility: true,
+                    title: "Weekend Hustler", value: "Higher", desc: "Higher income earned on weekends.",
+                    icon: "flame.fill", colorHex: "#ff9500"
+                ))
+            }
+            return insights
+        }
+        
+        if facts.weekendCount >= 2 && facts.weekdayCount >= 3 {
+            let ratio = wAvg / max(dAvg, 1.0)
+            if ratio > 1.4 {
+                insights.append(InsightItem(
+                    id: "weekend_bias", family: "behavior", scope: "global", personaFit: ["reflector", "habit-focused"],
+                    confidence: facts.dataDensity, severity: 0.4, eligibility: true,
+                    title: "Weekend Bias", value: "Higher", desc: "\(Int((ratio - 1) * 100))% higher spend on weekends.",
+                    icon: "calendar.badge.clock", colorHex: "#5856d6"
+                ))
+            }
+        }
+        
+        if facts.maxStreak >= 2 {
+            insights.append(InsightItem(
+                id: "no_spend_streak", family: "behavior", scope: "global", personaFit: ["habit-focused", "reflector", "guardian"],
+                confidence: 0.9, severity: 0.1, eligibility: true,
+                title: "Zero Spend Streak", value: "\(facts.maxStreak) days", desc: "Longest streak with zero spend.",
+                icon: "flame.fill", colorHex: "#30d158"
+            ))
+        }
+        
+        return insights
+    }
+    
+    static func generateCategoryInsights(facts: InsightFacts, categories: [Category], currencySymbol: String, dataType: TransactionType) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        
+        for cat in categories.filter({ $0.type == dataType }) {
+            let total = facts.catTotals[cat.id] ?? 0
+            let prevTotal = facts.prevCatTotals[cat.id] ?? 0
+            
+            if total > 0 && total / max(1.0, facts.currentTotal) > 0.4 {
+                insights.append(InsightItem(
+                    id: "top_cat_\(cat.id)", family: "category", scope: "category", personaFit: ["reflector", "beginner"],
+                    confidence: facts.dataDensity, severity: 0.3, eligibility: true,
+                    title: "Top Category", value: cat.label, desc: "Makes up \(Int((total/facts.currentTotal)*100))% of your total.",
+                    icon: "target", colorHex: cat.colorHex, categoryId: cat.id
+                ))
+            }
+            
+            if prevTotal > 50 {
+                let diff = total - prevTotal
+                let pctChange = (diff / prevTotal) * 100
+                
+                if pctChange >= 25 {
+                    insights.append(InsightItem(
+                        id: "trend_up_\(cat.id)", family: "category", scope: "category", personaFit: ["guardian", "optimizer"],
+                        confidence: 0.8, severity: 0.6, eligibility: true,
+                        title: dataType == .income ? "Income Spike" : "Spend Spike", value: "+\(Int(pctChange))%",
+                        desc: "+\(currencySymbol)\(Int(diff)) higher than last cycle.",
+                        icon: "chart.line.uptrend.xyaxis", colorHex: dataType == .income ? "#30d158" : "#ff453a", categoryId: cat.id
+                    ))
+                } else if pctChange <= -25 {
+                    insights.append(InsightItem(
+                        id: "trend_down_\(cat.id)", family: "category", scope: "category", personaFit: ["guardian", "optimizer"],
+                        confidence: 0.8, severity: 0.1, eligibility: true,
+                        title: dataType == .income ? "Income Drop" : "Spend Reduced", value: "\(Int(pctChange))%",
+                        desc: "Saved \(currencySymbol)\(Int(abs(diff))) on \(cat.label).",
+                        icon: "chart.line.downtrend.xyaxis", colorHex: dataType == .income ? "#ff453a" : "#30d158", categoryId: cat.id
+                    ))
+                }
+            }
+            
+            let allCatTxs = facts.transactions.filter { $0.categoryId == cat.id }
+            if allCatTxs.count >= 5 {
+                let mean = allCatTxs.reduce(0) { $0 + $1.amount } / Double(allCatTxs.count)
+                let threshold = mean * 3
+                
+                let spikes = allCatTxs.filter { $0.amount > threshold && $0.amount > 100 }
+                for (i, t) in spikes.enumerated() {
+                    insights.append(InsightItem(
+                        id: "cat_anomaly_\(cat.id)_\(i)", family: "category", scope: "category", personaFit: ["optimizer", "reflector", "guardian"],
+                        confidence: 0.9, severity: 0.75, eligibility: true,
+                        title: "Unusual Spend", value: "\(currencySymbol)\(Int(t.amount))", desc: "3x higher than average for \(cat.label).",
+                        icon: "exclamationmark.triangle.fill", colorHex: "#ff9500", categoryId: cat.id
+                    ))
+                }
+            }
+        }
+        
+        return insights
+    }
+    
+    static func generateSubscriptionInsights(facts: InsightFacts, subscriptions: [Subscription], currencySymbol: String) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        let now = Date()
+        
+        for sub in subscriptions {
+            let subTxs = facts.transactions.filter { $0.subscriptionId == sub.id.uuidString && $0.type == .expense }
+            
+            if subTxs.count > 1 {
+                insights.append(InsightItem(
+                    id: "sub_double_charge_\(sub.id)", family: "subscription", scope: "global", personaFit: ["optimizer", "guardian", "planner"],
+                    confidence: 1.0, severity: 0.75, eligibility: true,
+                    title: "Double Billing", value: sub.name, desc: "\(subTxs.count) charges detected this cycle.",
+                    icon: "exclamationmark.octagon.fill", colorHex: "#ff9500"
+                ))
+            }
+            
+            for (i, t) in subTxs.enumerated() {
+                if abs(t.amount - sub.amount) > 0.01 {
+                    let pctDiff = ((t.amount - sub.amount) / sub.amount) * 100
+                    insights.append(InsightItem(
+                        id: "sub_price_change_\(sub.id)_\(i)", family: "subscription", scope: "global", personaFit: ["optimizer", "guardian"],
+                        confidence: 1.0, severity: 0.65, eligibility: true,
+                        title: "Price Changed", value: "\(pctDiff > 0 ? "+" : "")\(Int(pctDiff))%",
+                        desc: "Charged \(currencySymbol)\(Int(t.amount)) instead of \(currencySymbol)\(Int(sub.amount)).",
+                        icon: "waveform.path.ecg", colorHex: pctDiff > 0 ? "#ff453a" : "#30d158"
+                    ))
+                }
+            }
+            
+            let daysUntil = Calendar.current.dateComponents([.day], from: now, to: sub.nextBillingDate).day ?? 0
+            if daysUntil > 0 && daysUntil <= 3 {
+                insights.append(InsightItem(
+                    id: "sub_due_\(sub.id)", family: "subscription", scope: "global", personaFit: ["planner", "guardian", "reflector", "beginner"],
+                    confidence: 1.0, severity: 0.5, eligibility: true,
+                    title: "Upcoming Bill", value: sub.name, desc: "\(currencySymbol)\(Int(sub.amount)) due \(daysUntil == 1 ? "tomorrow" : "in \(daysUntil) days").",
+                    icon: "creditcard.fill", colorHex: "#5856d6"
+                ))
+            }
+            
+            if daysUntil <= 0 && daysUntil >= -7 {
+                insights.append(InsightItem(
+                    id: "sub_overdue_\(sub.id)", family: "subscription", scope: "global", personaFit: ["planner", "guardian", "reflector", "beginner"],
+                    confidence: 1.0, severity: 0.9, eligibility: true,
+                    title: daysUntil == 0 ? "Due Today" : "Overdue Bill", value: sub.name,
+                    desc: "\(currencySymbol)\(Int(sub.amount)) \(daysUntil == 0 ? "due today" : "due \(abs(daysUntil))d ago").",
+                    icon: "exclamationmark.triangle.fill", colorHex: "#ff006e"
+                ))
+            }
+        }
+        
+        return insights
+    }
+    
+    static func generateIncomeInsights(facts: InsightFacts) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        if facts.prevTotal > 0 {
+            let pctChange = ((facts.currentTotal - facts.prevTotal) / facts.prevTotal) * 100
+            if pctChange >= 20 {
+                insights.append(InsightItem(
+                    id: "income_spike", family: "behavior", scope: "global", personaFit: ["optimizer", "reflector"],
+                    confidence: 0.8, severity: 0.1, eligibility: true,
+                    title: "Income Spike", value: "+\(Int(pctChange))%", desc: "Income increased significantly this period.",
+                    icon: "chart.line.uptrend.xyaxis", colorHex: "#30d158"
+                ))
+            } else if pctChange <= -20 {
+                insights.append(InsightItem(
+                    id: "income_drop", family: "behavior", scope: "global", personaFit: ["guardian", "planner"],
+                    confidence: 0.8, severity: 0.7, eligibility: true,
+                    title: "Income Drop", value: "\(Int(pctChange))%", desc: "Income decreased compared to previous period.",
+                    icon: "chart.line.downtrend.xyaxis", colorHex: "#ff9500"
+                ))
+            }
+        }
+        
+        let activeSources = facts.catTotals.values.filter { $0 > 0 }.count
+        if activeSources >= 3 {
+            insights.append(InsightItem(
+                id: "diversified_income", family: "behavior", scope: "global", personaFit: ["optimizer", "habit-focused"],
+                confidence: 0.9, severity: 0.1, eligibility: true,
+                title: "Income Streams", value: "\(activeSources) sources", desc: "Earnings across \(activeSources) separate sources.",
+                icon: "shield.fill", colorHex: "#5856d6"
+            ))
+        }
+        
+        return insights
+    }
+    
+    // MARK: - 4. Ranking
+    static func rankInsights(candidates: [InsightItem], mindset: String, surface: String) -> [InsightItem] {
+        var valid = candidates.filter { $0.eligibility && $0.confidence >= 0.3 }
+        if mindset == "beginner" {
+            valid = valid.filter { $0.personaFit.contains("beginner") }
+        }
+        
+        valid.sort { a, b in
+            let aFitBoost = a.personaFit.contains(mindset) ? 0.2 : 0
+            let bFitBoost = b.personaFit.contains(mindset) ? 0.2 : 0
+            let aScore = a.severity * 0.6 + a.confidence * 0.4 + aFitBoost
+            let bScore = b.severity * 0.6 + b.confidence * 0.4 + bFitBoost
+            return aScore > bScore
+        }
+        
+        var deduped: [InsightItem] = []
+        var seenFamilies = Set<String>()
+        for insight in valid {
+            if insight.family == "category" {
+                deduped.append(insight)
+            } else if !seenFamilies.contains(insight.family) {
+                deduped.append(insight)
+                seenFamilies.insert(insight.family)
+            }
+        }
+        
+        if surface == "dashboard" {
+            return Array(deduped.prefix(5))
+        } else if surface == "analytics" {
+            return Array(deduped.filter { $0.family != "subscription" }.prefix(3))
+        }
+        
+        return deduped
+    }
+    
+    // MARK: - 5. Public API
+    static func getAnalyticsInsights(
+        transactions: [Transaction],
+        budget: Budget,
+        categories: [Category],
+        subscriptions: [Subscription],
+        periodStart: Date,
+        periodEnd: Date,
+        prevStart: Date,
+        prevEnd: Date,
+        dataType: TransactionType,
+        currencySymbol: String
+    ) -> [InsightItem] {
+        let facts = buildInsightFacts(
+            transactions: transactions, budget: budget,
+            periodStart: periodStart, periodEnd: periodEnd,
+            prevStart: prevStart, prevEnd: prevEnd,
+            dataType: dataType
+        )
+        let mindset = inferUserMindset(facts: facts, budget: budget)
+        
+        var candidates: [InsightItem] = []
+        candidates.append(contentsOf: generateCategoryInsights(facts: facts, categories: categories, currencySymbol: currencySymbol, dataType: dataType))
+        
+        if dataType == .expense {
+            candidates.append(contentsOf: generateBudgetInsights(facts: facts, currencySymbol: currencySymbol))
+            candidates.append(contentsOf: generateBehaviorInsights(facts: facts, dataType: dataType))
+            candidates.append(contentsOf: generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol))
+        } else {
+            candidates.append(contentsOf: generateIncomeInsights(facts: facts))
+            candidates.append(contentsOf: generateBehaviorInsights(facts: facts, dataType: dataType))
+        }
+        
+        return rankInsights(candidates: candidates, mindset: mindset, surface: "analytics")
+    }
+    
+    static func getDashboardInsights(
+        transactions: [Transaction],
+        budget: Budget,
+        categories: [Category],
+        subscriptions: [Subscription],
+        currencySymbol: String
+    ) -> [InsightItem] {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        let periodStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+        let periodEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: periodStart) ?? now
+        
+        let prevStart = calendar.date(byAdding: .month, value: -1, to: periodStart) ?? now
+        let prevEnd = calendar.date(byAdding: .day, value: -1, to: periodStart) ?? now
+        
+        let facts = buildInsightFacts(
+            transactions: transactions, budget: budget,
+            periodStart: periodStart, periodEnd: periodEnd,
+            prevStart: prevStart, prevEnd: prevEnd,
+            dataType: .expense
+        )
+        let mindset = inferUserMindset(facts: facts, budget: budget)
+        
+        var candidates: [InsightItem] = []
+        candidates.append(contentsOf: generateCategoryInsights(facts: facts, categories: categories, currencySymbol: currencySymbol, dataType: .expense))
+        candidates.append(contentsOf: generateBudgetInsights(facts: facts, currencySymbol: currencySymbol))
+        candidates.append(contentsOf: generateBehaviorInsights(facts: facts, dataType: .expense))
+        candidates.append(contentsOf: generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol))
+        
+        return rankInsights(candidates: candidates, mindset: mindset, surface: "dashboard")
     }
 }

@@ -377,21 +377,21 @@ struct AddTransactionView: View {
                 if key == "delete.left.fill" {
                     Image(systemName: "delete.left.fill")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(SpendyColors.textPrimary.opacity(0.85))
                 } else {
                     Text(key)
                         .font(.system(size: 24, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(key == "delete.left.fill" ? 0.05 : 0.08))
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.06), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -436,11 +436,11 @@ struct AddTransactionView: View {
         }) {
             Text(buttonTitle)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.black)
+                .foregroundStyle(SpendyColors.appBackground)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white, in: Capsule())
-                .shadow(color: Color.white.opacity(0.20), radius: 12, y: 4)
+                .background(SpendyColors.textPrimary, in: Capsule())
+                .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
         .disabled(numericAmount <= 0)

@@ -246,10 +246,41 @@ struct SettingsView: View {
             Text("PREFERENCES")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
+                // Appearance Selector (Dark / Light / System)
+                HStack(spacing: 14) {
+                    Image(systemName: store.appearanceMode.sfSymbol)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(width: 28, height: 28)
+                    
+                    Text("Appearance")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Picker("Appearance", selection: Binding(
+                        get: { store.appearanceMode },
+                        set: {
+                            store.appearanceMode = $0
+                            HapticsManager.shared.trigger(.selection)
+                        }
+                    )) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 190)
+                }
+                .padding(14)
+                
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                
                 // Currency Selector
                 Button(action: {
                     HapticsManager.shared.trigger(.light)
@@ -257,25 +288,25 @@ struct SettingsView: View {
                 }) {
                     rowItem(
                         icon: "globe",
-                        iconColor: SpendyColors.primaryBlue,
+                        iconColor: SpendyColors.textPrimary,
                         title: "Currency",
                         badgeText: "\(store.currencySymbol) (\(store.currencyCode))"
                     )
                 }
                 .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 // Sound Effects & Haptics Toggle
                 HStack(spacing: 14) {
                     Image(systemName: "speaker.wave.2.fill")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.warningOrange)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .frame(width: 28, height: 28)
                     
                     Text("Sound Effects")
                         .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
@@ -284,7 +315,7 @@ struct SettingsView: View {
                         set: { store.soundEnabled = $0 }
                     ))
                     .labelsHidden()
-                    .toggleStyle(.liquidGlass(tint: SpendyColors.warningOrange))
+                    .toggleStyle(.liquidGlass(tint: SpendyColors.textPrimary))
                 }
                 .padding(14)
             }
@@ -293,7 +324,7 @@ struct SettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }

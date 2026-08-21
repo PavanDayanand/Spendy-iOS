@@ -19,15 +19,15 @@ struct AddCategorySheet: View {
     @State private var type: TransactionType = .expense
     @State private var selectedFolder: String = "Everyday Spending"
     @State private var selectedSymbol: String = "tag.fill"
-    @State private var selectedColorHex: String = "#FF9500"
+    @State private var selectedColorHex: String = "#FFFFFF"
     @State private var showIconPicker: Bool = false
     @State private var showColorPalette: Bool = true
     @State private var showDeleteConfirm: Bool = false
     
     private let availableColors = [
-        "#30D158", "#FF9500", "#FF453A", "#007AFF",
-        "#FFD60A", "#AF52DE", "#FF2D55", "#5856D6",
-        "#32ADE6", "#FF375F", "#30B0C7", "#8E8E93"
+        "#FFFFFF", "#E4E4E7", "#D4D4D8", "#A1A1AA",
+        "#71717A", "#52525B", "#3F3F46", "#27272A",
+        "#18181B", "#09090B"
     ]
     
     private let availableSymbols = [
@@ -77,7 +77,7 @@ struct AddCategorySheet: View {
         } else {
             _type = State(initialValue: defaultType)
             _selectedFolder = State(initialValue: defaultFolder ?? (defaultType == .expense ? "Everyday Spending" : "Salary & Career"))
-            _selectedColorHex = State(initialValue: defaultType == .expense ? "#FF9500" : "#30D158")
+            _selectedColorHex = State(initialValue: "#FFFFFF")
         }
     }
     

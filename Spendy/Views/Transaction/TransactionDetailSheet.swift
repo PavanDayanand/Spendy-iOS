@@ -2,7 +2,7 @@
 //  TransactionDetailSheet.swift
 //  Spendy
 //
-//  Rich Transaction Detail Drawer with Category Glow, Edit, Delete, and Thermal Receipt Preview
+//  Rich Transaction Detail Drawer with Monochrome Styling, Edit, Delete, and Thermal Receipt Preview
 //
 
 import SwiftUI
@@ -29,21 +29,17 @@ struct TransactionDetailSheet: View {
         return store.accounts.first(where: { $0.id == toId })
     }
     
-    private var categoryColor: Color {
-        category?.color ?? SpendyColors.primaryBlue
-    }
-    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 SpendyColors.appBackground
                     .ignoresSafeArea()
                 
-                // Vibrant Top Category Glow
+                // Subtle Monochrome Top Glow
                 LinearGradient(
                     colors: [
-                        categoryColor.opacity(0.35),
-                        categoryColor.opacity(0.12),
+                        SpendyColors.textPrimary.opacity(0.15),
+                        SpendyColors.textPrimary.opacity(0.04),
                         Color.clear
                     ],
                     startPoint: .top,
@@ -63,7 +59,7 @@ struct TransactionDetailSheet: View {
                             }) {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                     .frame(width: 44, height: 44)
                                     .nativeLiquidGlassCircle(isInteractive: true)
                             }
@@ -80,7 +76,7 @@ struct TransactionDetailSheet: View {
                                 }) {
                                     Image(systemName: "pencil")
                                         .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                         .frame(width: 44, height: 44)
                                         .nativeLiquidGlassCircle(isInteractive: true)
                                 }
@@ -106,23 +102,22 @@ struct TransactionDetailSheet: View {
                         VStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(categoryColor)
+                                    .fill(category?.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
                                     .frame(width: 64, height: 64)
-                                    .shadow(color: categoryColor.opacity(0.45), radius: 14, y: 4)
                                 
                                 Image(systemName: category?.sfSymbol ?? "tag.fill")
                                     .font(.system(size: 26, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(category?.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
                             }
                             
                             VStack(spacing: 4) {
                                 Text(formattedAmountText)
                                     .font(.system(size: 38, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Text(transaction.title.isEmpty ? (category?.label ?? "Transaction") : transaction.title)
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.70))
+                                    .foregroundStyle(SpendyColors.textSecondary)
                             }
                         }
                         
@@ -130,44 +125,44 @@ struct TransactionDetailSheet: View {
                         VStack(spacing: 14) {
                             detailRow(
                                 icon: "tag.fill",
-                                iconColor: categoryColor,
+                                iconColor: SpendyColors.textPrimary,
                                 label: "Category",
                                 value: category?.label ?? "General"
                             )
                             
-                            Divider().overlay(Color.white.opacity(0.06))
+                            Divider().overlay(SpendyColors.separator)
                             
                             if transaction.type == .transfer {
                                 detailRow(
                                     icon: "arrow.up.arrow.down",
-                                    iconColor: SpendyColors.transferBlue,
+                                    iconColor: SpendyColors.textPrimary,
                                     label: "Transfer Route",
                                     value: "\(account?.label ?? "Account") → \(toAccount?.label ?? "Account")"
                                 )
                             } else {
                                 detailRow(
                                     icon: "creditcard.fill",
-                                    iconColor: SpendyColors.primaryBlue,
+                                    iconColor: SpendyColors.textPrimary,
                                     label: "Account",
                                     value: account?.label ?? "Cash"
                                 )
                             }
                             
-                            Divider().overlay(Color.white.opacity(0.06))
+                            Divider().overlay(SpendyColors.separator)
                             
                             detailRow(
                                 icon: "calendar",
-                                iconColor: SpendyColors.warningOrange,
+                                iconColor: SpendyColors.textPrimary,
                                 label: "Date & Time",
                                 value: transaction.date.formatted(date: .abbreviated, time: .shortened)
                             )
                             
                             if let note = transaction.notes, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Divider().overlay(Color.white.opacity(0.06))
+                                Divider().overlay(SpendyColors.separator)
                                 
                                 detailRow(
                                     icon: "text.alignleft",
-                                    iconColor: Color(hex: "#AF52DE"),
+                                    iconColor: SpendyColors.textPrimary,
                                     label: "Note",
                                     value: note
                                 )
@@ -179,14 +174,14 @@ struct TransactionDetailSheet: View {
                                 .fill(SpendyColors.cardBackground)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                         
                         // Receipt ID Footer
                         Text("TXID • \(transaction.id.uuidString.prefix(8).uppercased())")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.30))
+                            .foregroundStyle(SpendyColors.textTertiary)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
@@ -232,13 +227,13 @@ struct TransactionDetailSheet: View {
             
             Text(label)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(SpendyColors.textSecondary)
             
             Spacer()
             
             Text(value)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(SpendyColors.textPrimary)
         }
     }
 }

@@ -229,21 +229,20 @@ struct CategoriesSettingsView: View {
                         categoryToEdit = cat
                     }) {
                         HStack(spacing: 14) {
-                            // Circular Colorful Icon Badge
+                            // Circular Icon Badge (Monochrome)
                             ZStack {
                                 Circle()
-                                    .fill(cat.color)
+                                    .fill(cat.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
                                     .frame(width: 38, height: 38)
-                                    .shadow(color: cat.color.opacity(0.30), radius: 5, y: 2)
                                 
                                 Image(systemName: cat.sfSymbol)
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(cat.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
                             }
                             
                             Text(cat.label)
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
                             
@@ -258,7 +257,7 @@ struct CategoriesSettingsView: View {
                             } else {
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.20))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -268,7 +267,7 @@ struct CategoriesSettingsView: View {
                     
                     if index < categories.count - 1 {
                         Divider()
-                            .overlay(Color.white.opacity(0.06))
+                            .overlay(SpendyColors.separator)
                             .padding(.leading, 68)
                     }
                 }
@@ -278,7 +277,7 @@ struct CategoriesSettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }

@@ -203,21 +203,20 @@ struct AccountsSettingsView: View {
                         editingAccount = account
                     }) {
                         HStack(spacing: 14) {
-                            // Rounded Square Badge with Initial Letter or Icon
+                            // Rounded Square Badge with Initial Letter or Icon (Monochrome)
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(account.color)
+                                    .fill(account.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
                                     .frame(width: 44, height: 44)
-                                    .shadow(color: account.color.opacity(0.35), radius: 6, y: 2)
                                 
                                 if isCash {
                                     Image(systemName: "banknote.fill")
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(account.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
                                 } else {
                                     Text(String(account.label.prefix(1)).uppercased())
                                         .font(.system(size: 18, weight: .heavy, design: .rounded))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(account.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
                                 }
                             }
                             
@@ -225,29 +224,29 @@ struct AccountsSettingsView: View {
                                 HStack(spacing: 6) {
                                     Text(account.label)
                                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                     
                                     if isPrimary {
                                         Text("PRIMARY")
                                             .font(.system(size: 9, weight: .heavy, design: .rounded))
                                             .tracking(0.6)
-                                            .foregroundStyle(.white.opacity(0.8))
+                                            .foregroundStyle(SpendyColors.textPrimary.opacity(0.8))
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
-                                            .background(Color.white.opacity(0.12), in: Capsule())
+                                            .background(SpendyColors.textPrimary.opacity(0.12), in: Capsule())
                                     }
                                 }
                                 
                                 Text("Tap to edit balance")
                                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.40))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
                             
                             Spacer()
                             
                             Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                         }
                         .padding(16)
                         .background {
@@ -255,7 +254,7 @@ struct AccountsSettingsView: View {
                                 .fill(SpendyColors.cardBackground)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                     }

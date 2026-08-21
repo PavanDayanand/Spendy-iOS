@@ -2,12 +2,13 @@
 //  SpendyColors.swift
 //  Spendy
 //
-//  Design Tokens and Semantic Colors for Spendy iOS
+//  Adaptive Dynamic Monochrome Design Tokens for Spendy iOS
 //
 
 import SwiftUI
+import UIKit
 
-// MARK: - Color Extension for Hex Support
+// MARK: - Color Extension for Hex & Dynamic Support
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -35,31 +36,112 @@ extension Color {
     }
 }
 
-// MARK: - Spendy Color System
+extension UIColor {
+    static func dynamic(light: UIColor, dark: UIColor) -> UIColor {
+        return UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark ? dark : light
+        }
+    }
+}
+
+// MARK: - Spendy Adaptive Monochrome Color System
 enum SpendyColors {
-    // Base Backgrounds (Clean, native OLED Dark)
-    static let appBackground = Color(hex: "#000000")
-    static let cardBackground = Color(hex: "#141417")
-    static let cardBackgroundSecondary = Color(hex: "#1C1C20")
-    static let separator = Color.white.opacity(0.08)
+    // Dynamic Base Backgrounds
+    static let appBackground = Color(uiColor: .dynamic(
+        light: UIColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1.0),
+        dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+    ))
     
-    // Brand & Primary Accents (Native Apple HIG Palette)
-    static let primaryBlue = Color(hex: "#007AFF")
-    static let accentCyan = Color(hex: "#32ADE6")
-    static let vibrantPurple = Color(hex: "#AF52DE")
-    static let vibrantIndigo = Color(hex: "#5856D6")
+    static let cardBackground = Color(uiColor: .dynamic(
+        light: UIColor(red: 0.92, green: 0.92, blue: 0.94, alpha: 1.0),
+        dark: UIColor(red: 0.08, green: 0.08, blue: 0.09, alpha: 1.0)
+    ))
     
-    // Financial Status Colors
-    static let expenseRed = Color(hex: "#FF453A")
-    static let incomeGreen = Color(hex: "#30D158")
-    static let transferBlue = Color(hex: "#0A84FF")
-    static let warningOrange = Color(hex: "#FF9F0A")
-    static let goldYellow = Color(hex: "#FFD60A")
-    static let pinkSubscription = Color(hex: "#FF2D55")
-    static let tealSavings = Color(hex: "#64D2FF")
+    static let cardBackgroundSecondary = Color(uiColor: .dynamic(
+        light: UIColor(red: 0.86, green: 0.86, blue: 0.89, alpha: 1.0),
+        dark: UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0)
+    ))
     
-    // Text Hierarchies
-    static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.65)
-    static let textTertiary = Color.white.opacity(0.40)
+    static let separator = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 0.08),
+        dark: UIColor(white: 1.0, alpha: 0.08)
+    ))
+    
+    // Dynamic Text Hierarchies
+    static let textPrimary = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 1.0),
+        dark: UIColor(white: 1.0, alpha: 1.0)
+    ))
+    
+    static let textSecondary = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 0.60),
+        dark: UIColor(white: 1.0, alpha: 0.60)
+    ))
+    
+    static let textTertiary = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 0.40),
+        dark: UIColor(white: 1.0, alpha: 0.40)
+    ))
+    
+    // Monochrome Accents (Crisp White in Dark Mode, Solid Black in Light Mode)
+    static let primaryBlue = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 1.0),
+        dark: UIColor(white: 1.0, alpha: 1.0)
+    ))
+    
+    static let accentCyan = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.20, alpha: 1.0),
+        dark: UIColor(white: 0.85, alpha: 1.0)
+    ))
+    
+    static let vibrantPurple = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.30, alpha: 1.0),
+        dark: UIColor(white: 0.80, alpha: 1.0)
+    ))
+    
+    static let vibrantIndigo = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.25, alpha: 1.0),
+        dark: UIColor(white: 0.85, alpha: 1.0)
+    ))
+    
+    // Monochrome Status Colors
+    static let expenseRed = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.15, alpha: 1.0),
+        dark: UIColor(white: 0.95, alpha: 1.0)
+    ))
+    
+    static let incomeGreen = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 1.0),
+        dark: UIColor(white: 1.0, alpha: 1.0)
+    ))
+    
+    static let transferBlue = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.40, alpha: 1.0),
+        dark: UIColor(white: 0.70, alpha: 1.0)
+    ))
+    
+    static let warningOrange = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.30, alpha: 1.0),
+        dark: UIColor(white: 0.80, alpha: 1.0)
+    ))
+    
+    static let goldYellow = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.35, alpha: 1.0),
+        dark: UIColor(white: 0.75, alpha: 1.0)
+    ))
+    
+    static let pinkSubscription = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.20, alpha: 1.0),
+        dark: UIColor(white: 0.85, alpha: 1.0)
+    ))
+    
+    static let tealSavings = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.25, alpha: 1.0),
+        dark: UIColor(white: 0.80, alpha: 1.0)
+    ))
+    
+    // Static Helpers
+    static let monochromeBlack = Color(hex: "#000000")
+    static let monochromeWhite = Color(hex: "#FFFFFF")
+    static let monochromeGray = Color(hex: "#71717A")
 }
