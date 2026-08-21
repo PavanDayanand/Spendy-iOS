@@ -57,6 +57,37 @@ struct Category: Identifiable, Codable, Hashable {
         Color(hex: colorHex)
     }
     
+    /// Vibrant category color matching Apple design specifications (used for icons & badges)
+    var vibrantColor: Color {
+        switch id.lowercased() {
+        case "groceries": return Color(hex: "#34C759") // Green
+        case "fuel": return Color(hex: "#FF9500") // Orange
+        case "restaurants": return Color(hex: "#FF9F0A") // Amber
+        case "food_delivery", "delivery": return Color(hex: "#FF6482") // Coral
+        case "public_transport", "transport": return Color(hex: "#007AFF") // Apple Blue
+        case "taxi": return Color(hex: "#FFCC00") // Yellow
+        case "car_maintenance": return Color(hex: "#8E8E93") // Slate Grey
+        case "rent": return Color(hex: "#FF3B30") // Coral Red
+        case "utilities": return Color(hex: "#FFD60A") // Electric Yellow
+        case "subscriptions": return Color(hex: "#AF52DE") // Purple
+        case "shopping": return Color(hex: "#5856D6") // Indigo
+        case "entertainment": return Color(hex: "#BF5AF2") // Magenta
+        case "health": return Color(hex: "#FF2D55") // Pink
+        case "internet", "mobile", "internet_mobile": return Color(hex: "#0A84FF") // Cyan Blue
+        case "paycheck", "salary": return Color(hex: "#34C759") // Green
+        case "freelance": return Color(hex: "#007AFF") // Blue
+        case "bonus": return Color(hex: "#FFD60A") // Gold
+        case "investment": return Color(hex: "#30B0C7") // Teal
+        case "refund": return Color(hex: "#32D74B") // Light Green
+        case "interest": return Color(hex: "#64D2FF") // Sky Blue
+        default:
+            if colorHex != "#FFFFFF" && colorHex != "#18181B" && !colorHex.isEmpty {
+                return Color(hex: colorHex)
+            }
+            return SpendyColors.primaryBlue
+        }
+    }
+    
     // MARK: - Default Expense Categories (Folder Grouped Monochrome)
     static let defaultExpenseCategories: [Category] = [
         // Everyday Spending

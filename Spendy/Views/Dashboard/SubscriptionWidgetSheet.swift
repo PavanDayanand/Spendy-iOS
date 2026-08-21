@@ -23,37 +23,36 @@ struct SubscriptionWidgetSheet: View {
                     VStack(spacing: 20) {
                         // Top Header Bar
                         HStack {
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: SpendyColors.textPrimary,
+                                haptic: .selection,
+                                accessibilityLabel: "Close"
+                            ) {
                                 dismiss()
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true)
                             }
-                            .buttonStyle(.plain)
                             
                             Spacer()
                             
                             Text("Subscriptions")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
                             
-                            Button(action: {
-                                HapticsManager.shared.trigger(.medium)
+                            GlassCircleButton(
+                                icon: "plus",
+                                size: 44,
+                                iconSize: 15,
+                                tintColor: SpendyColors.primaryBlue,
+                                foregroundColor: SpendyColors.textPrimary,
+                                haptic: .medium,
+                                accessibilityLabel: "Add Subscription"
+                            ) {
                                 showAddSubscription = true
-                            }) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.primaryBlue)
                             }
-                            .buttonStyle(.plain)
                         }
                         .padding(.top, 10)
                         
@@ -91,19 +90,19 @@ struct SubscriptionWidgetSheet: View {
         
         return VStack(alignment: .leading, spacing: 8) {
             Text("TOTAL MONTHLY COMMITTED")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.40))
+                .foregroundStyle(SpendyColors.textTertiary)
             
             HStack(alignment: .bottom) {
                 Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 32, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 32, weight: .heavy))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 
                 Spacer()
                 
                 Text("\(activeCount) active")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(SpendyColors.incomeGreen)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -116,7 +115,7 @@ struct SubscriptionWidgetSheet: View {
                 .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
@@ -138,12 +137,12 @@ struct SubscriptionWidgetSheet: View {
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(sub.name)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(sub.isPaused ? .white.opacity(0.45) : .white)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
                         
                         Text("\(sub.cycle.label) • \(sub.amount.formattedCurrency(symbol: store.currencySymbol))")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.40))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
                     }
                     
                     Spacer()
@@ -161,7 +160,7 @@ struct SubscriptionWidgetSheet: View {
                         .fill(SpendyColors.cardBackground)
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
             }
@@ -172,16 +171,16 @@ struct SubscriptionWidgetSheet: View {
         VStack(spacing: 12) {
             Image(systemName: "calendar.badge.clock")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.top, 20)
             
             Text("No active subscriptions")
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Text("Add your recurring bills and streaming services to track them here.")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
             
@@ -190,8 +189,8 @@ struct SubscriptionWidgetSheet: View {
                 showAddSubscription = true
             }) {
                 Text("+ Add Subscription")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(SpendyColors.primaryBlue, in: Capsule())

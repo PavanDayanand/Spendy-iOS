@@ -21,6 +21,14 @@ enum SubscriptionFilter: String, CaseIterable, Identifiable {
         case .trial: return "Free Trials"
         }
     }
+    
+    var icon: String {
+        switch self {
+        case .all: return "square.grid.2x2.fill"
+        case .paid: return "creditcard.fill"
+        case .trial: return "clock.badge.checkmark.fill"
+        }
+    }
 }
 
 struct ManageView: View {
@@ -97,29 +105,24 @@ struct ManageView: View {
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Subscriptions")
-                                    .font(.system(size: 28, weight: .heavy, design: .default))
-                                    .foregroundStyle(.white)
+                                    .font(.system(size: 28, weight: .heavy))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                 Text("Manage recurring bills & free trials")
-                                    .font(.system(size: 13, weight: .medium, design: .default))
-                                    .foregroundStyle(.white.opacity(0.5))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
                             
                             Spacer()
                             
-                            Button(action: {
-                                HapticsManager.shared.trigger(.light)
+                            GlassCircleButton(
+                                icon: SFIcons.plus,
+                                size: 44,
+                                iconSize: 18,
+                                foregroundColor: SpendyColors.textPrimary,
+                                haptic: .light,
+                                accessibilityLabel: "Add Subscription"
+                            ) {
                                 showAddSubscription = true
-                            }) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: SFIcons.plus)
-                                        .font(.system(size: 13, weight: .bold))
-                                    Text("Add")
-                                        .font(.system(size: 13, weight: .bold, design: .default))
-                                }
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(SpendyColors.primaryBlue, in: Capsule())
                             }
                         }
                         .padding(.top, 10)
@@ -130,31 +133,31 @@ struct ManageView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("MONTHLY BILLS")
-                                            .font(.system(size: 11, weight: .bold, design: .default))
+                                            .font(.system(size: 11, weight: .bold))
                                             .tracking(1.0)
-                                            .foregroundStyle(.white.opacity(0.45))
+                                            .foregroundStyle(SpendyColors.textTertiary)
                                         
                                         Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol))
-                                            .font(.system(size: 26, weight: .heavy, design: .default))
-                                            .foregroundStyle(.white)
+                                            .font(.system(size: 26, weight: .heavy))
+                                            .foregroundStyle(SpendyColors.textPrimary)
                                     }
                                     
                                     Spacer()
                                     
                                     VStack(alignment: .trailing, spacing: 4) {
                                         Text("ANNUAL PROJECTION")
-                                            .font(.system(size: 11, weight: .bold, design: .default))
+                                            .font(.system(size: 11, weight: .bold))
                                             .tracking(1.0)
-                                            .foregroundStyle(.white.opacity(0.45))
+                                            .foregroundStyle(SpendyColors.textTertiary)
                                         
                                         Text(totalAnnual.formattedCurrency(symbol: store.currencySymbol) + "/yr")
-                                            .font(.system(size: 18, weight: .bold, design: .default))
+                                            .font(.system(size: 18, weight: .bold))
                                             .foregroundStyle(SpendyColors.primaryBlue)
                                     }
                                 }
                                 
                                 Divider()
-                                    .background(Color.white.opacity(0.08))
+                                    .background(SpendyColors.separator)
                                 
                                 HStack {
                                     HStack(spacing: 6) {
@@ -162,8 +165,8 @@ struct ManageView: View {
                                             .fill(SpendyColors.incomeGreen)
                                             .frame(width: 8, height: 8)
                                         Text("Active: **\(activeCount)**")
-                                            .font(.system(size: 12, weight: .medium, design: .default))
-                                            .foregroundStyle(.white.opacity(0.7))
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textSecondary)
                                     }
                                     
                                     Spacer()
@@ -173,8 +176,8 @@ struct ManageView: View {
                                             .fill(SpendyColors.warningOrange)
                                             .frame(width: 8, height: 8)
                                         Text("Free Trials: **\(trialCount)**")
-                                            .font(.system(size: 12, weight: .medium, design: .default))
-                                            .foregroundStyle(.white.opacity(0.7))
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textSecondary)
                                     }
                                 }
                             }
@@ -188,8 +191,8 @@ struct ManageView: View {
                                         .font(.system(size: 12, weight: .bold))
                                         .foregroundStyle(SpendyColors.primaryBlue)
                                     Text("Due Soon (Next 10 Days)")
-                                        .font(.system(size: 13, weight: .bold, design: .default))
-                                        .foregroundStyle(.white.opacity(0.9))
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                 }
                                 
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -213,20 +216,20 @@ struct ManageView: View {
                                                     
                                                     VStack(alignment: .leading, spacing: 2) {
                                                         Text(sub.name)
-                                                            .font(.system(size: 14, weight: .bold, design: .default))
-                                                            .foregroundStyle(.white)
+                                                            .font(.system(size: 14, weight: .bold))
+                                                            .foregroundStyle(SpendyColors.textPrimary)
                                                             .lineLimit(1)
                                                         
                                                         Text(dueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
-                                                            .font(.system(size: 11, weight: .semibold, design: .default))
+                                                            .font(.system(size: 11, weight: .semibold))
                                                             .foregroundStyle(sub.isTrial ? SpendyColors.warningOrange : SpendyColors.primaryBlue)
                                                     }
                                                     
                                                     Spacer(minLength: 8)
                                                     
                                                     Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                                        .font(.system(size: 14, weight: .bold, design: .default))
-                                                        .foregroundStyle(.white)
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundStyle(SpendyColors.textPrimary)
                                                 }
                                                 
                                                 // Quick Action Buttons
@@ -236,7 +239,7 @@ struct ManageView: View {
                                                             store.keepSubscription(id: sub.id)
                                                         }) {
                                                             Text("Keep Sub")
-                                                                .font(.system(size: 11, weight: .bold, design: .default))
+                                                                .font(.system(size: 11, weight: .bold))
                                                                 .foregroundStyle(SpendyColors.incomeGreen)
                                                                 .padding(.horizontal, 10)
                                                                 .padding(.vertical, 6)
@@ -248,7 +251,7 @@ struct ManageView: View {
                                                             store.cancelSubscription(id: sub.id)
                                                         }) {
                                                             Text("Cancel Trial")
-                                                                .font(.system(size: 11, weight: .bold, design: .default))
+                                                                .font(.system(size: 11, weight: .bold))
                                                                 .foregroundStyle(SpendyColors.expenseRed)
                                                                 .padding(.horizontal, 10)
                                                                 .padding(.vertical, 6)
@@ -264,9 +267,9 @@ struct ManageView: View {
                                                             Image(systemName: SFIcons.checkmark)
                                                                 .font(.system(size: 10, weight: .bold))
                                                             Text("Mark as Paid")
-                                                                .font(.system(size: 11, weight: .bold, design: .default))
+                                                                .font(.system(size: 11, weight: .bold))
                                                         }
-                                                        .foregroundStyle(.white)
+                                                        .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
                                                         .padding(.horizontal, 12)
                                                         .padding(.vertical, 6)
                                                         .background(SpendyColors.primaryBlue, in: Capsule())
@@ -281,7 +284,7 @@ struct ManageView: View {
                                                     .fill(SpendyColors.cardBackground)
                                                     .overlay {
                                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                            .stroke(SpendyColors.primaryBlue.opacity(0.3), lineWidth: 1)
+                                                            .stroke(SpendyColors.separator, lineWidth: 1)
                                                     }
                                             }
                                             .onTapGesture {
@@ -297,7 +300,8 @@ struct ManageView: View {
                         GlassSegmentedPicker(
                             selection: $subFilter,
                             items: SubscriptionFilter.allCases,
-                            titleFor: { $0.label }
+                            titleFor: { $0.label },
+                            iconFor: { $0.icon }
                         )
                         
                         // MARK: - Main Subscriptions List
@@ -306,10 +310,10 @@ struct ManageView: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: SFIcons.subscriptions)
                                         .font(.system(size: 28))
-                                        .foregroundStyle(.white.opacity(0.3))
+                                        .foregroundStyle(SpendyColors.textTertiary)
                                     Text("No subscriptions found")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundStyle(.white.opacity(0.5))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textSecondary)
                                 }
                                 .padding(.vertical, 30)
                             } else {
@@ -337,29 +341,29 @@ struct ManageView: View {
                                             // Name & Meta Info
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text(sub.name)
-                                                    .font(.system(.body, design: .default, weight: .semibold))
-                                                    .foregroundStyle(sub.isPaused ? .white.opacity(0.4) : .white)
+                                                    .font(.system(.body, weight: .semibold))
+                                                    .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
                                                 
                                                 HStack(spacing: 6) {
                                                     if sub.isTrial {
                                                         Text("Free Trial")
-                                                            .font(.system(size: 10, weight: .bold, design: .default))
+                                                            .font(.system(size: 10, weight: .bold))
                                                             .foregroundStyle(SpendyColors.incomeGreen)
                                                             .padding(.horizontal, 6)
                                                             .padding(.vertical, 2)
                                                             .background(SpendyColors.incomeGreen.opacity(0.15), in: Capsule())
                                                     } else {
                                                         Text(sub.cycle.label)
-                                                            .font(.system(size: 10, weight: .bold, design: .default))
-                                                            .foregroundStyle(.white.opacity(0.6))
+                                                            .font(.system(size: 10, weight: .bold))
+                                                            .foregroundStyle(SpendyColors.textSecondary)
                                                             .padding(.horizontal, 6)
                                                             .padding(.vertical, 2)
-                                                            .background(Color.white.opacity(0.08), in: Capsule())
+                                                            .background(SpendyColors.separator, in: Capsule())
                                                     }
                                                     
                                                     Text("• \(dueText(for: sub.nextBillingDate, isTrial: sub.isTrial))")
-                                                        .font(.system(size: 11, weight: .medium, design: .default))
-                                                        .foregroundStyle(.white.opacity(0.45))
+                                                        .font(.system(size: 11, weight: .medium))
+                                                        .foregroundStyle(SpendyColors.textTertiary)
                                                 }
                                             }
                                             
@@ -368,20 +372,20 @@ struct ManageView: View {
                                             // Amount & Status Toggle Button
                                             VStack(alignment: .trailing, spacing: 4) {
                                                 Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                                    .font(.system(.body, design: .default, weight: .bold))
-                                                    .foregroundStyle(sub.isPaused ? .white.opacity(0.4) : .white)
+                                                    .font(.system(.body, weight: .bold))
+                                                    .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
                                                 
                                                 Button(action: {
                                                     store.toggleSubscriptionPause(id: sub.id)
                                                 }) {
                                                     Text(sub.isPaused ? "Paused" : "Active")
-                                                        .font(.system(size: 10, weight: .bold, design: .default))
-                                                        .foregroundStyle(sub.isPaused ? .white.opacity(0.4) : SpendyColors.incomeGreen)
+                                                        .font(.system(size: 10, weight: .bold))
+                                                        .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.incomeGreen)
                                                         .padding(.horizontal, 8)
                                                         .padding(.vertical, 3)
                                                         .background {
                                                             Capsule()
-                                                                .fill(sub.isPaused ? Color.white.opacity(0.06) : SpendyColors.incomeGreen.opacity(0.12))
+                                                                .fill(sub.isPaused ? SpendyColors.separator : SpendyColors.incomeGreen.opacity(0.12))
                                                         }
                                                 }
                                                 .buttonStyle(.plain)
@@ -393,7 +397,7 @@ struct ManageView: View {
                                                 .fill(SpendyColors.cardBackground)
                                                 .overlay {
                                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                                 }
                                         }
                                     }
@@ -437,20 +441,20 @@ struct ManageView: View {
                                 }) {
                                     HStack {
                                         Text("Past & Cancelled (\(cancelledSubs.count))")
-                                            .font(.system(size: 13, weight: .semibold, design: .default))
-                                            .foregroundStyle(.white.opacity(0.6))
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textSecondary)
                                         
                                         Spacer()
                                         
                                         Image(systemName: SFIcons.chevronDown)
                                             .font(.system(size: 13, weight: .bold))
-                                            .foregroundStyle(.white.opacity(0.4))
+                                            .foregroundStyle(SpendyColors.textTertiary)
                                             .rotationEffect(.degrees(showCancelledSubs ? 180 : 0))
                                     }
                                     .padding(14)
                                     .background {
                                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .fill(Color.white.opacity(0.04))
+                                            .fill(SpendyColors.cardBackgroundSecondary)
                                     }
                                 }
                                 .buttonStyle(.plain)
@@ -461,32 +465,32 @@ struct ManageView: View {
                                             HStack(spacing: 14) {
                                                 ZStack {
                                                     Circle()
-                                                        .fill(Color.white.opacity(0.08))
+                                                        .fill(SpendyColors.separator)
                                                         .frame(width: 40, height: 40)
                                                     Image(systemName: sub.sfSymbol)
                                                         .font(.system(size: 18, weight: .bold))
-                                                        .foregroundStyle(.white.opacity(0.4))
+                                                        .foregroundStyle(SpendyColors.textTertiary)
                                                 }
                                                 
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     Text(sub.name)
-                                                        .font(.system(.body, design: .default, weight: .semibold))
-                                                        .foregroundStyle(.white.opacity(0.5))
+                                                        .font(.system(.body, weight: .semibold))
+                                                        .foregroundStyle(SpendyColors.textSecondary)
                                                     Text("Cancelled")
-                                                        .font(.system(size: 11, weight: .medium, design: .default))
-                                                        .foregroundStyle(SpendyColors.expenseRed.opacity(0.7))
+                                                        .font(.system(size: 11, weight: .medium))
+                                                        .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
                                                 }
                                                 
                                                 Spacer()
                                                 
                                                 Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                                    .font(.system(.body, design: .default, weight: .bold))
-                                                    .foregroundStyle(.white.opacity(0.4))
+                                                    .font(.system(.body, weight: .bold))
+                                                    .foregroundStyle(SpendyColors.textTertiary)
                                             }
                                             .padding(14)
                                             .background {
                                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .fill(SpendyColors.cardBackground.opacity(0.5))
+                                                    .fill(SpendyColors.cardBackgroundSecondary.opacity(0.6))
                                             }
                                             .contextMenu {
                                                 Button {

@@ -144,17 +144,16 @@ struct AddCategorySheet: View {
     private var topHeaderBar: some View {
         HStack {
             // Circular Glass Close Button ✕
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 14,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close"
+            ) {
                 dismiss()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
             
             Spacer()
             
@@ -165,17 +164,17 @@ struct AddCategorySheet: View {
             
             // Right Delete Button (if editing) or spacing balancer
             if isEditing {
-                Button(action: {
-                    HapticsManager.shared.trigger(.warning)
+                GlassCircleButton(
+                    icon: "trash.fill",
+                    size: 44,
+                    iconSize: 14,
+                    tintColor: SpendyColors.expenseRed,
+                    foregroundColor: SpendyColors.expenseRed,
+                    haptic: .warning,
+                    accessibilityLabel: "Delete Category"
+                ) {
                     showDeleteConfirm = true
-                }) {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(SpendyColors.expenseRed)
-                        .frame(width: 44, height: 44)
-                        .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.expenseRed)
                 }
-                .buttonStyle(.plain)
             } else {
                 Color.clear.frame(width: 44, height: 44)
             }
@@ -198,16 +197,19 @@ struct AddCategorySheet: View {
                     Image(systemName: "arrow.down.right")
                         .font(.system(size: 11, weight: .bold))
                     Text("Expense")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundStyle(type == .expense ? .white : .white.opacity(0.40))
+                .foregroundStyle(
+                    type == .expense
+                        ? Color(uiColor: .dynamic(light: .white, dark: .black))
+                        : SpendyColors.textSecondary
+                )
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background {
                     if type == .expense {
                         Capsule()
-                            .fill(Color.white.opacity(0.18))
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
+                            .fill(SpendyColors.primaryBlue)
                     }
                 }
             }
@@ -226,25 +228,28 @@ struct AddCategorySheet: View {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .bold))
                     Text("Income")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundStyle(type == .income ? .white : .white.opacity(0.40))
+                .foregroundStyle(
+                    type == .income
+                        ? Color(uiColor: .dynamic(light: .white, dark: .black))
+                        : SpendyColors.textSecondary
+                )
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background {
                     if type == .income {
                         Capsule()
-                            .fill(Color.white.opacity(0.18))
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
+                            .fill(SpendyColors.primaryBlue)
                     }
                 }
             }
             .buttonStyle(.plain)
         }
         .padding(3)
-        .background(Color.white.opacity(0.08), in: Capsule())
+        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
         .overlay {
-            Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+            Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
         }
     }
     
@@ -271,7 +276,7 @@ struct AddCategorySheet: View {
                                 .foregroundStyle(.white)
                         } else {
                             Text(avatarLetter)
-                                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                                .font(.system(size: 34, weight: .heavy))
                                 .foregroundStyle(.white)
                         }
                     }
@@ -286,15 +291,15 @@ struct AddCategorySheet: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color(hex: "#24262B"))
+                            .fill(SpendyColors.cardBackgroundSecondary)
                             .frame(width: 26, height: 26)
                             .overlay {
-                                Circle().stroke(Color.white.opacity(0.18), lineWidth: 1)
+                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
                             }
                         
                         Image(systemName: "pencil")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.textPrimary)
                     }
                 }
                 .buttonStyle(.plain)
@@ -302,8 +307,8 @@ struct AddCategorySheet: View {
             }
             
             Text(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Category Name" : label)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
         }
     }
     
@@ -311,8 +316,8 @@ struct AddCategorySheet: View {
     private var nameAndColorCard: some View {
         HStack(spacing: 12) {
             TextField("Category Name", text: $label)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             // Circular Color Picker Swatch Button
             Button(action: {
@@ -325,7 +330,7 @@ struct AddCategorySheet: View {
                     .fill(Color(hex: selectedColorHex))
                     .frame(width: 28, height: 28)
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        Circle().stroke(SpendyColors.separator, lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -337,7 +342,7 @@ struct AddCategorySheet: View {
                 .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
@@ -357,7 +362,7 @@ struct AddCategorySheet: View {
                             .overlay {
                                 if selectedColorHex == hex {
                                     Circle()
-                                        .stroke(Color.white, lineWidth: 2.5)
+                                        .stroke(SpendyColors.textPrimary, lineWidth: 2.5)
                                         .shadow(color: Color.black.opacity(0.4), radius: 3)
                                 }
                             }
@@ -383,19 +388,19 @@ struct AddCategorySheet: View {
             } label: {
                 HStack {
                     Text("Folder")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
                     HStack(spacing: 6) {
                         Text(selectedFolder)
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.70))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
                         
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.45))
+                            .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
                 .padding(.horizontal, 18)
@@ -405,15 +410,15 @@ struct AddCategorySheet: View {
                         .fill(SpendyColors.cardBackground)
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
             }
             .buttonStyle(.plain)
             
             Text("Assign this category to a folder for better organization")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.40))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 6)
         }
     }
@@ -423,8 +428,8 @@ struct AddCategorySheet: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Select Icon")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textTertiary)
                 
                 Spacer()
                 
@@ -434,7 +439,7 @@ struct AddCategorySheet: View {
                     }
                 }) {
                     Text(showIconPicker ? "Hide" : "Show All")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(SpendyColors.primaryBlue)
                 }
                 .buttonStyle(.plain)
@@ -449,12 +454,12 @@ struct AddCategorySheet: View {
                     }) {
                         ZStack {
                             Circle()
-                                .fill(selectedSymbol == sym ? Color(hex: selectedColorHex) : Color.white.opacity(0.08))
+                                .fill(selectedSymbol == sym ? Color(hex: selectedColorHex) : SpendyColors.cardBackgroundSecondary)
                                 .frame(width: 44, height: 44)
                             
                             Image(systemName: sym)
                                 .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(selectedSymbol == sym ? .white : .white.opacity(0.70))
+                                .foregroundStyle(selectedSymbol == sym ? .white : SpendyColors.textSecondary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -466,7 +471,7 @@ struct AddCategorySheet: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -501,12 +506,12 @@ struct AddCategorySheet: View {
             dismiss()
         }) {
             Text(isEditing ? "Save Changes" : "Create")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.black)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white, in: Capsule())
-                .shadow(color: Color.white.opacity(0.20), radius: 12, y: 4)
+                .background(SpendyColors.primaryBlue, in: Capsule())
+                .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
         .disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

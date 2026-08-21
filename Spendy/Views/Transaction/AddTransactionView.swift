@@ -2,10 +2,27 @@
 //  AddTransactionView.swift
 //  Spendy
 //
-//  Full-Featured Transaction Screen with Custom Tactile Keypad, Liquid Glass Controls, and Transfer Route
+//  Pixel-Perfect iOS Liquid Glass Transaction Screen with Consistently-Padded Toggles,
+//  Uniform 44pt Control Heights, Inline Note Editor with Confirm Checkmark, Dual Transfer Cards,
+//  Clean 3-Column Numeric Keypad (No Math Operators), and Non-Duplicated Liquid Glass Sheets.
 //
 
 import SwiftUI
+
+// MARK: - Active Sheet Enum for Single-Sheet Presentation
+enum TransactionActiveSheet: Identifiable {
+    case category
+    case account(isDestination: Bool)
+    case calendar
+    
+    var id: String {
+        switch self {
+        case .category: return "category"
+        case .account(let isDest): return "account_\(isDest)"
+        case .calendar: return "calendar"
+        }
+    }
+}
 
 struct AddTransactionView: View {
     @Environment(ExpenseStore.self) private var store
@@ -13,23 +30,27 @@ struct AddTransactionView: View {
     
     var transactionToEdit: Transaction? = nil
     
-    // State
+    // Core Transaction State
     @State private var type: TransactionType = .expense
     @State private var amountString: String = "0"
-    @State private var selectedCategoryId: String = "food"
+    @State private var selectedCategoryId: String = "groceries"
     @State private var fromAccountId: String = "bank"
     @State private var toAccountId: String = "cash"
     @State private var note: String = ""
     @State private var date: Date = Date()
     
-    @State private var showCategoryPicker: Bool = false
-    @State private var showDatePicker: Bool = false
+    // UI Mode State (Inline Note Editor)
+    @State private var isEditingNote: Bool = false
+    @FocusState private var isNoteFocused: Bool
+    
+    // Single Active Sheet State
+    @State private var activeSheet: TransactionActiveSheet? = nil
     
     private var isEditing: Bool {
         transactionToEdit != nil
     }
     
-    private var numericAmount: Double {
+    private var currentAmountValue: Double {
         Double(amountString) ?? 0.0
     }
     
@@ -49,6 +70,20 @@ struct AddTransactionView: View {
         store.categories.filter { $0.type == type }
     }
     
+    // Date formatted string
+    private var formattedDateLabel: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d MMM"
+            return formatter.string(from: date)
+        }
+    }
+    
     init(transactionToEdit: Transaction? = nil, defaultType: TransactionType = .expense) {
         self.transactionToEdit = transactionToEdit
         if let t = transactionToEdit {
@@ -66,46 +101,62 @@ struct AddTransactionView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color.black
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Top Header: Close ✕ & Type Toggle
+                // 1. Top Header Bar (Close ✕ | Type Switcher | More ...)
                 topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
                 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        // Large Formatted Amount Display
-                        amountDisplaySection
-                            .padding(.top, 10)
-                        
-                        // Category & Account Selector Chips Row
-                        selectorsRow
-                        
-                        // Note Input Field
-                        noteInputRow
-                        
-                        // Custom Tactile Keypad
-                        tactileKeypadGrid
-                            .padding(.top, 8)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 110)
+                // 2. Subheader Row: Account Pill (Left) & Currency Flag Pill (Right)
+                subHeaderRow
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                
+                if type == .transfer {
+                    // Transfer Mode: Dual Account & Amount Cards
+                    transferCardsSection
+                        .padding(.top, 12)
+                } else {
+                    // Standard Expense / Income Layout
+                    standardAmountSection
+                }
+                
+                Spacer(minLength: 8)
+                
+                // 3. Lower Control Section (Keypad or Inline Note Editor)
+                if isEditingNote {
+                    inlineNoteEditorView
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                } else {
+                    keypadAndActionsSection
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                        .transition(.opacity)
                 }
             }
-            
-            // Bottom Action Save Button
-            bottomSaveButton
-                .padding(.horizontal, 20)
-                .padding(.bottom, 28)
         }
-        .sheet(isPresented: $showCategoryPicker) {
-            categorySelectionModal
-        }
-        .sheet(isPresented: $showDatePicker) {
-            datePickerModal
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .category:
+                CategoryPickerDrawer(
+                    selectedCategoryId: $selectedCategoryId,
+                    currentType: type,
+                    categories: availableCategories
+                )
+            case .account(let isDestination):
+                AccountPickerDrawer(
+                    selectedAccountId: isDestination ? $toAccountId : $fromAccountId,
+                    title: isDestination ? "Select destination account" : "Select account",
+                    accounts: store.accounts
+                )
+            case .calendar:
+                CustomCalendarDrawer(selectedDate: $date)
+            }
         }
         .onAppear {
             if transactionToEdit == nil {
@@ -122,350 +173,574 @@ struct AddTransactionView: View {
         }
     }
     
-    // MARK: - Top Header Bar
+    // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
     private var topHeaderBar: some View {
-        HStack {
-            // Circular Glass Close Button ✕
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+        HStack(alignment: .center) {
+            // Standard 44x44 Circular Glass Close Button ✕
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 15,
+                foregroundColor: .white,
+                haptic: .selection,
+                accessibilityLabel: "Close"
+            ) {
                 dismiss()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
             
             Spacer()
             
-            // Expense / Income / Transfer Glass Toggle
-            typeSegmentedPicker
+            // Standard 44pt Height Liquid Glass Type Switcher
+            liquidGlassTypeSwitcher
             
             Spacer()
             
-            // Date Picker Icon Chip
-            Button(action: {
-                HapticsManager.shared.trigger(.light)
-                showDatePicker = true
-            }) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-    
-    // MARK: - Type Segmented Picker (Expense | Income | Transfer)
-    private var typeSegmentedPicker: some View {
-        HStack(spacing: 3) {
-            ForEach(TransactionType.allCases) { t in
+            // Standard 44x44 More Options Menu ...
+            Menu {
                 Button(action: {
-                    withAnimation(.spring(response: 0.25)) {
-                        type = t
-                        if let first = store.categories.filter({ $0.type == t }).first {
-                            selectedCategoryId = first.id
-                        }
-                    }
-                    HapticsManager.shared.trigger(.selection)
+                    HapticsManager.shared.trigger(.light)
+                    clearAll()
                 }) {
-                    Text(t.title)
-                        .font(.system(size: 13, weight: type == t ? .bold : .medium, design: .rounded))
-                        .foregroundStyle(type == t ? .white : .white.opacity(0.45))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background {
-                            if type == t {
-                                Capsule()
-                                    .fill(Color.white.opacity(0.18))
-                                    .shadow(color: Color.black.opacity(0.2), radius: 3)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(3)
-        .background(Color.white.opacity(0.08), in: Capsule())
-        .overlay {
-            Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-        }
-    }
-    
-    // MARK: - Amount Display Section
-    private var amountDisplaySection: some View {
-        VStack(spacing: 4) {
-            Text(type == .expense ? "EXPENSE AMOUNT" : (type == .income ? "INCOME AMOUNT" : "TRANSFER AMOUNT"))
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(.white.opacity(0.40))
-            
-            HStack(spacing: 2) {
-                Text(store.currencySymbol)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(typeColor)
-                
-                Text(amountString)
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-    }
-    
-    // MARK: - Selectors Row (Category & Account Chips)
-    private var selectorsRow: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                // Category Chip (for Expense & Income)
-                if type != .transfer {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.light)
-                        showCategoryPicker = true
-                    }) {
-                        HStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(selectedCategory?.color ?? SpendyColors.primaryBlue)
-                                    .frame(width: 26, height: 26)
-                                Image(systemName: selectedCategory?.sfSymbol ?? "tag.fill")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
-                            
-                            Text(selectedCategory?.label ?? "Category")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
-                            
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
-                    }
-                    .buttonStyle(.plain)
+                    Label("Clear Amount", systemImage: "delete.left")
                 }
                 
-                // Account Selector (From Account)
-                Menu {
-                    ForEach(store.accounts) { acc in
-                        Button(action: {
-                            fromAccountId = acc.id
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            Label(acc.label, systemImage: acc.sfSymbol)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: fromAccount?.sfSymbol ?? "creditcard.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(fromAccount?.color ?? SpendyColors.primaryBlue)
-                        
-                        Text(fromAccount?.label ?? "Account")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                        
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
-                }
-                .buttonStyle(.plain)
-                
-                // If Transfer, show "To Account"
-                if type == .transfer {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.40))
-                    
-                    Menu {
-                        ForEach(store.accounts.filter { $0.id != fromAccountId }) { acc in
-                            Button(action: {
-                                toAccountId = acc.id
-                                HapticsManager.shared.trigger(.selection)
-                            }) {
-                                Label(acc.label, systemImage: acc.sfSymbol)
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: toAccount?.sfSymbol ?? "creditcard.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(toAccount?.color ?? SpendyColors.incomeGreen)
-                            
-                            Text(toAccount?.label ?? "To Account")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
-                            
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
-                    }
-                    .buttonStyle(.plain)
+                Button(action: {
+                    HapticsManager.shared.trigger(.light)
+                    date = Date()
+                }) {
+                    Label("Reset Date to Today", systemImage: "calendar")
                 }
                 
-                Spacer()
+                Button(action: {
+                    HapticsManager.shared.trigger(.light)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        isEditingNote = true
+                    }
+                }) {
+                    Label("Add Note", systemImage: "square.and.pencil")
+                }
+            } label: {
+                GlassCircleIcon(size: 44) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                }
             }
         }
     }
     
-    // MARK: - Note Input Row
-    private var noteInputRow: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "square.and.pencil")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.40))
-            
-            TextField("Add a note (optional)", text: $note)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+    // MARK: - Clean Capsule Type Switcher (No Liquid Glass)
+    private var liquidGlassTypeSwitcher: some View {
+        HStack(spacing: 6) {
+            typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
+            typeTabButton(typeOption: .income, title: "Income", icon: "arrow.down.left")
+            typeTabButton(typeOption: .transfer, title: "Transfer", icon: "arrow.left.and.right")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(4)
+        .frame(height: 44)
         .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+            Capsule()
+                .fill(Color(hex: "#18181A"))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }
     
-    // MARK: - Custom Tactile Keypad Grid (1-9, ., 0, ⌫)
-    private var tactileKeypadGrid: some View {
-        let keys = [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-            [".", "0", "delete.left.fill"]
-        ]
+    @ViewBuilder
+    private func typeTabButton(typeOption: TransactionType, title: String, icon: String) -> some View {
+        let isSelected = type == typeOption
         
-        return VStack(spacing: 10) {
-            ForEach(keys, id: \.self) { row in
-                HStack(spacing: 12) {
-                    ForEach(row, id: \.self) { key in
-                        keypadButton(key: key)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func keypadButton(key: String) -> some View {
         Button(action: {
-            handleKeypadPress(key)
-        }) {
-            ZStack {
-                if key == "delete.left.fill" {
-                    Image(systemName: "delete.left.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary.opacity(0.85))
-                } else {
-                    Text(key)
-                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                        .foregroundStyle(SpendyColors.textPrimary)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                type = typeOption
+                if let first = store.categories.filter({ $0.type == typeOption }).first {
+                    selectedCategoryId = first.id
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 54)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+            HapticsManager.shared.trigger(.selection)
+        }) {
+            if isSelected {
+                // Selected Tab: Elevated dark capsule with white circular badge containing black arrow + bold text
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: icon)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color.black)
                     }
+                    
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 36)
+                .background {
+                    Capsule()
+                        .fill(Color(hex: "#242426"))
+                        .overlay {
+                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                        }
+                }
+                .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
+                .transition(.scale.combined(with: .opacity))
+            } else {
+                // Unselected Tab: Circular disc with icon only (36x36)
+                ZStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+                .frame(width: 36, height: 36)
+                .background {
+                    Circle()
+                        .fill(Color(hex: "#101012"))
+                        .overlay {
+                            Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.8)
+                        }
+                }
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .buttonStyle(.plain)
     }
     
-    private func handleKeypadPress(_ key: String) {
-        HapticsManager.shared.trigger(.light)
+    // MARK: - 2. Subheader Row (Account Pill on Left + Currency Flag Pill on Right)
+    private var subHeaderRow: some View {
+        HStack {
+            if type != .transfer {
+                accountPillButton(account: fromAccount, isDestination: false)
+            }
+            
+            Spacer()
+            
+            // Currency Flag Pill (🇮🇳 ₹)
+            currencyFlagPill
+        }
+    }
+    
+    private var currencyFlagPill: some View {
+        HStack(spacing: 6) {
+            Text("🇮🇳")
+                .font(.system(size: 14))
+            
+            Text(store.currencySymbol)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 44)
+        .nativeLiquidGlassCapsule(isInteractive: false)
+    }
+    
+    // Account Pill Button (Strict 44pt Height & iOS Liquid Glass Styling)
+    private func accountPillButton(account: Account?, isDestination: Bool) -> some View {
+        let accBalance = store.balance(for: account?.id ?? "")
+        let initialLetter = String((account?.label.prefix(1) ?? "A")).uppercased()
         
-        if key == "delete.left.fill" {
+        return Button(action: {
+            activeSheet = .account(isDestination: isDestination)
+            HapticsManager.shared.trigger(.selection)
+        }) {
+            HStack(spacing: 8) {
+                // Vibrant Account Avatar Circle (32x32)
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "#007AFF"))
+                        .frame(width: 32, height: 32)
+                    
+                    Text(initialLetter)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.leading, 6)
+                
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(account?.label ?? "SBI")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    Text("\(store.currencySymbol)\(String(format: "%.0f", accBalance))")
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(Color(hex: "#8E8E93"))
+                }
+                .padding(.trailing, 16)
+            }
+            .frame(height: 44)
+            .nativeLiquidGlassCapsule(isInteractive: true)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - 3. Standard Amount Section (Expense & Income Mode)
+    private var standardAmountSection: some View {
+        VStack(spacing: 4) {
+            Spacer()
+            
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(store.currencySymbol)
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundStyle(Color(hex: "#505054"))
+                
+                Text(amountString)
+                    .font(.system(size: 72, weight: .heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(hex: "#D0D0D4"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .frame(maxHeight: .infinity)
+    }
+    
+    // MARK: - 4. Dual Transfer Cards Section (Transfer Mode - Compact to prevent screen expansion)
+    private var transferCardsSection: some View {
+        VStack(spacing: 8) {
+            Spacer()
+            
+            // Top From Account Row
+            HStack(spacing: 12) {
+                accountPillButton(account: fromAccount, isDestination: false)
+                
+                Spacer()
+                
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(store.currencySymbol)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Color(hex: "#505054"))
+                    
+                    Text(amountString)
+                        .font(.system(size: 28, weight: .heavy))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 58)
+            .background {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(hex: "#141416"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+            
+            // Down Arrow Divider Indicator
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#202024"))
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Circle().stroke(Color.white.opacity(0.1), lineWidth: 0.8)
+                    }
+                
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(hex: "#8E8E93"))
+            }
+            .padding(.vertical, -4)
+            
+            // Bottom To Account Row
+            HStack(spacing: 12) {
+                accountPillButton(account: toAccount, isDestination: true)
+                
+                Spacer()
+                
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(store.currencySymbol)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Color(hex: "#505054"))
+                    
+                    Text(amountString)
+                        .font(.system(size: 28, weight: .heavy))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 58)
+            .background {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(hex: "#141416"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .frame(maxHeight: .infinity)
+    }
+    
+    // MARK: - 5. Full-Width Keypad & Actions Section
+    private var keypadAndActionsSection: some View {
+        VStack(spacing: 12) {
+            // Action Buttons Row: [ 📅 Today ] on left, ( 🏷 ) on right
+            HStack(spacing: 10) {
+                // Date Selector Pill (44pt height & iOS Liquid Glass Styling)
+                Button(action: {
+                    activeSheet = .calendar
+                    HapticsManager.shared.trigger(.light)
+                }) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .semibold))
+                        
+                        Text(formattedDateLabel)
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .nativeLiquidGlassCapsule(isInteractive: true)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                // Note / Tag Button (44x44 Circular Button)
+                GlassCircleButton(
+                    icon: note.isEmpty ? "tag" : "tag.fill",
+                    size: 44,
+                    iconSize: 15,
+                    foregroundColor: note.isEmpty ? .white : SpendyColors.primaryBlue,
+                    haptic: .light,
+                    accessibilityLabel: "Add Note"
+                ) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        isEditingNote = true
+                    }
+                }
+            }
+            
+            // Full-Width 3-Column Calculator Grid (No math operators)
+            tactileCalculatorGrid
+            
+            // Bottom Action Row: [ (🛒) Category ] + [ Save ]
+            if type != .transfer {
+                HStack(spacing: 12) {
+                    // Category Selector Pill (44pt height, iOS Liquid Glass, and perfect padding)
+                    Button(action: {
+                        activeSheet = .category
+                        HapticsManager.shared.trigger(.selection)
+                    }) {
+                        HStack(spacing: 8) {
+                            // Vibrant Category Circle Badge (32x32)
+                            ZStack {
+                                Circle()
+                                    .fill(selectedCategory?.vibrantColor ?? Color(hex: "#34C759"))
+                                    .frame(width: 32, height: 32)
+                                
+                                Image(systemName: selectedCategory?.sfSymbol ?? "cart.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.leading, 6)
+                            
+                            Text(selectedCategory?.label ?? "Groceries")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .padding(.trailing, 16)
+                        }
+                        .frame(height: 44)
+                        .nativeLiquidGlassCapsule(isInteractive: true)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    // Save Button (44pt height)
+                    Button(action: {
+                        saveTransaction()
+                    }) {
+                        Text(isEditing ? "Save" : "Save")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                            .padding(.horizontal, 32)
+                            .frame(height: 44)
+                            .background {
+                                Capsule()
+                                    .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
+                                    .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                            }
+                    }
+                    .buttonStyle(KeypadPressStyle())
+                    .disabled(currentAmountValue <= 0)
+                }
+            } else {
+                // Transfer Mode Full-Width Save Button
+                Button(action: {
+                    saveTransaction()
+                }) {
+                    Text(isEditing ? "Save Transfer" : "Save")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background {
+                            Capsule()
+                                .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
+                                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                        }
+                }
+                .buttonStyle(KeypadPressStyle())
+                .disabled(currentAmountValue <= 0)
+            }
+        }
+    }
+    
+    // MARK: - Tactile 3-Column Calculator Grid (No Math Operators)
+    private var tactileCalculatorGrid: some View {
+        let rows = [
+            ["7", "8", "9"],
+            ["4", "5", "6"],
+            ["1", "2", "3"],
+            [".", "0", "delete"]
+        ]
+        
+        return VStack(spacing: 8) {
+            ForEach(rows, id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(row, id: \.self) { key in
+                        keypadCell(key: key)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func keypadCell(key: String) -> some View {
+        return Button(action: {
+            handleKeypress(key)
+        }) {
+            ZStack {
+                if key == "delete" {
+                    Image(systemName: "delete.left.fill")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(.white)
+                } else {
+                    Text(key)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(hex: "#18181A"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+        }
+        .buttonStyle(KeypadPressStyle())
+    }
+    
+    // MARK: - Keypad Handling Logic
+    private func handleKeypress(_ key: String) {
+        if key == "delete" {
+            HapticsManager.shared.trigger(.light)
             if amountString.count > 1 {
                 amountString.removeLast()
             } else {
                 amountString = "0"
             }
-        } else if key == "." {
+            return
+        }
+        
+        if key == "." {
+            HapticsManager.shared.trigger(.selection)
             if !amountString.contains(".") {
                 amountString += "."
             }
+            return
+        }
+        
+        // Digit (0-9)
+        HapticsManager.shared.trigger(.light)
+        if amountString == "0" {
+            amountString = key
         } else {
-            // Numbers 0-9
-            if amountString == "0" {
-                amountString = key
-            } else {
-                // Limit to 2 decimal places
-                if let dotIndex = amountString.firstIndex(of: ".") {
-                    let decimalDigits = amountString[dotIndex...].count - 1
-                    if decimalDigits >= 2 { return }
-                }
-                // Limit max length
-                if amountString.count < 10 {
-                    amountString += key
-                }
+            if let dotIndex = amountString.firstIndex(of: ".") {
+                let decimals = amountString[dotIndex...].count - 1
+                if decimals >= 2 { return }
+            }
+            if amountString.count < 10 {
+                amountString += key
             }
         }
     }
     
-    // MARK: - Bottom Action Save Button
-    private var bottomSaveButton: some View {
-        Button(action: {
-            saveTransaction()
-        }) {
-            Text(buttonTitle)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(SpendyColors.appBackground)
+    private func clearAll() {
+        amountString = "0"
+    }
+    
+    // MARK: - 6. Inline Note Editor (Matching Image 2 with iOS Liquid Glass styling)
+    private var inlineNoteEditorView: some View {
+        VStack(spacing: 12) {
+            ZStack(alignment: .bottomTrailing) {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Add notes or tags starting with #", text: $note, axis: .vertical)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white)
+                        .lineLimit(4...6)
+                        .focused($isNoteFocused)
+                        .padding(16)
+                    
+                    Spacer()
+                }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(SpendyColors.textPrimary, in: Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
+                .frame(height: 160)
+                .nativeLiquidGlass(cornerRadius: 22, isInteractive: false)
+                
+                // Confirm Checkmark Button (White circle with black checkmark)
+                Button(action: {
+                    isNoteFocused = false
+                    HapticsManager.shared.trigger(.selection)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        isEditingNote = false
+                    }
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 40, height: 40)
+                            .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
+                        
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(Color.black)
+                    }
+                }
+                .padding(14)
+            }
+            .onAppear {
+                isNoteFocused = true
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(numericAmount <= 0)
-        .opacity(numericAmount <= 0 ? 0.45 : 1.0)
     }
     
-    private var buttonTitle: String {
-        if isEditing { return "Save Changes" }
-        switch type {
-        case .expense: return "Add Expense"
-        case .income: return "Add Income"
-        case .transfer: return "Transfer Funds"
-        }
-    }
-    
-    private var typeColor: Color {
-        switch type {
-        case .expense: return SpendyColors.expenseRed
-        case .income: return SpendyColors.incomeGreen
-        case .transfer: return SpendyColors.transferBlue
-        }
-    }
-    
+    // MARK: - Save Transaction Action
     private func saveTransaction() {
-        guard numericAmount > 0 else { return }
+        guard currentAmountValue > 0 else { return }
         HapticsManager.shared.trigger(.success)
         
         let txTitle = note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -474,7 +749,7 @@ struct AddTransactionView: View {
         
         if let existing = transactionToEdit {
             var updated = existing
-            updated.amount = numericAmount
+            updated.amount = currentAmountValue
             updated.type = type
             updated.categoryId = selectedCategoryId
             updated.accountId = fromAccountId
@@ -486,7 +761,7 @@ struct AddTransactionView: View {
         } else {
             let newTx = Transaction(
                 title: txTitle,
-                amount: numericAmount,
+                amount: currentAmountValue,
                 type: type,
                 categoryId: selectedCategoryId,
                 accountId: fromAccountId,
@@ -498,90 +773,572 @@ struct AddTransactionView: View {
         }
         dismiss()
     }
+}
+
+// MARK: - Keypad Button Tactile Press Style
+struct KeypadPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.82 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Flow Layout Helper
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
     
-    // MARK: - Category Selection Modal
-    private var categorySelectionModal: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        var height: CGFloat = 0
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > width {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        height = currentY + lineHeight
+        return CGSize(width: width, height: height)
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var currentX: CGFloat = bounds.minX
+        var currentY: CGFloat = bounds.minY
+        var lineHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > bounds.maxX {
+                currentX = bounds.minX
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+    }
+}
+
+// MARK: - Category Selection Drawer (Clean Custom Drawer & Full Liquid Glass Styling)
+struct CategoryPickerDrawer: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedCategoryId: String
+    var currentType: TransactionType
+    var categories: [Category]
+    
+    @State private var searchText: String = ""
+    
+    private var groupedFolders: [(folder: String, categories: [Category])] {
+        let filtered = searchText.isEmpty
+            ? categories
+            : categories.filter { $0.label.localizedCaseInsensitiveContains(searchText) }
+        
+        var groups: [String: [Category]] = [:]
+        for cat in filtered {
+            let f = cat.folder.isEmpty ? "Uncategorized" : cat.folder
+            groups[f, default: []].append(cat)
+        }
+        
+        let predefinedOrder = [
+            "Everyday Spending",
+            "Transport",
+            "Living",
+            "Personal & Wellness",
+            "Salary & Career",
+            "Investments & Other",
+            "Uncategorized"
+        ]
+        
+        return predefinedOrder.compactMap { folder in
+            if let list = groups[folder], !list.isEmpty {
+                return (folder: folder, categories: list.sorted(by: { $0.order < $1.order }))
+            }
+            return nil
+        }
+    }
+    
+    private var suggestedCategories: [Category] {
+        if !searchText.isEmpty { return [] }
+        return Array(categories.prefix(2))
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color(hex: "#121214")
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Custom Header
+                HStack {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 14,
+                        foregroundColor: .white,
+                        haptic: .selection
+                    ) {
+                        dismiss()
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Select category")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    Spacer()
+                    
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 22) {
+                        // 1. Suggested Section
+                        if !suggestedCategories.isEmpty {
+                            categoryFolderBlock(
+                                title: "Suggested",
+                                items: suggestedCategories
+                            )
+                        }
+                        
+                        // 2. Folder Grouped Sections
+                        ForEach(groupedFolders, id: \.folder) { group in
+                            categoryFolderBlock(
+                                title: group.folder,
+                                items: group.categories
+                            )
+                        }
+                        
+                        Spacer(minLength: 88)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                }
+            }
+            
+            // Floating Bottom Liquid Glass Search Bar
+            floatingSearchBar
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+        }
+        .presentationDetents([.fraction(0.88), .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
+    }
+    
+    private func categoryFolderBlock(title: String, items: [Category]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color(hex: "#8E8E93"))
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                ForEach(items) { cat in
+                    let isSelected = selectedCategoryId == cat.id
+                    
+                    Button(action: {
+                        selectedCategoryId = cat.id
+                        HapticsManager.shared.trigger(.selection)
+                        dismiss()
+                    }) {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(cat.vibrantColor)
+                                    .frame(width: 38, height: 38)
+                                
+                                Image(systemName: cat.sfSymbol)
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                            
+                            Text(cat.label)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.white)
+                            
+                            Spacer()
+                            
+                            if isSelected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 13)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if cat.id != items.last?.id {
+                        Divider()
+                            .background(Color.white.opacity(0.08))
+                            .padding(.leading, 68)
+                    }
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(hex: "#18181A"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+        }
+    }
+    
+    private var floatingSearchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color(hex: "#8E8E93"))
+            
+            TextField("Search category", text: $searchText)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white)
+            
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#8E8E93"))
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .nativeLiquidGlassCapsule(isInteractive: true)
+        .shadow(color: Color.black.opacity(0.35), radius: 12, y: 4)
+    }
+}
+
+// MARK: - Account Selection Drawer (Dead Copy of Screenshot 1 with Liquid Glass Styling)
+struct AccountPickerDrawer: View {
+    @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedAccountId: String
+    var title: String
+    var accounts: [Account]
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#121214").ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Clean Custom Header
+                HStack {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 14,
+                        foregroundColor: .white,
+                        haptic: .selection
+                    ) {
+                        dismiss()
+                    }
+                    
+                    Spacer()
+                    
+                    Text(title)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    Spacer()
+                    
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 14)
                 
                 ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 14) {
-                        ForEach(availableCategories) { cat in
-                            Button(action: {
-                                selectedCategoryId = cat.id
-                                HapticsManager.shared.trigger(.selection)
-                                showCategoryPicker = false
-                            }) {
-                                VStack(spacing: 8) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(cat.color)
-                                            .frame(width: 48, height: 48)
-                                            .shadow(color: cat.color.opacity(0.35), radius: 6, y: 2)
-                                        
-                                        Image(systemName: cat.sfSymbol)
-                                            .font(.system(size: 20, weight: .bold))
-                                            .foregroundStyle(.white)
-                                    }
-                                    
-                                    Text(cat.label)
-                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(.white)
-                                        .lineLimit(1)
-                                }
-                                .padding(12)
-                                .frame(maxWidth: .infinity)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(selectedCategoryId == cat.id ? Color.white.opacity(0.12) : SpendyColors.cardBackground)
-                                        .overlay {
-                                            if selectedCategoryId == cat.id {
-                                                RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.3), lineWidth: 1.5)
-                                            }
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(spacing: 0) {
+                            ForEach(accounts) { acc in
+                                let isSelected = selectedAccountId == acc.id
+                                let liveBalance = store.balance(for: acc.id)
+                                let initialLetter = String((acc.label.prefix(1))).uppercased()
+                                
+                                Button(action: {
+                                    selectedAccountId = acc.id
+                                    HapticsManager.shared.trigger(.selection)
+                                    dismiss()
+                                }) {
+                                    HStack(spacing: 14) {
+                                        // Vibrant Account Circle
+                                        ZStack {
+                                            Circle()
+                                                .fill(acc.color)
+                                                .frame(width: 38, height: 38)
+                                            
+                                            Text(initialLetter)
+                                                .font(.system(size: 16, weight: .bold))
+                                                .foregroundStyle(.white)
                                         }
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(acc.label)
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundStyle(.white)
+                                            
+                                            Text("\(store.currencySymbol)\(String(format: "%.0f", liveBalance))")
+                                                .font(.system(size: 13, weight: .medium))
+                                                .monospacedDigit()
+                                                .foregroundStyle(Color(hex: "#8E8E93"))
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        if isSelected {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 15, weight: .bold))
+                                                .foregroundStyle(.white)
+                                                .transition(.scale.combined(with: .opacity))
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                if acc.id != accounts.last?.id {
+                                    Divider()
+                                        .background(Color.white.opacity(0.08))
+                                        .padding(.leading, 68)
                                 }
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .background {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(Color(hex: "#18181A"))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                }
                         }
                     }
                     .padding(20)
                 }
             }
-            .navigationTitle("Select Category")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showCategoryPicker = false }
-                }
-            }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.55), .medium])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
+    }
+}
+
+// MARK: - Custom Month Calendar Drawer (Dead Copy of Screenshot 4 - Clean Custom Header)
+struct CustomCalendarDrawer: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedDate: Date
+    @State private var displayedMonth: Date = Date()
+    
+    private let calendar = Calendar.current
+    private let weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    
+    private var monthYearString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: displayedMonth)
     }
     
-    // MARK: - Date Picker Modal
-    private var datePickerModal: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack {
-                    DatePicker("Transaction Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                        .datePickerStyle(.graphical)
-                        .tint(SpendyColors.primaryBlue)
-                        .padding(20)
-                    
-                    Spacer()
-                }
-            }
-            .navigationTitle("Transaction Date")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showDatePicker = false }
-                }
+    private var daysInMonth: [Date?] {
+        guard let _ = calendar.dateInterval(of: .month, for: displayedMonth),
+              let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) else {
+            return []
+        }
+        
+        let firstWeekday = calendar.component(.weekday, from: firstDay) - 1
+        let numberOfDays = calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
+        
+        var days: [Date?] = Array(repeating: nil, count: firstWeekday)
+        for day in 1...numberOfDays {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDay) {
+                days.append(date)
             }
         }
-        .presentationDetents([.medium])
+        return days
+    }
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#121214").ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                // Clean Custom Header
+                HStack {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 14,
+                        foregroundColor: .white,
+                        haptic: .selection
+                    ) {
+                        dismiss()
+                    }
+                    
+                    Spacer()
+                    
+                    Text(calendar.isDateInToday(selectedDate) ? "Today" : formattedDateTitle)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        selectedDate = Date()
+                        displayedMonth = Date()
+                        HapticsManager.shared.trigger(.selection)
+                        dismiss()
+                    }) {
+                        Text("Today")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .frame(height: 36)
+                            .background {
+                                Capsule()
+                                    .fill(Color(hex: "#18181A"))
+                                    .overlay {
+                                        Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                    }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
+                // Month Selector Header (< August 2026 >)
+                HStack {
+                    Button(action: {
+                        // Month selector dropdown
+                    }) {
+                        HStack(spacing: 6) {
+                            Text(monthYearString)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.white)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Color(hex: "#8E8E93"))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            if let prev = calendar.date(byAdding: .month, value: -1, to: displayedMonth) {
+                                displayedMonth = prev
+                            }
+                            HapticsManager.shared.trigger(.light)
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 32, height: 32)
+                        }
+                        
+                        Button(action: {
+                            if let next = calendar.date(byAdding: .month, value: 1, to: displayedMonth) {
+                                displayedMonth = next
+                            }
+                            HapticsManager.shared.trigger(.light)
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 32, height: 32)
+                        }
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 6)
+                
+                // Weekday Column Headers
+                HStack {
+                    ForEach(weekdays, id: \.self) { day in
+                        Text(day)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color(hex: "#8E8E93"))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 14)
+                
+                // Calendar Days Grid
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 14) {
+                    ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, dayDate in
+                        if let day = dayDate {
+                            let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
+                            let dayNumber = calendar.component(.day, from: day)
+                            
+                            Button(action: {
+                                selectedDate = day
+                                HapticsManager.shared.trigger(.selection)
+                                dismiss()
+                            }) {
+                                VStack(spacing: 2) {
+                                    ZStack {
+                                        if isSelected {
+                                            Circle()
+                                                .fill(Color.white)
+                                                .frame(width: 38, height: 38)
+                                        }
+                                        
+                                        Text("\(dayNumber)")
+                                            .font(.system(size: 16, weight: isSelected ? .bold : .medium))
+                                            .foregroundStyle(isSelected ? Color.black : .white)
+                                    }
+                                    
+                                    if isSelected {
+                                        Circle()
+                                            .fill(Color.white)
+                                            .frame(width: 4, height: 4)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Color.clear
+                                .frame(height: 38)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                
+                Spacer()
+            }
+        }
+        .presentationDetents([.fraction(0.68)])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
+    }
+    
+    private var formattedDateTitle: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: selectedDate)
     }
 }

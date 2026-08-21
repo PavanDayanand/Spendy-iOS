@@ -121,7 +121,7 @@ struct DashboardView: View {
                         .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
                     
                     Text(store.userName.prefix(1).uppercased().isEmpty ? "P" : String(store.userName.prefix(1).uppercased()))
-                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .font(.system(size: 17, weight: .heavy))
                         .foregroundStyle(SpendyColors.appBackground)
                 }
             }
@@ -133,46 +133,34 @@ struct DashboardView: View {
             // Top Right Widget Action Buttons
             HStack(spacing: 10) {
                 // Currency Converter Button
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
+                GlassCircleButton(
+                    icon: "arrow.left.arrow.right",
+                    size: 44,
+                    iconSize: 16,
+                    accessibilityLabel: "Currency converter"
+                ) {
                     showCurrencyConverter = true
-                }) {
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .nativeLiquidGlassCircle(isInteractive: true)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Currency converter")
                 
                 // Subscription Widget Button
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
+                GlassCircleButton(
+                    icon: "calendar.badge.clock",
+                    size: 44,
+                    iconSize: 16,
+                    accessibilityLabel: "Subscriptions"
+                ) {
                     showSubscriptions = true
-                }) {
-                    Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .nativeLiquidGlassCircle(isInteractive: true)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Subscriptions")
                 
                 // Receipt Printer Button
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
+                GlassCircleButton(
+                    icon: "printer.fill",
+                    size: 44,
+                    iconSize: 16,
+                    accessibilityLabel: "Monthly receipt printer"
+                ) {
                     showReceiptPrinter = true
-                }) {
-                    Image(systemName: "printer.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .nativeLiquidGlassCircle(isInteractive: true)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Monthly receipt printer")
             }
         }
     }
@@ -209,13 +197,13 @@ struct DashboardView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 7) {
                     Image(systemName: selectedAccountSymbol)
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .foregroundStyle(SpendyColors.primaryBlue)
                     
                     Text(selectedAccountLabel)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Image(systemName: "chevron.down")
@@ -223,7 +211,7 @@ struct DashboardView: View {
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .frame(height: 38)
                 .nativeLiquidGlassCapsule(isInteractive: true)
             }
             .buttonStyle(.plain)
@@ -231,19 +219,17 @@ struct DashboardView: View {
             Spacer()
             
             // Privacy Eye Toggle Button
-            Button(action: {
+            GlassCircleButton(
+                icon: hideBalance ? "eye.slash.fill" : "eye.fill",
+                size: 38,
+                iconSize: 14,
+                foregroundColor: SpendyColors.textSecondary,
+                accessibilityLabel: hideBalance ? "Show balance" : "Hide balance"
+            ) {
                 withAnimation(.spring(response: 0.25)) {
                     hideBalance.toggle()
                 }
-                HapticsManager.shared.trigger(.light)
-            }) {
-                Image(systemName: hideBalance ? "eye.slash.fill" : "eye.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .frame(width: 36, height: 36)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
         }
     }
     
@@ -253,18 +239,18 @@ struct DashboardView: View {
             // Balance Header & Privacy Mask
             VStack(alignment: .leading, spacing: 4) {
                 Text(selectedAccountId == "all" ? "TOTAL NET WORTH" : "ACCOUNT BALANCE")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(1.2)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     if hideBalance {
                         Text("\(store.currencySymbol) ••••••")
-                            .font(.system(size: 38, weight: .heavy, design: .rounded))
+                            .font(.system(size: 38, weight: .heavy))
                             .foregroundStyle(SpendyColors.textPrimary)
                     } else {
                         Text(displayedBalance.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 38, weight: .heavy, design: .rounded))
+                            .font(.system(size: 38, weight: .heavy))
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                     
@@ -287,11 +273,11 @@ struct DashboardView: View {
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Income")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SpendyColors.textTertiary)
                         
                         Text(hideBalance ? "••••" : "+\(store.monthlyIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                 }
@@ -312,11 +298,11 @@ struct DashboardView: View {
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Expenses")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SpendyColors.textTertiary)
                         
                         Text(hideBalance ? "••••" : "-\(store.monthlyExpense.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                 }
@@ -341,7 +327,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("SMART INSIGHTS")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(1.0)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
@@ -354,14 +340,14 @@ struct DashboardView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             // Eyebrow Header
                             Text(item.title.uppercased())
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.system(size: 9, weight: .bold))
                                 .tracking(1.0)
                                 .foregroundStyle(SpendyColors.textSecondary)
                                 .padding(.bottom, 4)
                             
                             // Value
                             Text(item.value)
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .font(.system(size: 24, weight: .bold))
                                 .foregroundStyle(item.color)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
@@ -382,7 +368,7 @@ struct DashboardView: View {
                                 }
                                 
                                 Text(item.desc)
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(SpendyColors.textSecondary)
                                     .lineSpacing(2)
                                     .lineLimit(3)
@@ -410,7 +396,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("RECENT ACTIVITY")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(1.0)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
@@ -418,7 +404,7 @@ struct DashboardView: View {
                 
                 if !displayedTransactions.isEmpty {
                     Text("\(displayedTransactions.count) items")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -458,11 +444,11 @@ struct DashboardView: View {
                 // Title & Account
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("\(acc?.label ?? "Cash") • \(tx.date.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
                 
@@ -470,7 +456,7 @@ struct DashboardView: View {
                 
                 // Formatted Amount
                 Text(formattedRowAmount(tx))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(SpendyColors.textPrimary)
             }
             .padding(14)
@@ -504,11 +490,11 @@ struct DashboardView: View {
                 .padding(.top, 14)
             
             Text("No transactions logged yet")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Text("Tap the + button below to add your first expense or income.")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(SpendyColors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)

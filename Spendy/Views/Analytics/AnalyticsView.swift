@@ -161,11 +161,13 @@ struct AnalyticsView: View {
                     }
                 }
             } label: {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
+                GlassCircleIcon(
+                    icon: "calendar",
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .bold,
+                    foregroundColor: SpendyColors.textPrimary
+                )
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Select Timeframe")
@@ -186,7 +188,7 @@ struct AnalyticsView: View {
                     showMonthPicker = true
                 }) {
                     Text(formattedPillTitle)
-                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .font(.system(size: 15, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .contentTransition(.numericText())
                 }
@@ -259,11 +261,13 @@ struct AnalyticsView: View {
                     }
                 }
             } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(typeFilter != .all || groupingMode != .categories ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
+                GlassCircleIcon(
+                    icon: "line.3.horizontal.decrease.circle.fill",
+                    size: 44,
+                    iconSize: 18,
+                    iconWeight: .medium,
+                    foregroundColor: typeFilter != .all || groupingMode != .categories ? SpendyColors.textPrimary : SpendyColors.textSecondary
+                )
             }
             .buttonStyle(.plain)
         }
@@ -275,15 +279,14 @@ struct AnalyticsView: View {
         let net = totalIncome - totalSpending
         let isPositive = net >= 0
         let intervals = intervalData
-        let maxVal = max(100.0, intervals.map { max($0.spendingAmount, $0.incomeAmount) }.max() ?? 100.0)
         
         return VStack(alignment: .leading, spacing: 14) {
             Text("Cashflow")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
             
             Text(net.formattedSignedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: 34, weight: .heavy))
                 .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
             
             // Native Swift Chart: Cashflow Overview
@@ -307,7 +310,7 @@ struct AnalyticsView: View {
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -316,7 +319,7 @@ struct AnalyticsView: View {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4]))
                         .foregroundStyle(SpendyColors.separator)
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -335,7 +338,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(exceeded ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
                     
                     Text(exceeded ? String(format: "Budget exceeded, %@ over with %d days left", (totalSpending - limit).formattedCurrency(symbol: store.currencySymbol, decimals: 0), remainingDaysInMonth) : "Pacing smoothly within monthly budget.")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
                 .padding(.vertical, 4)
@@ -348,22 +351,22 @@ struct AnalyticsView: View {
                 HStack {
                     Circle().fill(SpendyColors.textPrimary).frame(width: 7, height: 7)
                     Text("Spending")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .font(.system(size: 14, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
                 HStack {
                     Circle().fill(SpendyColors.incomeGreen).frame(width: 7, height: 7)
                     Text("Income")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .font(.system(size: 14, weight: .heavy))
                         .foregroundStyle(SpendyColors.incomeGreen)
                 }
             }
@@ -380,15 +383,14 @@ struct AnalyticsView: View {
     private var spendingBreakdownCard: some View {
         let items = spendingBreakdownItems
         let intervals = intervalData
-        let maxSpend = max(100.0, intervals.map(\.spendingAmount).max() ?? 100.0)
         
         return VStack(alignment: .leading, spacing: 14) {
             Text("Spending")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
             
             Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: 34, weight: .heavy))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             // Native Swift Chart: Spending Line Chart
@@ -419,7 +421,7 @@ struct AnalyticsView: View {
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -428,7 +430,7 @@ struct AnalyticsView: View {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4]))
                         .foregroundStyle(SpendyColors.separator)
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -441,7 +443,7 @@ struct AnalyticsView: View {
             // Sub-header: Spending by Category / Account
             HStack {
                 Text(groupingMode == .categories ? "Spending by Category" : "Spending by Account")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
@@ -455,7 +457,7 @@ struct AnalyticsView: View {
             // List of Category / Account Breakdown Rows
             if items.isEmpty {
                 Text("No spending recorded in this period.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
@@ -478,18 +480,18 @@ struct AnalyticsView: View {
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.label)
-                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Text("\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                             
                             Spacer()
                             
                             Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                                .font(.system(size: 15, weight: .heavy))
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
                     }
@@ -508,15 +510,14 @@ struct AnalyticsView: View {
     private var incomeBreakdownCard: some View {
         let items = incomeBreakdownItems
         let intervals = intervalData
-        let maxIncome = max(100.0, intervals.map(\.incomeAmount).max() ?? 100.0)
         
         return VStack(alignment: .leading, spacing: 14) {
             Text("Income")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
             
             Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: 34, weight: .heavy))
                 .foregroundStyle(SpendyColors.incomeGreen)
             
             // Native Swift Chart: Income Line Chart
@@ -547,7 +548,7 @@ struct AnalyticsView: View {
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -556,7 +557,7 @@ struct AnalyticsView: View {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4]))
                         .foregroundStyle(SpendyColors.separator)
                     AxisValueLabel()
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -569,7 +570,7 @@ struct AnalyticsView: View {
             // Sub-header: Income by Category / Account
             HStack {
                 Text(groupingMode == .categories ? "Income by Category" : "Income by Account")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
@@ -583,7 +584,7 @@ struct AnalyticsView: View {
             // List of Income Rows
             if items.isEmpty {
                 Text("No income recorded in this period.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
@@ -605,18 +606,18 @@ struct AnalyticsView: View {
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.label)
-                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Text("\(item.txCount) \(item.txCount == 1 ? "transaction" : "transactions")")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                             
                             Spacer()
                             
                             Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                                .font(.system(size: 15, weight: .heavy))
                                 .foregroundStyle(SpendyColors.incomeGreen)
                         }
                     }
@@ -641,7 +642,7 @@ struct AnalyticsView: View {
         
         return VStack(alignment: .leading, spacing: 16) {
             Text("Budget")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
             
             HStack(spacing: 20) {
@@ -661,21 +662,21 @@ struct AnalyticsView: View {
                         .frame(width: 84, height: 84)
                     
                     Text(String(format: "%.0f%%", pct))
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(isExceeded ? String(format: "Budget exceeded by %.0f%%", pct - 100) : "Within budget limit")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text(spent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .font(.system(size: 24, weight: .heavy))
                         .foregroundStyle(isExceeded ? SpendyColors.expenseRed : SpendyColors.textPrimary)
                     
                     Text("of \(budgetLimit.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) limit")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
@@ -688,7 +689,7 @@ struct AnalyticsView: View {
                     .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
                 
                 Text(isExceeded ? String(format: "At this pace, the budget will be exceeded by ↑ %@", (spent - budgetLimit).formattedCurrency(symbol: store.currencySymbol, decimals: 0)) : "You are pacing within safe limits for this month.")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(SpendyColors.textSecondary)
             }
             
@@ -698,10 +699,10 @@ struct AnalyticsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Monthly")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     Text(formattedMonthRange(selectedDate))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
@@ -709,10 +710,10 @@ struct AnalyticsView: View {
                 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Days left")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     Text("\(remainingDaysInMonth) days left")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
@@ -751,7 +752,7 @@ struct AnalyticsView: View {
                 
                 if insights.isEmpty {
                     Text("No insights generated for this period.")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(SpendyColors.textTertiary)
                         .padding(.vertical, 40)
                         .padding(.horizontal, 20)
@@ -777,14 +778,14 @@ struct AnalyticsView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header: Title
             Text(title)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(SpendyColors.textSecondary)
                 .textCase(.uppercase)
                 .padding(.bottom, 16)
             
             // Value
             Text(value)
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .font(.system(size: 26, weight: .heavy))
                 .foregroundStyle(SpendyColors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -807,7 +808,7 @@ struct AnalyticsView: View {
                 }
                 
                 Text(subtitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(SpendyColors.textTertiary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

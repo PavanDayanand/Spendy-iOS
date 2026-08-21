@@ -67,7 +67,7 @@ struct AddSubscriptionSheet: View {
                             }) {
                                 HStack(spacing: 4) {
                                     Text("Tap icon to change")
-                                        .font(.system(size: 13, weight: .semibold, design: .default))
+                                        .font(.system(size: 13, weight: .semibold))
                                     Image(systemName: SFIcons.chevronRight)
                                         .font(.system(size: 10, weight: .bold))
                                 }
@@ -82,12 +82,12 @@ struct AddSubscriptionSheet: View {
                             HStack {
                                 Image(systemName: SFIcons.subscriptions)
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.4))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                                     .frame(width: 24)
                                 
                                 TextField("Service Name (e.g. Netflix, iCloud)", text: $name)
-                                    .font(.system(size: 15, weight: .medium, design: .default))
-                                    .foregroundStyle(.white)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                             }
                             .padding(14)
                             .background {
@@ -95,20 +95,20 @@ struct AddSubscriptionSheet: View {
                                     .fill(SpendyColors.cardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                             
                             // Amount
                             HStack {
                                 Text(store.currencySymbol)
-                                    .font(.system(size: 16, weight: .bold, design: .default))
-                                    .foregroundStyle(.white.opacity(0.4))
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                                     .frame(width: 24)
                                 
                                 TextField("0.00", text: $amountString)
-                                    .font(.system(size: 16, weight: .semibold, design: .default))
-                                    .foregroundStyle(.white)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                     .keyboardType(.decimalPad)
                             }
                             .padding(14)
@@ -117,7 +117,7 @@ struct AddSubscriptionSheet: View {
                                     .fill(SpendyColors.cardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                         }
@@ -131,17 +131,17 @@ struct AddSubscriptionSheet: View {
                                     selection: $nextBillingDate,
                                     displayedComponents: [.date]
                                 )
-                                .font(.system(size: 15, weight: .medium, design: .default))
-                                .foregroundStyle(.white)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Divider()
-                                    .background(Color.white.opacity(0.08))
+                                    .background(SpendyColors.separator)
                                 
                                 // Billing Cycle
                                 HStack {
                                     Text("Billing Cycle")
-                                        .font(.system(size: 15, weight: .medium, design: .default))
-                                        .foregroundStyle(.white)
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                     
                                     Spacer()
                                     
@@ -155,17 +155,17 @@ struct AddSubscriptionSheet: View {
                                 }
                                 
                                 Divider()
-                                    .background(Color.white.opacity(0.08))
+                                    .background(SpendyColors.separator)
                                 
                                 // Free Trial Toggle Switch
                                 Toggle(isOn: $isTrial) {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Free Trial")
-                                            .font(.system(size: 15, weight: .semibold, design: .default))
-                                            .foregroundStyle(.white)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textPrimary)
                                         Text("Don't charge amount until trial ends")
-                                            .font(.system(size: 12, weight: .regular, design: .default))
-                                            .foregroundStyle(.white.opacity(0.5))
+                                            .font(.system(size: 12, weight: .regular))
+                                            .foregroundStyle(SpendyColors.textTertiary)
                                     }
                                 }
                                 .tint(SpendyColors.incomeGreen)
@@ -175,9 +175,9 @@ struct AddSubscriptionSheet: View {
                         // MARK: - Linked Payment Account Picker
                         VStack(alignment: .leading, spacing: 8) {
                             Text("LINKED PAYMENT ACCOUNT")
-                                .font(.system(size: 11, weight: .bold, design: .default))
+                                .font(.system(size: 11, weight: .bold))
                                 .tracking(1.0)
-                                .foregroundStyle(.white.opacity(0.45))
+                                .foregroundStyle(SpendyColors.textTertiary)
                                 .padding(.horizontal, 4)
                             
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -191,15 +191,15 @@ struct AddSubscriptionSheet: View {
                                                 Image(systemName: acc.sfSymbol)
                                                     .font(.system(size: 12, weight: .bold))
                                                 Text(acc.label)
-                                                    .font(.system(size: 13, weight: .semibold, design: .default))
+                                                    .font(.system(size: 13, weight: .semibold))
                                             }
                                             .padding(.horizontal, 14)
                                             .padding(.vertical, 8)
                                             .background {
                                                 Capsule()
-                                                    .fill(selectedAccountId == acc.id ? Color.white : Color.white.opacity(0.06))
+                                                    .fill(selectedAccountId == acc.id ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
                                             }
-                                            .foregroundStyle(selectedAccountId == acc.id ? Color.black : Color.white.opacity(0.7))
+                                            .foregroundStyle(selectedAccountId == acc.id ? SpendyColors.appBackground : SpendyColors.textSecondary)
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -216,7 +216,7 @@ struct AddSubscriptionSheet: View {
                                     Spacer()
                                     Image(systemName: SFIcons.delete)
                                     Text("Delete Subscription")
-                                        .font(.system(size: 15, weight: .bold, design: .default))
+                                        .font(.system(size: 15, weight: .bold))
                                     Spacer()
                                 }
                                 .foregroundStyle(SpendyColors.expenseRed)
@@ -242,13 +242,13 @@ struct AddSubscriptionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Save" : "Add") {
                         saveSubscription()
                     }
-                    .font(.system(size: 15, weight: .bold, design: .default))
+                    .font(.system(size: 15, weight: .bold))
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Double(amountString) ?? 0) <= 0)
                 }
             }

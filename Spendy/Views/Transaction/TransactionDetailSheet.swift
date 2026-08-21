@@ -53,47 +53,45 @@ struct TransactionDetailSheet: View {
                         // Top Header Bar
                         HStack {
                             // Circular Close Button ✕
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: SpendyColors.textPrimary,
+                                haptic: .selection,
+                                accessibilityLabel: "Close"
+                            ) {
                                 dismiss()
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true)
                             }
-                            .buttonStyle(.plain)
                             
                             Spacer()
                             
                             HStack(spacing: 12) {
                                 // Edit Button ✎
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.light)
+                                GlassCircleButton(
+                                    icon: "pencil",
+                                    size: 44,
+                                    iconSize: 14,
+                                    foregroundColor: SpendyColors.textPrimary,
+                                    haptic: .light,
+                                    accessibilityLabel: "Edit Transaction"
+                                ) {
                                     dismiss()
                                     onEdit(transaction)
-                                }) {
-                                    Image(systemName: "pencil")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                        .frame(width: 44, height: 44)
-                                        .nativeLiquidGlassCircle(isInteractive: true)
                                 }
-                                .buttonStyle(.plain)
                                 
                                 // Delete Button 🗑
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.warning)
+                                GlassCircleButton(
+                                    icon: "trash.fill",
+                                    size: 44,
+                                    iconSize: 14,
+                                    tintColor: SpendyColors.expenseRed,
+                                    foregroundColor: SpendyColors.expenseRed,
+                                    haptic: .warning,
+                                    accessibilityLabel: "Delete Transaction"
+                                ) {
                                     showDeleteConfirm = true
-                                }) {
-                                    Image(systemName: "trash.fill")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(SpendyColors.expenseRed)
-                                        .frame(width: 44, height: 44)
-                                        .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.expenseRed)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.top, 10)
@@ -112,11 +110,11 @@ struct TransactionDetailSheet: View {
                             
                             VStack(spacing: 4) {
                                 Text(formattedAmountText)
-                                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                                    .font(.system(size: 38, weight: .heavy))
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Text(transaction.title.isEmpty ? (category?.label ?? "Transaction") : transaction.title)
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(SpendyColors.textSecondary)
                             }
                         }
@@ -226,13 +224,13 @@ struct TransactionDetailSheet: View {
                 .frame(width: 24, height: 24)
             
             Text(label)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(SpendyColors.textSecondary)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
         }
     }

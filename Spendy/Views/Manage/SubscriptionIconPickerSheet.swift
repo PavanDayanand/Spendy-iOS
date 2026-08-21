@@ -88,9 +88,9 @@ struct SubscriptionIconPickerSheet: View {
                             }
                             
                             Text("ICON BADGE COLOR")
-                                .font(.system(size: 11, weight: .bold, design: .default))
+                                .font(.system(size: 11, weight: .bold))
                                 .tracking(1.0)
-                                .foregroundStyle(.white.opacity(0.45))
+                                .foregroundStyle(SpendyColors.textTertiary)
                             
                             // Badge Color Selector (White vs Black)
                             HStack(spacing: 12) {
@@ -104,15 +104,15 @@ struct SubscriptionIconPickerSheet: View {
                                             .frame(width: 14, height: 14)
                                             .overlay(Circle().stroke(Color.gray.opacity(0.4), lineWidth: 1))
                                         Text("White Badge")
-                                            .font(.system(size: 13, weight: .semibold, design: .default))
+                                            .font(.system(size: 13, weight: .semibold))
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
                                     .background {
                                         Capsule()
-                                            .fill(!isDarkBadge ? Color.white : Color.white.opacity(0.08))
+                                            .fill(!isDarkBadge ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
                                     }
-                                    .foregroundStyle(!isDarkBadge ? Color.black : Color.white.opacity(0.7))
+                                    .foregroundStyle(!isDarkBadge ? SpendyColors.appBackground : SpendyColors.textSecondary)
                                 }
                                 .buttonStyle(.plain)
                                 
@@ -126,15 +126,15 @@ struct SubscriptionIconPickerSheet: View {
                                             .frame(width: 14, height: 14)
                                             .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 1))
                                         Text("Black Badge")
-                                            .font(.system(size: 13, weight: .semibold, design: .default))
+                                            .font(.system(size: 13, weight: .semibold))
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
                                     .background {
                                         Capsule()
-                                            .fill(isDarkBadge ? Color.white : Color.white.opacity(0.08))
+                                            .fill(isDarkBadge ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
                                     }
-                                    .foregroundStyle(isDarkBadge ? Color.black : Color.white.opacity(0.7))
+                                    .foregroundStyle(isDarkBadge ? SpendyColors.appBackground : SpendyColors.textSecondary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -145,11 +145,11 @@ struct SubscriptionIconPickerSheet: View {
                         HStack {
                             Image(systemName: SFIcons.search)
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(SpendyColors.textTertiary)
                             
                             TextField("Search icons...", text: $searchText)
-                                .font(.system(size: 15, weight: .medium, design: .default))
-                                .foregroundStyle(.white)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(SpendyColors.textPrimary)
                         }
                         .padding(12)
                         .background {
@@ -157,7 +157,7 @@ struct SubscriptionIconPickerSheet: View {
                                 .fill(SpendyColors.cardBackground)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                         
@@ -166,9 +166,9 @@ struct SubscriptionIconPickerSheet: View {
                             ForEach(filteredCategories) { category in
                                 VStack(alignment: .leading, spacing: 10) {
                                     Text(category.title)
-                                        .font(.system(size: 11, weight: .bold, design: .default))
+                                        .font(.system(size: 11, weight: .bold))
                                         .tracking(1.0)
-                                        .foregroundStyle(.white.opacity(0.45))
+                                        .foregroundStyle(SpendyColors.textTertiary)
                                         .padding(.horizontal, 4)
                                     
                                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
@@ -179,18 +179,22 @@ struct SubscriptionIconPickerSheet: View {
                                             }) {
                                                 ZStack {
                                                     Circle()
-                                                        .fill(selectedSymbol == sym ? SpendyColors.primaryBlue : Color.white.opacity(0.08))
+                                                        .fill(selectedSymbol == sym ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
                                                         .frame(width: 48, height: 48)
                                                         .overlay {
                                                             if selectedSymbol == sym {
                                                                 Circle()
-                                                                    .stroke(Color.white, lineWidth: 2)
+                                                                    .stroke(SpendyColors.textPrimary, lineWidth: 2)
                                                             }
                                                         }
                                                     
                                                     Image(systemName: sym)
                                                         .font(.system(size: 20, weight: .bold))
-                                                        .foregroundStyle(selectedSymbol == sym ? .white : .white.opacity(0.85))
+                                                        .foregroundStyle(
+                                                            selectedSymbol == sym
+                                                                ? Color(uiColor: .dynamic(light: .white, dark: .black))
+                                                                : SpendyColors.textPrimary
+                                                        )
                                                 }
                                             }
                                             .buttonStyle(.plain)
@@ -211,7 +215,7 @@ struct SubscriptionIconPickerSheet: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .font(.system(size: 15, weight: .bold, design: .default))
+                    .font(.system(size: 15, weight: .bold))
                 }
             }
         }

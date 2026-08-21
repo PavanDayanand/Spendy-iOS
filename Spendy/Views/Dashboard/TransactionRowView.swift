@@ -26,7 +26,7 @@ struct TransactionRowView: View {
             // Transaction Info
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.title)
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .font(.system(.body, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
@@ -35,7 +35,7 @@ struct TransactionRowView: View {
                     Text("•")
                     Text(transaction.date.formattedRelative)
                 }
-                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
             }
             
@@ -44,13 +44,13 @@ struct TransactionRowView: View {
             // Signed Amount
             VStack(alignment: .trailing, spacing: 2) {
                 Text(amountText)
-                    .font(.system(.body, design: .rounded, weight: .bold))
+                    .font(.system(.body, weight: .bold))
                     .foregroundStyle(amountColor)
                 
                 if let toId = transaction.toAccountId, transaction.type == .transfer {
                     let toAccount = store.account(for: toId)
                     Text("→ \(toAccount.label)")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(SpendyColors.transferBlue)
                 }
             }

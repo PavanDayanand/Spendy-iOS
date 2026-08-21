@@ -92,38 +92,37 @@ struct AccountsSettingsView: View {
     private var headerBar: some View {
         HStack {
             // Circular Glass Back Button
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back"
+            ) {
                 dismiss()
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
             
             Spacer()
             
             Text("Accounts")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
             // Top Right Currency / Settings Icon
-            Button(action: {
-                HapticsManager.shared.trigger(.light)
+            GlassCircleButton(
+                icon: "gearshape.fill",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .semibold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Currency Settings"
+            ) {
                 showCurrencyPicker = true
-            }) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
         }
     }
     
@@ -137,11 +136,11 @@ struct AccountsSettingsView: View {
             }) {
                 HStack(spacing: 4) {
                     Text("Total in \(store.currencyCode)")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                     Image(systemName: SFIcons.chevronDown)
                         .font(.system(size: 11, weight: .bold))
                 }
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .nativeLiquidGlassCapsule(isInteractive: true)
@@ -151,14 +150,14 @@ struct AccountsSettingsView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(formatShortCurrency(store.totalBalance))
-                        .font(.system(size: 38, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 38, weight: .heavy))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 11, weight: .bold))
                         Text("+\(store.monthlyIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) vs last month")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .foregroundStyle(SpendyColors.incomeGreen)
                 }
@@ -179,14 +178,14 @@ struct AccountsSettingsView: View {
             // Section Header: Group Name on left, Total on right
             HStack {
                 Text("Wallets & Accounts")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.60))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
                 Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.60))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.horizontal, 4)
             
@@ -206,29 +205,29 @@ struct AccountsSettingsView: View {
                             // Rounded Square Badge with Initial Letter or Icon (Monochrome)
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(account.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
+                                    .fill(account.colorHex == "#18181B" ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
                                     .frame(width: 44, height: 44)
                                 
                                 if isCash {
                                     Image(systemName: "banknote.fill")
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(account.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
+                                        .foregroundStyle(account.colorHex == "#18181B" ? Color(uiColor: .dynamic(light: .white, dark: .black)) : SpendyColors.textPrimary)
                                 } else {
                                     Text(String(account.label.prefix(1)).uppercased())
-                                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                                        .foregroundStyle(account.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
+                                        .font(.system(size: 18, weight: .heavy))
+                                        .foregroundStyle(account.colorHex == "#18181B" ? Color(uiColor: .dynamic(light: .white, dark: .black)) : SpendyColors.textPrimary)
                                 }
                             }
                             
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
                                     Text(account.label)
-                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        .font(.system(size: 15, weight: .bold))
                                         .foregroundStyle(SpendyColors.textPrimary)
                                     
                                     if isPrimary {
                                         Text("PRIMARY")
-                                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                            .font(.system(size: 9, weight: .heavy))
                                             .tracking(0.6)
                                             .foregroundStyle(SpendyColors.textPrimary.opacity(0.8))
                                             .padding(.horizontal, 6)
@@ -238,14 +237,14 @@ struct AccountsSettingsView: View {
                                 }
                                 
                                 Text("Tap to edit balance")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                             
                             Spacer()
                             
                             Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .font(.system(size: 16, weight: .heavy))
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
                         .padding(16)
@@ -297,48 +296,47 @@ struct AccountsSettingsView: View {
             }
             .stroke(
                 LinearGradient(
-                    colors: [Color.white.opacity(0.3), Color.white],
+                    colors: [SpendyColors.textPrimary.opacity(0.3), SpendyColors.textPrimary],
                     startPoint: .leading,
                     endPoint: .trailing
                 ),
                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
             )
-            .shadow(color: Color.white.opacity(0.35), radius: 4, y: 1)
+            .shadow(color: SpendyColors.textPrimary.opacity(0.25), radius: 4, y: 1)
         }
     }
     
     // MARK: - Bottom Floating Action Buttons
     private var bottomFloatingBar: some View {
         HStack {
-            // Transfer ⇅ Button
-            Button(action: {
-                HapticsManager.shared.trigger(.medium)
+            // Transfer Button
+            GlassCircleButton(
+                icon: "arrow.up.arrow.down",
+                size: 54,
+                iconSize: 18,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .medium,
+                accessibilityLabel: "Transfer Funds"
+            ) {
                 showAddTransfer = true
-            }) {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 54, height: 54)
-                    .nativeLiquidGlassCircle(isInteractive: true)
-                    .shadow(color: Color.black.opacity(0.25), radius: 14, y: 6)
             }
-            .buttonStyle(.plain)
+            .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
             
             Spacer()
             
             // Plus (+) Add Account Button
-            Button(action: {
-                HapticsManager.shared.trigger(.medium)
+            GlassCircleButton(
+                icon: SFIcons.plus,
+                size: 54,
+                iconSize: 20,
+                tintColor: SpendyColors.primaryBlue,
+                foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
+                haptic: .medium,
+                accessibilityLabel: "Add Account"
+            ) {
                 showAddAccount = true
-            }) {
-                Image(systemName: SFIcons.plus)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 54, height: 54)
-                    .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.primaryBlue)
-                    .shadow(color: SpendyColors.primaryBlue.opacity(0.40), radius: 14, y: 6)
             }
-            .buttonStyle(.plain)
+            .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 20)
@@ -359,12 +357,12 @@ struct AccountsSettingsView: View {
                         }) {
                             HStack {
                                 Text("\(curr.symbol)  \(curr.name)")
-                                    .font(.system(.body, design: .rounded, weight: .medium))
-                                    .foregroundStyle(.white)
+                                    .font(.system(.body, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                 Spacer()
                                 Text(curr.code)
-                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                    .foregroundStyle(store.currencyCode == curr.code ? SpendyColors.primaryBlue : .white.opacity(0.4))
+                                    .font(.system(.subheadline, weight: .bold))
+                                    .foregroundStyle(store.currencyCode == curr.code ? SpendyColors.primaryBlue : SpendyColors.textTertiary)
                                 
                                 if store.currencyCode == curr.code {
                                     Image(systemName: SFIcons.checkmark)

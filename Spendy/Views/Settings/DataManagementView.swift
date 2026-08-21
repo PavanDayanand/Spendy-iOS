@@ -27,23 +27,22 @@ struct DataManagementView: View {
                 VStack(spacing: 24) {
                     // Header
                     HStack {
-                        Button(action: {
-                            HapticsManager.shared.trigger(.selection)
+                        GlassCircleButton(
+                            icon: "chevron.left",
+                            size: 44,
+                            iconSize: 15,
+                            foregroundColor: SpendyColors.textPrimary,
+                            haptic: .selection,
+                            accessibilityLabel: "Back"
+                        ) {
                             dismiss()
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
-                                .nativeLiquidGlassCircle(isInteractive: true)
                         }
-                        .buttonStyle(.plain)
                         
                         Spacer()
                         
                         Text("Data Management")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
                         
                         Spacer()
                         
@@ -53,9 +52,9 @@ struct DataManagementView: View {
                     // Backup & Export Section
                     VStack(alignment: .leading, spacing: 10) {
                         Text("BACKUP & EXPORT")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold))
                             .tracking(1.0)
-                            .foregroundStyle(.white.opacity(0.45))
+                            .foregroundStyle(SpendyColors.textTertiary)
                             .padding(.horizontal, 4)
                         
                         VStack(spacing: 0) {
@@ -69,7 +68,7 @@ struct DataManagementView: View {
                             }
                             .buttonStyle(.plain)
                             
-                            Divider().overlay(Color.white.opacity(0.06))
+                            Divider().overlay(SpendyColors.separator)
                             
                             Button(action: { showFileImporter = true }) {
                                 rowItem(
@@ -86,7 +85,7 @@ struct DataManagementView: View {
                                 .fill(SpendyColors.cardBackground)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                     }
@@ -94,7 +93,7 @@ struct DataManagementView: View {
                     // Danger Zone
                     VStack(alignment: .leading, spacing: 10) {
                         Text("DANGER ZONE")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold))
                             .tracking(1.0)
                             .foregroundStyle(SpendyColors.expenseRed.opacity(0.8))
                             .padding(.horizontal, 4)
@@ -108,11 +107,11 @@ struct DataManagementView: View {
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Erase All Data")
-                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(SpendyColors.expenseRed)
                                     Text("Permanently delete local transactions")
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                                        .foregroundStyle(.white.opacity(0.40))
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textTertiary)
                                 }
                                 
                                 Spacer()
@@ -194,18 +193,18 @@ struct DataManagementView: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
             
             Spacer()
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.30))
+                .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(16)
     }

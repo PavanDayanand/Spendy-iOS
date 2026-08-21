@@ -60,36 +60,35 @@ struct ReceiptPrinterSheet: View {
                     VStack(spacing: 20) {
                         // Top Header Bar
                         HStack {
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: .white,
+                                haptic: .selection,
+                                accessibilityLabel: "Close"
+                            ) {
                                 dismiss()
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true)
                             }
-                            .buttonStyle(.plain)
                             
                             Spacer()
                             
                             Text("Monthly Receipt")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(.white)
                             
                             Spacer()
                             
-                            Button(action: {
+                            GlassCircleButton(
+                                icon: "square.and.arrow.up",
+                                size: 44,
+                                iconSize: 15,
+                                foregroundColor: .white,
+                                haptic: .light,
+                                accessibilityLabel: "Share Receipt"
+                            ) {
                                 exportReceipt()
-                            }) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true)
                             }
-                            .buttonStyle(.plain)
                         }
                         .padding(.top, 10)
                         
@@ -105,7 +104,7 @@ struct ReceiptPrinterSheet: View {
                             }
                             
                             Text(monthTitle)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(.white)
                                 .frame(minWidth: 140)
                             

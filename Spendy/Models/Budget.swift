@@ -9,7 +9,7 @@ import Foundation
 
 enum BudgetPeriod: String, Codable, CaseIterable, Identifiable {
     case monthly = "monthly"
-    case yearly = "yearly"
+    case weekly = "weekly"
     
     var id: String { rawValue }
     var title: String { rawValue.capitalized }

@@ -22,12 +22,12 @@ struct WhatIfPlannerView: View {
             // Header
             HStack {
                 Text("Daily spend")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
                 Text(customDailySpend.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
             }
             
             // Slider
@@ -41,31 +41,31 @@ struct WhatIfPlannerView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            Divider().overlay(Color.white.opacity(0.08))
+            Divider().overlay(SpendyColors.separator)
             
             // Stats Row
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Projected expenses")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
                     
                     let projectedExp = store.customProjectedExpenses(dailySpend: customDailySpend)
                     Text(projectedExp.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Cycle-end balance")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
                     
                     let endBalance = store.customProjectedEndBalance(dailySpend: customDailySpend)
                     Text(endBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(endBalance < 0 ? SpendyColors.expenseRed : SpendyColors.incomeGreen)
                 }
             }
@@ -76,7 +76,7 @@ struct WhatIfPlannerView: View {
                 .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
         .onAppear {

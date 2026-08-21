@@ -76,23 +76,22 @@ struct SettingsView: View {
     private var headerBar: some View {
         HStack {
             // Circular Glass Close Button
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 14,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close"
+            ) {
                 dismiss()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
             
             Spacer()
             
             Text("Settings")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
@@ -106,21 +105,23 @@ struct SettingsView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Suggest a Feature")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("or report bugs & feedback")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.60))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
                 
                 Spacer()
                 
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .nativeLiquidGlassCircle(isInteractive: true)
+                GlassCircleIcon(
+                    icon: "arrow.up.right",
+                    size: 36,
+                    iconSize: 14,
+                    iconWeight: .bold,
+                    foregroundColor: SpendyColors.textPrimary
+                )
             }
             .padding(14)
             .background {
@@ -128,7 +129,7 @@ struct SettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.10), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -152,7 +153,7 @@ struct SettingsView: View {
                 
                 if !store.userName.isEmpty {
                     Text(String(store.userName.prefix(1)).uppercased())
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .font(.system(size: 24, weight: .heavy))
                         .foregroundStyle(.white)
                 } else {
                     Image(systemName: "person.fill")
@@ -163,28 +164,27 @@ struct SettingsView: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.userName.isEmpty ? "Your Name" : store.userName)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 
                 Text("Local-First & Offline Ready")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
             
             Spacer()
             
-            Button(action: {
+            GlassCircleButton(
+                icon: SFIcons.edit,
+                size: 38,
+                iconSize: 13,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Edit Name"
+            ) {
                 tempName = store.userName
-                HapticsManager.shared.trigger(.light)
                 showNameEdit = true
-            }) {
-                Image(systemName: SFIcons.edit)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
         }
         .padding(16)
         .background {
@@ -192,7 +192,7 @@ struct SettingsView: View {
                 .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
@@ -201,9 +201,9 @@ struct SettingsView: View {
     private var manageSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("MANAGE")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
@@ -217,7 +217,7 @@ struct SettingsView: View {
                     )
                 }
                 
-                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 // Categories Link
                 NavigationLink(destination: CategoriesSettingsView()) {
@@ -234,7 +234,7 @@ struct SettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -244,7 +244,7 @@ struct SettingsView: View {
     private var preferencesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("PREFERENCES")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(1.0)
                 .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
@@ -258,7 +258,7 @@ struct SettingsView: View {
                         .frame(width: 28, height: 28)
                     
                     Text("Appearance")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
@@ -305,7 +305,7 @@ struct SettingsView: View {
                         .frame(width: 28, height: 28)
                     
                     Text("Sound Effects")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
@@ -334,9 +334,9 @@ struct SettingsView: View {
     private var dataBackupSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("DATA & BACKUP")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
@@ -354,7 +354,7 @@ struct SettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -364,9 +364,9 @@ struct SettingsView: View {
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("ABOUT")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
@@ -375,20 +375,20 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 Button(action: { showCoffeeSheet = true }) {
                     rowItem(icon: "cup.and.saucer.fill", iconColor: SpendyColors.warningOrange, title: "Buy Me a Coffee", badgeText: "Support")
                 }
                 .buttonStyle(.plain)
                 
-                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 Link(destination: URL(string: "https://www.instagram.com/pav6n?igsh=ZWg1aW1saW83NzZm&utm_source=qr")!) {
                     rowExternalItem(icon: "camera.fill", iconColor: Color(hex: "#FF375F"), title: "Instagram", value: "@pav6n")
                 }
                 
-                Divider().overlay(Color.white.opacity(0.06)).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 Link(destination: URL(string: "https://studiopavan.netlify.app")!) {
                     rowExternalItem(icon: "globe", iconColor: SpendyColors.primaryBlue, title: "Developer Website", value: "studiopavan")
@@ -399,7 +399,7 @@ struct SettingsView: View {
                     .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -409,8 +409,8 @@ struct SettingsView: View {
     private var footerSection: some View {
         VStack(spacing: 12) {
             Text("made with ❤️ by Pavan")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.45))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
             
             Image("SpendyLogo")
                 .resizable()
@@ -421,12 +421,12 @@ struct SettingsView: View {
             
             VStack(spacing: 2) {
                 Text("Spendy")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 
                 Text("Version 2.0.0 • Liquid Glass")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
         }
         .padding(.top, 12)
@@ -442,20 +442,20 @@ struct SettingsView: View {
                 .frame(width: 28, height: 28)
             
             Text(title)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
             if let badge = badgeText {
                 Text(badge)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.30))
+                .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(14)
     }
@@ -468,18 +468,18 @@ struct SettingsView: View {
                 .frame(width: 28, height: 28)
             
             Text(title)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.40))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
             
             Image(systemName: "arrow.up.right")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(14)
     }
@@ -510,12 +510,12 @@ struct SettingsView: View {
                     }) {
                         HStack {
                             Text("\(item.symbol)  \(item.code)")
-                                .font(.system(.body, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
+                                .font(.system(.body, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Text("• \(item.name)")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .font(.system(.subheadline))
+                                .foregroundStyle(SpendyColors.textSecondary)
                             
                             Spacer()
                             
@@ -550,8 +550,8 @@ struct SettingsView: View {
                 
                 VStack(spacing: 20) {
                     TextField("Enter your name", text: $tempName)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .padding(16)
                         .background {
                             RoundedRectangle(cornerRadius: 16)
@@ -587,8 +587,8 @@ struct SettingsView: View {
                 
                 VStack(alignment: .leading, spacing: 20) {
                     Text("What's New in Spendy 2.0")
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .padding(.top, 10)
                     
                     VStack(alignment: .leading, spacing: 16) {
@@ -625,18 +625,18 @@ struct SettingsView: View {
                         .padding(.top, 24)
                     
                     Text("Buy Me a Coffee")
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("Support Spendy independent development and help keep it ad-free and privacy-first!")
-                        .font(.system(.body, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .font(.system(.body))
+                        .foregroundStyle(SpendyColors.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
                     
                     Link(destination: URL(string: "https://www.buymeacoffee.com/spendy")!) {
                         Text("Open Buy Me a Coffee ☕")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -666,11 +666,11 @@ struct SettingsView: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 Text(desc)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
         }
     }

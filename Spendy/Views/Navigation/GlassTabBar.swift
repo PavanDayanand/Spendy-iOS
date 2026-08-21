@@ -1,24 +1,22 @@
 //
-//  GlassTabBar.swift
+//  LiquidGlassNavigation.swift
 //  Spendy
 //
-//  Native iOS 26 Liquid Glass Bottom Navigation
-//  Floating capsule pill with 4 tabs (tap + long-press drag) and detached Quick-Add button
-//  Wrapped in GlassEffectContainer for unified glass rendering and morphing
+//  iOS 26 Bottom Navigation with Dynamic Matched Gliding and Touch Feedback
 //
 
 import SwiftUI
 
-// MARK: - Tab Model
+// MARK: - App Tab Model
 
 enum AppTab: String, CaseIterable, Identifiable {
     case home
     case analytics
     case budget
     case manage
-    
+
     var id: String { rawValue }
-    
+
     var label: String {
         switch self {
         case .home: return "Home"
@@ -27,234 +25,250 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .manage: return "Manage"
         }
     }
-    
+
     var sfSymbol: String {
         switch self {
-        case .home: return SFIcons.tabDashboard
-        case .analytics: return SFIcons.tabAnalytics
-        case .budget: return SFIcons.tabBudget
-        case .manage: return SFIcons.tabManage
+        case .home: return "house.fill"
+        case .analytics: return "chart.bar.fill"
+        case .budget: return "dollarsign.circle.fill"
+        case .manage: return "slider.horizontal.3"
         }
     }
 }
 
-// MARK: - Draggable Glass Tab Bar
+// MARK: - Main Adaptive Container
+
+struct LiquidGlassRootView: View {
+    @State private var selectedTab: AppTab = .home
+    @State private var sidebarSelection: AppTab? = .home
+    @State private var showQuickAdd: Bool = false
+
+    var body: some View {
+        NavigationSplitView {
+            List(AppTab.allCases, selection: $sidebarSelection) { tab in
+                Label(tab.label, systemImage: tab.sfSymbol)
+                    .tag(tab as AppTab?)
+            }
+            .navigationTitle("Spendy")
+        } detail: {
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        ForEach(0..<20) { _ in
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.primary.opacity(0.05))
+                                .frame(height: 100)
+                                .padding(.horizontal)
+                        }
+                    }
+                    .padding(.top)
+                    .padding(.bottom, 100)
+                }
+                .ignoresSafeArea(edges: .bottom)
+
+                GlassTabBar(selectedTab: Binding(
+                    get: { sidebarSelection ?? selectedTab },
+                    set: { newValue in
+                        selectedTab = newValue
+                        sidebarSelection = newValue
+                    }
+                )) {
+                    showQuickAdd = true
+                }
+                .padding(.bottom, 8)
+            }
+        }
+        .onChange(of: sidebarSelection) { oldValue, newValue in
+            if let newValue {
+                selectedTab = newValue
+            }
+        }
+    }
+}
+
+// MARK: - Liquid Glass Tab Bar
 
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
-    var onQuickAdd: () -> Void
-    
-    @Namespace private var tabHighlightNamespace
-    @State private var isDragging: Bool = false
-    
-    /// Per-tab frames captured via GeometryReader preferences
-    @State private var tabFrames: [AppTab: CGRect] = [:]
-    
+    let onQuickAdd: () -> Void
+
+    @GestureState private var isDragging: Bool = false
+    @State private var dragX: CGFloat? = nil
+
+    private let barHeight: CGFloat = 64
+    private let quickAddSize: CGFloat = 60
+
     var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 12) {
+                HStack(spacing: 12) {
+                    tabBarContent(isGlass: true)
+                        .frame(height: barHeight)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+
+                    // Quick Add Floating Button
+                    Button {
+                        let impact = UIImpactFeedbackGenerator(style: .medium)
+                        impact.impactOccurred()
+                        onQuickAdd()
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(Color.primary)
+                            .frame(width: quickAddSize, height: quickAddSize)
+                            .glassEffect(.regular.interactive(), in: .circle)
+                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                    }
+                    .buttonStyle(LiquidScaleButtonStyle())
+                }
+                .padding(.horizontal, 16)
+            }
+        } else {
+            fallbackContent
+        }
+    }
+
+    @ViewBuilder
+    var fallbackContent: some View {
         HStack(spacing: 12) {
-            tabPill
-            quickAddButton
+            tabBarContent(isGlass: false)
+                .frame(height: barHeight)
+                .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+
+            // Quick Add Floating Button (Fallback)
+            Button {
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                onQuickAdd()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Color.primary)
+                    .frame(width: quickAddSize, height: quickAddSize)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(
+                        Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+            }
+            .buttonStyle(LiquidScaleButtonStyle())
         }
         .padding(.horizontal, 16)
     }
-    
-    // MARK: - Tab Pill
-    
-    private var tabPill: some View {
-        HStack(spacing: 4) {
-            ForEach(AppTab.allCases) { tab in
-                tabItem(for: tab)
-            }
-        }
-        .padding(4)
-        .frame(height: 64)
-        .glassEffect(.regular.interactive(), in: .capsule)
-        .shadow(color: Color.black.opacity(0.18), radius: 18, x: 0, y: 10)
-        .coordinateSpace(name: "tabPill")
-        .onPreferenceChange(TabFramePreferenceKey.self) { frames in
-            tabFrames = frames
-        }
-        .gesture(dragGesture)
-    }
-    
-    // MARK: - Individual Tab Item
-    
-    private func tabItem(for tab: AppTab) -> some View {
-        let isSelected = selectedTab == tab
-        
-        return Button(action: {
-            guard !isDragging else { return }
-            HapticsManager.shared.trigger(.selection)
-            withAnimation(.spring(response: 0.30, dampingFraction: 0.76)) {
-                selectedTab = tab
-            }
-        }) {
-            VStack(spacing: 4) {
-                Image(systemName: tab.sfSymbol)
-                    .font(.system(size: 20, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .frame(height: 24)
-                    .scaleEffect(isSelected ? 1.15 : 1.0)
-                
-                Text(tab.label)
-                    .font(.system(size: 10, weight: isSelected ? .bold : .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-                    .scaleEffect(isSelected ? 1.05 : 1.0)
-            }
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
-            .animation(.spring(response: 0.30, dampingFraction: 0.76), value: isSelected)
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background {
-                if isSelected {
+}
+
+// MARK: - Interactive Tab Bar Layout Content
+
+private extension GlassTabBar {
+
+    func tabBarContent(isGlass: Bool) -> some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let count = CGFloat(AppTab.allCases.count)
+            let itemWidth = totalWidth / count
+            let activeIndex = CGFloat(AppTab.allCases.firstIndex(of: selectedTab) ?? 0)
+
+            let pillWidth = isDragging ? itemWidth + 4 : itemWidth - 8
+            let pillHeight: CGFloat = isDragging ? 52 : 44
+
+            let currentOffset: CGFloat = {
+                if let dragX = dragX {
+                    let halfWidth = pillWidth / 2
+                    let rawX = dragX - halfWidth
+                    let minOffset: CGFloat = isDragging ? -2 : 4
+                    let maxOffset = totalWidth - pillWidth - (isDragging ? -2 : 4)
+                    return min(max(rawX, minOffset), maxOffset)
+                } else {
+                    return (activeIndex * itemWidth) + (isDragging ? -2 : 4)
+                }
+            }()
+
+            ZStack(alignment: .leading) {
+                // Background Shell for Non-Glass Fallback
+                if !isGlass {
                     Capsule(style: .continuous)
-                        .glassEffect(
-                            .regular.tint(SpendyColors.primaryBlue).interactive(),
-                            in: .capsule
-                        )
-                        .glassEffectID("selectedTabHighlight", in: tabHighlightNamespace)
-                        .shadow(
-                            color: SpendyColors.primaryBlue.opacity(isDragging ? 0.45 : 0.30),
-                            radius: isDragging ? 14 : 10,
-                            x: 0,
-                            y: isDragging ? 6 : 4
-                        )
-                        .scaleEffect(isDragging ? 1.08 : 1.0)
-                        .matchedGeometryEffect(id: "selectedTab", in: tabHighlightNamespace)
-                }
-            }
-            .contentShape(Capsule())
-            // Capture each tab's frame for drag hit-testing
-            .background {
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(
-                            key: TabFramePreferenceKey.self,
-                            value: [tab: geo.frame(in: .named("tabPill"))]
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
                         )
                 }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tab.label)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-    
-    // MARK: - Drag Gesture
-    
-    /// Long-press (0.2s) sequenced with drag to enable hold-and-slide tab switching
-    private var dragGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.2)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("tabPill")))
-            .onChanged { value in
-                switch value {
-                case .second(true, let drag):
-                    if !isDragging {
-                        isDragging = true
-                        HapticsManager.shared.trigger(.selection)
+
+                // Dynamic Gliding Pill Indicator (Expanded bubble when dragging/holding)
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(isDragging ? 0.20 : 0.12))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.primary.opacity(isDragging ? 0.30 : 0.18), lineWidth: 1)
+                    )
+                    .frame(width: pillWidth, height: pillHeight)
+                    .offset(x: currentOffset)
+                    .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selectedTab)
+                    .animation(.spring(response: 0.20, dampingFraction: 0.60), value: isDragging)
+                    .animation(.interactiveSpring(response: 0.15, dampingFraction: 0.80, blendDuration: 0), value: dragX)
+
+                // Interactive Tab Elements
+                HStack(spacing: 0) {
+                    ForEach(AppTab.allCases) { tab in
+                        let isSelected = selectedTab == tab
+
+                        VStack(spacing: 3) {
+                            Image(systemName: tab.sfSymbol)
+                                .font(.system(size: 19, weight: isSelected ? .bold : .regular))
+                                .foregroundStyle(isSelected ? Color.primary : Color.primary.opacity(0.55))
+                                .scaleEffect(isSelected && isDragging ? 1.15 : 1.0)
+
+                            Text(tab.label)
+                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? Color.primary : Color.primary.opacity(0.55))
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
                     }
-                    
-                    guard let drag = drag else { return }
-                    
-                    // Find which tab the finger is over
-                    if let hoveredTab = tabAtLocation(drag.location) {
-                        if hoveredTab != selectedTab {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.30, dampingFraction: 0.76)) {
-                                selectedTab = hoveredTab
-                            }
+                }
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .updating($isDragging) { _, state, _ in
+                        state = true
+                    }
+                    .onChanged { value in
+                        let x = value.location.x
+                        dragX = x
+                        
+                        let targetIndex = min(max(Int(x / itemWidth), 0), AppTab.allCases.count - 1)
+                        let newTab = AppTab.allCases[targetIndex]
+
+                        if newTab != selectedTab {
+                            selectWithHaptic(newTab)
                         }
                     }
-                default:
-                    break
-                }
-            }
-            .onEnded { _ in
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.76)) {
-                    isDragging = false
-                }
-            }
-    }
-    
-    /// Determines which tab the given point falls within, using captured GeometryReader frames
-    private func tabAtLocation(_ point: CGPoint) -> AppTab? {
-        for tab in AppTab.allCases {
-            if let frame = tabFrames[tab], frame.contains(point) {
-                return tab
-            }
-        }
-        // Fallback: find the nearest tab by horizontal distance
-        var closest: AppTab?
-        var closestDistance: CGFloat = .infinity
-        for tab in AppTab.allCases {
-            if let frame = tabFrames[tab] {
-                let distance = abs(frame.midX - point.x)
-                if distance < closestDistance {
-                    closestDistance = distance
-                    closest = tab
-                }
-            }
-        }
-        return closest
-    }
-    
-    // MARK: - Quick Add Button
-    
-    private var quickAddButton: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.medium)
-            onQuickAdd()
-        }) {
-            Image(systemName: SFIcons.quickAdd)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(SpendyColors.appBackground)
-                .frame(width: 58, height: 58)
-                .background {
-                    Circle()
-                        .fill(SpendyColors.textPrimary)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .shadow(color: Color.black.opacity(0.18), radius: 16, x: 0, y: 8)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Add transaction")
-    }
-}
-
-// MARK: - Preference Key for Tab Frames
-
-struct TabFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [AppTab: CGRect] = [:]
-    
-    static func reduce(value: inout [AppTab: CGRect], nextValue: () -> [AppTab: CGRect]) {
-        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-    }
-}
-
-// MARK: - Extension to collect tab frames
-
-extension View {
-    func onTabFramesChange(_ action: @escaping ([AppTab: CGRect]) -> Void) -> some View {
-        self.onPreferenceChange(TabFramePreferenceKey.self, perform: action)
-    }
-}
-
-// MARK: - Preview
-
-#Preview {
-    ZStack {
-        SpendyColors.appBackground
-            .ignoresSafeArea()
-        
-        VStack {
-            Spacer()
-            GlassTabBar(
-                selectedTab: .constant(.home),
-                onQuickAdd: {}
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                            dragX = nil
+                        }
+                    }
             )
-            .padding(.bottom, 8)
         }
     }
-    .preferredColorScheme(.dark)
+
+    private func selectWithHaptic(_ tab: AppTab) {
+        guard selectedTab != tab else { return }
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+            selectedTab = tab
+        }
+    }
+}
+
+// MARK: - Scale Animation Style
+
+struct LiquidScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+    }
 }

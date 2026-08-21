@@ -29,7 +29,7 @@ struct GlassCard<Content: View>: View {
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }

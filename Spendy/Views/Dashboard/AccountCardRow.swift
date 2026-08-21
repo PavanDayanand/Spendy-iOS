@@ -14,7 +14,7 @@ struct AccountCardRow: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("ACCOUNTS")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(1.0)
                     .foregroundStyle(.white.opacity(0.45))
                 
@@ -43,12 +43,12 @@ struct AccountCardRow: View {
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(account.label)
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .font(.system(size: 12, weight: .medium))
                                         .foregroundStyle(.white.opacity(0.65))
                                         .lineLimit(1)
                                     
                                     Text(balance.formattedCurrency(symbol: store.currencySymbol))
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .font(.system(size: 16, weight: .bold))
                                         .foregroundStyle(.white)
                                 }
                             }

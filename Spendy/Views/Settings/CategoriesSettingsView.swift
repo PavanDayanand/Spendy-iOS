@@ -84,23 +84,22 @@ struct CategoriesSettingsView: View {
     private var headerBar: some View {
         HStack {
             // Circular Glass Back Button
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back"
+            ) {
                 dismiss()
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .nativeLiquidGlassCircle(isInteractive: true)
             }
-            .buttonStyle(.plain)
             
             Spacer()
             
             Text("Categories")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
@@ -112,8 +111,8 @@ struct CategoriesSettingsView: View {
                 HapticsManager.shared.trigger(.light)
             }) {
                 Text(isEditMode ? "Done" : "Edit")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isEditMode ? SpendyColors.primaryBlue : .white)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .nativeLiquidGlassCapsule(isInteractive: true)
@@ -134,7 +133,7 @@ struct CategoriesSettingsView: View {
                 .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 0.8)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
@@ -147,15 +146,19 @@ struct CategoriesSettingsView: View {
             HapticsManager.shared.trigger(.selection)
         }) {
             Text(title)
-                .font(.system(size: 14, weight: selectedType == type ? .bold : .medium, design: .rounded))
-                .foregroundStyle(selectedType == type ? .white : .white.opacity(0.40))
+                .font(.system(size: 14, weight: selectedType == type ? .bold : .medium))
+                .foregroundStyle(
+                    selectedType == type
+                        ? Color(uiColor: .dynamic(light: .white, dark: .black))
+                        : SpendyColors.textSecondary
+                )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
                 .background {
                     if selectedType == type {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.18))
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
+                            .fill(SpendyColors.primaryBlue)
+                            .shadow(color: Color.black.opacity(0.15), radius: 4, y: 2)
                     }
                 }
         }
@@ -202,8 +205,8 @@ struct CategoriesSettingsView: View {
             // Folder Header with "Edit" Button on right
             HStack {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
@@ -214,8 +217,8 @@ struct CategoriesSettingsView: View {
                     HapticsManager.shared.trigger(.light)
                 }) {
                     Text("Edit")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -232,16 +235,16 @@ struct CategoriesSettingsView: View {
                             // Circular Icon Badge (Monochrome)
                             ZStack {
                                 Circle()
-                                    .fill(cat.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
+                                    .fill(cat.colorHex == "#18181B" ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
                                     .frame(width: 38, height: 38)
                                 
                                 Image(systemName: cat.sfSymbol)
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(cat.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
+                                    .foregroundStyle(cat.colorHex == "#18181B" ? Color(uiColor: .dynamic(light: .white, dark: .black)) : SpendyColors.textPrimary)
                             }
                             
                             Text(cat.label)
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
@@ -295,11 +298,11 @@ struct CategoriesSettingsView: View {
         VStack(spacing: 12) {
             Image(systemName: SFIcons.categoriesFolder)
                 .font(.system(size: 36, weight: .light))
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(SpendyColors.textTertiary)
             
             Text("No categories found")
-                .font(.system(.body, design: .rounded, weight: .medium))
-                .foregroundStyle(.white.opacity(0.65))
+                .font(.system(.body, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -312,11 +315,11 @@ struct CategoriesSettingsView: View {
             HStack(spacing: 8) {
                 Image(systemName: SFIcons.search)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(SpendyColors.textTertiary)
                 
                 TextField("Search categories", text: $searchQuery)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SpendyColors.textPrimary)
                 
                 if !searchQuery.isEmpty {
                     Button {
@@ -324,7 +327,7 @@ struct CategoriesSettingsView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
             }
@@ -333,19 +336,19 @@ struct CategoriesSettingsView: View {
             .nativeLiquidGlassCapsule(isInteractive: true)
             
             // Floating Plus (+) Button
-            Button(action: {
-                HapticsManager.shared.trigger(.medium)
+            GlassCircleButton(
+                icon: SFIcons.plus,
+                size: 52,
+                iconSize: 20,
+                tintColor: SpendyColors.primaryBlue,
+                foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
+                haptic: .medium,
+                accessibilityLabel: "Add Category"
+            ) {
                 selectedFolderForAdd = nil
                 showAddCategory = true
-            }) {
-                Image(systemName: SFIcons.plus)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .nativeLiquidGlassCircle(isInteractive: true)
-                    .shadow(color: Color.black.opacity(0.25), radius: 10, y: 4)
             }
-            .buttonStyle(.plain)
+            .shadow(color: Color.black.opacity(0.15), radius: 10, y: 4)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 20)

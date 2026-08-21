@@ -79,7 +79,7 @@ struct BudgetGaugeView: View {
                 // Background Arc Track
                 BudgetGaugeArcShape(progress: 1.0)
                     .stroke(
-                        Color(hex: "#2C2C2E"),
+                        SpendyColors.cardBackgroundSecondary,
                         style: StrokeStyle(lineWidth: 24, lineCap: .round)
                     )
                     .frame(height: 175)
@@ -98,28 +98,28 @@ struct BudgetGaugeView: View {
                 VStack(spacing: 4) {
                     if isExceeded {
                         Text("Over Budget")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.55))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
                         
                         Text(excessAmount.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                            .font(.system(size: 40, weight: .heavy, design: .rounded))
+                            .font(.system(size: 40, weight: .heavy))
                             .foregroundStyle(Color(hex: "#FF453A"))
                         
                         Text("+\(Int(round(percentage - 100)))% over limit")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color(hex: "#FF453A"))
                             .padding(.top, 2)
                     } else {
                         Text("Remaining")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.55))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
                         
                         Text(remainingAmount.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                            .font(.system(size: 40, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 40, weight: .heavy))
+                            .foregroundStyle(SpendyColors.textPrimary)
                         
                         Text("\(Int(round(percentage)))% of budget used")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(strokeColor)
                             .padding(.top, 2)
                     }

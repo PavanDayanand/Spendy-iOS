@@ -65,22 +65,21 @@ struct CurrencyConverterSheet: View {
                     VStack(spacing: 22) {
                         // Top Header Bar
                         HStack {
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: .white,
+                                haptic: .selection,
+                                accessibilityLabel: "Close"
+                            ) {
                                 dismiss()
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .nativeLiquidGlassCircle(isInteractive: true)
                             }
-                            .buttonStyle(.plain)
                             
                             Spacer()
                             
                             Text("Currency Converter")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(.white)
                             
                             Spacer()
@@ -95,7 +94,7 @@ struct CurrencyConverterSheet: View {
                                 .fill(SpendyColors.incomeGreen)
                                 .frame(width: 8, height: 8)
                             Text("Real-Time Exchange Rates")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.75))
                         }
                         .padding(.horizontal, 12)
@@ -105,13 +104,13 @@ struct CurrencyConverterSheet: View {
                         // "From" Input Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("YOU SEND")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold))
                                 .tracking(1.0)
                                 .foregroundStyle(.white.opacity(0.40))
                             
                             HStack {
                                 TextField("100", text: $fromAmount)
-                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                                    .font(.system(size: 32, weight: .heavy))
                                     .foregroundStyle(.white)
                                     .keyboardType(.decimalPad)
                                 
@@ -125,7 +124,7 @@ struct CurrencyConverterSheet: View {
                                         Text(currencySymbols[fromCurrency] ?? "")
                                             .font(.system(size: 15, weight: .bold))
                                         Text(fromCurrency)
-                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                            .font(.system(size: 15, weight: .bold))
                                         Image(systemName: "chevron.down")
                                             .font(.system(size: 11, weight: .bold))
                                     }
@@ -148,33 +147,33 @@ struct CurrencyConverterSheet: View {
                         }
                         
                         // Quick Swap Button ⇅
-                        Button(action: {
+                        GlassCircleButton(
+                            icon: "arrow.up.arrow.down",
+                            size: 44,
+                            iconSize: 16,
+                            tintColor: SpendyColors.primaryBlue,
+                            foregroundColor: .white,
+                            haptic: .medium,
+                            accessibilityLabel: "Swap Currencies"
+                        ) {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 let temp = fromCurrency
                                 fromCurrency = toCurrency
                                 toCurrency = temp
                             }
-                            HapticsManager.shared.trigger(.medium)
-                        }) {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
-                                .nativeLiquidGlassCircle(isInteractive: true, tint: SpendyColors.primaryBlue)
-                                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 3)
                         }
-                        .buttonStyle(.plain)
+                        .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 3)
                         
                         // "To" Result Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("THEY RECEIVE")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold))
                                 .tracking(1.0)
                                 .foregroundStyle(.white.opacity(0.40))
                             
                             HStack {
                                 Text(String(format: "%.2f", convertedAmount))
-                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                                    .font(.system(size: 32, weight: .heavy))
                                     .foregroundStyle(SpendyColors.incomeGreen)
                                 
                                 Spacer()
@@ -187,7 +186,7 @@ struct CurrencyConverterSheet: View {
                                         Text(currencySymbols[toCurrency] ?? "")
                                             .font(.system(size: 15, weight: .bold))
                                         Text(toCurrency)
-                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                            .font(.system(size: 15, weight: .bold))
                                         Image(systemName: "chevron.down")
                                             .font(.system(size: 11, weight: .bold))
                                     }
@@ -211,7 +210,7 @@ struct CurrencyConverterSheet: View {
                         
                         // Rate Exchange Info Box
                         Text(exchangeRateText)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.50))
                             .padding(.top, 4)
                     }
@@ -249,7 +248,7 @@ struct CurrencyConverterSheet: View {
                         }) {
                             HStack {
                                 Text("\(currencySymbols[code] ?? "")  \(code)")
-                                    .font(.system(.body, design: .rounded, weight: .bold))
+                                    .font(.system(.body, weight: .bold))
                                     .foregroundStyle(.white)
                                 
                                 Spacer()

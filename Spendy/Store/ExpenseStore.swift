@@ -459,23 +459,20 @@ final class ExpenseStore {
     /// Calculate the start of the budget cycle based on configured startDay and period
     func budgetCycleStart(for date: Date = Date()) -> Date {
         let calendar = Calendar.current
-        let year = calendar.component(.year, from: date)
-        let month = calendar.component(.month, from: date)
-        let targetDay = min(max(budget.startDay, 1), 28)
         
-        var components = DateComponents()
-        components.year = year
-        components.day = targetDay
-        
-        if budget.period == .yearly {
-            components.month = 1
-            guard let candidate = calendar.date(from: components) else { return date }
-            if date < candidate {
-                components.year = year - 1
-                return calendar.date(from: components) ?? date
-            }
-            return candidate
+        if budget.period == .weekly {
+            let currentWeekday = calendar.component(.weekday, from: date)
+            let diff = (currentWeekday - budget.startDay + 7) % 7
+            let startOfDay = calendar.startOfDay(for: date)
+            return calendar.date(byAdding: .day, value: -diff, to: startOfDay) ?? date
         } else {
+            let year = calendar.component(.year, from: date)
+            let month = calendar.component(.month, from: date)
+            let targetDay = min(max(budget.startDay, 1), 28)
+            
+            var components = DateComponents()
+            components.year = year
+            components.day = targetDay
             components.month = month
             guard let candidate = calendar.date(from: components) else { return date }
             if date < candidate {
@@ -491,8 +488,8 @@ final class ExpenseStore {
     func budgetCycleEnd(for date: Date = Date()) -> Date {
         let start = budgetCycleStart(for: date)
         let calendar = Calendar.current
-        if budget.period == .yearly {
-            return calendar.date(byAdding: .year, value: 1, to: start) ?? start
+        if budget.period == .weekly {
+            return calendar.date(byAdding: .day, value: 7, to: start) ?? start
         } else {
             return calendar.date(byAdding: .month, value: 1, to: start) ?? start
         }
@@ -508,13 +505,13 @@ final class ExpenseStore {
             .reduce(0.0) { $0 + $1.amount }
     }
     
-    /// Target budget amount scaled for the selected view period (monthly vs yearly)
+    /// Target budget amount scaled for the selected view period (monthly vs weekly)
     func budgetTargetAmount(for viewPeriod: BudgetPeriod) -> Double {
         guard budget.isActive, budget.amount > 0 else { return 0.0 }
-        if budget.period == .yearly && viewPeriod == .monthly {
-            return budget.amount / 12.0
-        } else if budget.period == .monthly && viewPeriod == .yearly {
-            return budget.amount * 12.0
+        if budget.period == .weekly && viewPeriod == .monthly {
+            return budget.amount * 4.3333
+        } else if budget.period == .monthly && viewPeriod == .weekly {
+            return budget.amount / 4.3333
         }
         return budget.amount
     }
@@ -721,9 +718,7 @@ final class ExpenseStore {
     }
     
     func removeCategoryBudget(categoryId: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            budget.categoryBudgets.removeValue(forKey: categoryId)
-        }
+        budget.categoryBudgets.removeValue(forKey: categoryId)
         HapticsManager.shared.trigger(.medium)
     }
     

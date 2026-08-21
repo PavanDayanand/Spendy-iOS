@@ -45,7 +45,7 @@ struct NativeLiquidGlassModifier: ViewModifier {
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
         }
@@ -76,12 +76,12 @@ struct NativeLiquidGlassPillModifier: ViewModifier {
                 .padding(.vertical, 8)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(isSelected ? (tintColor ?? SpendyColors.primaryBlue) : Color.white.opacity(0.08))
+                        .fill(isSelected ? (tintColor ?? SpendyColors.primaryBlue) : SpendyColors.cardBackgroundSecondary)
                         .background(.ultraThinMaterial, in: Capsule(style: .continuous))
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    isSelected ? Color.white.opacity(0.35) : Color.white.opacity(0.1),
+                                    SpendyColors.separator,
                                     lineWidth: 0.8
                                 )
                         }
@@ -128,15 +128,7 @@ struct NativeLiquidGlassCapsuleModifier: ViewModifier {
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.50),
-                                            Color.white.opacity(0.18),
-                                            Color.white.opacity(0.06)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
+                                    SpendyColors.separator,
                                     lineWidth: 0.8
                                 )
                         }
@@ -173,15 +165,7 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
                         .overlay {
                             Circle()
                                 .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.55),
-                                            Color.white.opacity(0.18),
-                                            Color.white.opacity(0.06)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
+                                    SpendyColors.separator,
                                     lineWidth: 0.8
                                 )
                         }
@@ -209,7 +193,7 @@ struct GlassToggleStyle: ToggleStyle {
                 ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                     // Glass Pill Track
                     Capsule(style: .continuous)
-                        .fill(configuration.isOn ? tintColor : Color.white.opacity(0.12))
+                        .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
                         .overlay {
                             if !configuration.isOn {
                                 Capsule(style: .continuous)
@@ -219,30 +203,23 @@ struct GlassToggleStyle: ToggleStyle {
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(configuration.isOn ? 0.50 : 0.25),
-                                            Color.white.opacity(0.08)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
+                                    SpendyColors.separator,
                                     lineWidth: 0.8
                                 )
                         }
                         .frame(width: 50, height: 30)
-                        .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.15), radius: 6, y: 2)
+                        .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
                     
                     // Specular Thumb Knob
                     Circle()
-                        .fill(Color.white)
+                        .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
                         .overlay {
                             Circle()
-                                .stroke(Color.white.opacity(0.8), lineWidth: 0.5)
+                                .stroke(SpendyColors.separator, lineWidth: 0.5)
                         }
                         .frame(width: 26, height: 26)
                         .padding(.horizontal, 2)
-                        .shadow(color: Color.black.opacity(0.30), radius: 3, x: 0, y: 1.5)
+                        .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
                 }
             }
             .buttonStyle(.plain)
@@ -266,7 +243,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     @Namespace private var segmentNamespace
     
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             ForEach(items) { item in
                 let isSelected = selection == item
                 
@@ -276,17 +253,21 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     }
                     HapticsManager.shared.trigger(.selection)
                 }) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         if let icon = iconFor?(item) {
                             Image(systemName: icon)
                                 .font(.system(size: 11, weight: .bold))
                         }
                         Text(titleFor(item))
-                            .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
                     }
-                    .foregroundStyle(isSelected ? .white : Color.white.opacity(0.55))
+                    .foregroundStyle(
+                        isSelected
+                            ? (activeTint == SpendyColors.primaryBlue ? Color(uiColor: .dynamic(light: .white, dark: .black)) : Color.white)
+                            : SpendyColors.textSecondary
+                    )
                     .frame(maxWidth: .infinity)
-                    .frame(height: 36)
+                    .frame(height: 38)
                     .background {
                         if isSelected {
                             Capsule(style: .continuous)
@@ -294,18 +275,11 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                                 .overlay {
                                     Capsule(style: .continuous)
                                         .stroke(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.55),
-                                                    Color.white.opacity(0.12)
-                                                ],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            ),
+                                            SpendyColors.separator.opacity(0.4),
                                             lineWidth: 0.8
                                         )
                                 }
-                                .shadow(color: activeTint.opacity(0.40), radius: 8, y: 2)
+                                .shadow(color: activeTint.opacity(0.25), radius: 6, y: 1.5)
                                 .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
                         }
                     }
@@ -314,25 +288,14 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(3)
+        .padding(4)
         .background {
             Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.04))
-                }
+                .fill(SpendyColors.cardBackgroundSecondary)
                 .overlay {
                     Capsule(style: .continuous)
                         .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.20),
-                                    Color.white.opacity(0.06)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
+                            SpendyColors.separator,
                             lineWidth: 0.8
                         )
                 }

@@ -18,7 +18,7 @@ struct BalanceCardView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
                         Text("TOTAL NET BALANCE")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold))
                             .tracking(1.0)
                             .foregroundStyle(.white.opacity(0.5))
                         
@@ -39,11 +39,11 @@ struct BalanceCardView: View {
                     
                     if isBalanceHidden {
                         Text("\(store.currencySymbol) • • • • • •")
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .font(.system(size: 32, weight: .heavy))
                             .foregroundStyle(.white)
                     } else {
                         Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .font(.system(size: 34, weight: .heavy))
                             .foregroundStyle(.white)
                             .contentTransition(.numericText())
                     }
@@ -53,7 +53,7 @@ struct BalanceCardView: View {
                 
                 // Period Badge
                 Text(Date().formattedMonthYear)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.8))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -78,11 +78,11 @@ struct BalanceCardView: View {
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Income")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.white.opacity(0.55))
                         
                         Text(isBalanceHidden ? "••••" : store.monthlyIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.white)
                     }
                     Spacer(minLength: 0)
@@ -104,11 +104,11 @@ struct BalanceCardView: View {
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Expenses")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.white.opacity(0.55))
                         
                         Text(isBalanceHidden ? "••••" : store.monthlyExpense.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.white)
                     }
                     Spacer(minLength: 0)

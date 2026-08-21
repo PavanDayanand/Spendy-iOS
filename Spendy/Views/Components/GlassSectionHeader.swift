@@ -15,7 +15,7 @@ struct GlassSectionHeader: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.system(.title3, design: .rounded, weight: .bold))
+                .font(.system(.title3, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
@@ -27,7 +27,7 @@ struct GlassSectionHeader: View {
                 }) {
                     HStack(spacing: 4) {
                         Text(actionTitle)
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .font(.system(.subheadline, weight: .medium))
                         Image(systemName: SFIcons.chevronRight)
                             .font(.system(size: 11, weight: .semibold))
                     }

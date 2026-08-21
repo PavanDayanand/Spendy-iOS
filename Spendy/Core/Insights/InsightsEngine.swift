@@ -148,7 +148,7 @@ struct InsightsEngine {
         let isMonthPeriod = (calendar.dateComponents([.day], from: periodStart, to: periodEnd).day ?? 0) >= 28
         
         if budget.isActive && budget.amount > 0 && isMonthPeriod && dataType == .expense {
-            let limit = budget.period == .yearly ? budget.amount / 12.0 : budget.amount
+            let limit = budget.period == .weekly ? budget.amount * 4.3333 : budget.amount
             let percentSpent = (currentTotal / limit) * 100
             let currentDay = min(daysInMonth, max(1, (calendar.dateComponents([.day], from: periodStart, to: now).day ?? 0) + 1))
             let safePace = (Double(currentDay) / Double(daysInMonth)) * 100
