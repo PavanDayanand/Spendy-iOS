@@ -2,7 +2,7 @@
 //  ManageView.swift
 //  Spendy
 //
-//  Dedicated Subscriptions Management Hub with Liquid Glass Aesthetics and Clean iOS System Typography
+//  Subscriptions Management Hub — Bold Hero Stats, Interactive Cards, Edit-on-Tap
 //
 
 import SwiftUI
@@ -11,70 +11,65 @@ enum SubscriptionFilter: String, CaseIterable, Identifiable {
     case all
     case paid
     case trial
-    
+
     var id: String { rawValue }
-    
+
     var label: String {
         switch self {
-        case .all: return "All Bills"
-        case .paid: return "Paid"
-        case .trial: return "Free Trials"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .all: return "square.grid.2x2.fill"
-        case .paid: return "creditcard.fill"
-        case .trial: return "clock.badge.checkmark.fill"
+        case .all:   return "All"
+        case .paid:  return "Paid"
+        case .trial: return "Trials"
         }
     }
 }
 
+// MARK: - Manage View
+
 struct ManageView: View {
     @Environment(ExpenseStore.self) private var store
-    
+
     @State private var subFilter: SubscriptionFilter = .all
     @State private var showAddSubscription: Bool = false
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
-    @State private var selectedCategoryForSheet: Category? = nil
-    
+
     // MARK: - Computed Properties
+
     private var activeAndTrialSubs: [Subscription] {
         store.subscriptions.filter { !$0.isCancelled }
     }
-    
+
     private var cancelledSubs: [Subscription] {
         store.subscriptions.filter { $0.isCancelled }
     }
-    
+
     private var activeCount: Int {
         activeAndTrialSubs.filter { !$0.isTrial && !$0.isPaused }.count
     }
-    
+
+    private var pausedCount: Int {
+        activeAndTrialSubs.filter { $0.isPaused }.count
+    }
+
     private var trialCount: Int {
         activeAndTrialSubs.filter { $0.isTrial }.count
     }
-    
+
     private var totalMonthly: Double {
         activeAndTrialSubs.filter { !$0.isPaused && !$0.isTrial }.reduce(0.0) { sum, sub in
             switch sub.cycle {
             case .monthly: return sum + sub.amount
-            case .yearly: return sum + (sub.amount / 12.0)
-            case .weekly: return sum + (sub.amount * 4.33)
+            case .yearly:  return sum + (sub.amount / 12.0)
+            case .weekly:  return sum + (sub.amount * 4.33)
             }
         }
     }
-    
-    private var totalAnnual: Double {
-        totalMonthly * 12.0
-    }
-    
+
+    private var totalAnnual: Double { totalMonthly * 12.0 }
+
     private var upcomingSubscriptions: [Subscription] {
         let calendar = Calendar.current
         let now = calendar.startOfDay(for: Date())
-        
         return activeAndTrialSubs.filter { sub in
             guard !sub.isPaused else { return false }
             let target = calendar.startOfDay(for: sub.nextBillingDate)
@@ -82,40 +77,31 @@ struct ManageView: View {
             return days >= 0 && days <= 10
         }.sorted { $0.nextBillingDate < $1.nextBillingDate }
     }
-    
+
     private var filteredSubscriptions: [Subscription] {
         activeAndTrialSubs.filter { sub in
             switch subFilter {
-            case .all: return true
-            case .paid: return !sub.isTrial
+            case .all:   return true
+            case .paid:  return !sub.isTrial
             case .trial: return sub.isTrial
             }
         }
     }
-    
+
+    // MARK: - Body
+
     var body: some View {
         NavigationStack {
             ZStack {
                 LiquidMeshBackground()
-                
+
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // Title Header (Scrolls away with page)
                         titleHeader
-                        
-                        // MARK: - Stats Center Card
-                        statsCenterCard
-                        
-                        // MARK: - Due Soon Alert Slider
+                        heroStatsCard
                         dueSoonAlertSlider
-                        
-                        // MARK: - Filters Segmented Picker
-                        filterPicker
-                        
-                        // MARK: - Main Subscriptions List
+                        liquidGlassFilterPicker
                         mainList
-                        
-                        // MARK: - Past & Cancelled Section
                         pastAndCancelled
                     }
                     .padding(.horizontal, 20)
@@ -123,7 +109,6 @@ struct ManageView: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                // Sticky Plus Action Button (Stays fixed at top right)
                 GlassCircleButton(
                     icon: SFIcons.plus,
                     size: 44,
@@ -142,13 +127,14 @@ struct ManageView: View {
             .sheet(isPresented: $showAddSubscription) {
                 AddSubscriptionSheet()
             }
-            .sheet(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+            .sheet(item: $subscriptionToEdit) { sub in
+                AddSubscriptionSheet(subscriptionToEdit: sub)
             }
         }
     }
-    
-    // MARK: - Title Header (Scrolls away)
+
+    // MARK: - Title Header
+
     private var titleHeader: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
@@ -159,70 +145,107 @@ struct ManageView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(SpendyColors.textTertiary)
             }
-            
             Spacer()
         }
         .padding(.top, 10)
     }
-                        
-    // MARK: - Subviews for Pinned Layout
-    private var statsCenterCard: some View {
-        GlassCard(cornerRadius: 22) {
-            VStack(spacing: 16) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("MONTHLY BILLS")
+
+    // MARK: - Hero Stats Card
+
+    private var heroStatsCard: some View {
+        GlassCard(cornerRadius: 24) {
+            VStack(spacing: 0) {
+
+                // Top — monthly number + sparkline
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("MONTHLY SPEND")
                             .font(.system(size: 11, weight: .bold))
-                            .tracking(1.0)
+                            .tracking(1.2)
                             .foregroundStyle(SpendyColors.textTertiary)
-                        
+
                         Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 26, weight: .heavy))
+                            .font(.system(size: 38, weight: .heavy))
                             .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("ANNUAL PROJECTION")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(1.0)
-                            .foregroundStyle(SpendyColors.textTertiary)
-                        
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+
                         Text(totalAnnual.formattedCurrency(symbol: store.currencySymbol) + "/yr")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(SpendyColors.primaryBlue)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
                     }
+
+                    Spacer()
+
+                    // Same sparkline as the Dashboard account card
+                    AccountsMiniSparkline()
+                        .frame(width: 100, height: 44)
                 }
-                
+
                 Divider()
                     .background(SpendyColors.separator)
-                
-                HStack {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(SpendyColors.incomeGreen)
-                            .frame(width: 8, height: 8)
-                        Text("Active: **\(activeCount)**")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
+                    .padding(.vertical, 14)
+
+                // Bottom — stat pills row
+                HStack(spacing: 10) {
+                    statPill(
+                        icon: "checkmark.circle.fill",
+                        label: "Active",
+                        value: "\(activeCount)",
+                        iconColor: SpendyColors.textPrimary
+                    )
+
+                    if trialCount > 0 {
+                        statPill(
+                            icon: "clock.badge.checkmark.fill",
+                            label: "Trials",
+                            value: "\(trialCount)",
+                            iconColor: SpendyColors.warningOrange
+                        )
                     }
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(SpendyColors.warningOrange)
-                            .frame(width: 8, height: 8)
-                        Text("Free Trials: **\(trialCount)**")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
+
+                    if pausedCount > 0 {
+                        statPill(
+                            icon: "pause.circle.fill",
+                            label: "Paused",
+                            value: "\(pausedCount)",
+                            iconColor: SpendyColors.textTertiary
+                        )
                     }
+
                 }
             }
+            .padding(.vertical, 2)
         }
     }
-    
+
+
+    // MARK: - Filter Picker
+
+    private var liquidGlassFilterPicker: some View {
+        GlassSegmentedPicker(
+            selection: $subFilter,
+            items: SubscriptionFilter.allCases,
+            titleFor: { $0.label }
+        )
+    }
+
+    private func statPill(icon: String, label: String, value: String, iconColor: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(iconColor)
+            Text("\(value) \(label)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+    }
+
+    // MARK: - Due Soon Alert Slider
+
     @ViewBuilder
     private var dueSoonAlertSlider: some View {
         if !upcomingSubscriptions.isEmpty {
@@ -231,235 +254,81 @@ struct ManageView: View {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(SpendyColors.primaryBlue)
-                    Text("Due Soon (Next 10 Days)")
+                    Text("Due Soon")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
+                    Text("· next 10 days")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
-                
+
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         ForEach(upcomingSubscriptions) { sub in
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack(spacing: 10) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(sub.isDarkBadge ? Color(hex: "#18181B") : Color.white)
-                                            .frame(width: 36, height: 36)
-                                            .overlay {
-                                                Circle()
-                                                    .stroke(sub.isDarkBadge ? Color.white.opacity(0.2) : Color.black.opacity(0.12), lineWidth: 0.8)
-                                            }
-                                        
-                                        Image(systemName: sub.sfSymbol)
-                                            .font(.system(size: 16, weight: .bold))
-                                            .foregroundStyle(sub.isDarkBadge ? .white : .black)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(sub.name)
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundStyle(SpendyColors.textPrimary)
-                                            .lineLimit(1)
-                                        
-                                        Text(dueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundStyle(sub.isTrial ? SpendyColors.warningOrange : SpendyColors.primaryBlue)
-                                    }
-                                    
-                                    Spacer(minLength: 8)
-                                    
-                                    Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                }
-                                
-                                if sub.isTrial {
-                                    HStack(spacing: 8) {
-                                        Button(action: {
-                                            store.keepSubscription(id: sub.id)
-                                        }) {
-                                            Text("Keep Sub")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundStyle(SpendyColors.incomeGreen)
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 6)
-                                                .background(SpendyColors.incomeGreen.opacity(0.15), in: Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                        
-                                        Button(action: {
-                                            store.cancelSubscription(id: sub.id)
-                                        }) {
-                                            Text("Cancel Trial")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundStyle(SpendyColors.expenseRed)
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 6)
-                                                .background(SpendyColors.expenseRed.opacity(0.15), in: Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                } else {
-                                    Button(action: {
-                                        store.markSubscriptionAsPaid(id: sub.id)
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: SFIcons.checkmark)
-                                                .font(.system(size: 10, weight: .bold))
-                                            Text("Mark as Paid")
-                                                .font(.system(size: 11, weight: .bold))
-                                        }
-                                        .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(SpendyColors.primaryBlue, in: Capsule())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(14)
-                            .frame(width: 260)
-                            .background {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 1)
-                                    }
-                            }
-                            .onTapGesture {
-                                subscriptionToEdit = sub
-                            }
+                            DueSoonCard(
+                                sub: sub,
+                                currencySymbol: store.currencySymbol,
+                                onTap: { subscriptionToEdit = sub },
+                                onPaid: { store.markSubscriptionAsPaid(id: sub.id) },
+                                onKeep: { store.keepSubscription(id: sub.id) },
+                                onCancelTrial: { store.cancelSubscription(id: sub.id) }
+                            )
                         }
                     }
+                    .padding(.bottom, 4)
                 }
             }
         }
     }
-    
+
+    // MARK: - Filter Picker
+
     private var filterPicker: some View {
         GlassSegmentedPicker(
             selection: $subFilter,
             items: SubscriptionFilter.allCases,
-            titleFor: { $0.label },
-            iconFor: { $0.icon }
+            titleFor: { $0.label }
         )
     }
-    
+
+    // MARK: - Main List
+
     private var mainList: some View {
         VStack(spacing: 10) {
             if filteredSubscriptions.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: SFIcons.subscriptions)
-                        .font(.system(size: 28))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    Text("No subscriptions found")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                .padding(.vertical, 30)
+                emptyState
             } else {
                 ForEach(filteredSubscriptions) { sub in
-                    Button(action: {
-                        HapticsManager.shared.trigger(.light)
-                        subscriptionToEdit = sub
-                    }) {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(sub.isDarkBadge ? Color(hex: "#18181B") : Color.white)
-                                    .frame(width: 44, height: 44)
-                                    .overlay {
-                                        Circle()
-                                            .stroke(sub.isDarkBadge ? Color.white.opacity(0.2) : Color.black.opacity(0.12), lineWidth: 0.8)
-                                    }
-                                
-                                Image(systemName: sub.sfSymbol)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundStyle(sub.isDarkBadge ? .white : .black)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(sub.name)
-                                    .font(.system(.body, weight: .semibold))
-                                    .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                                
-                                HStack(spacing: 6) {
-                                    if sub.isTrial {
-                                        Text("Free Trial")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundStyle(SpendyColors.incomeGreen)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(SpendyColors.incomeGreen.opacity(0.15), in: Capsule())
-                                    } else {
-                                        Text(sub.cycle.label)
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundStyle(SpendyColors.textSecondary)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(SpendyColors.separator, in: Capsule())
-                                    }
-                                    
-                                    Text("• \(dueText(for: sub.nextBillingDate, isTrial: sub.isTrial))")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                    .font(.system(.body, weight: .bold))
-                                    .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                                
-                                Button(action: {
-                                    store.toggleSubscriptionPause(id: sub.id)
-                                }) {
-                                    Text(sub.isPaused ? "Paused" : "Active")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.incomeGreen)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background {
-                                            Capsule()
-                                                .fill(sub.isPaused ? SpendyColors.separator : SpendyColors.incomeGreen.opacity(0.12))
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                            }
+                    SubscriptionRowCard(
+                        sub: sub,
+                        currencySymbol: store.currencySymbol,
+                        onTap: {
+                            HapticsManager.shared.trigger(.light)
+                            subscriptionToEdit = sub
                         }
-                        .padding(14)
-                        .background {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                    }
-                    .buttonStyle(.plain)
+                    )
                     .contextMenu {
                         Button {
                             subscriptionToEdit = sub
                         } label: {
                             Label("Edit Subscription", systemImage: SFIcons.edit)
                         }
-                        
+
                         Button {
                             store.toggleSubscriptionPause(id: sub.id)
                         } label: {
-                            Label(sub.isPaused ? "Resume Subscription" : "Pause Subscription", systemImage: sub.isPaused ? "play.fill" : "pause.fill")
+                            Label(
+                                sub.isPaused ? "Resume Subscription" : "Pause Subscription",
+                                systemImage: sub.isPaused ? "play.fill" : "pause.fill"
+                            )
                         }
-                        
+
                         Button {
                             store.cancelSubscription(id: sub.id)
                         } label: {
                             Label("Cancel Subscription", systemImage: SFIcons.close)
                         }
-                        
+
                         Button(role: .destructive) {
                             store.deleteSubscription(id: sub.id)
                         } label: {
@@ -470,7 +339,25 @@ struct ManageView: View {
             }
         }
     }
-    
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: SFIcons.subscriptions)
+                .font(.system(size: 32, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+            Text("No subscriptions here")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+            Text("Tap + to add your first one")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(SpendyColors.textTertiary)
+        }
+        .padding(.vertical, 40)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Past & Cancelled
+
     @ViewBuilder
     private var pastAndCancelled: some View {
         if !cancelledSubs.isEmpty {
@@ -484,9 +371,7 @@ struct ManageView: View {
                         Text("Past & Cancelled (\(cancelledSubs.count))")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(SpendyColors.textSecondary)
-                        
                         Spacer()
-                        
                         Image(systemName: SFIcons.chevronDown)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(SpendyColors.textTertiary)
@@ -499,7 +384,7 @@ struct ManageView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                
+
                 if showCancelledSubs {
                     VStack(spacing: 10) {
                         ForEach(cancelledSubs) { sub in
@@ -512,7 +397,7 @@ struct ManageView: View {
                                         .font(.system(size: 18, weight: .bold))
                                         .foregroundStyle(SpendyColors.textTertiary)
                                 }
-                                
+
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(sub.name)
                                         .font(.system(.body, weight: .semibold))
@@ -521,9 +406,9 @@ struct ManageView: View {
                                         .font(.system(size: 11, weight: .medium))
                                         .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
                                     .font(.system(.body, weight: .bold))
                                     .foregroundStyle(SpendyColors.textTertiary)
@@ -541,7 +426,6 @@ struct ManageView: View {
                                 } label: {
                                     Label("Reactivate", systemImage: "arrow.clockwise")
                                 }
-                                
                                 Button(role: .destructive) {
                                     store.deleteSubscription(id: sub.id)
                                 } label: {
@@ -554,27 +438,325 @@ struct ManageView: View {
             }
         }
     }
-    
-    // MARK: - Relative Due Date Helper
+
+    // MARK: - Due Date Helper
+
     private func dueText(for date: Date, isTrial: Bool) -> String {
         let calendar = Calendar.current
         let now = calendar.startOfDay(for: Date())
         let target = calendar.startOfDay(for: date)
         let days = calendar.dateComponents([.day], from: now, to: target).day ?? 0
-        
+
         let prefix = isTrial ? "Trial ends" : "Due"
-        if days < 0 {
-            return "\(prefix) \(abs(days))d ago"
-        } else if days == 0 {
-            return "\(prefix) Today"
-        } else if days == 1 {
-            return "\(prefix) Tomorrow"
-        } else if days <= 10 {
-            return "\(prefix) in \(days)d"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return "\(prefix) \(formatter.string(from: date))"
+        if days < 0       { return "\(prefix) \(abs(days))d ago" }
+        else if days == 0 { return "\(prefix) Today" }
+        else if days == 1 { return "\(prefix) Tomorrow" }
+        else if days <= 10 { return "\(prefix) in \(days)d" }
+        else {
+            let fmt = DateFormatter(); fmt.dateFormat = "MMM d"
+            return "\(prefix) \(fmt.string(from: date))"
         }
+    }
+}
+
+// MARK: - Subscription Row Card
+
+struct SubscriptionRowCard: View {
+    let sub: Subscription
+    let currencySymbol: String
+    let onTap: () -> Void
+
+    @State private var isPressed: Bool = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+
+                // Icon Badge
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: sub.colorHex).opacity(0.35),
+                                    Color(hex: sub.colorHex).opacity(0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 46, height: 46)
+                        .overlay {
+                            Circle()
+                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1)
+                        }
+                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 6, x: 0, y: 3)
+                    
+                    Image(systemName: sub.sfSymbol)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Color(hex: sub.colorHex))
+                }
+
+                // Name + metadata
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(sub.name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(
+                            sub.isPaused
+                                ? SpendyColors.textTertiary
+                                : SpendyColors.textPrimary
+                        )
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        // Cycle or Trial badge
+                        if sub.isTrial {
+                            pillTag("Free Trial", color: SpendyColors.textPrimary)
+                        } else {
+                            pillTag(sub.cycle.label, color: SpendyColors.textSecondary)
+                        }
+
+                        Text("·")
+                            .font(.system(size: 10))
+                            .foregroundStyle(SpendyColors.textTertiary)
+
+                        Text(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(dueColor(for: sub.nextBillingDate))
+                    }
+                }
+
+                Spacer()
+
+                // Amount + status pill
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text(sub.amount.formattedCurrency(symbol: currencySymbol))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(
+                            sub.isPaused
+                                ? SpendyColors.textTertiary
+                                : SpendyColors.textPrimary
+                        )
+
+                    statusBadge(for: sub)
+                }
+
+                // Chevron hint
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textTertiary.opacity(0.5))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
+            }
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+
+    @ViewBuilder
+    private func statusBadge(for sub: Subscription) -> some View {
+        if sub.isTrial {
+            Text("Trial")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(SpendyColors.warningOrange)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(SpendyColors.warningOrange.opacity(0.14), in: Capsule())
+        } else if sub.isPaused {
+            Text("Paused")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(SpendyColors.separator, in: Capsule())
+        } else {
+            Text("Active")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(SpendyColors.textPrimary.opacity(0.10), in: Capsule())
+        }
+    }
+
+    private func pillTag(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.10), in: Capsule())
+    }
+
+    private func relativeDueText(for date: Date, isTrial: Bool) -> String {
+        let calendar = Calendar.current
+        let now = calendar.startOfDay(for: Date())
+        let target = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: now, to: target).day ?? 0
+        let prefix = isTrial ? "Ends" : "Due"
+        if days < 0        { return "\(abs(days))d overdue" }
+        else if days == 0  { return "\(prefix) today" }
+        else if days == 1  { return "\(prefix) tomorrow" }
+        else if days <= 10 { return "\(prefix) in \(days)d" }
+        else {
+            let fmt = DateFormatter(); fmt.dateFormat = "MMM d"
+            return "\(prefix) \(fmt.string(from: date))"
+        }
+    }
+
+    private func dueColor(for date: Date) -> Color {
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: Date()),
+            to: Calendar.current.startOfDay(for: date)
+        ).day ?? 0
+        if days < 0    { return SpendyColors.expenseRed }
+        if days <= 3   { return SpendyColors.warningOrange }
+        return SpendyColors.textTertiary
+    }
+}
+
+// MARK: - Due Soon Card
+
+struct DueSoonCard: View {
+    let sub: Subscription
+    let currencySymbol: String
+    let onTap: () -> Void
+    let onPaid: () -> Void
+    let onKeep: () -> Void
+    let onCancelTrial: () -> Void
+
+    var urgencyColor: Color {
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: Date()),
+            to: Calendar.current.startOfDay(for: sub.nextBillingDate)
+        ).day ?? 0
+        if days < 0    { return SpendyColors.expenseRed }
+        if days <= 3   { return SpendyColors.warningOrange }
+        return SpendyColors.primaryBlue
+    }
+
+    var dueLabel: String {
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: Date()),
+            to: Calendar.current.startOfDay(for: sub.nextBillingDate)
+        ).day ?? 0
+        let prefix = sub.isTrial ? "Ends" : "Due"
+        if days < 0       { return "\(abs(days))d overdue" }
+        else if days == 0 { return "\(prefix) today" }
+        else if days == 1 { return "\(prefix) tomorrow" }
+        else              { return "\(prefix) in \(days)d" }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: sub.colorHex).opacity(0.35),
+                                    Color(hex: sub.colorHex).opacity(0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 36, height: 36)
+                        .overlay {
+                            Circle()
+                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1)
+                        }
+                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 4, x: 0, y: 2)
+                    
+                    Image(systemName: sub.sfSymbol)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color(hex: sub.colorHex))
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sub.name)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+
+                    Text(dueLabel)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(urgencyColor)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(sub.amount.formattedCurrency(symbol: currencySymbol))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+
+            if sub.isTrial {
+                HStack(spacing: 8) {
+                    Button(action: onKeep) {
+                        Text("Keep Sub")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(SpendyColors.textPrimary.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onCancelTrial) {
+                        Text("Cancel Trial")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(SpendyColors.expenseRed)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(SpendyColors.expenseRed.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Button(action: onPaid) {
+                    HStack(spacing: 4) {
+                        Image(systemName: SFIcons.checkmark)
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Mark as Paid")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(SpendyColors.primaryBlue, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .frame(width: 260)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(urgencyColor.opacity(0.3), lineWidth: 1)
+                }
+        }
+        .onTapGesture { onTap() }
     }
 }

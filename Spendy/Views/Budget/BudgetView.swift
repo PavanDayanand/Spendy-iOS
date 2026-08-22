@@ -15,6 +15,8 @@ struct BudgetView: View {
     @State private var showDeleteConfirmation: Bool = false
     @State private var selectedCategoryForSheet: Category? = nil
     
+    @Namespace private var budgetControlsNamespace
+    
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
         let end = store.budgetCycleEnd()
@@ -57,20 +59,39 @@ struct BudgetView: View {
                 }
             }
             .navigationBarHidden(true)
-            .sheet(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+            .sheet(isPresented: $showEditBudgetSheet) {
+                EditBudgetSheet(isEditing: isEditingExisting)
+            }
+            .navigationDestination(item: $selectedCategoryForSheet) { category in
+                CategoryAnalyticsSheet(
+                    category: category,
+                    topControlsNamespace: budgetControlsNamespace
+                ) {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        selectedCategoryForSheet = nil
+                    }
+                }
             }
         }
     }
     
     // MARK: - Title Header (Scrolls away)
     private var titleHeader: some View {
-        HStack {
-            Text("Budget")
-                .font(.system(size: 28, weight: .heavy))
-                .foregroundStyle(SpendyColors.textPrimary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(store.budget.period == .weekly ? "Weekly budget" : "Monthly budget")
+                    .font(.system(size: 28, weight: .heavy))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+            }
             
-            Spacer()
+            Text(cycleDateRangeString)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(SpendyColors.separator, in: Capsule())
         }
         .padding(.top, 8)
     }
@@ -201,134 +222,101 @@ struct BudgetView: View {
         }
     }
     
-    // MARK: - Active Budget Content (Apple Standard Layout)
+    // MARK: - Active Budget Content
     private var activeBudgetContent: some View {
         VStack(spacing: 20) {
-            // Cycle Bounds & Live Pacing Status Subtitle
-            HStack(spacing: 8) {
-                Text(cycleDateRangeString)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(SpendyColors.separator, in: Capsule())
-                
-                let pacing = store.budgetPacingState
-                Text(pacing.title)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color(hex: pacing.colorHex))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(hex: pacing.colorHex).opacity(0.15), in: Capsule())
-                
-                Spacer()
-            }
-            
-            // 180° Arc Gauge Chart (Maximized Space)
+            // Main Analytics-Style Circular Ring Budget Card
             let target = store.budgetTargetAmount(for: store.budget.period)
             let spent = store.budgetCycleExpenses
+            
             BudgetGaugeView(
                 spent: spent,
                 target: target,
-                currencySymbol: store.currencySymbol
+                currencySymbol: store.currencySymbol,
+                daysLeft: store.budgetDaysLeft,
+                periodTitle: store.budget.period == .weekly ? "Weekly" : "Monthly",
+                dateRangeString: cycleDateRangeString,
+                pacingInsightMessage: store.budgetPacingInsightMessage
             )
-            .padding(.vertical, 4)
             
-            // Smart Pacing Insight Banner
-            if let insightMsg = store.budgetPacingInsightMessage {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(SpendyColors.primaryBlue)
-                    
-                    Text(insightMsg)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineSpacing(2)
-                    
-                    Spacer()
-                }
-                .padding(14)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(SpendyColors.primaryBlue.opacity(0.25), lineWidth: 0.8)
-                        }
-                }
-            }
-            
-            // Dual Stat Cards Row (Uniform Apple Card Styling)
-            HStack(spacing: 14) {
+            // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
+            HStack(spacing: 10) {
                 // Card 1: Left today
-                VStack(alignment: .leading, spacing: 8) {
+                let isExceededToday = store.todayExpenses > (target / Double(max(1, store.budgetDaysLeft)))
+                
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Left today")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(store.leftToday.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 24, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     
-                    Spacer().frame(height: 2)
+                    Spacer(minLength: 12)
                     
-                    let isExceededToday = store.todayExpenses > (target / Double(max(1, store.budgetDaysLeft)))
-                    ZStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Capsule()
-                            .fill(SpendyColors.separator)
-                            .frame(height: 5)
-                        Capsule()
-                            .fill(isExceededToday ? SpendyColors.expenseRed : SpendyColors.incomeGreen)
-                            .frame(height: 5)
+                            .fill(isExceededToday ? SpendyColors.expenseRed : Color(hex: "#34C759"))
+                            .frame(height: 6)
+                        
+                        Text(isExceededToday ? "Budget exceeded" : "Safe daily pace")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(isExceededToday ? SpendyColors.expenseRed : SpendyColors.textSecondary)
+                            .lineLimit(1)
                     }
-                    
-                    Text(isExceededToday ? "Budget exceeded" : "Safe daily pace")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(isExceededToday ? SpendyColors.expenseRed : SpendyColors.textTertiary)
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+                .frame(maxWidth: .infinity, minHeight: 165, alignment: .leading)
                 .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(SpendyColors.cardBackground)
                         .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
                 
-                // Card 2: Cycle Budget
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Cycle Limit")
-                        .font(.system(size: 13, weight: .medium))
+                // Card 2: Budget
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Budget")
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 24, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     
-                    Spacer().frame(height: 2)
+                    Spacer(minLength: 12)
                     
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(store.budget.period == .weekly ? "Weekly Target" : "Monthly Target")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(SpendyColors.primaryBlue)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Available to allocate:")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        
+                        Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
                     }
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+                .frame(maxWidth: .infinity, minHeight: 165, alignment: .leading)
                 .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(SpendyColors.cardBackground)
                         .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
             }
             
-            // What-If Budget Calculator
+            // What-If Budget Calculator Section
             VStack(alignment: .leading, spacing: 8) {
                 Text("BUDGET CALCULATOR")
                     .font(.system(size: 11, weight: .bold))

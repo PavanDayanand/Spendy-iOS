@@ -84,17 +84,17 @@ enum SpendyColors {
     
     static let cardBackground = Color(uiColor: .dynamic(
         light: UIColor(red: 0.92, green: 0.92, blue: 0.94, alpha: 1.0),
-        dark: UIColor(red: 0.08, green: 0.08, blue: 0.09, alpha: 1.0)
+        dark: UIColor(red: 0.055, green: 0.055, blue: 0.058, alpha: 1.0) // Neutral Dark Grey-Black (#0E0E0F)
     ))
     
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
         light: UIColor(red: 0.86, green: 0.86, blue: 0.89, alpha: 1.0),
-        dark: UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0)
+        dark: UIColor(red: 0.080, green: 0.080, blue: 0.085, alpha: 1.0) // Charcoal Grey Surface (#141416)
     ))
     
     static let separator = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.08),
-        dark: UIColor(white: 1.0, alpha: 0.08)
+        dark: UIColor(white: 1.0, alpha: 0.07)
     ))
     
     // Dynamic Text Hierarchies

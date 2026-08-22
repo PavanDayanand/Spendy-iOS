@@ -126,13 +126,26 @@ struct SubscriptionWidgetSheet: View {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
-                            .fill(sub.color)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        sub.color.opacity(0.35),
+                                        sub.color.opacity(0.18)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             .frame(width: 40, height: 40)
-                            .shadow(color: sub.color.opacity(0.35), radius: 6, y: 2)
+                            .overlay {
+                                Circle()
+                                    .stroke(sub.color.opacity(0.35), lineWidth: 1)
+                            }
+                            .shadow(color: sub.color.opacity(0.25), radius: 6, y: 2)
                         
                         Image(systemName: sub.sfSymbol)
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(sub.color)
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {

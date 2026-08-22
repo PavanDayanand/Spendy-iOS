@@ -82,6 +82,8 @@ struct DashboardView: View {
     @State private var editingTransaction: Transaction? = nil
     @State private var selectedCategoryForSheet: Category? = nil
     
+    @Namespace private var topControlsNamespace
+    
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
     @State private var hideBalance: Bool = false
@@ -135,8 +137,7 @@ struct DashboardView: View {
         
         return totals.compactMap { (catId, data) -> InsightCardViewModel? in
             guard let cat = store.categories.first(where: { $0.id == catId }) else { return nil }
-            let rawCol = Color(hex: cat.colorHex)
-            let col = (cat.colorHex == "#18181B" || rawCol == Color.black) ? Color.orange : rawCol
+            let col = Color(hex: cat.colorHex)
             return InsightCardViewModel(
                 id: cat.id,
                 title: cat.label,
@@ -254,8 +255,15 @@ struct DashboardView: View {
                     editingTransaction = txToEdit
                 }
             }
-            .sheet(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+            .navigationDestination(item: $selectedCategoryForSheet) { category in
+                CategoryAnalyticsSheet(
+                    category: category,
+                    topControlsNamespace: topControlsNamespace
+                ) {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        selectedCategoryForSheet = nil
+                    }
+                }
             }
         }
     }
@@ -281,6 +289,7 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Account and Settings")
+            .matchedGeometryEffect(id: "topControl_left", in: topControlsNamespace)
             
             Spacer()
             
@@ -316,6 +325,7 @@ struct DashboardView: View {
                     showReceiptPrinter = true
                 }
             }
+            .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
         }
     }
     
@@ -369,6 +379,7 @@ struct DashboardView: View {
                 .nativeLiquidGlassCapsule(isInteractive: true)
             }
             .buttonStyle(.plain)
+            .matchedGeometryEffect(id: "topControl_center", in: topControlsNamespace)
             
             Spacer()
             
@@ -421,59 +432,23 @@ struct DashboardView: View {
     
     // MARK: - 4. Top 2 Smart Insight Cards (Image 2 Design + InsightsEngine Content)
     private var topTwoInsightCardsGrid: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 10) {
             ForEach(topTwoInsightCards) { item in
-                VStack(alignment: .leading, spacing: 12) {
-                    // Vibrant Circle Icon Avatar (Category Icon & Color with glowing aura)
-                    ZStack {
-                        Circle()
-                            .fill(item.color)
-                            .frame(width: 52, height: 52)
-                            .shadow(color: item.color.opacity(0.4), radius: 12, x: 0, y: 4)
-                        
-                        Image(systemName: item.icon)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color.white)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                        
-                        Text(item.value)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        
-                        Text(item.subtitle)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 24))
-                .onTapGesture {
-                    HapticsManager.shared.trigger(.selection)
-                    let matchedCat = store.categories.first(where: { $0.id == item.id || $0.label.lowercased() == item.title.lowercased() }) ?? store.categories.first
-                    if let cat = matchedCat {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            selectedCategoryForSheet = cat
+                SharedInsightCard(
+                    title: item.title,
+                    value: item.value,
+                    subtitle: item.subtitle,
+                    icon: item.icon,
+                    color: item.color,
+                    action: {
+                        let matchedCat = store.categories.first(where: { $0.id == item.id || $0.label.lowercased() == item.title.lowercased() }) ?? store.categories.first
+                        if let cat = matchedCat {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                selectedCategoryForSheet = cat
+                            }
                         }
                     }
-                }
+                )
             }
         }
     }
@@ -618,15 +593,17 @@ struct DashboardView: View {
             inspectingTransaction = tx
         }) {
             HStack(spacing: 14) {
-                // Vibrant Circle Icon Avatar (Matching Image 1)
+                // Vibrant Circle Icon Avatar (Matching Category Color)
                 ZStack {
+                    let circleColor = categoryCircleColor(cat: cat)
                     Circle()
-                        .fill(categoryCircleColor(cat: cat))
+                        .fill(circleColor)
                         .frame(width: 44, height: 44)
                     
+                    let isLightColor = cat?.colorHex.uppercased() == "#FFFFFF" || cat?.colorHex.uppercased() == "FFFFFF" || cat?.colorHex.uppercased() == "#E4E4E7" || cat?.colorHex.uppercased() == "#D4D4D8"
                     Image(systemName: cat?.sfSymbol ?? "cart.fill")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(isLightColor ? Color.black : Color.white)
                 }
                 
                 // Title & Account Pill
@@ -664,11 +641,7 @@ struct DashboardView: View {
     
     private func categoryCircleColor(cat: Category?) -> Color {
         guard let cat = cat else { return Color(hex: "#34C759") }
-        let rawCol = Color(hex: cat.colorHex)
-        if cat.colorHex == "#18181B" || rawCol == Color.black {
-            return Color(hex: "#34C759")
-        }
-        return rawCol
+        return Color(hex: cat.colorHex)
     }
     
     private func accountBadgeColor(for acc: Account) -> Color {

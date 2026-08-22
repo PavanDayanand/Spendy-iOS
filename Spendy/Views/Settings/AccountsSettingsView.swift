@@ -2,7 +2,7 @@
 //  AccountsSettingsView.swift
 //  Spendy
 //
-//  Real-Time Accounts Hub with Net Worth Trends, Balance Adjustments & Migration
+//  Real-Time Accounts Hub with Net Worth Trends, Balance Adjustments & Segregation
 //
 
 import SwiftUI
@@ -12,12 +12,36 @@ struct AccountsSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var showAddAccount: Bool = false
-    @State private var showAddTransfer: Bool = false
     @State private var showCurrencyPicker: Bool = false
     @State private var editingAccount: Account? = nil
-    @State private var tempAccountName: String = ""
-    @State private var tempAccountBalance: String = ""
-    @State private var accountToDelete: Account? = nil
+    @State private var selectedFilter: AccountFilter = .all
+    
+    enum AccountFilter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case cash = "Cash"
+        case bank = "Bank"
+        case amazonPay = "Amazon Pay"
+        case savings = "Savings"
+        
+        var id: String { rawValue }
+        
+        var type: AccountType? {
+            switch self {
+            case .all: return nil
+            case .cash: return .cash
+            case .bank: return .bank
+            case .amazonPay: return .amazonPay
+            case .savings: return .savings
+            }
+        }
+    }
+    
+    private var filteredAccounts: [Account] {
+        if let type = selectedFilter.type {
+            return store.accounts.filter { $0.type == type }
+        }
+        return store.accounts
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -40,51 +64,21 @@ struct AccountsSettingsView: View {
                 .padding(.bottom, 120) // Clearance for floating bottom bar
             }
             
-            // Bottom Floating Actions (Transfer ⇅ and Add +)
+            // Bottom Floating Action (Add +)
             bottomFloatingBar
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
-        }
-        .sheet(isPresented: $showAddTransfer) {
-            AddTransactionView()
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(isPresented: $showCurrencyPicker) {
             currencyPickerSheet
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingAccount) { acc in
-            editAccountSheet(for: acc)
-        }
-        .confirmationDialog(
-            "Delete Account?",
-            isPresented: Binding(
-                get: { accountToDelete != nil },
-                set: { if !$0 { accountToDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            let fallback = store.accounts.first(where: { $0.id != accountToDelete?.id })
-            
-            Button("Delete & Move Transactions to \(fallback?.label ?? "Cash")", role: .destructive) {
-                if let acc = accountToDelete {
-                    store.deleteAccount(id: acc.id, fallbackId: fallback?.id ?? "cash")
-                }
-                accountToDelete = nil
-            }
-            
-            Button("Delete Without Moving", role: .destructive) {
-                if let acc = accountToDelete {
-                    store.deleteAccount(id: acc.id, fallbackId: nil)
-                }
-                accountToDelete = nil
-            }
-            
-            Button("Cancel", role: .cancel) {
-                accountToDelete = nil
-            }
-        } message: {
-            Text("What would you like to do with transactions linked to \(accountToDelete?.label ?? "this account")?")
+            AddAccountSheet(accountToEdit: acc)
+                .presentationBackground(SpendyColors.appBackground)
         }
     }
     
@@ -105,24 +99,15 @@ struct AccountsSettingsView: View {
             
             Spacer()
             
-            Text("Accounts")
-                .font(.system(size: 18, weight: .bold))
+            Text("Settings")
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
-            // Top Right Currency / Settings Icon
-            GlassCircleButton(
-                icon: "gearshape.fill",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .semibold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Currency Settings"
-            ) {
-                showCurrencyPicker = true
-            }
+            // Placeholder to align title
+            Spacer()
+                .frame(width: 44)
         }
     }
     
@@ -153,13 +138,14 @@ struct AccountsSettingsView: View {
                         .font(.system(size: 38, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
+                    let change = store.netWorthChangePercentage
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.up")
+                        Image(systemName: change >= 0 ? "arrow.up" : "arrow.down")
                             .font(.system(size: 11, weight: .bold))
-                        Text("+\(store.monthlyIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) vs last month")
+                        Text(String(format: "%+.1f%% raise vs last month", change))
                             .font(.system(size: 13, weight: .semibold))
                     }
-                    .foregroundStyle(SpendyColors.incomeGreen)
+                    .foregroundStyle(change >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
                 }
                 
                 Spacer()
@@ -172,108 +158,144 @@ struct AccountsSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
+    // MARK: - Account Filter Tabs Switcher
+    private var filterTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(AccountFilter.allCases) { filter in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.25)) {
+                            selectedFilter = filter
+                        }
+                        HapticsManager.shared.trigger(.selection)
+                    }) {
+                        Text(filter.rawValue)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(selectedFilter == filter ? Color.black : SpendyColors.textPrimary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background {
+                                if selectedFilter == filter {
+                                    Capsule()
+                                        .fill(Color.white)
+                                } else {
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.08))
+                                        .overlay {
+                                            Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        }
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+    
     // MARK: - Accounts List Section
     private var accountsListSection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // Horizontal Filters
+            filterTabs
+                .padding(.vertical, 4)
+            
             // Section Header: Group Name on left, Total on right
             HStack {
-                Text("Wallets & Accounts")
+                Text(selectedFilter == .all ? "Wallets & Accounts" : "\(selectedFilter.rawValue) Accounts")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
-                Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                let totalFiltered = filteredAccounts.map { store.balance(for: $0.id) }.reduce(0, +)
+                Text(totalFiltered.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.horizontal, 4)
             
             VStack(spacing: 12) {
-                ForEach(Array(store.accounts.enumerated()), id: \.element.id) { index, account in
-                    let balance = store.balance(for: account.id)
-                    let isPrimary = index == 0
-                    let isCash = account.id == "cash"
-                    
-                    Button(action: {
-                        HapticsManager.shared.trigger(.light)
-                        tempAccountName = account.label
-                        tempAccountBalance = String(format: "%.0f", balance)
-                        editingAccount = account
-                    }) {
-                        HStack(spacing: 14) {
-                            // Rounded Square Badge with Initial Letter or Icon (Monochrome)
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(account.colorHex == "#18181B" ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
-                                    .frame(width: 44, height: 44)
-                                
-                                if isCash {
-                                    Image(systemName: "banknote.fill")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(account.colorHex == "#18181B" ? Color(uiColor: .dynamic(light: .white, dark: .black)) : SpendyColors.textPrimary)
-                                } else {
-                                    Text(String(account.label.prefix(1)).uppercased())
-                                        .font(.system(size: 18, weight: .heavy))
-                                        .foregroundStyle(account.colorHex == "#18181B" ? Color(uiColor: .dynamic(light: .white, dark: .black)) : SpendyColors.textPrimary)
-                                }
+                if filteredAccounts.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("No accounts in this category")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        
+                        Button(action: {
+                            showAddAccount = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 12))
+                                Text("Add Account")
+                                    .font(.system(size: 12, weight: .bold))
                             }
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 6) {
+                            .foregroundStyle(SpendyColors.primaryBlue)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(SpendyColors.cardBackground)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
+                            }
+                    }
+                } else {
+                    ForEach(filteredAccounts, id: \.id) { account in
+                        let balance = store.balance(for: account.id)
+                        
+                        Button(action: {
+                            HapticsManager.shared.trigger(.light)
+                            editingAccount = account
+                        }) {
+                            HStack(spacing: 14) {
+                                // Rounded Square Badge using Custom Color!
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(Color(hex: account.colorHex))
+                                        .frame(width: 44, height: 44)
+                                        .shadow(color: Color(hex: account.colorHex).opacity(0.35), radius: 6, y: 3)
+                                    
+                                    let isLightColor = account.colorHex.uppercased() == "#FFFFFF" || account.colorHex.uppercased() == "FFFFFF" || account.colorHex.uppercased() == "#E4E4E7" || account.colorHex.uppercased() == "#D4D4D8"
+                                    
+                                    Image(systemName: account.sfSymbol)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundStyle(isLightColor ? Color.black : Color.white)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 3) {
                                     Text(account.label)
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundStyle(SpendyColors.textPrimary)
                                     
-                                    if isPrimary {
-                                        Text("PRIMARY")
-                                            .font(.system(size: 9, weight: .heavy))
-                                            .tracking(0.6)
-                                            .foregroundStyle(SpendyColors.textPrimary.opacity(0.8))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(SpendyColors.textPrimary.opacity(0.12), in: Capsule())
-                                    }
+                                    Text("Tap to edit details")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textTertiary)
                                 }
                                 
-                                Text("Tap to edit balance")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textTertiary)
+                                Spacer()
+                                
+                                Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                    .font(.system(size: 16, weight: .heavy))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                             }
-                            
-                            Spacer()
-                            
-                            Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 16, weight: .heavy))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                        }
-                        .padding(16)
-                        .background {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button {
-                            tempAccountName = account.label
-                            tempAccountBalance = String(format: "%.0f", balance)
-                            editingAccount = account
-                        } label: {
-                            Label("Edit Account", systemImage: SFIcons.edit)
-                        }
-                        
-                        if !isCash && store.accounts.count > 1 {
-                            Button(role: .destructive) {
-                                accountToDelete = account
-                            } label: {
-                                Label("Delete Account", systemImage: SFIcons.delete)
+                            .padding(16)
+                            .background {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(SpendyColors.cardBackground)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -309,19 +331,6 @@ struct AccountsSettingsView: View {
     // MARK: - Bottom Floating Action Buttons
     private var bottomFloatingBar: some View {
         HStack {
-            // Transfer Button
-            GlassCircleButton(
-                icon: "arrow.up.arrow.down",
-                size: 54,
-                iconSize: 18,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .medium,
-                accessibilityLabel: "Transfer Funds"
-            ) {
-                showAddTransfer = true
-            }
-            .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
-            
             Spacer()
             
             // Plus (+) Add Account Button
@@ -348,85 +357,58 @@ struct AccountsSettingsView: View {
             ZStack {
                 SpendyColors.appBackground.ignoresSafeArea()
                 
-                List {
-                    ForEach(supportedCurrencies, id: \.code) { curr in
-                        Button(action: {
-                            store.updateCurrency(symbol: curr.symbol, code: curr.code)
-                            HapticsManager.shared.trigger(.selection)
-                            showCurrencyPicker = false
-                        }) {
-                            HStack {
-                                Text("\(curr.symbol)  \(curr.name)")
-                                    .font(.system(.body, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                Spacer()
-                                Text(curr.code)
-                                    .font(.system(.subheadline, weight: .bold))
-                                    .foregroundStyle(store.currencyCode == curr.code ? SpendyColors.primaryBlue : SpendyColors.textTertiary)
-                                
-                                if store.currencyCode == curr.code {
-                                    Image(systemName: SFIcons.checkmark)
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(SpendyColors.primaryBlue)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(supportedCurrencies, id: \.code) { curr in
+                            Button(action: {
+                                HapticsManager.shared.trigger(.selection)
+                                store.currencySymbol = curr.symbol
+                                store.currencyCode = curr.code
+                                showCurrencyPicker = false
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(curr.code)
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundStyle(SpendyColors.textPrimary)
+                                        Text(curr.name)
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(SpendyColors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(curr.symbol)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundStyle(store.currencyCode == curr.code ? SpendyColors.primaryBlue : SpendyColors.textSecondary)
+                                }
+                                .padding(16)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(SpendyColors.cardBackground)
+                                        .overlay {
+                                            if store.currencyCode == curr.code {
+                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                    .stroke(SpendyColors.primaryBlue, lineWidth: 1.5)
+                                            } else {
+                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                            }
+                                        }
                                 }
                             }
+                            .buttonStyle(.plain)
                         }
-                        .listRowBackground(SpendyColors.cardBackground)
                     }
+                    .padding(20)
                 }
-                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Select Currency")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { showCurrencyPicker = false }
+                    Button("Close") { showCurrencyPicker = false }
                 }
             }
         }
-        .presentationDetents([.medium, .large])
-    }
-    
-    // MARK: - Edit Account Sheet
-    private func editAccountSheet(for acc: Account) -> some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                Form {
-                    Section("Account Details") {
-                        if acc.id != "cash" {
-                            TextField("Account Name", text: $tempAccountName)
-                        }
-                        
-                        TextField("Current Balance (\(store.currencySymbol))", text: $tempAccountBalance)
-                            .keyboardType(.decimalPad)
-                    }
-                    .listRowBackground(SpendyColors.cardBackground)
-                }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle(acc.id == "cash" ? "Edit Cash Balance" : "Edit Account")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { editingAccount = nil }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let newName = tempAccountName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !newName.isEmpty && acc.id != "cash" {
-                            store.updateAccountName(id: acc.id, newName: newName)
-                        }
-                        if let bal = Double(tempAccountBalance) {
-                            store.updateAccountBalance(id: acc.id, newBalance: bal)
-                        }
-                        editingAccount = nil
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
     
     private func formatShortCurrency(_ value: Double) -> String {

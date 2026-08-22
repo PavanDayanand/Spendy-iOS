@@ -23,7 +23,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "Home"
         case .analytics: return "Stats"
         case .budget: return "Budget"
-        case .manage: return "Manage"
+        case .manage: return "Manage" 
         case .quickAdd: return "Add"
         }
     }

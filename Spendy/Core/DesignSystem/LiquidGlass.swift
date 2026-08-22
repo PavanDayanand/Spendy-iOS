@@ -341,3 +341,15 @@ extension View {
         modifier(NativeLiquidGlassPillModifier(isSelected: isSelected, tintColor: tint))
     }
 }
+
+// MARK: - Spendy Glass Effect Container
+struct SpendyGlassEffectContainer<Content: View>: View {
+    var spacing: CGFloat = 10
+    @ViewBuilder var content: () -> Content
+    
+    var body: some View {
+        HStack(spacing: spacing) {
+            content()
+        }
+    }
+}

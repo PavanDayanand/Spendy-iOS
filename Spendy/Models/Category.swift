@@ -57,35 +57,40 @@ struct Category: Identifiable, Codable, Hashable {
         Color(hex: colorHex)
     }
     
-    /// Vibrant category color matching Apple design specifications (used for icons & badges)
-    var vibrantColor: Color {
+    /// Vibrant category color hex matching Apple design specifications
+    var vibrantColorHex: String {
         switch id.lowercased() {
-        case "groceries": return Color(hex: "#34C759") // Green
-        case "fuel": return Color(hex: "#FF9500") // Orange
-        case "restaurants": return Color(hex: "#FF9F0A") // Amber
-        case "food_delivery", "delivery": return Color(hex: "#FF6482") // Coral
-        case "public_transport", "transport": return Color(hex: "#007AFF") // Apple Blue
-        case "taxi": return Color(hex: "#FFCC00") // Yellow
-        case "car_maintenance": return Color(hex: "#8E8E93") // Slate Grey
-        case "rent": return Color(hex: "#FF3B30") // Coral Red
-        case "utilities": return Color(hex: "#FFD60A") // Electric Yellow
-        case "subscriptions": return Color(hex: "#AF52DE") // Purple
-        case "shopping": return Color(hex: "#5856D6") // Indigo
-        case "entertainment": return Color(hex: "#BF5AF2") // Magenta
-        case "health": return Color(hex: "#FF2D55") // Pink
-        case "internet", "mobile", "internet_mobile": return Color(hex: "#0A84FF") // Cyan Blue
-        case "paycheck", "salary": return Color(hex: "#34C759") // Green
-        case "freelance": return Color(hex: "#007AFF") // Blue
-        case "bonus": return Color(hex: "#FFD60A") // Gold
-        case "investment": return Color(hex: "#30B0C7") // Teal
-        case "refund": return Color(hex: "#32D74B") // Light Green
-        case "interest": return Color(hex: "#64D2FF") // Sky Blue
+        case "groceries": return "#34C759" // Green
+        case "fuel": return "#FF9500" // Orange
+        case "restaurants": return "#FF9F0A" // Amber
+        case "food_delivery", "delivery": return "#FF6482" // Coral
+        case "public_transport", "transport": return "#007AFF" // Apple Blue
+        case "taxi": return "#FFCC00" // Yellow
+        case "car_maintenance": return "#8E8E93" // Slate Grey
+        case "rent": return "#FF3B30" // Coral Red
+        case "utilities": return "#FFD60A" // Electric Yellow
+        case "subscriptions": return "#AF52DE" // Purple
+        case "shopping": return "#5856D6" // Indigo
+        case "entertainment": return "#BF5AF2" // Magenta
+        case "health": return "#FF2D55" // Pink
+        case "internet", "mobile", "internet_mobile": return "#0A84FF" // Cyan Blue
+        case "paycheck", "salary": return "#34C759" // Green
+        case "freelance": return "#007AFF" // Blue
+        case "bonus": return "#FFD60A" // Gold
+        case "investment": return "#30B0C7" // Teal
+        case "refund": return "#32D74B" // Light Green
+        case "interest": return "#64D2FF" // Sky Blue
         default:
             if colorHex != "#FFFFFF" && colorHex != "#18181B" && !colorHex.isEmpty {
-                return Color(hex: colorHex)
+                return colorHex
             }
-            return SpendyColors.primaryBlue
+            return "#007AFF" // Default primary blue hex
         }
+    }
+    
+    /// Vibrant category color matching Apple design specifications (used for icons & badges)
+    var vibrantColor: Color {
+        Color(hex: vibrantColorHex)
     }
     
     // MARK: - Default Expense Categories (Folder Grouped Monochrome)

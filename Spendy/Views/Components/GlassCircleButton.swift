@@ -117,9 +117,10 @@ struct GlassCircleButton<Content: View>: View {
             }
             action()
         }) {
-            GlassCircleIcon(size: size, tintColor: tintColor, isInteractive: true) {
+            GlassCircleIcon(size: size, tintColor: tintColor, isInteractive: false) {
                 content()
             }
+            .contentShape(Circle())
         }
         .buttonStyle(GlassCirclePressStyle())
         .accessibilityLabel(accessibilityLabel ?? "")

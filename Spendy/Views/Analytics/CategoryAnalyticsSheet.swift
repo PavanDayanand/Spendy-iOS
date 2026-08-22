@@ -59,6 +59,7 @@ struct CategoryAnalyticsSheet: View {
     
     let category: Category
     var initialType: TransactionType = .expense
+    var topControlsNamespace: Namespace.ID? = nil
     var onDismiss: (() -> Void)? = nil
     
     @State private var selectedPeriod: ChartPeriod = .month
@@ -366,26 +367,27 @@ struct CategoryAnalyticsSheet: View {
                 AddTransactionView(transactionToEdit: tx)
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
     }
     
     // MARK: - 1. Top Header Bar (Floating Glass Controls)
     private var headerBar: some View {
-        HStack {
+        SpendyGlassEffectContainer(spacing: 12) {
             // Circular Back / Dismiss Button
             GlassCircleButton(
                 icon: "chevron.left",
                 size: 44,
                 iconSize: 16,
+                iconWeight: .bold,
                 foregroundColor: .white,
-                haptic: .selection,
                 accessibilityLabel: "Back"
             ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
+                HapticsManager.shared.trigger(.selection)
+                onDismiss?()
+                dismiss()
             }
+            .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
             
             Spacer()
             
@@ -393,6 +395,7 @@ struct CategoryAnalyticsSheet: View {
             Text(category.label)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(.white)
+                .optionalMatchedGeometry(id: "topControl_center", in: topControlsNamespace)
             
             Spacer()
             
@@ -422,6 +425,7 @@ struct CategoryAnalyticsSheet: View {
                     foregroundColor: .white
                 )
             }
+            .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
         }
         .padding(.horizontal, 20)
     }
@@ -633,12 +637,12 @@ struct CategoryAnalyticsSheet: View {
                 }
             }
         }
-        .padding(16)
-        .frame(width: 175, height: 145)
+        .padding(18)
+        .frame(width: 175, height: 155, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#0A0A0C"))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         )
     }
     
@@ -676,12 +680,12 @@ struct CategoryAnalyticsSheet: View {
                 }
             }
         }
-        .padding(16)
-        .frame(width: 175, height: 145)
+        .padding(18)
+        .frame(width: 175, height: 155, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#0A0A0C"))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         )
     }
     
@@ -710,12 +714,12 @@ struct CategoryAnalyticsSheet: View {
                 .foregroundStyle(SpendyColors.textTertiary)
                 .lineLimit(2)
         }
-        .padding(16)
-        .frame(width: 175, height: 145)
+        .padding(18)
+        .frame(width: 175, height: 155, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#0A0A0C"))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         )
     }
     
@@ -744,12 +748,12 @@ struct CategoryAnalyticsSheet: View {
                 .foregroundStyle(SpendyColors.textTertiary)
                 .lineLimit(2)
         }
-        .padding(16)
-        .frame(width: 165, height: 145)
+        .padding(18)
+        .frame(width: 175, height: 155, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#0A0A0C"))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         )
     }
     
@@ -876,5 +880,17 @@ struct CategoryAnalyticsSheet: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Optional Matched Geometry Extension
+fileprivate extension View {
+    @ViewBuilder
+    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
+        if let namespace = namespace {
+            self.matchedGeometryEffect(id: id, in: namespace)
+        } else {
+            self
+        }
     }
 }

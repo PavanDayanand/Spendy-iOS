@@ -47,6 +47,10 @@ final class ExpenseStore {
         didSet { saveToDisk() }
     }
     
+    var customFolders: [Folder] = [] {
+        didSet { saveToDisk() }
+    }
+    
     var subscriptions: [Subscription] = [] {
         didSet { saveToDisk() }
     }
@@ -60,6 +64,20 @@ final class ExpenseStore {
     }
     
     var currencyCode: String = "INR" {
+        didSet { saveToDisk() }
+    }
+    
+    var ratesToUSD: [String: Double] = [
+        "USD": 1.0,
+        "INR": 86.85,
+        "EUR": 0.95,
+        "GBP": 0.79,
+        "JPY": 152.40,
+        "CAD": 1.41,
+        "AUD": 1.55,
+        "AED": 3.67,
+        "SGD": 1.34
+    ] {
         didSet { saveToDisk() }
     }
     
@@ -120,6 +138,7 @@ final class ExpenseStore {
     // MARK: - Initializer & Persistence
     init() {
         loadFromDisk()
+        fetchLiveRates()
     }
     
     private struct StoragePayload: Codable {
@@ -137,6 +156,8 @@ final class ExpenseStore {
         var budget: Budget
         var currencySymbol: String
         var currencyCode: String
+        var customFolders: [Folder]?
+        var ratesToUSD: [String: Double]?
     }
     
     private var storageURL: URL {
@@ -163,6 +184,24 @@ final class ExpenseStore {
                 self.budget = payload.budget
                 self.currencySymbol = payload.currencySymbol
                 self.currencyCode = payload.currencyCode
+                self.customFolders = payload.customFolders ?? []
+                self.ratesToUSD = payload.ratesToUSD ?? [
+                    "USD": 1.0,
+                    "INR": 86.85,
+                    "EUR": 0.95,
+                    "GBP": 0.79,
+                    "JPY": 152.40,
+                    "CAD": 1.41,
+                    "AUD": 1.55,
+                    "AED": 3.67,
+                    "SGD": 1.34
+                ]
+                // Migration: Ensure seeded accounts are typed
+                for i in 0..<self.accounts.count {
+                    if self.accounts[i].id == "cash" {
+                        self.accounts[i].type = .cash
+                    }
+                }
                 return
             } catch {
                 print("Failed to load local store: \(error.localizedDescription)")
@@ -189,7 +228,9 @@ final class ExpenseStore {
                 subscriptions: subscriptions,
                 budget: budget,
                 currencySymbol: currencySymbol,
-                currencyCode: currencyCode
+                currencyCode: currencyCode,
+                customFolders: customFolders,
+                ratesToUSD: ratesToUSD
             )
             let data = try JSONEncoder().encode(payload)
             try data.write(to: storageURL, options: .atomic)
@@ -240,6 +281,21 @@ final class ExpenseStore {
     /// Total Net Worth across all active accounts
     var totalBalance: Double {
         accountBalances.values.reduce(0, +)
+    }
+    
+    var netWorthChangePercentage: Double {
+        let now = Date()
+        let calendar = Calendar.current
+        guard let startOfThisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) else { return 0.0 }
+        guard let startOfLastMonth = calendar.date(byAdding: .month, value: -1, to: startOfThisMonth) else { return 0.0 }
+        
+        let lastMonthTxs = transactions.filter { $0.date >= startOfLastMonth && $0.date < startOfThisMonth }
+        let netLastMonth = lastMonthTxs.map { $0.type == .income ? $0.amount : -$0.amount }.reduce(0, +)
+        
+        let currentNet = totalBalance
+        let previousNet = currentNet - netLastMonth
+        guard previousNet > 0 else { return 0.0 }
+        return (netLastMonth / previousNet) * 100.0
     }
     
     /// Get balance for a specific account id (or total balance if nil / "all")
@@ -360,6 +416,15 @@ final class ExpenseStore {
         HapticsManager.shared.trigger(.success)
     }
     
+    func updateAccount(_ account: Account) {
+        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+            withAnimation(.spring(response: 0.35)) {
+                accounts[index] = account
+            }
+            HapticsManager.shared.trigger(.light)
+        }
+    }
+    
     func updateAccountName(id: String, newName: String) {
         if let index = accounts.firstIndex(where: { $0.id == id }) {
             withAnimation(.spring(response: 0.35)) {
@@ -415,6 +480,43 @@ final class ExpenseStore {
             categories.removeAll(where: { $0.id == id })
         }
         HapticsManager.shared.trigger(.medium)
+    }
+    
+    func addFolder(_ folder: Folder) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            customFolders.append(folder)
+        }
+        HapticsManager.shared.trigger(.success)
+    }
+    
+    func updateFolder(_ folder: Folder, oldName: String) {
+        if let index = customFolders.firstIndex(where: { $0.id == folder.id }) {
+            withAnimation(.spring(response: 0.35)) {
+                customFolders[index] = folder
+                // Also update any categories that were in the old folder to the new folder name
+                for catIndex in categories.indices {
+                    if categories[catIndex].folder == oldName && categories[catIndex].type == folder.type {
+                        categories[catIndex].folder = folder.name
+                    }
+                }
+            }
+            HapticsManager.shared.trigger(.light)
+        }
+    }
+    
+    func deleteFolder(id: String) {
+        if let folderToDelete = customFolders.first(where: { $0.id == id }) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                // Reassign all categories in this folder to Uncategorized
+                for index in categories.indices {
+                    if categories[index].folder == folderToDelete.name && categories[index].type == folderToDelete.type {
+                        categories[index].folder = "Uncategorized"
+                    }
+                }
+                customFolders.removeAll(where: { $0.id == id })
+            }
+            HapticsManager.shared.trigger(.medium)
+        }
     }
     
     func addSubscription(_ subscription: Subscription) {
@@ -780,6 +882,34 @@ final class ExpenseStore {
         self.currencySymbol = symbol
         self.currencyCode = code
         HapticsManager.shared.trigger(.selection)
+    }
+    
+    func fetchLiveRates() {
+        guard let url = URL(string: "https://open.er-api.com/v6/latest/USD") else { return }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self else { return }
+            guard let data = data, error == nil else { return }
+            do {
+                struct APIResponse: Codable {
+                    let result: String
+                    let rates: [String: Double]
+                }
+                let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
+                if decoded.result == "success" {
+                    DispatchQueue.main.async {
+                        var updatedRates = self.ratesToUSD
+                        for (code, rate) in decoded.rates {
+                            updatedRates[code] = rate
+                        }
+                        self.ratesToUSD = updatedRates
+                        self.saveToDisk()
+                    }
+                }
+            } catch {
+                print("Failed to decode currency rates: \(error)")
+            }
+        }.resume()
     }
 
     

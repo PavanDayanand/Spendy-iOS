@@ -2,7 +2,7 @@
 //  CurrencyConverterSheet.swift
 //  Spendy
 //
-//  Real-time Currency Converter Modal with Liquid Glass Controls
+//  Real-time Currency Converter Modal with Liquid Glass Controls and dynamic API rates
 //
 
 import SwiftUI
@@ -17,42 +17,24 @@ struct CurrencyConverterSheet: View {
     @State private var showFromCurrencyPicker: Bool = false
     @State private var showToCurrencyPicker: Bool = false
     
-    // Static base rates against USD for instant offline conversion
-    private let ratesToUSD: [String: Double] = [
-        "USD": 1.0,
-        "INR": 86.85,
-        "EUR": 0.95,
-        "GBP": 0.79,
-        "JPY": 152.40,
-        "CAD": 1.41,
-        "AUD": 1.55,
-        "AED": 3.67,
-        "SGD": 1.34
-    ]
-    
-    private let currencySymbols: [String: String] = [
-        "USD": "$", "INR": "₹", "EUR": "€", "GBP": "£",
-        "JPY": "¥", "CAD": "$", "AUD": "$", "AED": "د.إ", "SGD": "$"
-    ]
-    
     private var convertedAmount: Double {
         guard let amount = Double(fromAmount.replacingOccurrences(of: ",", with: "")) else {
             return 0.0
         }
-        let fromRate = ratesToUSD[fromCurrency] ?? 1.0
-        let toRate = ratesToUSD[toCurrency] ?? 1.0
+        let fromRate = store.ratesToUSD[fromCurrency] ?? 1.0
+        let toRate = store.ratesToUSD[toCurrency] ?? 1.0
         // Convert to USD then to target currency
         let amountInUSD = amount / fromRate
         return amountInUSD * toRate
     }
     
     private var exchangeRateText: String {
-        let fromRate = ratesToUSD[fromCurrency] ?? 1.0
-        let toRate = ratesToUSD[toCurrency] ?? 1.0
+        let fromRate = store.ratesToUSD[fromCurrency] ?? 1.0
+        let toRate = store.ratesToUSD[toCurrency] ?? 1.0
         let singleUnitConverted = (1.0 / fromRate) * toRate
-        let fromSym = currencySymbols[fromCurrency] ?? fromCurrency
-        let toSym = currencySymbols[toCurrency] ?? toCurrency
-        return "1 \(fromCurrency) (\(fromSym)) = \(String(format: "%.2f", singleUnitConverted)) \(toCurrency) (\(toSym))"
+        let fromSym = CurrencyInfo.symbol(for: fromCurrency)
+        let toSym = CurrencyInfo.symbol(for: toCurrency)
+        return "1 \(fromCurrency) (\(fromSym)) = \(String(format: "%.4f", singleUnitConverted)) \(toCurrency) (\(toSym))"
     }
     
     var body: some View {
@@ -121,7 +103,9 @@ struct CurrencyConverterSheet: View {
                                     showFromCurrencyPicker = true
                                 }) {
                                     HStack(spacing: 6) {
-                                        Text(currencySymbols[fromCurrency] ?? "")
+                                        Text(CurrencyInfo.flag(for: fromCurrency))
+                                            .font(.system(size: 16))
+                                        Text(CurrencyInfo.symbol(for: fromCurrency))
                                             .font(.system(size: 15, weight: .bold))
                                         Text(fromCurrency)
                                             .font(.system(size: 15, weight: .bold))
@@ -183,7 +167,9 @@ struct CurrencyConverterSheet: View {
                                     showToCurrencyPicker = true
                                 }) {
                                     HStack(spacing: 6) {
-                                        Text(currencySymbols[toCurrency] ?? "")
+                                        Text(CurrencyInfo.flag(for: toCurrency))
+                                            .font(.system(size: 16))
+                                        Text(CurrencyInfo.symbol(for: toCurrency))
                                             .font(.system(size: 15, weight: .bold))
                                         Text(toCurrency)
                                             .font(.system(size: 15, weight: .bold))
@@ -220,62 +206,16 @@ struct CurrencyConverterSheet: View {
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showFromCurrencyPicker) {
-                currencySelectorList(isFrom: true)
+                CurrencyPickerSheet(selectedCode: fromCurrency) { currency in
+                    fromCurrency = currency.code
+                }
             }
             .sheet(isPresented: $showToCurrencyPicker) {
-                currencySelectorList(isFrom: false)
+                CurrencyPickerSheet(selectedCode: toCurrency) { currency in
+                    toCurrency = currency.code
+                }
             }
         }
         .presentationDetents([.medium, .large])
-    }
-    
-    private func currencySelectorList(isFrom: Bool) -> some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                List {
-                    ForEach(Array(ratesToUSD.keys.sorted()), id: \.self) { code in
-                        Button(action: {
-                            if isFrom {
-                                fromCurrency = code
-                                showFromCurrencyPicker = false
-                            } else {
-                                toCurrency = code
-                                showToCurrencyPicker = false
-                            }
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            HStack {
-                                Text("\(currencySymbols[code] ?? "")  \(code)")
-                                    .font(.system(.body, weight: .bold))
-                                    .foregroundStyle(.white)
-                                
-                                Spacer()
-                                
-                                if (isFrom ? fromCurrency : toCurrency) == code {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(SpendyColors.primaryBlue)
-                                }
-                            }
-                        }
-                        .listRowBackground(SpendyColors.cardBackground)
-                    }
-                }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle("Select Currency")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        if isFrom { showFromCurrencyPicker = false }
-                        else { showToCurrencyPicker = false }
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 }

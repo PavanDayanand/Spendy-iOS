@@ -104,6 +104,8 @@ struct AnalyticsView: View {
     @State private var selectedIncomeSectorId: String? = nil
     @State private var selectedCategoryForSheet: Category? = nil
     
+    @Namespace private var analyticsControlsNamespace
+    
     private let calendar = Calendar.current
     
     // Computed helpers for account dropdown
@@ -165,8 +167,15 @@ struct AnalyticsView: View {
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
             }
-            .fullScreenCover(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+            .navigationDestination(item: $selectedCategoryForSheet) { category in
+                CategoryAnalyticsSheet(
+                    category: category,
+                    topControlsNamespace: analyticsControlsNamespace
+                ) {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        selectedCategoryForSheet = nil
+                    }
+                }
             }
         }
     }
@@ -1225,72 +1234,20 @@ struct AnalyticsView: View {
                         .padding(.horizontal, 20)
                 } else {
                     ForEach(insights) { insight in
-                        insightCard(
+                        SharedInsightCard(
                             title: insight.title,
                             value: insight.value,
                             subtitle: insight.desc,
-                            color: insight.color,
-                            icon: insight.icon
+                            icon: insight.icon,
+                            color: insight.color
                         )
+                        .frame(width: 180)
                     }
                 }
                 
                 Spacer().frame(width: 4)
             }
             .padding(.vertical, 10)
-        }
-    }
-    
-    private func insightCard(title: String, value: String, subtitle: String, color: Color, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: Title
-            Text(title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .textCase(.uppercase)
-                .padding(.bottom, 16)
-            
-            // Value
-            Text(value)
-                .font(.system(size: 26, weight: .heavy))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .padding(.bottom, 4)
-            
-            Spacer()
-            
-            // Footer: Icon + Subtitle
-            HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(color.opacity(0.15))
-                        .frame(width: 32, height: 32)
-                        // Adds the subtle glow from the React version
-                        .shadow(color: color.opacity(0.33), radius: 5, x: 0, y: 0)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(color)
-                }
-                
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .frame(width: 180, height: 165, alignment: .topLeading)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(white: 0.04)) // Close to #0a0a0a
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.6), radius: 12, x: 0, y: 5)
         }
     }
     
@@ -1481,7 +1438,7 @@ struct AnalyticsView: View {
                     id: catId,
                     label: cat.label,
                     sfSymbol: cat.sfSymbol,
-                    colorHex: cat.colorHex,
+                    colorHex: cat.vibrantColorHex,
                     txCount: list.count,
                     amount: sum,
                     percentage: pct
@@ -1521,7 +1478,7 @@ struct AnalyticsView: View {
                     id: catId,
                     label: cat.label,
                     sfSymbol: cat.sfSymbol,
-                    colorHex: cat.colorHex,
+                    colorHex: cat.vibrantColorHex,
                     txCount: list.count,
                     amount: sum,
                     percentage: pct

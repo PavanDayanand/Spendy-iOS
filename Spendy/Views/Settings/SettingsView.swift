@@ -61,7 +61,7 @@ struct SettingsView: View {
                 editNameSheet
             }
             .sheet(isPresented: $showCurrencyPicker) {
-                currencyPickerSheet
+                CurrencyPickerSheet()
             }
             .sheet(isPresented: $showWhatsNewSheet) {
                 whatsNewSheet
@@ -262,7 +262,7 @@ struct SettingsView: View {
                         icon: "globe",
                         iconColor: SpendyColors.textPrimary,
                         title: "Currency",
-                        badgeText: "\(store.currencySymbol) (\(store.currencyCode))"
+                        badgeText: "\(CurrencyInfo.flag(for: store.currencyCode)) \(store.currencySymbol)"
                     )
                 }
                 .buttonStyle(.plain)
@@ -455,64 +455,7 @@ struct SettingsView: View {
         }
         .padding(14)
     }
-    
-    // MARK: - Currency Picker Sheet
-    private var currencyPickerSheet: some View {
-        let currencies = [
-            (symbol: "₹", code: "INR", name: "Indian Rupee"),
-            (symbol: "$", code: "USD", name: "US Dollar"),
-            (symbol: "€", code: "EUR", name: "Euro"),
-            (symbol: "£", code: "GBP", name: "British Pound"),
-            (symbol: "¥", code: "JPY", name: "Japanese Yen"),
-            (symbol: "$", code: "CAD", name: "Canadian Dollar"),
-            (symbol: "$", code: "AUD", name: "Australian Dollar"),
-            (symbol: "د.إ", code: "AED", name: "UAE Dirham"),
-            (symbol: "$", code: "SGD", name: "Singapore Dollar")
-        ]
-        
-        return NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                List(currencies, id: \.code) { item in
-                    Button(action: {
-                        store.updateCurrency(symbol: item.symbol, code: item.code)
-                        HapticsManager.shared.trigger(.selection)
-                        showCurrencyPicker = false
-                    }) {
-                        HStack {
-                            Text("\(item.symbol)  \(item.code)")
-                                .font(.system(.body, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            
-                            Text("• \(item.name)")
-                                .font(.system(.subheadline))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                            
-                            Spacer()
-                            
-                            if store.currencyCode == item.code {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(SpendyColors.primaryBlue)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .listRowBackground(SpendyColors.cardBackground)
-                }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle("Select Currency")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showCurrencyPicker = false }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
+
     
     // MARK: - Edit Name Sheet
     private var editNameSheet: some View {

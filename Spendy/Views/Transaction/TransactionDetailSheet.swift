@@ -29,24 +29,35 @@ struct TransactionDetailSheet: View {
         return store.accounts.first(where: { $0.id == toId })
     }
     
+    private var subscription: Subscription? {
+        store.subscriptions.first(where: { $0.id.uuidString.lowercased() == transaction.subscriptionId?.lowercased() })
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 SpendyColors.appBackground
                     .ignoresSafeArea()
                 
-                // Subtle Monochrome Top Glow
-                LinearGradient(
-                    colors: [
-                        SpendyColors.textPrimary.opacity(0.15),
-                        SpendyColors.textPrimary.opacity(0.04),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 220)
-                .ignoresSafeArea()
+                // Dynamic Category/Subscription Ambient Gradient Glow matching creation drawers
+                let themeColor = subscription != nil ? Color(hex: subscription!.colorHex) : (category != nil ? Color(hex: category!.colorHex) : SpendyColors.cardBackgroundSecondary)
+                VStack {
+                    RadialGradient(
+                        colors: [
+                            themeColor.opacity(0.35),
+                            themeColor.opacity(0.12),
+                            Color.clear
+                        ],
+                        center: .top,
+                        startRadius: 0,
+                        endRadius: 360
+                    )
+                    .frame(height: 380)
+                    .blur(radius: 15)
+                    .ignoresSafeArea()
+                    
+                    Spacer()
+                }
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
@@ -99,13 +110,39 @@ struct TransactionDetailSheet: View {
                         // Hero Amount & Category Badge
                         VStack(spacing: 12) {
                             ZStack {
-                                Circle()
-                                    .fill(category?.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
-                                    .frame(width: 64, height: 64)
-                                
-                                Image(systemName: category?.sfSymbol ?? "tag.fill")
-                                    .font(.system(size: 26, weight: .bold))
-                                    .foregroundStyle(category?.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
+                                if let sub = subscription {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(hex: sub.colorHex).opacity(0.35),
+                                                    Color(hex: sub.colorHex).opacity(0.18)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 64, height: 64)
+                                        .overlay {
+                                            Circle()
+                                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1.5)
+                                        }
+                                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 8, x: 0, y: 4)
+                                    
+                                    Image(systemName: sub.sfSymbol)
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundStyle(Color(hex: sub.colorHex))
+                                } else {
+                                    let catColor = category != nil ? Color(hex: category!.colorHex) : SpendyColors.cardBackgroundSecondary
+                                    let isLightColor = category != nil && (category!.colorHex.uppercased() == "#FFFFFF" || category!.colorHex.uppercased() == "FFFFFF" || category!.colorHex.uppercased() == "#E4E4E7" || category!.colorHex.uppercased() == "#D4D4D8")
+                                    Circle()
+                                        .fill(catColor)
+                                        .frame(width: 64, height: 64)
+                                    
+                                    Image(systemName: category?.sfSymbol ?? "tag.fill")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundStyle(isLightColor ? Color.black : Color.white)
+                                }
                             }
                             
                             VStack(spacing: 4) {
