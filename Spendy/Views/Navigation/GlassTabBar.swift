@@ -90,6 +90,7 @@ struct LiquidGlassRootView: View {
 
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
+    @Binding var isMinimized: Bool
     let onQuickAdd: () -> Void
 
     @GestureState private var isDragging: Bool = false
@@ -98,14 +99,30 @@ struct GlassTabBar: View {
     private let barHeight: CGFloat = 64
     private let quickAddSize: CGFloat = 60
 
+    init(selectedTab: Binding<AppTab>, isMinimized: Binding<Bool> = .constant(false), onQuickAdd: @escaping () -> Void) {
+        self._selectedTab = selectedTab
+        self._isMinimized = isMinimized
+        self.onQuickAdd = onQuickAdd
+    }
+
     var body: some View {
         if #available(iOS 26.0, *) {
             GlassEffectContainer(spacing: 12) {
                 HStack(spacing: 12) {
-                    tabBarContent(isGlass: true)
-                        .frame(height: barHeight)
-                        .glassEffect(.regular.interactive(), in: .capsule)
-                        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                    if isMinimized {
+                        minimizedTabBarContent(isGlass: true)
+                            .glassEffect(.regular.interactive(), in: .circle)
+                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                            .transition(.scale.combined(with: .opacity))
+                        
+                        Spacer()
+                    } else {
+                        tabBarContent(isGlass: true)
+                            .frame(height: barHeight)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                            .transition(.scale.combined(with: .opacity))
+                    }
 
                     // Quick Add Floating Button
                     Button {
@@ -122,6 +139,7 @@ struct GlassTabBar: View {
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
                 }
+                .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isMinimized)
                 .padding(.horizontal, 16)
             }
         } else {
@@ -132,9 +150,18 @@ struct GlassTabBar: View {
     @ViewBuilder
     var fallbackContent: some View {
         HStack(spacing: 12) {
-            tabBarContent(isGlass: false)
-                .frame(height: barHeight)
-                .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+            if isMinimized {
+                minimizedTabBarContent(isGlass: false)
+                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                    .transition(.scale.combined(with: .opacity))
+                
+                Spacer()
+            } else {
+                tabBarContent(isGlass: false)
+                    .frame(height: barHeight)
+                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                    .transition(.scale.combined(with: .opacity))
+            }
 
             // Quick Add Floating Button (Fallback)
             Button {
@@ -154,7 +181,42 @@ struct GlassTabBar: View {
             }
             .buttonStyle(LiquidScaleButtonStyle())
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isMinimized)
         .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func minimizedTabBarContent(isGlass: Bool) -> some View {
+        Button {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                isMinimized = false
+            }
+        } label: {
+            ZStack {
+                if !isGlass {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                }
+                
+                VStack(spacing: 2) {
+                    Image(systemName: selectedTab.sfSymbol)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Color.primary)
+                    
+                    Text(selectedTab.label)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color.primary.opacity(0.7))
+                }
+            }
+            .frame(width: quickAddSize, height: quickAddSize)
+        }
+        .buttonStyle(LiquidScaleButtonStyle())
+        .accessibilityLabel("Expand Navigation Bar")
     }
 }
 
