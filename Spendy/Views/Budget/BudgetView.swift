@@ -13,6 +13,7 @@ struct BudgetView: View {
     @State private var showEditBudgetSheet: Bool = false
     @State private var isEditingExisting: Bool = false
     @State private var showDeleteConfirmation: Bool = false
+    @State private var selectedCategoryForSheet: Category? = nil
     
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
@@ -27,13 +28,12 @@ struct BudgetView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SpendyColors.appBackground
-                    .ignoresSafeArea()
+                LiquidMeshBackground()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // Header Bar
-                        headerBar
+                        // Title Header (Scrolls away with page)
+                        titleHeader
                         
                         if !store.budget.isActive || store.budget.amount <= 0 {
                             // Empty State View
@@ -44,60 +44,69 @@ struct BudgetView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 140)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                // Sticky Action Buttons (Stay fixed at top right)
+                if store.budget.isActive {
+                    actionButtons
+                        .padding(.trailing, 20)
+                        .padding(.top, 8)
+                        .zIndex(100)
                 }
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $showEditBudgetSheet) {
-                EditBudgetSheet(isEditing: isEditingExisting)
+            .sheet(item: $selectedCategoryForSheet) { category in
+                CategoryAnalyticsSheet(category: category)
             }
         }
     }
     
-    // MARK: - Header Bar (Liquid Glass Edit & Delete buttons with Anchored Popover)
-    private var headerBar: some View {
+    // MARK: - Title Header (Scrolls away)
+    private var titleHeader: some View {
         HStack {
             Text("Budget")
                 .font(.system(size: 28, weight: .heavy))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
-            
-            if store.budget.isActive {
-                HStack(spacing: 10) {
-                    // Edit Liquid Glass Button
-                    GlassCircleButton(
-                        icon: SFIcons.edit,
-                        size: 44,
-                        iconSize: 15,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .light,
-                        accessibilityLabel: "Edit Budget"
-                    ) {
-                        isEditingExisting = true
-                        showEditBudgetSheet = true
-                    }
-                    
-                    // Delete Liquid Glass Button with Anchored Popover
-                    GlassCircleButton(
-                        icon: SFIcons.trash,
-                        size: 44,
-                        iconSize: 15,
-                        tintColor: SpendyColors.expenseRed,
-                        foregroundColor: SpendyColors.expenseRed,
-                        haptic: .medium,
-                        accessibilityLabel: "Delete Budget"
-                    ) {
-                        showDeleteConfirmation = true
-                    }
-                    .popover(isPresented: $showDeleteConfirmation, arrowEdge: .top) {
-                        deleteConfirmationPopover
-                            .presentationCompactAdaptation(.popover)
-                    }
-                }
-            }
         }
         .padding(.top, 8)
+    }
+    
+    // MARK: - Sticky Action Buttons (Stay fixed at top right)
+    private var actionButtons: some View {
+        HStack(spacing: 10) {
+            // Edit Liquid Glass Button
+            GlassCircleButton(
+                icon: SFIcons.edit,
+                size: 44,
+                iconSize: 15,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Edit Budget"
+            ) {
+                isEditingExisting = true
+                showEditBudgetSheet = true
+            }
+            
+            // Delete Liquid Glass Button with Anchored Popover
+            GlassCircleButton(
+                icon: SFIcons.trash,
+                size: 44,
+                iconSize: 15,
+                foregroundColor: SpendyColors.expenseRed,
+                haptic: .medium,
+                accessibilityLabel: "Delete Budget"
+            ) {
+                showDeleteConfirmation = true
+            }
+            .popover(isPresented: $showDeleteConfirmation, arrowEdge: .top) {
+                deleteConfirmationPopover
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
     }
     
     // MARK: - Delete Confirmation Popover (Anchored to Delete Button)

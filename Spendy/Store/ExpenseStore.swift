@@ -68,10 +68,52 @@ final class ExpenseStore {
     }
     
     var colorScheme: ColorScheme? {
-        switch appearanceMode {
-        case .system: return nil
-        case .dark: return .dark
-        case .light: return .light
+        return .dark
+    }
+    
+    var isGradientBackgroundEnabled: Bool = true {
+        didSet { saveToDisk() }
+    }
+    
+    var topGradientHue: Double = 0.65 {
+        didSet {
+            updateGradientHexFromHSB()
+            saveToDisk()
+        }
+    }
+    
+    var topGradientBrightness: Double = 0.45 {
+        didSet {
+            updateGradientHexFromHSB()
+            saveToDisk()
+        }
+    }
+    
+    var topGradientColorHex: String = "#4F46E5" {
+        didSet { saveToDisk() }
+    }
+    
+    var topGradientColor: Color {
+        Color(hue: topGradientHue, saturation: 0.85, brightness: min(topGradientBrightness, 0.55))
+    }
+    
+    private func updateGradientHexFromHSB() {
+        let uiColor = UIColor(hue: topGradientHue, saturation: 0.85, brightness: min(topGradientBrightness, 0.55), alpha: 1.0)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            self.topGradientColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        }
+    }
+    
+    func setTopGradientColor(_ color: Color) {
+        let uiColor = UIColor(color)
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
+            self.topGradientHue = Double(h)
+            self.topGradientBrightness = Double(min(b, 0.55))
+        } else {
+            let clamped = color.clampedToDarkModeAccent()
+            self.topGradientColorHex = clamped.toHex()
         }
     }
     
@@ -84,6 +126,10 @@ final class ExpenseStore {
         var userName: String?
         var soundEnabled: Bool?
         var appearanceMode: AppearanceMode?
+        var topGradientColorHex: String?
+        var isGradientBackgroundEnabled: Bool?
+        var topGradientHue: Double?
+        var topGradientBrightness: Double?
         var transactions: [Transaction]
         var accounts: [Account]
         var categories: [Category]
@@ -105,7 +151,11 @@ final class ExpenseStore {
                 let payload = try JSONDecoder().decode(StoragePayload.self, from: data)
                 self.userName = payload.userName ?? ""
                 self.soundEnabled = payload.soundEnabled ?? true
-                self.appearanceMode = payload.appearanceMode ?? .dark
+                self.appearanceMode = .dark
+                self.topGradientColorHex = payload.topGradientColorHex ?? "#4F46E5"
+                self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
+                self.topGradientHue = payload.topGradientHue ?? 0.65
+                self.topGradientBrightness = payload.topGradientBrightness ?? 0.45
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories
@@ -128,7 +178,11 @@ final class ExpenseStore {
             let payload = StoragePayload(
                 userName: userName,
                 soundEnabled: soundEnabled,
-                appearanceMode: appearanceMode,
+                appearanceMode: .dark,
+                topGradientColorHex: topGradientColorHex,
+                isGradientBackgroundEnabled: isGradientBackgroundEnabled,
+                topGradientHue: topGradientHue,
+                topGradientBrightness: topGradientBrightness,
                 transactions: transactions,
                 accounts: accounts,
                 categories: categories,
@@ -771,9 +825,196 @@ final class ExpenseStore {
             HapticsManager.shared.trigger(.success)
             return true
         } catch {
+            if importWebExportJSON(data: data) {
+                return true
+            }
             print("Failed to import JSON data: \(error.localizedDescription)")
             HapticsManager.shared.trigger(.error)
             return false
         }
+    }
+    
+    private func importWebExportJSON(data: Data) -> Bool {
+        guard let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return false
+        }
+        
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoFormatterNoFrac = ISO8601DateFormatter()
+        isoFormatterNoFrac.formatOptions = [.withInternetDateTime]
+        
+        func parseDate(_ str: String) -> Date {
+            if let d = isoFormatter.date(from: str) { return d }
+            if let d = isoFormatterNoFrac.date(from: str) { return d }
+            return Date()
+        }
+        
+        func parseUUID(_ str: String) -> UUID {
+            var clean = str
+            if clean.hasPrefix("tx_") { clean = String(clean.dropFirst(3)) }
+            else if clean.hasPrefix("trans_") { clean = String(clean.dropFirst(6)) }
+            else if clean.hasPrefix("sub_") { clean = String(clean.dropFirst(4)) }
+            return UUID(uuidString: clean) ?? UUID()
+        }
+        
+        let importedUserName = jsonObject["userName"] as? String
+        let importedCurrency = jsonObject["currency"] as? String
+        
+        var newBudget = self.budget
+        if let bDict = jsonObject["budget"] as? [String: Any] {
+            let amt = (bDict["amount"] as? NSNumber)?.doubleValue ?? 0.0
+            let periodStr = bDict["period"] as? String ?? "monthly"
+            let period = BudgetPeriod(rawValue: periodStr) ?? .monthly
+            let startDay = bDict["startDay"] as? Int ?? 1
+            let isActive = bDict["isActive"] as? Bool ?? (amt > 0)
+            newBudget = Budget(amount: amt, period: period, startDay: startDay, isActive: isActive)
+        }
+        
+        var newAccounts: [Account] = []
+        if let accArray = jsonObject["accounts"] as? [[String: Any]] {
+            for (idx, dict) in accArray.enumerated() {
+                guard let id = dict["id"] as? String, let label = dict["label"] as? String else { continue }
+                let icon = dict["icon"] as? String ?? ""
+                let symbol: String = {
+                    if icon.contains("🏦") { return SFIcons.bankAccount }
+                    if icon.contains("💵") { return SFIcons.cashAccount }
+                    return SFIcons.bankAccount
+                }()
+                let defaultColor: String = {
+                    if id.lowercased().contains("cash") { return "#30D158" }
+                    if id.lowercased() == "bank" { return "#18181B" }
+                    return "#007AFF"
+                }()
+                let opBal = (dict["openingBalance"] as? NSNumber)?.doubleValue ?? 0.0
+                newAccounts.append(Account(id: id, label: label, sfSymbol: symbol, colorHex: defaultColor, openingBalance: opBal, order: idx))
+            }
+        }
+        
+        var newCategories: [Category] = []
+        if let catObj = jsonObject["categories"] as? [String: Any] {
+            let sfMap: [String: String] = [
+                "fastfood": "fork.knife",
+                "gas": "fuelpump.fill",
+                "groceries": "cart.fill",
+                "movies": "popcorn.fill",
+                "savings": "piggybank.fill",
+                "receipt": "receipt",
+                "spa": "leaf.fill",
+                "pets": "pawprint.fill",
+                "home": "house.fill",
+                "amazon": "shippingbox.fill",
+                "cut": "scissors",
+                "golf": "car.fill",
+                "favorite": "heart.fill",
+                "drycleaning": "bag.fill",
+                "glasses": "eyeglasses",
+                "brush": "pencil.and.ruler.fill",
+                "atm": "creditcard.fill",
+                "money": "dollarsign.circle.fill",
+                "work": "briefcase.fill",
+                "gift": "gift.fill",
+                "family": "figure.2.and.child.holdinghands",
+                "Tag": "tag.fill"
+            ]
+            
+            func parseCatList(_ list: [[String: Any]], _ type: TransactionType) {
+                for (idx, dict) in list.enumerated() {
+                    guard let id = dict["id"] as? String, let label = dict["label"] as? String else { continue }
+                    let color = dict["color"] as? String ?? "#3478f6"
+                    let iconName = dict["iconName"] as? String ?? ""
+                    let symbol = sfMap[iconName] ?? "tag.fill"
+                    let hidden = dict["hidden"] as? Bool ?? false
+                    let folder = dict["folder"] as? String ?? "Uncategorized"
+                    newCategories.append(Category(id: id, label: label, sfSymbol: symbol, colorHex: color, type: type, folder: folder, isHidden: hidden, order: idx))
+                }
+            }
+            
+            if let expList = catObj["expense"] as? [[String: Any]] {
+                parseCatList(expList, .expense)
+            }
+            if let incList = catObj["income"] as? [[String: Any]] {
+                parseCatList(incList, .income)
+            }
+        }
+        
+        var newSubscriptions: [Subscription] = []
+        if let subArray = jsonObject["subscriptions"] as? [[String: Any]] {
+            for dict in subArray {
+                guard let idStr = dict["id"] as? String,
+                      let name = dict["name"] as? String,
+                      let amtNum = dict["amount"] as? NSNumber else { continue }
+                let cycleStr = dict["cycle"] as? String ?? "monthly"
+                let cycle = BillingCycle(rawValue: cycleStr) ?? .monthly
+                let dateStr = (dict["nextBilling"] as? String) ?? (dict["originalDate"] as? String) ?? ""
+                let date = parseDate(dateStr)
+                let accountId = dict["accountId"] as? String ?? "bank"
+                let isTrial = dict["isTrial"] as? Bool ?? false
+                let status = dict["status"] as? String ?? "active"
+                
+                newSubscriptions.append(Subscription(
+                    id: parseUUID(idStr),
+                    name: name,
+                    amount: amtNum.doubleValue,
+                    cycle: cycle,
+                    nextBillingDate: date,
+                    categoryId: "subscriptions",
+                    accountId: accountId,
+                    autoDeduct: false,
+                    isPaused: status == "paused",
+                    isTrial: isTrial,
+                    status: status
+                ))
+            }
+        }
+        
+        var newTransactions: [Transaction] = []
+        if let txArray = jsonObject["transactions"] as? [[String: Any]] {
+            for dict in txArray {
+                guard let idStr = dict["id"] as? String,
+                      let title = dict["title"] as? String,
+                      let amtNum = dict["amount"] as? NSNumber,
+                      let typeStr = dict["type"] as? String,
+                      let catId = (dict["category"] as? String) ?? (dict["categoryId"] as? String),
+                      let accId = dict["accountId"] as? String,
+                      let dateStr = dict["date"] as? String else { continue }
+                
+                let txType = TransactionType(rawValue: typeStr) ?? .expense
+                let txDate = parseDate(dateStr)
+                let subId = dict["subscriptionId"] as? String
+                let notes = dict["notes"] as? String
+                
+                newTransactions.append(Transaction(
+                    id: parseUUID(idStr),
+                    title: title,
+                    amount: amtNum.doubleValue,
+                    type: txType,
+                    categoryId: catId,
+                    accountId: accId,
+                    toAccountId: dict["toAccountId"] as? String,
+                    date: txDate,
+                    notes: notes,
+                    subscriptionId: subId
+                ))
+            }
+        }
+        
+        withAnimation(.spring(response: 0.35)) {
+            if let userName = importedUserName, !userName.isEmpty {
+                self.userName = userName
+            }
+            if let curr = importedCurrency, !curr.isEmpty {
+                self.currencyCode = curr
+                self.currencySymbol = curr == "INR" ? "₹" : "$"
+            }
+            self.budget = newBudget
+            if !newAccounts.isEmpty { self.accounts = newAccounts }
+            if !newCategories.isEmpty { self.categories = newCategories }
+            if !newSubscriptions.isEmpty { self.subscriptions = newSubscriptions }
+            self.transactions = newTransactions
+        }
+        
+        HapticsManager.shared.trigger(.success)
+        return true
     }
 }

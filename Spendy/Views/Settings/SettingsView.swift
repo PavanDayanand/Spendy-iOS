@@ -21,7 +21,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SpendyColors.appBackground
+                Color.black
                     .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
@@ -249,38 +249,10 @@ struct SettingsView: View {
                 .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
             
+            // Custom Image 2 Style Color Picker & Gradient Background Card
+            CustomColorSliderPickerView()
+            
             VStack(spacing: 0) {
-                // Appearance Selector (Dark / Light / System)
-                HStack(spacing: 14) {
-                    Image(systemName: store.appearanceMode.sfSymbol)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(width: 28, height: 28)
-                    
-                    Text("Appearance")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Picker("Appearance", selection: Binding(
-                        get: { store.appearanceMode },
-                        set: {
-                            store.appearanceMode = $0
-                            HapticsManager.shared.trigger(.selection)
-                        }
-                    )) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 190)
-                }
-                .padding(14)
-                
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
-                
                 // Currency Selector
                 Button(action: {
                     HapticsManager.shared.trigger(.light)

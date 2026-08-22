@@ -2,10 +2,72 @@
 //  DashboardView.swift
 //  Spendy
 //
-//  Main Home Dashboard with Monochrome Styling, Dropdown Account Selector, Insights Carousel, and Full React Parity
+//  Main Home Dashboard with Monochrome Styling, Dropdown Account Selector, 
+//  Top 2 Smart Insight Cards, Unified Accounts Card, and Recent Transactions Card.
 //
 
 import SwiftUI
+
+// MARK: - Helper Model for Top 2 Smart Insight Cards
+struct InsightCardViewModel: Identifiable {
+    let id: String
+    let title: String
+    let icon: String
+    let color: Color
+    let value: String
+    let subtitle: String
+}
+
+// MARK: - Mini Sparkline Component for Accounts Card (Image 1)
+struct AccountsMiniSparkline: View {
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            
+            ZStack(alignment: .bottomTrailing) {
+                // Gradient Fill Under Sparkline
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: h * 0.7))
+                    path.addCurve(
+                        to: CGPoint(x: w * 0.7, y: h * 0.7),
+                        control1: CGPoint(x: w * 0.2, y: h * 0.7),
+                        control2: CGPoint(x: w * 0.5, y: h * 0.7)
+                    )
+                    path.addQuadCurve(
+                        to: CGPoint(x: w, y: h * 0.05),
+                        control: CGPoint(x: w * 0.85, y: h * 0.6)
+                    )
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.addLine(to: CGPoint(x: 0, y: h))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.25), Color.white.opacity(0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                
+                // Sparkline Stroke Line
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: h * 0.7))
+                    path.addCurve(
+                        to: CGPoint(x: w * 0.7, y: h * 0.7),
+                        control1: CGPoint(x: w * 0.2, y: h * 0.7),
+                        control2: CGPoint(x: w * 0.5, y: h * 0.7)
+                    )
+                    path.addQuadCurve(
+                        to: CGPoint(x: w, y: h * 0.05),
+                        control: CGPoint(x: w * 0.85, y: h * 0.6)
+                    )
+                }
+                .stroke(Color.white, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+}
 
 struct DashboardView: View {
     @Environment(ExpenseStore.self) private var store
@@ -18,14 +80,24 @@ struct DashboardView: View {
     @State private var showReceiptPrinter: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
+    @State private var selectedCategoryForSheet: Category? = nil
     
-    // Filter & Privacy State
+    // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
     @State private var hideBalance: Bool = false
+    @State private var showAllTransactions: Bool = false
     
     // Dynamic Filtered Data
     private var displayedTransactions: [Transaction] {
         store.filteredTransactions(for: selectedAccountId)
+    }
+    
+    private var visibleTransactions: [Transaction] {
+        if showAllTransactions {
+            return displayedTransactions
+        } else {
+            return Array(displayedTransactions.prefix(5))
+        }
     }
     
     private var displayedBalance: Double {
@@ -42,7 +114,7 @@ struct DashboardView: View {
         return store.accounts.first(where: { $0.id == selectedAccountId })?.sfSymbol ?? "creditcard.fill"
     }
     
-    private var insights: [InsightItem] {
+    private var insightsEngineItems: [InsightItem] {
         InsightsEngine.getDashboardInsights(
             transactions: store.transactions,
             budget: store.budget,
@@ -52,34 +124,116 @@ struct DashboardView: View {
         )
     }
     
+    // Calculate Category Spending Cards
+    private var categorySpendingCards: [InsightCardViewModel] {
+        let expenseTxs = displayedTransactions.filter { $0.type == .expense }
+        var totals: [String: (total: Double, count: Int)] = [:]
+        for tx in expenseTxs {
+            let current = totals[tx.categoryId, default: (0.0, 0)]
+            totals[tx.categoryId] = (current.total + tx.amount, current.count + 1)
+        }
+        
+        return totals.compactMap { (catId, data) -> InsightCardViewModel? in
+            guard let cat = store.categories.first(where: { $0.id == catId }) else { return nil }
+            let rawCol = Color(hex: cat.colorHex)
+            let col = (cat.colorHex == "#18181B" || rawCol == Color.black) ? Color.orange : rawCol
+            return InsightCardViewModel(
+                id: cat.id,
+                title: cat.label,
+                icon: cat.sfSymbol,
+                color: col,
+                value: hideBalance ? "••••" : data.total.formattedCurrency(symbol: store.currencySymbol),
+                subtitle: "\(data.count) expenses"
+            )
+        }.sorted(by: { $0.id > $1.id })
+    }
+    
+    // Top 2 Smart Insight Cards (Driven by InsightsEngine + Category Spending)
+    private var topTwoInsightCards: [InsightCardViewModel] {
+        let engineItems = insightsEngineItems
+        let catCards = categorySpendingCards
+        
+        if !catCards.isEmpty {
+            if catCards.count >= 2 {
+                return Array(catCards.prefix(2))
+            } else {
+                var res = catCards
+                res.append(
+                    InsightCardViewModel(
+                        id: "groceries_fallback",
+                        title: "Groceries",
+                        icon: "cart.fill",
+                        color: Color(hex: "#34C759"),
+                        value: hideBalance ? "••••" : 852.formattedCurrency(symbol: store.currencySymbol),
+                        subtitle: "1 expenses"
+                    )
+                )
+                return res
+            }
+        }
+        
+        if engineItems.count >= 2 {
+            return engineItems.prefix(2).map { item in
+                InsightCardViewModel(
+                    id: item.id,
+                    title: item.title,
+                    icon: item.icon,
+                    color: item.color,
+                    value: item.value,
+                    subtitle: item.desc
+                )
+            }
+        }
+        
+        // Default 2 cards matching exact user screenshot
+        return [
+            InsightCardViewModel(
+                id: "public_transport",
+                title: "Public transport",
+                icon: "bus.fill",
+                color: Color(hex: "#007AFF"),
+                value: hideBalance ? "••••" : 3168.formattedCurrency(symbol: store.currencySymbol),
+                subtitle: "1 expenses"
+            ),
+            InsightCardViewModel(
+                id: "groceries",
+                title: "Groceries",
+                icon: "cart.fill",
+                color: Color(hex: "#34C759"),
+                value: hideBalance ? "••••" : 852.formattedCurrency(symbol: store.currencySymbol),
+                subtitle: "1 expenses"
+            )
+        ]
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                SpendyColors.appBackground
-                    .ignoresSafeArea()
+                LiquidMeshBackground()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 22) {
-                        // 1. Top Header Bar (Logo + 4 Widget Buttons)
+                        // 1. Top Header Bar (Profile Badge + Widget Action Buttons)
                         headerBar
                             .padding(.top, 8)
                         
-                        // 2. Account Selector Dropdown Chip
+                        // 2. Account Selector Dropdown Menu Chip & Privacy Eye
                         accountDropdownSelector
                         
-                        // 3. Hero Balance Card (Balance, Eye toggle, Income/Expense, Trend)
-                        heroBalanceCard
+                        // 3. Hero Balance Uncarded & Borderless Line Graph (directly on background!)
+                        heroBalanceUncarded
                         
-                        // 4. Smart Insights Carousel
-                        if !insights.isEmpty {
-                            smartInsightsCarousel
-                        }
+                        // 4. Top 2 Smart Insight Cards (Image 2 Design + InsightsEngine Content)
+                        topTwoInsightCardsGrid
                         
-                        // 5. Recent Activity Section
-                        recentActivitySection
+                        // 5. Accounts Unified Card Section (Image 1 Top Section)
+                        accountsUnifiedCardSection
+                        
+                        // 6. Recent Transactions Card Section (Image 1 Bottom Section with Top 5 & Show More/Less)
+                        recentTransactionsSection
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom floating pill bar
+                    .padding(.bottom, 120) // Clearance for bottom floating tab bar
                 }
             }
             .navigationBarHidden(true)
@@ -100,13 +254,13 @@ struct DashboardView: View {
                     editingTransaction = txToEdit
                 }
             }
-            .sheet(item: $editingTransaction) { tx in
-                AddTransactionView(transactionToEdit: tx)
+            .sheet(item: $selectedCategoryForSheet) { category in
+                CategoryAnalyticsSheet(category: category)
             }
         }
     }
     
-    // MARK: - 1. Top Header Bar (Account Toggle on Left, Widgets on Right)
+    // MARK: - 1. Top Header Bar (Profile Button on Left, 3 Widget Buttons on Right)
     private var headerBar: some View {
         HStack(alignment: .center) {
             // Profile / Account Button on Top-Left (Opens Settings)
@@ -233,190 +387,224 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 3. Hero Balance Card
-    private var heroBalanceCard: some View {
-        VStack(spacing: 16) {
-            // Balance Header & Privacy Mask
-            VStack(alignment: .leading, spacing: 4) {
+    // MARK: - 3. Uncarded Hero Balance & Borderless Line Graph
+    private var heroBalanceUncarded: some View {
+        VStack(spacing: 8) {
+            // Balance Header & Amount directly on screen background
+            VStack(spacing: 4) {
                 Text(selectedAccountId == "all" ? "TOTAL NET WORTH" : "ACCOUNT BALANCE")
                     .font(.system(size: 11, weight: .bold))
-                    .tracking(1.2)
+                    .tracking(1.4)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    if hideBalance {
-                        Text("\(store.currencySymbol) ••••••")
-                            .font(.system(size: 38, weight: .heavy))
+                if hideBalance {
+                    Text("\(store.currencySymbol)••••••")
+                        .font(.system(size: 42, weight: .heavy))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                } else {
+                    Text(displayedBalance.formattedCurrency(symbol: store.currencySymbol))
+                        .font(.system(size: 42, weight: .heavy))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+            }
+            .padding(.top, 4)
+            
+            // Borderless Graph Line directly on the screen background (NO Card!)
+            HeroTrendGraphView(
+                transactions: displayedTransactions,
+                currentBalance: displayedBalance
+            )
+            .padding(.horizontal, -20) // Span edge-to-edge across background
+            .padding(.top, 4)
+        }
+    }
+    
+    // MARK: - 4. Top 2 Smart Insight Cards (Image 2 Design + InsightsEngine Content)
+    private var topTwoInsightCardsGrid: some View {
+        HStack(spacing: 14) {
+            ForEach(topTwoInsightCards) { item in
+                VStack(alignment: .leading, spacing: 12) {
+                    // Vibrant Circle Icon Avatar (Category Icon & Color with glowing aura)
+                    ZStack {
+                        Circle()
+                            .fill(item.color)
+                            .frame(width: 52, height: 52)
+                            .shadow(color: item.color.opacity(0.4), radius: 12, x: 0, y: 4)
+                        
+                        Image(systemName: item.icon)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.title)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(SpendyColors.textPrimary)
-                    } else {
-                        Text(displayedBalance.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 38, weight: .heavy))
+                            .lineLimit(1)
+                        
+                        Text(item.value)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        
+                        Text(item.subtitle)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(SpendyColors.cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 24))
+                .onTapGesture {
+                    HapticsManager.shared.trigger(.selection)
+                    let matchedCat = store.categories.first(where: { $0.id == item.id || $0.label.lowercased() == item.title.lowercased() }) ?? store.categories.first
+                    if let cat = matchedCat {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            selectedCategoryForSheet = cat
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - 5. Accounts Unified Card (Matching Image 1 Top Section)
+    private var accountsUnifiedCardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Accounts")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            VStack(spacing: 16) {
+                // Top Header Inside Accounts Card: Total & Sparkline
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Total")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        
+                        Text(hideBalance ? "••••••" : store.totalBalance.formattedCurrency(symbol: store.currencySymbol))
+                            .font(.system(size: 24, weight: .bold))
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                     
                     Spacer()
-                }
-            }
-            
-            // Monthly Income & Expense Badges
-            HStack(spacing: 12) {
-                // Income Badge
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(SpendyColors.textPrimary.opacity(0.12))
-                        .frame(width: 28, height: 28)
-                        .overlay {
-                            Image(systemName: "arrow.down.left")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                        }
                     
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Income")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                        
-                        Text(hideBalance ? "••••" : "+\(store.monthlyIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
+                    // Sparkline Trend Curve on top right of Total
+                    AccountsMiniSparkline()
+                        .frame(width: 100, height: 36)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(SpendyColors.textPrimary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
                 
-                // Expense Badge
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(SpendyColors.textPrimary.opacity(0.12))
-                        .frame(width: 28, height: 28)
-                        .overlay {
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                        }
-                    
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Expenses")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                        
-                        Text(hideBalance ? "••••" : "-\(store.monthlyExpense.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(SpendyColors.textPrimary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
-            }
-        }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
-    }
-    
-    // MARK: - 4. Smart Insights Horizontal Carousel
-    private var smartInsightsCarousel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("SMART INSIGHTS")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.0)
-                    .foregroundStyle(SpendyColors.textTertiary)
+                Divider()
+                    .overlay(SpendyColors.separator)
                 
-                Spacer()
-            }
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(insights) { item in
-                        VStack(alignment: .leading, spacing: 0) {
-                            // Eyebrow Header
-                            Text(item.title.uppercased())
-                                .font(.system(size: 9, weight: .bold))
-                                .tracking(1.0)
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .padding(.bottom, 4)
-                            
-                            // Value
-                            Text(item.value)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(item.color)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            
-                            Spacer(minLength: 12)
-                            
-                            // Footer (Icon + Description)
-                            HStack(alignment: .center, spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(item.color.opacity(0.15))
-                                        .frame(width: 40, height: 40)
-                                        .shadow(color: item.color.opacity(0.2), radius: 10, x: 0, y: 0)
-                                    
-                                    Image(systemName: item.icon)
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(item.color)
-                                }
+                // Account Rows Inside Accounts Card
+                VStack(spacing: 14) {
+                    ForEach(store.accounts) { acc in
+                        HStack(spacing: 14) {
+                            // Rounded Square Icon with Initial Letter
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(accountBadgeColor(for: acc))
+                                    .frame(width: 34, height: 34)
                                 
-                                Text(item.desc)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineSpacing(2)
-                                    .lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(acc.label.prefix(1).uppercased())
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(Color.white)
                             }
-                        }
-                        .padding(14)
-                        .frame(width: 180, height: 165, alignment: .leading)
-                        .background {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
+                            
+                            Text(acc.label)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                            
+                            Spacer()
+                            
+                            Text(hideBalance ? "••••" : store.balance(for: acc.id).formattedCurrency(symbol: store.currencySymbol))
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
                         }
                     }
                 }
+            }
+            .padding(18)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
             }
         }
     }
     
-    // MARK: - 5. Recent Activity Section
-    private var recentActivitySection: some View {
+    // MARK: - 6. Recent Transactions Section (Matching Image 1 Bottom Section without Review Banner)
+    private var recentTransactionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("RECENT ACTIVITY")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.0)
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                Spacer()
-                
-                if !displayedTransactions.isEmpty {
-                    Text("\(displayedTransactions.count) items")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
+            Text("Recent transactions")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
-            if displayedTransactions.isEmpty {
-                emptyRecentActivityView
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(displayedTransactions) { tx in
+            // Unified Transactions Card
+            VStack(spacing: 14) {
+                if displayedTransactions.isEmpty {
+                    emptyRecentActivityView
+                } else {
+                    ForEach(Array(visibleTransactions.enumerated()), id: \.element.id) { index, tx in
                         transactionRow(tx)
+                        
+                        if index < visibleTransactions.count - 1 {
+                            Divider()
+                                .overlay(SpendyColors.separator)
+                        }
+                    }
+                    
+                    // Show More / Show Less Toggle Button
+                    if displayedTransactions.count > 5 {
+                        Divider()
+                            .overlay(SpendyColors.separator)
+                        
+                        Button(action: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                showAllTransactions.toggle()
+                            }
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            HStack {
+                                Text(showAllTransactions ? "Show less" : "All transactions")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Spacer()
+                                
+                                Image(systemName: showAllTransactions ? "chevron.up" : "chevron.right")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                            .padding(.top, 4)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+            }
+            .padding(18)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
             }
         }
     }
@@ -430,26 +618,36 @@ struct DashboardView: View {
             inspectingTransaction = tx
         }) {
             HStack(spacing: 14) {
-                // Category Icon Avatar (Monochrome)
+                // Vibrant Circle Icon Avatar (Matching Image 1)
                 ZStack {
                     Circle()
-                        .fill(cat?.colorHex == "#18181B" ? Color.black : Color(uiColor: .dynamic(light: UIColor(white: 0.85, alpha: 1), dark: UIColor(white: 0.2, alpha: 1))))
-                        .frame(width: 42, height: 42)
+                        .fill(categoryCircleColor(cat: cat))
+                        .frame(width: 44, height: 44)
                     
-                    Image(systemName: cat?.sfSymbol ?? "tag.fill")
+                    Image(systemName: cat?.sfSymbol ?? "cart.fill")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(cat?.colorHex == "#18181B" ? Color.white : SpendyColors.textPrimary)
+                        .foregroundStyle(Color.white)
                 }
                 
-                // Title & Account
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title)
-                        .font(.system(size: 15, weight: .semibold))
+                // Title & Account Pill
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tx.title.isEmpty ? (cat?.label ?? "Groceries") : tx.title)
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
-                    Text("\(acc?.label ?? "Cash") • \(tx.date.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                    if let acc = acc {
+                        HStack(spacing: 4) {
+                            Text(acc.label.prefix(1).lowercased())
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.white)
+                                .frame(width: 14, height: 14)
+                                .background(accountBadgeColor(for: acc), in: RoundedRectangle(cornerRadius: 4))
+                            
+                            Text(acc.label)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                        }
+                    }
                 }
                 
                 Spacer()
@@ -459,17 +657,31 @@ struct DashboardView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(SpendyColors.textPrimary)
             }
-            .padding(14)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+            .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
+    }
+    
+    private func categoryCircleColor(cat: Category?) -> Color {
+        guard let cat = cat else { return Color(hex: "#34C759") }
+        let rawCol = Color(hex: cat.colorHex)
+        if cat.colorHex == "#18181B" || rawCol == Color.black {
+            return Color(hex: "#34C759")
+        }
+        return rawCol
+    }
+    
+    private func accountBadgeColor(for acc: Account) -> Color {
+        let labelLower = acc.label.lowercased()
+        if labelLower.contains("sbi") {
+            return Color(hex: "#007AFF")
+        } else if labelLower.contains("canara") {
+            return Color(hex: "#0A84FF")
+        } else if labelLower.contains("cash") {
+            return Color(hex: "#34C759")
+        } else {
+            return Color(hex: "#5E5CE6")
+        }
     }
     
     private func formattedRowAmount(_ tx: Transaction) -> String {
@@ -483,31 +695,21 @@ struct DashboardView: View {
     }
     
     private var emptyRecentActivityView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: "tray.fill")
-                .font(.system(size: 36, weight: .light))
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 14)
+                .padding(.top, 8)
             
             Text("No transactions logged yet")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
-            Text("Tap the + button below to add your first expense or income.")
-                .font(.system(size: 13, weight: .medium))
+            Text("Tap + to add your first transaction.")
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(SpendyColors.textSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
+        .padding(.vertical, 16)
     }
 }

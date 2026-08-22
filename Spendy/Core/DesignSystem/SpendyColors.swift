@@ -34,6 +34,36 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+    
+    func toHex() -> String {
+        let uiColor = UIColor(self)
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        }
+        return "#4F46E5"
+    }
+    
+    func clampedToDarkModeAccent() -> Color {
+        let uiColor = UIColor(self)
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        
+        if uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) {
+            // Clamp brightness to max 0.55 so bright/light colors (white, pastel pink, bright yellow)
+            // are automatically turned into dark-mode-safe, rich saturated accent tones.
+            let clampedBrightness = min(brightness, 0.55)
+            let clampedSaturation = max(saturation, 0.35)
+            let adjustedUIColor = UIColor(hue: hue, saturation: clampedSaturation, brightness: clampedBrightness, alpha: alpha)
+            return Color(uiColor: adjustedUIColor)
+        }
+        return self
+    }
 }
 
 extension UIColor {
