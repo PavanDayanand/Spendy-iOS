@@ -14,6 +14,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case analytics
     case budget
     case manage
+    case quickAdd
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .analytics: return "Stats"
         case .budget: return "Budget"
         case .manage: return "Manage"
+        case .quickAdd: return "Add"
         }
     }
 
@@ -32,6 +34,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .analytics: return "chart.bar.fill"
         case .budget: return "dollarsign.circle.fill"
         case .manage: return "slider.horizontal.3"
+        case .quickAdd: return "plus"
         }
     }
 }
@@ -90,7 +93,6 @@ struct LiquidGlassRootView: View {
 
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
-    @Binding var isMinimized: Bool
     let onQuickAdd: () -> Void
 
     @GestureState private var isDragging: Bool = false
@@ -99,30 +101,14 @@ struct GlassTabBar: View {
     private let barHeight: CGFloat = 64
     private let quickAddSize: CGFloat = 60
 
-    init(selectedTab: Binding<AppTab>, isMinimized: Binding<Bool> = .constant(false), onQuickAdd: @escaping () -> Void) {
-        self._selectedTab = selectedTab
-        self._isMinimized = isMinimized
-        self.onQuickAdd = onQuickAdd
-    }
-
     var body: some View {
         if #available(iOS 26.0, *) {
             GlassEffectContainer(spacing: 12) {
                 HStack(spacing: 12) {
-                    if isMinimized {
-                        minimizedTabBarContent(isGlass: true)
-                            .glassEffect(.regular.interactive(), in: .circle)
-                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-                            .transition(.scale.combined(with: .opacity))
-                        
-                        Spacer()
-                    } else {
-                        tabBarContent(isGlass: true)
-                            .frame(height: barHeight)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-                            .transition(.scale.combined(with: .opacity))
-                    }
+                    tabBarContent(isGlass: true)
+                        .frame(height: barHeight)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
 
                     // Quick Add Floating Button
                     Button {
@@ -139,7 +125,6 @@ struct GlassTabBar: View {
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
                 }
-                .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isMinimized)
                 .padding(.horizontal, 16)
             }
         } else {
@@ -150,18 +135,9 @@ struct GlassTabBar: View {
     @ViewBuilder
     var fallbackContent: some View {
         HStack(spacing: 12) {
-            if isMinimized {
-                minimizedTabBarContent(isGlass: false)
-                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-                    .transition(.scale.combined(with: .opacity))
-                
-                Spacer()
-            } else {
-                tabBarContent(isGlass: false)
-                    .frame(height: barHeight)
-                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-                    .transition(.scale.combined(with: .opacity))
-            }
+            tabBarContent(isGlass: false)
+                .frame(height: barHeight)
+                .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
 
             // Quick Add Floating Button (Fallback)
             Button {
@@ -181,42 +157,7 @@ struct GlassTabBar: View {
             }
             .buttonStyle(LiquidScaleButtonStyle())
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isMinimized)
         .padding(.horizontal, 16)
-    }
-
-    @ViewBuilder
-    private func minimizedTabBarContent(isGlass: Bool) -> some View {
-        Button {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
-                isMinimized = false
-            }
-        } label: {
-            ZStack {
-                if !isGlass {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
-                        )
-                }
-                
-                VStack(spacing: 2) {
-                    Image(systemName: selectedTab.sfSymbol)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color.primary)
-                    
-                    Text(selectedTab.label)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Color.primary.opacity(0.7))
-                }
-            }
-            .frame(width: quickAddSize, height: quickAddSize)
-        }
-        .buttonStyle(LiquidScaleButtonStyle())
-        .accessibilityLabel("Expand Navigation Bar")
     }
 }
 
@@ -225,11 +166,12 @@ struct GlassTabBar: View {
 private extension GlassTabBar {
 
     func tabBarContent(isGlass: Bool) -> some View {
-        GeometryReader { geometry in
+        let mainTabs: [AppTab] = [.home, .analytics, .budget, .manage]
+        return GeometryReader { geometry in
             let totalWidth = geometry.size.width
-            let count = CGFloat(AppTab.allCases.count)
+            let count = CGFloat(mainTabs.count)
             let itemWidth = totalWidth / count
-            let activeIndex = CGFloat(AppTab.allCases.firstIndex(of: selectedTab) ?? 0)
+            let activeIndex = CGFloat(mainTabs.firstIndex(of: selectedTab) ?? 0)
 
             let pillWidth = isDragging ? itemWidth + 4 : itemWidth - 8
             let pillHeight: CGFloat = isDragging ? 52 : 44
@@ -272,7 +214,7 @@ private extension GlassTabBar {
 
                 // Interactive Tab Elements
                 HStack(spacing: 0) {
-                    ForEach(AppTab.allCases) { tab in
+                    ForEach(mainTabs) { tab in
                         let isSelected = selectedTab == tab
 
                         VStack(spacing: 3) {
@@ -299,8 +241,8 @@ private extension GlassTabBar {
                         let x = value.location.x
                         dragX = x
                         
-                        let targetIndex = min(max(Int(x / itemWidth), 0), AppTab.allCases.count - 1)
-                        let newTab = AppTab.allCases[targetIndex]
+                        let targetIndex = min(max(Int(x / itemWidth), 0), mainTabs.count - 1)
+                        let newTab = mainTabs[targetIndex]
 
                         if newTab != selectedTab {
                             selectWithHaptic(newTab)

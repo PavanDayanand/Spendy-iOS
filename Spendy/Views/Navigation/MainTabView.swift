@@ -15,40 +15,39 @@ struct MainTabView: View {
     var body: some View {
         if #available(iOS 26.0, *) {
             TabView(selection: $selectedTab) {
-                Tab(AppTab.home.label, systemImage: AppTab.home.sfSymbol, value: .home) {
+                Tab(AppTab.home.label, systemImage: AppTab.home.sfSymbol, value: AppTab.home) {
                     DashboardView(showAddTransaction: $showAddTransaction)
                 }
                 
-                Tab(AppTab.analytics.label, systemImage: AppTab.analytics.sfSymbol, value: .analytics) {
+                Tab(AppTab.analytics.label, systemImage: AppTab.analytics.sfSymbol, value: AppTab.analytics) {
                     AnalyticsView()
                 }
                 
-                Tab(AppTab.budget.label, systemImage: AppTab.budget.sfSymbol, value: .budget) {
+                Tab(AppTab.budget.label, systemImage: AppTab.budget.sfSymbol, value: AppTab.budget) {
                     BudgetView()
                 }
                 
-                Tab(AppTab.manage.label, systemImage: AppTab.manage.sfSymbol, value: .manage) {
+                Tab(AppTab.manage.label, systemImage: AppTab.manage.sfSymbol, value: AppTab.manage) {
                     ManageView()
                 }
-            }
-            .tint(SpendyColors.primaryBlue)
-            .tabBarMinimizeBehavior(.onScrollDown)
-            .overlay(alignment: .bottomTrailing) {
-                // Standalone Floating Quick Add Liquid Glass Button
-                Button {
-                    HapticsManager.shared.trigger(.medium)
-                    showAddTransaction = true
+                
+                Tab(value: AppTab.quickAdd, role: .search) {
+                    Color.clear
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.primary)
-                        .frame(width: 56, height: 56)
-                        .glassEffect(.regular.interactive(), in: .circle)
-                        .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
+                    Label("Add", systemImage: "plus")
+                        .matchedTransitionSource(id: "compose-tab", in: composeNamespace)
                 }
-                .buttonStyle(LiquidScaleButtonStyle())
-                .padding(.trailing, 20)
-                .padding(.bottom, 72)
+            }
+            .tabViewStyle(.sidebarAdaptable)
+            .tabBarMinimizeBehavior(.onScrollDown)
+            .tint(SpendyColors.primaryBlue)
+            .onChange(of: selectedTab) { oldTab, newTab in
+                if newTab == .quickAdd {
+                    withAnimation {
+                        showAddTransaction = true
+                    }
+                    selectedTab = oldTab
+                }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .sheet(isPresented: $showAddTransaction) {
@@ -56,52 +55,32 @@ struct MainTabView: View {
                     .matchedTransitionSource(id: "compose-tab", in: composeNamespace)
             }
         } else {
-            ZStack(alignment: .bottomTrailing) {
-                TabView(selection: $selectedTab) {
-                    DashboardView(showAddTransaction: $showAddTransaction)
-                        .tabItem {
-                            Label(AppTab.home.label, systemImage: AppTab.home.sfSymbol)
-                        }
-                        .tag(AppTab.home)
-                    
-                    AnalyticsView()
-                        .tabItem {
-                            Label(AppTab.analytics.label, systemImage: AppTab.analytics.sfSymbol)
-                        }
-                        .tag(AppTab.analytics)
-                    
-                    BudgetView()
-                        .tabItem {
-                            Label(AppTab.budget.label, systemImage: AppTab.budget.sfSymbol)
-                        }
-                        .tag(AppTab.budget)
-                    
-                    ManageView()
-                        .tabItem {
-                            Label(AppTab.manage.label, systemImage: AppTab.manage.sfSymbol)
-                        }
-                        .tag(AppTab.manage)
+            ZStack(alignment: .bottom) {
+                // Main Screen Content
+                Group {
+                    switch selectedTab {
+                    case .home:
+                        DashboardView(showAddTransaction: $showAddTransaction)
+                    case .analytics:
+                        AnalyticsView()
+                    case .budget:
+                        BudgetView()
+                    case .manage:
+                        ManageView()
+                    case .quickAdd:
+                        DashboardView(showAddTransaction: $showAddTransaction)
+                    }
                 }
-                .tint(SpendyColors.primaryBlue)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
-                // Standalone Floating Quick Add Button
-                Button {
-                    HapticsManager.shared.trigger(.medium)
-                    showAddTransaction = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.primary)
-                        .frame(width: 56, height: 56)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(
-                            Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
-                }
-                .buttonStyle(LiquidScaleButtonStyle())
-                .padding(.trailing, 20)
-                .padding(.bottom, 64)
+                // Floating Liquid Glass Navigation Bar (4 Tabs + Quick Add Button)
+                GlassTabBar(
+                    selectedTab: $selectedTab,
+                    onQuickAdd: {
+                        showAddTransaction = true
+                    }
+                )
+                .padding(.bottom, 4)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .sheet(isPresented: $showAddTransaction) {
