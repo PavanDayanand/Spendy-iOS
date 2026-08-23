@@ -8,8 +8,17 @@
 import Foundation
 
 extension Double {
+    /// Safely converts Double to Int without crashing on NaN, Infinity, or overflow
+    var safeInt: Int {
+        guard !self.isNaN && !self.isInfinite else { return 0 }
+        if self > Double(Int.max) { return Int.max }
+        if self < Double(Int.min) { return Int.min }
+        return Int(self)
+    }
+    
     /// Formats a double value with a currency symbol (e.g., "$1,250.00" or "₹1,250.00")
     func formattedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
+        guard !self.isNaN && !self.isInfinite else { return "\(symbol)0" }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = decimals
@@ -22,6 +31,7 @@ extension Double {
     
     /// Formats with a clear +/- sign (e.g. "+$500.00" or "-$45.50")
     func formattedSignedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
+        guard !self.isNaN && !self.isInfinite else { return "\(symbol)0" }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = decimals

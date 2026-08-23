@@ -2,8 +2,8 @@
 //  CurrencyPickerSheet.swift
 //  Spendy
 //
-//  Universal Choose Currency Sheet Drawer with Suggested & Alphabetical sections
-//  and dynamic Liquid Glass Search Filtering. Loaded directly from the API rates.
+//  Universal Choose Currency Sheet Drawer with Suggested & Alphabetical grid sections
+//  and dynamic Liquid Glass Search Filtering. Matches CategoryIconPickerSheet style.
 //
 
 import SwiftUI
@@ -144,11 +144,12 @@ struct CurrencyPickerSheet: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
+                // Header: Close, Title
                 headerBar
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                 
+                // Scrollable Grid of Currencies
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 22) {
                         // Suggested section
@@ -157,23 +158,12 @@ struct CurrencyPickerSheet: View {
                                 Text("Suggested")
                                     .font(.system(size: 13, weight: .bold))
                                     .tracking(1.0)
-                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .foregroundColor(SpendyColors.textSecondary)
                                     .padding(.horizontal, 4)
                                 
-                                CurrencyGroupCard {
-                                    ForEach(Array(filteredSuggestedCurrencies.enumerated()), id: \.element.code) { index, currency in
-                                        CurrencyRow(
-                                            currency: currency,
-                                            isSelected: activeSelectedCode == currency.code
-                                        ) {
-                                            selectCurrency(currency)
-                                        }
-                                        
-                                        if index < filteredSuggestedCurrencies.count - 1 {
-                                            Divider()
-                                                .overlay(SpendyColors.separator)
-                                                .padding(.leading, 64)
-                                        }
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                                    ForEach(filteredSuggestedCurrencies) { currency in
+                                        currencyGridCell(currency: currency)
                                     }
                                 }
                             }
@@ -185,23 +175,12 @@ struct CurrencyPickerSheet: View {
                                 Text(group.key)
                                     .font(.system(size: 13, weight: .bold))
                                     .tracking(1.0)
-                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .foregroundColor(SpendyColors.textSecondary)
                                     .padding(.horizontal, 4)
                                 
-                                CurrencyGroupCard {
-                                    ForEach(Array(group.value.enumerated()), id: \.element.code) { index, currency in
-                                        CurrencyRow(
-                                            currency: currency,
-                                            isSelected: activeSelectedCode == currency.code
-                                        ) {
-                                            selectCurrency(currency)
-                                        }
-                                        
-                                        if index < group.value.count - 1 {
-                                            Divider()
-                                                .overlay(SpendyColors.separator)
-                                                .padding(.leading, 64)
-                                        }
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                                    ForEach(group.value) { currency in
+                                        currencyGridCell(currency: currency)
                                     }
                                 }
                             }
@@ -229,8 +208,12 @@ struct CurrencyPickerSheet: View {
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
     }
     
+    // MARK: - Header
     private var headerBar: some View {
         ZStack {
             HStack {
@@ -249,19 +232,20 @@ struct CurrencyPickerSheet: View {
             
             Text("Select Currency")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+                .foregroundColor(SpendyColors.textPrimary)
         }
     }
     
+    // MARK: - Search Capsule
     private var searchCapsule: some View {
         HStack(spacing: 8) {
             Image(systemName: SFIcons.search)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
+                .foregroundColor(SpendyColors.textTertiary)
             
             TextField("Search currency", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
+                .foregroundColor(SpendyColors.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
             
@@ -271,7 +255,7 @@ struct CurrencyPickerSheet: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 15))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                        .foregroundColor(SpendyColors.textTertiary)
                 }
                 .buttonStyle(.plain)
             }
@@ -282,6 +266,42 @@ struct CurrencyPickerSheet: View {
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
     }
     
+    // MARK: - Currency Grid Cell (styled like CategoryIconPickerSheet)
+    @ViewBuilder
+    private func currencyGridCell(currency: CurrencyInfo) -> some View {
+        let isSelected = activeSelectedCode == currency.code
+        
+        Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            selectCurrency(currency)
+        }) {
+            HStack(spacing: 8) {
+                Text(currency.flag)
+                    .font(.system(size: 20))
+                
+                Text(currency.code)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(isSelected ? Color.white : SpendyColors.textPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? SpendyColors.primaryBlue : Color(hex: "#1C1C1E"))
+                    .overlay {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(SpendyColors.textPrimary, lineWidth: 2)
+                        } else {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                    }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
     private func selectCurrency(_ currency: CurrencyInfo) {
         if let onSelect = onSelect {
             onSelect(currency)
@@ -289,70 +309,5 @@ struct CurrencyPickerSheet: View {
             store.updateCurrency(symbol: currency.symbol, code: currency.code)
         }
         dismiss()
-    }
-}
-
-// MARK: - Row Components & Helpers
-
-struct CurrencyRow: View {
-    let currency: CurrencyInfo
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
-                // Flag emoji
-                Text(currency.flag)
-                    .font(.system(size: 24))
-                    .frame(width: 32)
-                
-                // Code
-                Text(currency.code)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .frame(width: 44, alignment: .leading)
-                
-                // Name
-                Text(currency.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                // Checkmark
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(SpendyColors.primaryBlue)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct CurrencyGroupCard<Content: View>: View {
-    let content: Content
-    
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            content
-        }
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
     }
 }

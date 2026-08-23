@@ -16,11 +16,11 @@ struct MainTabView: View {
         if #available(iOS 26.0, *) {
             TabView(selection: $selectedTab) {
                 Tab(AppTab.home.label, systemImage: AppTab.home.sfSymbol, value: AppTab.home) {
-                    DashboardView(showAddTransaction: $showAddTransaction)
+                    DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                 }
                 
                 Tab(AppTab.analytics.label, systemImage: AppTab.analytics.sfSymbol, value: AppTab.analytics) {
-                    AnalyticsView()
+                    AnalyticsView(selectedTab: $selectedTab)
                 }
                 
                 Tab(AppTab.budget.label, systemImage: AppTab.budget.sfSymbol, value: AppTab.budget) {
@@ -60,15 +60,15 @@ struct MainTabView: View {
                 Group {
                     switch selectedTab {
                     case .home:
-                        DashboardView(showAddTransaction: $showAddTransaction)
+                        DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                     case .analytics:
-                        AnalyticsView()
+                        AnalyticsView(selectedTab: $selectedTab)
                     case .budget:
                         BudgetView()
                     case .manage:
                         ManageView()
                     case .quickAdd:
-                        DashboardView(showAddTransaction: $showAddTransaction)
+                        DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

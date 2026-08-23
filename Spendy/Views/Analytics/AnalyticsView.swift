@@ -3,7 +3,8 @@
 //  Spendy
 //
 //  Multi-Chart Financial Analytics Hub with Timeframe Granularities (Day/Week/Month/Year),
-//  Categories vs Accounts Toggles, Cashflow/Spending/Income Breakdown Cards & Budget Ring Pacing
+//  Single Scrollable Page Layout, Animated Chart Entrance Transitions ("Come to Life"),
+//  Categories vs Accounts Toggles, Cashflow/Savings Rate Metrics, & Calibrated Pacing Charts.
 //
 
 import SwiftUI
@@ -27,23 +28,6 @@ enum AnalyticsGroupingMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-// MARK: - Transaction Type Filter
-enum TransactionTypeFilter: String, CaseIterable, Identifiable {
-    case all = "All"
-    case expense = "Expense"
-    case income = "Income"
-    
-    var id: String { rawValue }
-    
-    var icon: String {
-        switch self {
-        case .all: return "arrow.left.arrow.right"
-        case .expense: return "arrow.down.circle.fill"
-        case .income: return "arrow.up.circle.fill"
-        }
-    }
-}
-
 // MARK: - Interval Data Model for Multi-Charts
 struct PeriodIntervalData: Identifiable {
     let id = UUID()
@@ -65,44 +49,33 @@ struct AnalyticsBreakdownItem: Identifiable {
     let percentage: Double
 }
 
-// MARK: - Analytics Sort Option
-enum AnalyticsSortOption: String, CaseIterable, Identifiable {
-    case highest = "Highest Amount"
-    case lowest = "Lowest Amount"
-    case name = "Name (A-Z)"
-    case count = "Most Transactions"
-    
-    var id: String { rawValue }
-    
-    var icon: String {
-        switch self {
-        case .highest: return "arrow.down"
-        case .lowest: return "arrow.up"
-        case .name: return "textformat.abc"
-        case .count: return "number"
-        }
-    }
-}
-
 struct AnalyticsView: View {
     @Environment(ExpenseStore.self) private var store
+    var selectedTab: Binding<AppTab>? = nil
     
-    // View Filters & Time Navigation
+    // View Filters & Navigation State
     @State private var groupingMode: AnalyticsGroupingMode = .categories
     @State private var granularity: TimeGranularity = .month
     @State private var selectedDate: Date = Date()
     @State private var showMonthPicker: Bool = false
     @State private var selectedAccountId: String = "all"
-    @State private var typeFilter: TransactionTypeFilter = .all
-    @State private var sortOption: AnalyticsSortOption = .highest
+    
+    // Chart State
+    @State private var chartProgress: Double = 1.0
     
     // Interactive Selected Chart Items
     @State private var selectedCashflowLabel: String? = nil
     @State private var selectedSpendingLabel: String? = nil
     @State private var selectedIncomeLabel: String? = nil
+    @State private var selectedVelocityLabel: String? = nil
     @State private var selectedCategorySectorId: String? = nil
     @State private var selectedIncomeSectorId: String? = nil
     @State private var selectedCategoryForSheet: Category? = nil
+    @State private var showSubscriptionSheet: Bool = false
+    
+    // Collapsible List Expand States
+    @State private var isSpendingListExpanded: Bool = false
+    @State private var isIncomeListExpanded: Bool = false
     
     @Namespace private var analyticsControlsNamespace
     
@@ -114,11 +87,6 @@ struct AnalyticsView: View {
         return store.accounts.first(where: { $0.id == selectedAccountId })?.label ?? "Account"
     }
     
-    private var selectedAccountSymbol: String {
-        if selectedAccountId == "all" { return "wallet.pass.fill" }
-        return store.accounts.first(where: { $0.id == selectedAccountId })?.sfSymbol ?? "creditcard.fill"
-    }
-    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -126,34 +94,34 @@ struct AnalyticsView: View {
                 
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                        // 1. Unpinned Header Bar: Large Title "Analytics" (scrolls away)
+                        // 1. Unpinned Header Bar: Large Title "Analytics"
                         headerBar
                             .padding(.horizontal, 20)
                             .padding(.top, 10)
                         
-                        // 2. Pinned Section: 3-Toggle Toolbar stays pinned at top
+                        // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
                             VStack(spacing: 18) {
-                                // 3. Card 1: Cashflow Overview Card
+                                // Card 1: Cashflow Overview Card
                                 cashflowOverviewCard
                                 
-                                // 4. Card 2: Spending Breakdown Card & List
+                                // Card 2: Spending Breakdown Card & List
                                 spendingBreakdownCard
                                 
-                                // 5. Card 3: Income Breakdown Card & List
+                                // Card 3: Income Breakdown Card & List
                                 incomeBreakdownCard
                                 
-                                // 6. Card 4: Budget Ring & Pacing Card
+                                // Card 4: Budget Ring & Pacing Card
                                 budgetRingPacingCard
                                 
-                                // 7. Card 5: Smart Insights Carousel
+                                // Card 5: Smart Insights Carousel
                                 smartInsightsCarousel
-                                    .padding(.horizontal, -20) // Negate parent padding for full bleed scroll
+                                    .padding(.horizontal, -20)
                                     .padding(.bottom, 30)
                             }
                             .padding(.horizontal, 20)
                         } header: {
-                            // Sticky 3-Toggle Toolbar floating on top with clean transparent background (no blur sheet)
+                            // Sticky Toolbar floating on top
                             compactHeader
                                 .padding(.horizontal, 20)
                                 .padding(.top, 6)
@@ -167,6 +135,9 @@ struct AnalyticsView: View {
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
             }
+            .sheet(isPresented: $showSubscriptionSheet) {
+                SubscriptionWidgetSheet()
+            }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
@@ -177,7 +148,26 @@ struct AnalyticsView: View {
                     }
                 }
             }
+            .onAppear {
+                chartProgress = 1.0
+            }
+            .onChange(of: selectedDate) { _, _ in
+                resetSelections()
+                chartProgress = 1.0
+            }
+            .onChange(of: granularity) { _, _ in
+                resetSelections()
+                chartProgress = 1.0
+            }
+            .onChange(of: selectedAccountId) { _, _ in
+                resetSelections()
+                chartProgress = 1.0
+            }
         }
+    }
+    
+    private func triggerEntranceAnimation() {
+        chartProgress = 1.0
     }
     
     // MARK: - Header Bar (Large Title)
@@ -192,18 +182,15 @@ struct AnalyticsView: View {
     }
     
     // MARK: - 1. Compact Header Row
-    // [🏦] ◀ Aug 2026 ▶ [⚙]
     private var compactHeader: some View {
         HStack(spacing: 0) {
-            // Left: Granularity Selector (Liquid Glass circle with dropdown)
+            // Left: Timeframe Granularity Selector
             Menu {
                 ForEach(TimeGranularity.allCases) { item in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             granularity = item
-                            selectedCashflowLabel = nil
-                            selectedSpendingLabel = nil
-                            selectedIncomeLabel = nil
+                            resetSelections()
                         }
                     }) {
                         HStack {
@@ -258,7 +245,7 @@ struct AnalyticsView: View {
             
             Spacer()
             
-            // Right: Combined Settings Menu (Account + Type Filter + Grouping)
+            // Right: Settings Menu (Account Filter + Category/Account Grouping)
             Menu {
                 Section("Account") {
                     Button(action: {
@@ -281,21 +268,7 @@ struct AnalyticsView: View {
                 
                 Divider()
                 
-                Section("Show") {
-                    ForEach(TransactionTypeFilter.allCases) { filter in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3)) { typeFilter = filter }
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            Label(filter.rawValue, systemImage: filter.icon)
-                            if typeFilter == filter { Image(systemName: "checkmark") }
-                        }
-                    }
-                }
-                
-                Divider()
-                
-                Section("Group by") {
+                Section("Group Breakdown By") {
                     Button(action: {
                         withAnimation(.spring(response: 0.3)) { groupingMode = .categories }
                         HapticsManager.shared.trigger(.selection)
@@ -317,14 +290,13 @@ struct AnalyticsView: View {
                     size: 44,
                     iconSize: 18,
                     iconWeight: .medium,
-                    foregroundColor: typeFilter != .all || groupingMode != .categories ? SpendyColors.textPrimary : SpendyColors.textSecondary
+                    foregroundColor: selectedAccountId != "all" || groupingMode != .categories ? SpendyColors.textPrimary : SpendyColors.textSecondary
                 )
             }
         }
     }
-    
 
-    // MARK: - 4. Card 1: Cashflow Overview Card
+    // MARK: - Card 1: Cashflow Overview Card
     private var cashflowOverviewCard: some View {
         let net = totalIncome - totalSpending
         let isPositive = net >= 0
@@ -332,9 +304,9 @@ struct AnalyticsView: View {
         let selectedInterval = intervals.first(where: { $0.label == selectedCashflowLabel })
         
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Cashflow")
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Net Cashflow")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
@@ -344,6 +316,25 @@ struct AnalyticsView: View {
                 }
                 
                 Spacer()
+                
+                // Savings Rate Badge
+                if totalIncome > 0 {
+                    let rate = savingsRatePercentage
+                    HStack(spacing: 4) {
+                        Image(systemName: rate >= 0 ? "leaf.fill" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(String(format: "%.0f%% Savings", abs(rate)))
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .foregroundStyle(rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
+                    .background {
+                        Capsule()
+                            .fill((rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed).opacity(0.15))
+                            .overlay(Capsule().stroke((rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed).opacity(0.3), lineWidth: 0.8))
+                    }
+                }
                 
                 if let sel = selectedInterval {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -367,18 +358,18 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Interactive Cashflow Multi-Bar Chart
+            // Native Swift Chart: Interactive Cashflow Multi-Bar Chart with Flow Animation
             Chart(intervals) { item in
                 let isSelected = selectedCashflowLabel == item.label
                 
                 BarMark(
                     x: .value("Period", item.label),
-                    y: .value("Spending", item.spendingAmount)
+                    y: .value("Spending", item.spendingAmount * chartProgress)
                 )
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [SpendyColors.textPrimary.opacity(isSelected ? 1.0 : (item.spendingAmount > 0 ? 0.85 : 0.2)),
-                                 SpendyColors.textPrimary.opacity(isSelected ? 0.8 : 0.3)],
+                        colors: [Color(hex: "#FF3B30").opacity(isSelected ? 1.0 : (item.spendingAmount > 0 ? 0.9 : 0.2)),
+                                 Color(hex: "#FF3B30").opacity(isSelected ? 0.8 : 0.35)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -388,12 +379,12 @@ struct AnalyticsView: View {
                 
                 BarMark(
                     x: .value("Period", item.label),
-                    y: .value("Income", item.incomeAmount)
+                    y: .value("Income", item.incomeAmount * chartProgress)
                 )
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [SpendyColors.incomeGreen.opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
-                                 SpendyColors.incomeGreen.opacity(isSelected ? 0.85 : 0.4)],
+                        colors: [Color(hex: "#34C759").opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
+                                 Color(hex: "#34C759").opacity(isSelected ? 0.85 : 0.4)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -454,46 +445,30 @@ struct AnalyticsView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            // Budget Insight Alert Badge
-            if store.budget.isActive && store.budget.amount > 0 {
-                let limit = store.budgetTargetAmount(for: .monthly)
-                let exceeded = totalSpending > limit
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(exceeded ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
-                    
-                    Text(exceeded ? String(format: "Budget exceeded, %@ over with %d days left", (totalSpending - limit).formattedCurrency(symbol: store.currencySymbol, decimals: 0), remainingDaysInMonth) : "Pacing smoothly within monthly budget.")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                .padding(.vertical, 4)
-            }
-            
             Divider().background(SpendyColors.separator)
             
             // Legend Rows
             VStack(spacing: 8) {
                 HStack {
-                    Circle().fill(SpendyColors.textPrimary).frame(width: 7, height: 7)
+                    Circle().fill(Color(hex: "#FF3B30")).frame(width: 7, height: 7)
                     Text("Spending")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .foregroundStyle(Color(hex: "#FF3B30"))
                 }
                 
                 HStack {
-                    Circle().fill(SpendyColors.incomeGreen).frame(width: 7, height: 7)
+                    Circle().fill(Color(hex: "#34C759")).frame(width: 7, height: 7)
                     Text("Income")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(SpendyColors.incomeGreen)
+                        .foregroundStyle(Color(hex: "#34C759"))
                 }
             }
         }
@@ -505,7 +480,7 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - 5. Card 2: Spending Breakdown Card
+    // MARK: - Card 2: Spending Breakdown Card
     private var spendingBreakdownCard: some View {
         let items = spendingBreakdownItems
         let intervals = intervalData
@@ -515,7 +490,7 @@ struct AnalyticsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Spending")
+                    Text("Total Spending")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
@@ -547,30 +522,30 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Spending Line & Area Chart with Selection & Avg RuleMark
+            // Native Swift Chart: Spending Line & Area Chart with Flow Animation
             Chart {
                 ForEach(intervals) { item in
                     LineMark(
                         x: .value("Period", item.label),
-                        y: .value("Spending", item.spendingAmount)
+                        y: .value("Spending", item.spendingAmount * chartProgress)
                     )
-                    .foregroundStyle(SpendyColors.textPrimary)
+                    .foregroundStyle(Color(hex: "#FF3B30"))
                     .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                     .symbol {
                         Circle()
-                            .fill(selectedSpendingLabel == item.label ? SpendyColors.textPrimary : SpendyColors.cardBackground)
-                            .stroke(SpendyColors.textPrimary, lineWidth: 2)
+                            .fill(selectedSpendingLabel == item.label ? Color(hex: "#FF3B30") : SpendyColors.cardBackground)
+                            .stroke(Color(hex: "#FF3B30"), lineWidth: 2)
                             .frame(width: selectedSpendingLabel == item.label ? 10 : 6, height: selectedSpendingLabel == item.label ? 10 : 6)
                     }
                     .interpolationMethod(.catmullRom)
                     
                     AreaMark(
                         x: .value("Period", item.label),
-                        y: .value("Spending", item.spendingAmount)
+                        y: .value("Spending", item.spendingAmount * chartProgress)
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [SpendyColors.textPrimary.opacity(0.35), SpendyColors.textPrimary.opacity(0.02)],
+                            colors: [Color(hex: "#FF3B30").opacity(0.35), Color(hex: "#FF3B30").opacity(0.02)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -580,25 +555,25 @@ struct AnalyticsView: View {
                 
                 // Average Spending RuleMark
                 if avgSpend > 0 {
-                    RuleMark(y: .value("Average", avgSpend))
-                        .foregroundStyle(SpendyColors.textTertiary.opacity(0.6))
+                    RuleMark(y: .value("Average", avgSpend * chartProgress))
+                        .foregroundStyle(Color(hex: "#FF3B30").opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .annotation(position: .top, alignment: .trailing) {
                             Text("AVG \(formatAxisAmount(avgSpend))")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(SpendyColors.textTertiary)
+                                .foregroundStyle(Color(hex: "#FF3B30"))
                                 .padding(.horizontal, 4)
                         }
                 }
                 
                 if let selectedLabel = selectedSpendingLabel, let sel = selectedInterval {
                     RuleMark(x: .value("Selected", selectedLabel))
-                        .foregroundStyle(SpendyColors.textPrimary.opacity(0.6))
+                        .foregroundStyle(Color(hex: "#FF3B30").opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .annotation(position: .top, alignment: .center) {
                             Text(sel.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
+                                .foregroundStyle(Color(hex: "#FF3B30"))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background {
@@ -638,21 +613,20 @@ struct AnalyticsView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            // Interactive Donut Chart using SectorMark for Category Distribution
+            // Interactive Donut Chart for Category / Account Distribution with Flow Animation
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Divider().background(SpendyColors.separator)
                     
-                    Text("Category & Account Distribution")
+                    Text(groupingMode == .categories ? "Category Distribution" : "Account Distribution")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     HStack(spacing: 16) {
-                        // SectorMark Donut Chart
                         Chart(items) { item in
                             let isSelected = selectedCategorySectorId == item.id
                             SectorMark(
-                                angle: .value("Amount", item.amount),
+                                angle: .value("Amount", max(0.01, item.amount * chartProgress)),
                                 innerRadius: .ratio(0.62),
                                 angularInset: 1.5
                             )
@@ -667,13 +641,12 @@ struct AnalyticsView: View {
                                 Text("\(items.count)")
                                     .font(.system(size: 18, weight: .heavy))
                                     .foregroundStyle(SpendyColors.textPrimary)
-                                Text("Types")
+                                Text(groupingMode == .categories ? "Categories" : "Accounts")
                                     .font(.system(size: 9, weight: .semibold))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
                         
-                        // Top Breakdown Legend Chips
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(items.prefix(4)) { item in
                                 HStack(spacing: 8) {
@@ -726,9 +699,20 @@ struct AnalyticsView: View {
                 
                 Spacer()
                 
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
+                if items.count > 3 {
+                    Image(systemName: isSpendingListExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if items.count > 3 {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isSpendingListExpanded.toggle()
+                        HapticsManager.shared.trigger(.selection)
+                    }
+                }
             }
             .padding(.top, 4)
             
@@ -739,11 +723,11 @@ struct AnalyticsView: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
+                let displayedItems = isSpendingListExpanded ? items : Array(items.prefix(3))
                 VStack(spacing: 12) {
-                    ForEach(items) { item in
+                    ForEach(displayedItems) { item in
                         let isSectorSelected = selectedCategorySectorId == item.id
                         HStack(spacing: 12) {
-                            // Circular icon badge
                             ZStack {
                                 Circle()
                                     .fill(Color(hex: item.colorHex).opacity(0.2))
@@ -770,10 +754,6 @@ struct AnalyticsView: View {
                                 Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                     .font(.system(size: 15, weight: .heavy))
                                     .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Text(String(format: "%.1f%%", item.percentage))
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
                         .padding(8)
@@ -811,7 +791,7 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - 6. Card 3: Income Breakdown Card
+    // MARK: - Card 3: Income Breakdown Card
     private var incomeBreakdownCard: some View {
         let items = incomeBreakdownItems
         let intervals = intervalData
@@ -821,7 +801,7 @@ struct AnalyticsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Income")
+                    Text("Total Income")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
@@ -853,30 +833,30 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Income Line Chart with Selection & Avg RuleMark
+            // Native Swift Chart: Income Line Chart with Flow Animation
             Chart {
                 ForEach(intervals) { item in
                     LineMark(
                         x: .value("Period", item.label),
-                        y: .value("Income", item.incomeAmount)
+                        y: .value("Income", item.incomeAmount * chartProgress)
                     )
-                    .foregroundStyle(SpendyColors.incomeGreen)
+                    .foregroundStyle(Color(hex: "#34C759"))
                     .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                     .symbol {
                         Circle()
-                            .fill(selectedIncomeLabel == item.label ? SpendyColors.incomeGreen : SpendyColors.cardBackground)
-                            .stroke(SpendyColors.incomeGreen, lineWidth: 2)
+                            .fill(selectedIncomeLabel == item.label ? Color(hex: "#34C759") : SpendyColors.cardBackground)
+                            .stroke(Color(hex: "#34C759"), lineWidth: 2)
                             .frame(width: selectedIncomeLabel == item.label ? 10 : 6, height: selectedIncomeLabel == item.label ? 10 : 6)
                     }
                     .interpolationMethod(.catmullRom)
                     
                     AreaMark(
                         x: .value("Period", item.label),
-                        y: .value("Income", item.incomeAmount)
+                        y: .value("Income", item.incomeAmount * chartProgress)
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [SpendyColors.incomeGreen.opacity(0.35), SpendyColors.incomeGreen.opacity(0.02)],
+                            colors: [Color(hex: "#34C759").opacity(0.35), Color(hex: "#34C759").opacity(0.02)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -885,25 +865,25 @@ struct AnalyticsView: View {
                 }
                 
                 if avgIncome > 0 {
-                    RuleMark(y: .value("Average", avgIncome))
-                        .foregroundStyle(SpendyColors.incomeGreen.opacity(0.5))
+                    RuleMark(y: .value("Average", avgIncome * chartProgress))
+                        .foregroundStyle(Color(hex: "#34C759").opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .annotation(position: .top, alignment: .trailing) {
                             Text("AVG \(formatAxisAmount(avgIncome))")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(SpendyColors.incomeGreen)
+                                .foregroundStyle(Color(hex: "#34C759"))
                                 .padding(.horizontal, 4)
                         }
                 }
                 
                 if let selectedLabel = selectedIncomeLabel, let sel = selectedInterval {
                     RuleMark(x: .value("Selected", selectedLabel))
-                        .foregroundStyle(SpendyColors.incomeGreen.opacity(0.6))
+                        .foregroundStyle(Color(hex: "#34C759").opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .annotation(position: .top, alignment: .center) {
                             Text("+" + sel.incomeAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.incomeGreen)
+                                .foregroundStyle(Color(hex: "#34C759"))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background {
@@ -943,12 +923,12 @@ struct AnalyticsView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            // Donut SectorMark Chart for Income Distribution
+            // Donut SectorMark Chart for Income Distribution with Flow Animation
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Divider().background(SpendyColors.separator)
                     
-                    Text("Income Distribution")
+                    Text(groupingMode == .categories ? "Income Source Distribution" : "Income Account Distribution")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
@@ -956,7 +936,7 @@ struct AnalyticsView: View {
                         Chart(items) { item in
                             let isSelected = selectedIncomeSectorId == item.id
                             SectorMark(
-                                angle: .value("Amount", item.amount),
+                                angle: .value("Amount", max(0.01, item.amount * chartProgress)),
                                 innerRadius: .ratio(0.62),
                                 angularInset: 1.5
                             )
@@ -971,7 +951,7 @@ struct AnalyticsView: View {
                                 Text("\(items.count)")
                                     .font(.system(size: 18, weight: .heavy))
                                     .foregroundStyle(SpendyColors.incomeGreen)
-                                Text("Sources")
+                                Text(groupingMode == .categories ? "Sources" : "Accounts")
                                     .font(.system(size: 9, weight: .semibold))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
@@ -1029,9 +1009,20 @@ struct AnalyticsView: View {
                 
                 Spacer()
                 
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
+                if items.count > 3 {
+                    Image(systemName: isIncomeListExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if items.count > 3 {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isIncomeListExpanded.toggle()
+                        HapticsManager.shared.trigger(.selection)
+                    }
+                }
             }
             .padding(.top, 4)
             
@@ -1042,8 +1033,9 @@ struct AnalyticsView: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
+                let displayedItems = isIncomeListExpanded ? items : Array(items.prefix(3))
                 VStack(spacing: 12) {
-                    ForEach(items) { item in
+                    ForEach(displayedItems) { item in
                         let isSelected = selectedIncomeSectorId == item.id
                         HStack(spacing: 12) {
                             ZStack {
@@ -1072,10 +1064,6 @@ struct AnalyticsView: View {
                                 Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                     .font(.system(size: 15, weight: .heavy))
                                     .foregroundStyle(SpendyColors.incomeGreen)
-                                
-                                Text(String(format: "%.1f%%", item.percentage))
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
                         .padding(8)
@@ -1108,21 +1096,21 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - 7. Card 4: Budget Ring & Pacing Card
+    // MARK: - Card 4: Budget Ring & Pacing Card
     private var budgetRingPacingCard: some View {
         let budgetLimit = store.budgetTargetAmount(for: .monthly)
         let spent = totalSpending
         let pct = budgetLimit > 0 ? (spent / budgetLimit) * 100 : 0.0
         let isExceeded = pct > 100
-        let ringProgress = min(1.0, pct / 100.0)
+        let ringProgress = min(1.0, pct / 100.0) * chartProgress
         
         return VStack(alignment: .leading, spacing: 16) {
-            Text("Budget")
+            Text("Budget Status")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
             
             HStack(spacing: 20) {
-                // Circular Progress Gauge Ring
+                // Circular Progress Gauge Ring with Flow Animation
                 ZStack {
                     Circle()
                         .stroke(Color.white.opacity(0.12), lineWidth: 8)
@@ -1137,7 +1125,7 @@ struct AnalyticsView: View {
                         .rotationEffect(.degrees(-90))
                         .frame(width: 84, height: 84)
                     
-                    Text(String(format: "%.0f%%", pct))
+                    Text(String(format: "%.0f%%", pct * chartProgress))
                         .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
@@ -1171,10 +1159,10 @@ struct AnalyticsView: View {
             
             Divider().background(SpendyColors.separator)
             
-            // Sub-metrics (Monthly date bounds & Days left)
+            // Sub-metrics (Monthly date bounds & Days status)
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Monthly")
+                    Text("Period")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     Text(formattedMonthRange(selectedDate))
@@ -1185,12 +1173,110 @@ struct AnalyticsView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Days left")
+                    Text("Status")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
-                    Text("\(remainingDaysInMonth) days left")
+                    Text(remainingDaysText)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
+                }
+            }
+            
+            Divider().background(SpendyColors.separator)
+            
+            // Calibrated Daily Budget Pacing Chart with Flow Animation
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Daily Budget Pacing")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                
+                let pacingItems = velocityPacingData
+                Chart {
+                    ForEach(pacingItems) { item in
+                        if item.isPeak && item.amount > 0 {
+                            RectangleMark(
+                                x: .value("Period", item.label),
+                                yStart: .value("Min", 0),
+                                yEnd: .value("Max", (pacingItems.map(\.amount).max() ?? 1.0) * 1.15 * chartProgress)
+                            )
+                            .foregroundStyle(
+                                item.isOverTarget 
+                                    ? Color(hex: "#FF3B30").opacity(0.12)
+                                    : Color(hex: "#30D158").opacity(0.12)
+                            )
+                            .cornerRadius(6)
+                        }
+                        
+                        BarMark(
+                            x: .value("Period", item.label),
+                            y: .value("Spending", item.amount * chartProgress)
+                        )
+                        .foregroundStyle(
+                            item.amount <= 0 
+                                ? SpendyColors.separator.opacity(0.4)
+                                : (item.isOverTarget ? Color(hex: "#FF3B30") : Color(hex: "#30D158"))
+                        )
+                        .cornerRadius(5)
+                        .annotation(position: .top, alignment: .center, spacing: 4) {
+                            if item.isPeak && item.amount > 0 {
+                                Image(systemName: item.isOverTarget ? "flame.fill" : "bolt.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(item.isOverTarget ? Color(hex: "#FF3B30") : Color(hex: "#30D158"))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background {
+                                        Capsule()
+                                            .fill(SpendyColors.cardBackground)
+                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                    }
+                            }
+                        }
+                    }
+                    
+                    if let selectedLabel = selectedVelocityLabel, let sel = pacingItems.first(where: { $0.label == selectedLabel }) {
+                        RuleMark(x: .value("Selected", selectedLabel))
+                            .foregroundStyle(SpendyColors.textPrimary.opacity(0.6))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .annotation(position: .top, alignment: .center) {
+                                Text(sel.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .fill(SpendyColors.cardBackground)
+                                            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+                                    }
+                            }
+                    }
+                }
+                .chartXSelection(value: $selectedVelocityLabel)
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel()
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .trailing) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [4, 4]))
+                            .foregroundStyle(SpendyColors.separator.opacity(0.6))
+                        AxisValueLabel {
+                            if let doubleVal = value.as(Double.self) {
+                                Text(formatAxisAmount(doubleVal))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                        }
+                    }
+                }
+                .frame(height: 140)
+                .padding(.vertical, 4)
+                .onChange(of: selectedVelocityLabel) { _, _ in
+                    HapticsManager.shared.trigger(.selection)
                 }
             }
         }
@@ -1202,12 +1288,10 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - 8. Card 5: Smart Insights Carousel
+    // MARK: - Smart Insights Carousel
     private var smartInsightsCarousel: some View {
         let bounds = currentPeriodBounds
         let prevBounds = priorPeriodBounds
-        
-        let targetType: TransactionType = (typeFilter == .income) ? .income : .expense
         
         let insights = InsightsEngine.getAnalyticsInsights(
             transactions: store.transactions,
@@ -1218,36 +1302,76 @@ struct AnalyticsView: View {
             periodEnd: bounds.end,
             prevStart: prevBounds.start,
             prevEnd: prevBounds.end,
-            dataType: targetType,
+            dataType: .expense,
             currencySymbol: store.currencySymbol
         )
         
-        return ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 16) {
-                Spacer().frame(width: 4)
-                
-                if insights.isEmpty {
-                    Text("No insights generated for this period.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .padding(.vertical, 40)
-                        .padding(.horizontal, 20)
-                } else {
-                    ForEach(insights) { insight in
-                        SharedInsightCard(
-                            title: insight.title,
-                            value: insight.value,
-                            subtitle: insight.desc,
-                            icon: insight.icon,
-                            color: insight.color
-                        )
-                        .frame(width: 180)
-                    }
-                }
-                
-                Spacer().frame(width: 4)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(SpendyColors.primaryBlue)
+                Text("Smart Insights")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
             }
-            .padding(.vertical, 10)
+            .padding(.horizontal, 20)
+            
+            Text("Specifically generated based on your spendings")
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.horizontal, 20)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    Spacer().frame(width: 4)
+                    
+                    if insights.isEmpty {
+                        Text("No insights generated for this period.")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                            .padding(.vertical, 40)
+                            .padding(.horizontal, 20)
+                    } else {
+                        ForEach(insights) { insight in
+                            SharedInsightCard(
+                                title: insight.title,
+                                value: insight.value,
+                                subtitle: insight.desc,
+                                icon: insight.icon,
+                                color: insight.color,
+                                action: {
+                                    if insight.id.hasPrefix("sub_") || insight.family == "subscription" {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                            if let selectedTab = selectedTab {
+                                                selectedTab.wrappedValue = .manage
+                                            } else {
+                                                showSubscriptionSheet = true
+                                            }
+                                        }
+                                    } else if let catId = insight.categoryId, let cat = store.categories.first(where: { $0.id == catId }) {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                            selectedCategoryForSheet = cat
+                                        }
+                                    } else if let cat = store.categories.first(where: { $0.id == insight.id || $0.label.lowercased() == insight.title.lowercased() }) {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                            selectedCategoryForSheet = cat
+                                        }
+                                    } else if let firstCat = store.categories.first {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                            selectedCategoryForSheet = firstCat
+                                        }
+                                    }
+                                }
+                            )
+                            .frame(width: 180)
+                        }
+                    }
+                    
+                    Spacer().frame(width: 4)
+                }
+                .padding(.vertical, 10)
+            }
         }
     }
     
@@ -1294,7 +1418,6 @@ struct AnalyticsView: View {
     
     // MARK: - Computed Properties & Period Math
     
-    /// Date range boundaries based on selected granularity
     private var currentPeriodBounds: (start: Date, end: Date) {
         switch granularity {
         case .day:
@@ -1330,17 +1453,12 @@ struct AnalyticsView: View {
         }
     }
     
-    /// Filtered transactions in the active period, optionally filtered by account and type
+    /// Filtered transactions in the active period
     private var filteredTransactions: [Transaction] {
         let bounds = currentPeriodBounds
         let accountFiltered = store.filteredTransactions(for: selectedAccountId)
         return accountFiltered.filter { tx in
-            let inPeriod = tx.date >= bounds.start && tx.date <= bounds.end
-            switch typeFilter {
-            case .all: return inPeriod
-            case .expense: return inPeriod && tx.type == .expense
-            case .income: return inPeriod && tx.type == .income
-            }
+            tx.date >= bounds.start && tx.date <= bounds.end
         }
     }
     
@@ -1352,14 +1470,20 @@ struct AnalyticsView: View {
         filteredTransactions.filter { $0.type == .income }.reduce(0.0) { $0 + $1.amount }
     }
     
-    /// Granular intervals for the multi-bar charts
+    private var savingsRatePercentage: Double {
+        guard totalIncome > 0 else { return 0.0 }
+        let net = totalIncome - totalSpending
+        let rate = (net / totalIncome) * 100.0
+        return max(-100.0, min(100.0, rate))
+    }
+    
+    /// Granular intervals for multi-bar & line charts with robust date boundaries
     private var intervalData: [PeriodIntervalData] {
         var intervals: [PeriodIntervalData] = []
         let txs = filteredTransactions
         
         switch granularity {
         case .day:
-            // 4 time blocks: Night (12-6), Morning (6-12), Afternoon (12-18), Evening (18-24)
             let labels = ["12-6am", "6-12pm", "12-6pm", "6-12am"]
             let start = selectedDate.startOfDay
             for i in 0..<4 {
@@ -1372,7 +1496,6 @@ struct AnalyticsView: View {
             }
             
         case .week:
-            // 7 Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun
             let start = selectedDate.startOfWeek
             let shortFmt = DateFormatter()
             shortFmt.dateFormat = "EEE"
@@ -1386,15 +1509,24 @@ struct AnalyticsView: View {
             }
             
         case .month:
-            // 5 interval blocks matching screenshot: 1-7, 8-14, 15-21, 22-28, 29-31
             let daysInMonth = calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30
-            let ranges = [
-                (1, 7, "1-7"),
-                (8, 14, "8-14"),
-                (15, 21, "15-21"),
-                (22, 28, "22-28"),
-                (29, daysInMonth, "29-\(daysInMonth)")
-            ]
+            let ranges: [(Int, Int, String)]
+            if daysInMonth <= 28 {
+                ranges = [
+                    (1, 7, "1-7"),
+                    (8, 14, "8-14"),
+                    (15, 21, "15-21"),
+                    (22, daysInMonth, "22-\(daysInMonth)")
+                ]
+            } else {
+                ranges = [
+                    (1, 7, "1-7"),
+                    (8, 14, "8-14"),
+                    (15, 21, "15-21"),
+                    (22, 28, "22-28"),
+                    (29, daysInMonth, "29-\(daysInMonth)")
+                ]
+            }
             let start = selectedDate.startOfMonth
             for (startDay, endDay, label) in ranges {
                 let rStart = calendar.date(byAdding: .day, value: startDay - 1, to: start) ?? start
@@ -1406,7 +1538,6 @@ struct AnalyticsView: View {
             }
             
         case .year:
-            // 12 Months: Jan..Dec
             let start = selectedDate.startOfYear
             let monthFmt = DateFormatter()
             monthFmt.dateFormat = "MMM"
@@ -1503,27 +1634,6 @@ struct AnalyticsView: View {
         }
     }
     
-    private var currentPeriodTitle: String {
-        switch granularity {
-        case .day:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "d MMMM yyyy"
-            return fmt.string(from: selectedDate)
-        case .week:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "d MMM"
-            return "\(fmt.string(from: selectedDate.startOfWeek)) – \(fmt.string(from: selectedDate.endOfWeek))"
-        case .month:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "MMM yyyy"
-            return "Budget: \(fmt.string(from: selectedDate))"
-        case .year:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy"
-            return "Year \(fmt.string(from: selectedDate))"
-        }
-    }
-    
     private var formattedPillTitle: String {
         let fmt = DateFormatter()
         switch granularity {
@@ -1535,32 +1645,24 @@ struct AnalyticsView: View {
         return fmt.string(from: selectedDate)
     }
     
-    private var remainingDaysInMonth: Int {
+    private var remainingDaysText: String {
         let now = Date()
-        let daysInMonth = calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30
         if calendar.isDate(selectedDate, equalTo: now, toGranularity: .month) {
+            let daysInMonth = calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30
             let currentDay = calendar.component(.day, from: now)
-            return max(0, daysInMonth - currentDay)
+            let left = max(0, daysInMonth - currentDay)
+            return "\(left) days left"
+        } else if selectedDate < now.startOfMonth {
+            return "Period Completed"
+        } else {
+            let daysInMonth = calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30
+            return "\(daysInMonth) days remaining"
         }
-        return 0
     }
     
     private var dailyAverageSpend: Double {
         let days = max(1, intervalData.count)
         return totalSpending / Double(days)
-    }
-    
-    private var mostActiveWeekdayName: String {
-        var dayCounts: [Int: Int] = [:]
-        for t in filteredTransactions.filter({ $0.type == .expense }) {
-            let wd = calendar.component(.weekday, from: t.date)
-            dayCounts[wd, default: 0] += 1
-        }
-        guard let topWd = dayCounts.max(by: { $0.value < $1.value })?.key else {
-            return "None"
-        }
-        let symbols = calendar.weekdaySymbols
-        return symbols[topWd - 1]
     }
     
     private func stepPeriod(by delta: Int) {
@@ -1598,6 +1700,65 @@ struct AnalyticsView: View {
         } else {
             return String(format: "%@%.0f", sym, amount)
         }
+    }
+    
+    // MARK: - Velocity & Pacing Data Model
+    private struct VelocityPacingItem: Identifiable {
+        let id = UUID()
+        let label: String
+        let date: Date
+        let amount: Double
+        let isPeak: Bool
+        let isOverTarget: Bool
+    }
+    
+    private var velocityPacingData: [VelocityPacingItem] {
+        let intervals = intervalData
+        let maxSpend = intervals.map(\.spendingAmount).max() ?? 0.0
+        
+        let monthlyBudget = store.budgetTargetAmount(for: .monthly)
+        let dailyTarget: Double = store.budget.isActive && store.budget.amount > 0 
+            ? (monthlyBudget / 30.0) 
+            : (maxSpend > 0 ? maxSpend * 0.6 : 1000.0)
+            
+        return intervals.map { item in
+            let amount = item.spendingAmount
+            
+            let daysInBlock: Double
+            switch granularity {
+            case .day:
+                daysInBlock = 0.25
+            case .week:
+                daysInBlock = 1.0
+            case .month:
+                let diff = calendar.dateComponents([.day], from: item.startDate, to: item.endDate).day ?? 7
+                daysInBlock = Double(max(1, diff))
+            case .year:
+                let diff = calendar.range(of: .day, in: .month, for: item.startDate)?.count ?? 30
+                daysInBlock = Double(diff)
+            }
+            
+            let blockTarget = dailyTarget * daysInBlock
+            let isOver = amount > blockTarget
+            let isPeak = amount > 0 && amount >= (blockTarget * 0.85)
+            
+            return VelocityPacingItem(
+                label: item.label,
+                date: item.startDate,
+                amount: amount,
+                isPeak: isPeak,
+                isOverTarget: isOver
+            )
+        }
+    }
+    
+    private func resetSelections() {
+        selectedCashflowLabel = nil
+        selectedSpendingLabel = nil
+        selectedIncomeLabel = nil
+        selectedVelocityLabel = nil
+        selectedCategorySectorId = nil
+        selectedIncomeSectorId = nil
     }
 }
 

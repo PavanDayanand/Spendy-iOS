@@ -45,7 +45,7 @@ struct BudgetView: View {
                             activeBudgetContent
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 140)
                 }
             }
@@ -53,7 +53,7 @@ struct BudgetView: View {
                 // Sticky Action Buttons (Stay fixed at top right)
                 if store.budget.isActive {
                     actionButtons
-                        .padding(.trailing, 20)
+                        .padding(.trailing, 16)
                         .padding(.top, 8)
                         .zIndex(100)
                 }
@@ -236,7 +236,8 @@ struct BudgetView: View {
                 daysLeft: store.budgetDaysLeft,
                 periodTitle: store.budget.period == .weekly ? "Weekly" : "Monthly",
                 dateRangeString: cycleDateRangeString,
-                pacingInsightMessage: store.budgetPacingInsightMessage
+                pacingInsightMessage: store.budgetPacingInsightMessage,
+                pacingState: store.budgetPacingState
             )
             
             // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
@@ -269,7 +270,7 @@ struct BudgetView: View {
                     }
                 }
                 .padding(18)
-                .frame(maxWidth: .infinity, minHeight: 165, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 185, alignment: .leading)
                 .background {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(SpendyColors.cardBackground)
@@ -305,7 +306,7 @@ struct BudgetView: View {
                     }
                 }
                 .padding(18)
-                .frame(maxWidth: .infinity, minHeight: 165, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 185, alignment: .leading)
                 .background {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(SpendyColors.cardBackground)

@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-struct SharedInsightCard: View {
+struct SharedInsightCard<MiddleContent: View>: View {
     let title: String
     let value: String
     let subtitle: String
@@ -17,6 +17,29 @@ struct SharedInsightCard: View {
     var tagText: String? = nil
     var tagColor: Color? = nil
     var action: (() -> Void)? = nil
+    @ViewBuilder var middleContent: () -> MiddleContent
+    
+    init(
+        title: String,
+        value: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        tagText: String? = nil,
+        tagColor: Color? = nil,
+        action: (() -> Void)? = nil,
+        @ViewBuilder middleContent: @escaping () -> MiddleContent
+    ) {
+        self.title = title
+        self.value = value
+        self.subtitle = subtitle
+        self.icon = icon
+        self.color = color
+        self.tagText = tagText
+        self.tagColor = tagColor
+        self.action = action
+        self.middleContent = middleContent
+    }
     
     var body: some View {
         Button(action: {
@@ -25,59 +48,79 @@ struct SharedInsightCard: View {
                 action()
             }
         }) {
-            VStack(alignment: .leading, spacing: 16) {
-                // Top Header Row: Category Icon Avatar (Top-Left) + Optional Tag (Top-Right)
-                HStack(alignment: .top) {
-                    // Category Icon Circle Avatar with Glowing Aura Shadow
-                    ZStack {
-                        Circle()
-                            .fill(color)
-                            .frame(width: 52, height: 52)
-                            .shadow(color: color.opacity(0.4), radius: 12, x: 0, y: 4)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color.white)
-                    }
+            VStack(alignment: .leading, spacing: 0) {
+                // Top Header Row: Title & Optional Tag
+                HStack(alignment: .center, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
+                        .layoutPriority(1)
                     
-                    Spacer()
+                    Spacer(minLength: 2)
                     
-                    // Optional Top-Right Tag / Pill Badge
                     if let tagText = tagText {
                         Text(tagText)
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 9.5, weight: .bold))
                             .foregroundStyle(tagColor ?? color)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
                             .background(
                                 Capsule()
                                     .fill((tagColor ?? color).opacity(0.15))
                             )
+                            .lineLimit(1)
                     }
                 }
+                .padding(.bottom, 4)
                 
-                // Bottom Text Info Stack: Title, Main Value, & Insight Subtitle
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    Text(value)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                // Main Value Row
+                Text(value)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+                
+                // Optional Middle Custom Visualizer Content
+                let middle = middleContent()
+                if !(middle is EmptyView) {
+                    middle
+                        .padding(.top, 6)
+                }
+                
+                Spacer(minLength: 8)
+                
+                // Bottom Footer Row: Insight Icon Circle Avatar (Bottom-Left) + Engine Description Text (Bottom-Right)
+                HStack(alignment: .center, spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [color, color.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 34, height: 34)
+                            .shadow(color: color.opacity(0.40), radius: 6, x: 0, y: 2)
+                        
+                        Image(systemName: icon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
                     
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.80)
                         .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 165, alignment: .topLeading)
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 180, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(SpendyColors.cardBackground)
@@ -89,6 +132,32 @@ struct SharedInsightCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(SharedCardButtonStyle(isEnabled: action != nil))
+    }
+}
+
+// Extension for default empty middle content
+extension SharedInsightCard where MiddleContent == EmptyView {
+    init(
+        title: String,
+        value: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        tagText: String? = nil,
+        tagColor: Color? = nil,
+        action: (() -> Void)? = nil
+    ) {
+        self.init(
+            title: title,
+            value: value,
+            subtitle: subtitle,
+            icon: icon,
+            color: color,
+            tagText: tagText,
+            tagColor: tagColor,
+            action: action,
+            middleContent: { EmptyView() }
+        )
     }
 }
 

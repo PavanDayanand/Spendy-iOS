@@ -59,6 +59,9 @@ struct SubscriptionWidgetSheet: View {
                         // Monthly Total Committed Summary Card
                         monthlySummaryCard
                         
+                        // Subscriptions Smart Insights Section
+                        subscriptionInsightsSection
+                        
                         // Subscriptions List or Empty State
                         if store.subscriptions.isEmpty {
                             emptyStateView
@@ -78,6 +81,39 @@ struct SubscriptionWidgetSheet: View {
         .presentationDetents([.medium, .large])
     }
     
+    private var subscriptionInsightsSection: some View {
+        let insights = InsightsEngine.getSubscriptionInsights(
+            transactions: store.transactions,
+            subscriptions: store.subscriptions,
+            currencySymbol: store.currencySymbol
+        )
+        
+        guard !insights.isEmpty else { return AnyView(EmptyView()) }
+        
+        return AnyView(
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Subscription Insights")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(insights) { insight in
+                            SharedInsightCard(
+                                title: insight.title,
+                                value: insight.value,
+                                subtitle: insight.desc,
+                                icon: insight.icon,
+                                color: insight.color
+                            )
+                            .frame(width: 180)
+                        }
+                    }
+                }
+            }
+        )
+    }
+    
     private var monthlySummaryCard: some View {
         let totalMonthly = store.subscriptions.filter { !$0.isPaused }.reduce(0.0) { acc, sub in
             switch sub.cycle {
@@ -89,9 +125,8 @@ struct SubscriptionWidgetSheet: View {
         let activeCount = store.subscriptions.filter { !$0.isPaused }.count
         
         return VStack(alignment: .leading, spacing: 8) {
-            Text("TOTAL MONTHLY COMMITTED")
+            Text("Total Monthly Committed")
                 .font(.system(size: 11, weight: .bold))
-                .tracking(1.0)
                 .foregroundStyle(SpendyColors.textTertiary)
             
             HStack(alignment: .bottom) {

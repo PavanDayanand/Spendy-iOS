@@ -14,6 +14,7 @@ struct AccountsSettingsView: View {
     @State private var showAddAccount: Bool = false
     @State private var showCurrencyPicker: Bool = false
     @State private var editingAccount: Account? = nil
+    @State private var selectedAccountForAnalytics: Account? = nil
     @State private var selectedFilter: AccountFilter = .all
     
     enum AccountFilter: String, CaseIterable, Identifiable {
@@ -79,6 +80,9 @@ struct AccountsSettingsView: View {
         .sheet(item: $editingAccount) { acc in
             AddAccountSheet(accountToEdit: acc)
                 .presentationBackground(SpendyColors.appBackground)
+        }
+        .navigationDestination(item: $selectedAccountForAnalytics) { acc in
+            AccountAnalyticsSheet(account: acc)
         }
     }
     
@@ -251,8 +255,8 @@ struct AccountsSettingsView: View {
                         let balance = store.balance(for: account.id)
                         
                         Button(action: {
-                            HapticsManager.shared.trigger(.light)
-                            editingAccount = account
+                            HapticsManager.shared.trigger(.selection)
+                            selectedAccountForAnalytics = account
                         }) {
                             HStack(spacing: 14) {
                                 // Rounded Square Badge using Custom Color!
@@ -274,7 +278,7 @@ struct AccountsSettingsView: View {
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundStyle(SpendyColors.textPrimary)
                                     
-                                    Text("Tap to edit details")
+                                    Text("Tap for analytics & details")
                                         .font(.system(size: 11, weight: .medium))
                                         .foregroundStyle(SpendyColors.textTertiary)
                                 }
@@ -304,27 +308,62 @@ struct AccountsSettingsView: View {
     
     // MARK: - Sparkline Curve
     private var sparklineView: some View {
-        GeometryReader { proxy in
-            Path { path in
-                let w = proxy.size.width
-                let h = proxy.size.height
-                
-                path.move(to: CGPoint(x: 0, y: h * 0.8))
-                path.addCurve(
-                    to: CGPoint(x: w, y: h * 0.1),
-                    control1: CGPoint(x: w * 0.6, y: h * 0.8),
-                    control2: CGPoint(x: w * 0.8, y: h * 0.2)
+        let isPositive = store.netWorthChangePercentage >= 0
+        let col = isPositive ? Color(hex: "#30D158") : Color(hex: "#FF3B30")
+        
+        return GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+            
+            ZStack(alignment: .bottomTrailing) {
+                Path { path in
+                    if isPositive {
+                        path.move(to: CGPoint(x: 0, y: h * 0.8))
+                        path.addCurve(
+                            to: CGPoint(x: w, y: h * 0.1),
+                            control1: CGPoint(x: w * 0.6, y: h * 0.8),
+                            control2: CGPoint(x: w * 0.8, y: h * 0.2)
+                        )
+                    } else {
+                        path.move(to: CGPoint(x: 0, y: h * 0.1))
+                        path.addCurve(
+                            to: CGPoint(x: w, y: h * 0.85),
+                            control1: CGPoint(x: w * 0.4, y: h * 0.15),
+                            control2: CGPoint(x: w * 0.7, y: h * 0.4)
+                        )
+                    }
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.addLine(to: CGPoint(x: 0, y: h))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [col.opacity(0.35), col.opacity(0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
+                
+                Path { path in
+                    if isPositive {
+                        path.move(to: CGPoint(x: 0, y: h * 0.8))
+                        path.addCurve(
+                            to: CGPoint(x: w, y: h * 0.1),
+                            control1: CGPoint(x: w * 0.6, y: h * 0.8),
+                            control2: CGPoint(x: w * 0.8, y: h * 0.2)
+                        )
+                    } else {
+                        path.move(to: CGPoint(x: 0, y: h * 0.1))
+                        path.addCurve(
+                            to: CGPoint(x: w, y: h * 0.85),
+                            control1: CGPoint(x: w * 0.4, y: h * 0.15),
+                            control2: CGPoint(x: w * 0.7, y: h * 0.4)
+                        )
+                    }
+                }
+                .stroke(col, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .shadow(color: col.opacity(0.3), radius: 4, y: 1)
             }
-            .stroke(
-                LinearGradient(
-                    colors: [SpendyColors.textPrimary.opacity(0.3), SpendyColors.textPrimary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
-            )
-            .shadow(color: SpendyColors.textPrimary.opacity(0.25), radius: 4, y: 1)
         }
     }
     

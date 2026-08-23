@@ -225,11 +225,11 @@ struct InsightsEngine {
             insights.append(InsightItem(
                 id: "budget_exceeded", family: "budget", scope: "global", personaFit: ["guardian", "planner", "reflector"],
                 confidence: 1.0, severity: 1.0, eligibility: true,
-                title: "Budget Exceeded", value: "\(Int(pacing.percentSpent))%", desc: "Monthly limit exceeded.",
+                title: "Budget Exceeded", value: "\(pacing.percentSpent.safeInt)%", desc: "Monthly limit exceeded.",
                 icon: "exclamationmark.octagon.fill", colorHex: "#ff453a"
             ))
         } else if pacing.projectedTotal > pacing.limit {
-            let daysToExhaust = Int(pacing.daysToExhaustion)
+            let daysToExhaust = min(365, max(0, pacing.daysToExhaustion.safeInt))
             let exhaustionDate = Calendar.current.date(byAdding: .day, value: daysToExhaust, to: facts.periodStart) ?? facts.periodStart
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
@@ -246,7 +246,7 @@ struct InsightsEngine {
                 insights.append(InsightItem(
                     id: "budget_recovery_allowance", family: "budget", scope: "global", personaFit: ["guardian", "optimizer"],
                     confidence: 0.85, severity: 0.5, eligibility: true,
-                    title: "Daily Limit", value: "\(currencySymbol)\(Int(max(0, pacing.safeDailyRemaining)))",
+                    title: "Daily Limit", value: "\(currencySymbol)\(max(0, pacing.safeDailyRemaining).safeInt)",
                     desc: "Safe daily spend for next \(pacing.remainingDays) days.",
                     icon: "pills.fill", colorHex: "#ffd60a" // Close enough to piggy bank
                 ))
@@ -255,14 +255,14 @@ struct InsightsEngine {
             insights.append(InsightItem(
                 id: "budget_burn_rate", family: "budget", scope: "global", personaFit: ["guardian", "planner"],
                 confidence: 0.9, severity: 0.8, eligibility: true,
-                title: "High Burn Rate", value: "+\(Int(pacing.overPace))%", desc: "Spending is faster than cycle pace.",
+                title: "High Burn Rate", value: "+\(pacing.overPace.safeInt)%", desc: "Spending is faster than cycle pace.",
                 icon: "waveform.path.ecg", colorHex: "#ff9500"
             ))
         } else if pacing.overPace <= 0 && pacing.percentSpent > 20 {
             insights.append(InsightItem(
                 id: "budget_pacing_good", family: "budget", scope: "global", personaFit: ["guardian", "optimizer"],
                 confidence: 0.8, severity: 0.2, eligibility: true,
-                title: "On Track", value: "\(Int(pacing.percentSpent))%", desc: "Pacing is safely within budget.",
+                title: "On Track", value: "\(pacing.percentSpent.safeInt)%", desc: "Pacing is safely within budget.",
                 icon: "checkmark.shield.fill", colorHex: "#30d158"
             ))
         }
@@ -293,7 +293,7 @@ struct InsightsEngine {
                 insights.append(InsightItem(
                     id: "weekend_bias", family: "behavior", scope: "global", personaFit: ["reflector", "habit-focused"],
                     confidence: facts.dataDensity, severity: 0.4, eligibility: true,
-                    title: "Weekend Bias", value: "Higher", desc: "\(Int((ratio - 1) * 100))% higher spend on weekends.",
+                    title: "Weekend Bias", value: "Higher", desc: "\(((ratio - 1) * 100).safeInt)% higher spend on weekends.",
                     icon: "calendar.badge.clock", colorHex: "#5856d6"
                 ))
             }
@@ -317,13 +317,16 @@ struct InsightsEngine {
         for cat in categories.filter({ $0.type == dataType }) {
             let total = facts.catTotals[cat.id] ?? 0
             let prevTotal = facts.prevCatTotals[cat.id] ?? 0
+            let catSymbol = cat.sfSymbol.isEmpty ? "tag.fill" : cat.sfSymbol
+            let catColor = cat.colorHex.isEmpty ? "#bf5af2" : cat.colorHex
             
-            if total > 0 && total / max(1.0, facts.currentTotal) > 0.4 {
+            if total > 0 && facts.currentTotal > 0 && (total / facts.currentTotal) > 0.4 {
+                let pct = (total / facts.currentTotal) * 100
                 insights.append(InsightItem(
                     id: "top_cat_\(cat.id)", family: "category", scope: "category", personaFit: ["reflector", "beginner"],
                     confidence: facts.dataDensity, severity: 0.3, eligibility: true,
-                    title: "Top Category", value: cat.label, desc: "Makes up \(Int((total/facts.currentTotal)*100))% of your total.",
-                    icon: "target", colorHex: cat.colorHex, categoryId: cat.id
+                    title: "Top Category", value: cat.label, desc: "Makes up \(pct.safeInt)% of your total.",
+                    icon: catSymbol, colorHex: catColor, categoryId: cat.id
                 ))
             }
             
@@ -335,17 +338,17 @@ struct InsightsEngine {
                     insights.append(InsightItem(
                         id: "trend_up_\(cat.id)", family: "category", scope: "category", personaFit: ["guardian", "optimizer"],
                         confidence: 0.8, severity: 0.6, eligibility: true,
-                        title: dataType == .income ? "Income Spike" : "Spend Spike", value: "+\(Int(pctChange))%",
-                        desc: "+\(currencySymbol)\(Int(diff)) higher than last cycle.",
-                        icon: "chart.line.uptrend.xyaxis", colorHex: dataType == .income ? "#30d158" : "#ff453a", categoryId: cat.id
+                        title: dataType == .income ? "Income Spike" : "Spend Spike", value: "+\(pctChange.safeInt)%",
+                        desc: "+\(currencySymbol)\(diff.safeInt) higher than last cycle.",
+                        icon: catSymbol, colorHex: catColor, categoryId: cat.id
                     ))
                 } else if pctChange <= -25 {
                     insights.append(InsightItem(
                         id: "trend_down_\(cat.id)", family: "category", scope: "category", personaFit: ["guardian", "optimizer"],
                         confidence: 0.8, severity: 0.1, eligibility: true,
-                        title: dataType == .income ? "Income Drop" : "Spend Reduced", value: "\(Int(pctChange))%",
-                        desc: "Saved \(currencySymbol)\(Int(abs(diff))) on \(cat.label).",
-                        icon: "chart.line.downtrend.xyaxis", colorHex: dataType == .income ? "#ff453a" : "#30d158", categoryId: cat.id
+                        title: dataType == .income ? "Income Drop" : "Spend Reduced", value: "\(pctChange.safeInt)%",
+                        desc: "Saved \(currencySymbol)\(abs(diff).safeInt) on \(cat.label).",
+                        icon: catSymbol, colorHex: catColor, categoryId: cat.id
                     ))
                 }
             }
@@ -360,8 +363,8 @@ struct InsightsEngine {
                     insights.append(InsightItem(
                         id: "cat_anomaly_\(cat.id)_\(i)", family: "category", scope: "category", personaFit: ["optimizer", "reflector", "guardian"],
                         confidence: 0.9, severity: 0.75, eligibility: true,
-                        title: "Unusual Spend", value: "\(currencySymbol)\(Int(t.amount))", desc: "3x higher than average for \(cat.label).",
-                        icon: "exclamationmark.triangle.fill", colorHex: "#ff9500", categoryId: cat.id
+                        title: "Unusual Spend", value: "\(currencySymbol)\(t.amount.safeInt)", desc: "3x higher than average for \(cat.label).",
+                        icon: catSymbol, colorHex: catColor, categoryId: cat.id
                     ))
                 }
             }
@@ -376,25 +379,27 @@ struct InsightsEngine {
         
         for sub in subscriptions {
             let subTxs = facts.transactions.filter { $0.subscriptionId == sub.id.uuidString && $0.type == .expense }
+            let subColor = sub.colorHex.isEmpty ? "#5856d6" : sub.colorHex
+            let subIcon = sub.sfSymbol.isEmpty ? "creditcard.fill" : sub.sfSymbol
             
             if subTxs.count > 1 {
                 insights.append(InsightItem(
                     id: "sub_double_charge_\(sub.id)", family: "subscription", scope: "global", personaFit: ["optimizer", "guardian", "planner"],
                     confidence: 1.0, severity: 0.75, eligibility: true,
                     title: "Double Billing", value: sub.name, desc: "\(subTxs.count) charges detected this cycle.",
-                    icon: "exclamationmark.octagon.fill", colorHex: "#ff9500"
+                    icon: "exclamationmark.octagon.fill", colorHex: subColor
                 ))
             }
             
             for (i, t) in subTxs.enumerated() {
-                if abs(t.amount - sub.amount) > 0.01 {
+                if sub.amount > 0 && abs(t.amount - sub.amount) > 0.01 {
                     let pctDiff = ((t.amount - sub.amount) / sub.amount) * 100
                     insights.append(InsightItem(
                         id: "sub_price_change_\(sub.id)_\(i)", family: "subscription", scope: "global", personaFit: ["optimizer", "guardian"],
                         confidence: 1.0, severity: 0.65, eligibility: true,
-                        title: "Price Changed", value: "\(pctDiff > 0 ? "+" : "")\(Int(pctDiff))%",
-                        desc: "Charged \(currencySymbol)\(Int(t.amount)) instead of \(currencySymbol)\(Int(sub.amount)).",
-                        icon: "waveform.path.ecg", colorHex: pctDiff > 0 ? "#ff453a" : "#30d158"
+                        title: "Price Changed", value: "\(pctDiff > 0 ? "+" : "")\(pctDiff.safeInt)%",
+                        desc: "Charged \(currencySymbol)\(t.amount.safeInt) instead of \(currencySymbol)\(sub.amount.safeInt).",
+                        icon: "arrow.triangle.2.circlepath", colorHex: subColor
                     ))
                 }
             }
@@ -404,8 +409,8 @@ struct InsightsEngine {
                 insights.append(InsightItem(
                     id: "sub_due_\(sub.id)", family: "subscription", scope: "global", personaFit: ["planner", "guardian", "reflector", "beginner"],
                     confidence: 1.0, severity: 0.5, eligibility: true,
-                    title: "Upcoming Bill", value: sub.name, desc: "\(currencySymbol)\(Int(sub.amount)) due \(daysUntil == 1 ? "tomorrow" : "in \(daysUntil) days").",
-                    icon: "creditcard.fill", colorHex: "#5856d6"
+                    title: "Upcoming Bill", value: sub.name, desc: "\(currencySymbol)\(sub.amount.safeInt) due \(daysUntil == 1 ? "tomorrow" : "in \(daysUntil) days").",
+                    icon: subIcon, colorHex: subColor
                 ))
             }
             
@@ -414,8 +419,8 @@ struct InsightsEngine {
                     id: "sub_overdue_\(sub.id)", family: "subscription", scope: "global", personaFit: ["planner", "guardian", "reflector", "beginner"],
                     confidence: 1.0, severity: 0.9, eligibility: true,
                     title: daysUntil == 0 ? "Due Today" : "Overdue Bill", value: sub.name,
-                    desc: "\(currencySymbol)\(Int(sub.amount)) \(daysUntil == 0 ? "due today" : "due \(abs(daysUntil))d ago").",
-                    icon: "exclamationmark.triangle.fill", colorHex: "#ff006e"
+                    desc: "\(currencySymbol)\(sub.amount.safeInt) \(daysUntil == 0 ? "due today" : "due \(abs(daysUntil))d ago").",
+                    icon: subIcon, colorHex: subColor
                 ))
             }
         }
@@ -431,14 +436,14 @@ struct InsightsEngine {
                 insights.append(InsightItem(
                     id: "income_spike", family: "behavior", scope: "global", personaFit: ["optimizer", "reflector"],
                     confidence: 0.8, severity: 0.1, eligibility: true,
-                    title: "Income Spike", value: "+\(Int(pctChange))%", desc: "Income increased significantly this period.",
+                    title: "Income Spike", value: "+\(pctChange.safeInt)%", desc: "Income increased significantly this period.",
                     icon: "chart.line.uptrend.xyaxis", colorHex: "#30d158"
                 ))
             } else if pctChange <= -20 {
                 insights.append(InsightItem(
                     id: "income_drop", family: "behavior", scope: "global", personaFit: ["guardian", "planner"],
                     confidence: 0.8, severity: 0.7, eligibility: true,
-                    title: "Income Drop", value: "\(Int(pctChange))%", desc: "Income decreased compared to previous period.",
+                    title: "Income Drop", value: "\(pctChange.safeInt)%", desc: "Income decreased compared to previous period.",
                     icon: "chart.line.downtrend.xyaxis", colorHex: "#ff9500"
                 ))
             }
@@ -559,5 +564,27 @@ struct InsightsEngine {
         candidates.append(contentsOf: generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol))
         
         return rankInsights(candidates: candidates, mindset: mindset, surface: "dashboard")
+    }
+    
+    static func getSubscriptionInsights(
+        transactions: [Transaction],
+        subscriptions: [Subscription],
+        currencySymbol: String
+    ) -> [InsightItem] {
+        let now = Date()
+        let calendar = Calendar.current
+        let periodStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+        let periodEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: periodStart) ?? now
+        
+        let facts = buildInsightFacts(
+            transactions: transactions,
+            budget: Budget(),
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            prevStart: periodStart,
+            prevEnd: periodEnd,
+            dataType: .expense
+        )
+        return generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol)
     }
 }

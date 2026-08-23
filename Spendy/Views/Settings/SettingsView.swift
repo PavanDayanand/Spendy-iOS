@@ -7,9 +7,27 @@
 
 import SwiftUI
 
+enum SettingsDestination: Hashable {
+    case accounts
+    case categories
+    case dataBackup
+}
+
 struct SettingsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    
+    var initialDestination: SettingsDestination? = nil
+    @State private var navigationPath: NavigationPath
+    
+    init(initialDestination: SettingsDestination? = nil) {
+        self.initialDestination = initialDestination
+        var path = NavigationPath()
+        if let initial = initialDestination {
+            path.append(initial)
+        }
+        _navigationPath = State(initialValue: path)
+    }
     
     // Sheets & Dialogs
     @State private var showNameEdit: Bool = false
@@ -19,7 +37,7 @@ struct SettingsView: View {
     @State private var showCoffeeSheet: Bool = false
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ZStack {
                 Color.black
                     .ignoresSafeArea()
@@ -56,6 +74,21 @@ struct SettingsView: View {
                 }
             }
             .navigationBarHidden(true)
+            .navigationDestination(for: SettingsDestination.self) { dest in
+                switch dest {
+                case .accounts:
+                    AccountsSettingsView()
+                case .categories:
+                    CategoriesSettingsView()
+                case .dataBackup:
+                    DataManagementView()
+                }
+            }
+            .onAppear {
+                if let initial = initialDestination, navigationPath.isEmpty {
+                    navigationPath.append(initial)
+                }
+            }
             // MARK: - Modals & Sheets
             .sheet(isPresented: $showNameEdit) {
                 editNameSheet
@@ -208,7 +241,7 @@ struct SettingsView: View {
             
             VStack(spacing: 0) {
                 // Accounts Hub Link
-                NavigationLink(destination: AccountsSettingsView()) {
+                NavigationLink(value: SettingsDestination.accounts) {
                     rowItem(
                         icon: "building.columns.fill",
                         iconColor: SpendyColors.primaryBlue,
@@ -220,7 +253,7 @@ struct SettingsView: View {
                 Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
                 // Categories Link
-                NavigationLink(destination: CategoriesSettingsView()) {
+                NavigationLink(value: SettingsDestination.categories) {
                     rowItem(
                         icon: "square.grid.2x2.fill",
                         iconColor: SpendyColors.incomeGreen,
@@ -312,7 +345,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
-                NavigationLink(destination: DataManagementView()) {
+                NavigationLink(value: SettingsDestination.dataBackup) {
                     rowItem(
                         icon: "cylinder.split.1x2.fill",
                         iconColor: SpendyColors.incomeGreen,

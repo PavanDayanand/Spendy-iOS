@@ -783,14 +783,14 @@ final class ExpenseStore {
         let totalDays = max(1, calendar.dateComponents([.day], from: start, to: end).day ?? 30)
         let elapsedDays = max(1, calendar.dateComponents([.day], from: start, to: Date()).day ?? 1)
         
-        let timePct = (Double(elapsedDays) / Double(totalDays)) * 100.0
-        let spendPct = (spent / target) * 100.0
+        let timePct = totalDays > 0 ? (Double(elapsedDays) / Double(totalDays)) * 100.0 : 0.0
+        let spendPct = target > 0 ? (spent / target) * 100.0 : 0.0
         let delta = spendPct - timePct
         
         if delta > 12 {
-            return .overPace(deltaPct: Int(round(delta)))
+            return .overPace(deltaPct: round(delta).safeInt)
         } else if delta < -12 {
-            return .underPace(deltaPct: Int(round(abs(delta))))
+            return .underPace(deltaPct: round(abs(delta)).safeInt)
         } else {
             return .onTrack
         }
@@ -815,7 +815,8 @@ final class ExpenseStore {
         guard avgDaily > 0 else { return "Pacing comfortably within your safe daily target." }
         
         let projectedDaysToExhaust = target / avgDaily
-        guard let projectedExhaustionDate = calendar.date(byAdding: .day, value: Int(projectedDaysToExhaust), to: start) else { return nil }
+        let daysVal = min(365.0, max(0.0, projectedDaysToExhaust)).safeInt
+        guard let projectedExhaustionDate = calendar.date(byAdding: .day, value: daysVal, to: start) else { return nil }
         
         let end = budgetCycleEnd()
         if projectedExhaustionDate < end {

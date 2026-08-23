@@ -86,19 +86,15 @@ struct CategoryAnalyticsSheet: View {
             let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
             return (start, now)
         case .month:
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-            let end = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: start) ?? now
-            return (start, end)
+            return (now.startOfMonth, now.endOfMonth)
         case .threeMonths:
             let start = calendar.date(byAdding: .month, value: -2, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now)
+            return (start, now.endOfDay)
         case .sixMonths:
             let start = calendar.date(byAdding: .month, value: -5, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now)
+            return (start, now.endOfDay)
         case .year:
-            let start = calendar.date(from: calendar.dateComponents([.year], from: now)) ?? now
-            let end = calendar.date(byAdding: DateComponents(year: 1, day: -1), to: start) ?? now
-            return (start, end)
+            return (now.startOfYear, now.endOfYear)
         case .all:
             let earliest = allCategoryTransactions.map(\.date).min() ?? now
             return (earliest, now)
@@ -589,61 +585,88 @@ struct CategoryAnalyticsSheet: View {
     
     // MARK: - 4. Category Insights Bento Carousel
     private var bentoInsightsCarousel: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 14) {
-                // Card 1: Avg Spent
-                avgSpentCard
-                
-                // Card 2: Top Day
-                topDayCard
-                
-                // Card 3: Month Forecast
-                monthForecastCard
-                
-                // Card 4: Activity / Transactions Count
-                activityCard
+        let bounds = periodBounds
+        let catInsights = InsightsEngine.getAnalyticsInsights(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions,
+            periodStart: bounds.start,
+            periodEnd: bounds.end,
+            prevStart: bounds.start,
+            prevEnd: bounds.end,
+            dataType: category.type,
+            currencySymbol: store.currencySymbol
+        ).filter { $0.categoryId == category.id }
+        
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(themeColor)
+                Text("Smart Insights")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
             }
             .padding(.horizontal, 20)
+            
+            Text("Specifically generated based on your spendings")
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.horizontal, 20)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    // Engine generated specific insights for this category
+                    ForEach(catInsights) { insight in
+                        SharedInsightCard(
+                            title: insight.title,
+                            value: insight.value,
+                            subtitle: insight.desc,
+                            icon: insight.icon,
+                            color: insight.color
+                        )
+                        .frame(width: 180)
+                    }
+                    
+                    // Card 1: Avg Spent
+                    avgSpentCard
+                    
+                    // Card 2: Top Day
+                    topDayCard
+                    
+                    // Card 3: Month Forecast
+                    monthForecastCard
+                    
+                    // Card 4: Activity / Transactions Count
+                    activityCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+            }
         }
     }
     
     // Bento Card 1: Avg Spent (with 14 progress pills)
     private var avgSpentCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("AVG SPENT")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .tracking(1.0)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(averageSpentPerWeek.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                
-                Text("Per week")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-            }
-            
-            Spacer()
-            
-            // 14 Horizontal Progress Pills
+        SharedInsightCard(
+            title: "Avg Spent",
+            value: averageSpentPerWeek.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+            subtitle: "Average spend per week",
+            icon: "chart.bar.fill",
+            color: themeColor
+        ) {
             HStack(spacing: 3) {
+                let ratio = (totalSpent / max(1.0, averageSpentPerWeek * 4)) * 14
+                let filledCount = min(14, max(1, ratio.safeInt))
                 ForEach(0..<14, id: \.self) { idx in
-                    let filledCount = min(14, max(1, Int((totalSpent / max(1.0, averageSpentPerWeek * 4)) * 14)))
                     RoundedRectangle(cornerRadius: 3)
                         .fill(idx < filledCount ? themeColor : Color.white.opacity(0.12))
                         .frame(height: 5)
                 }
             }
         }
-        .padding(18)
-        .frame(width: 175, height: 155, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        )
+        .frame(width: 180)
     }
     
     // Bento Card 2: Top Day (with 7 S M T W T F S weekday bars)
@@ -651,116 +674,61 @@ struct CategoryAnalyticsSheet: View {
         let topDayInfo = topSpendingWeekday
         let days = ["S", "M", "T", "W", "T", "F", "S"]
         
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("TOP DAY")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .tracking(1.0)
-            
-            Text(topDayInfo.name)
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-            
-            Spacer()
-            
-            // 7 Weekday Vertical Bars
-            HStack(alignment: .bottom, spacing: 6) {
+        return SharedInsightCard(
+            title: "Top Day",
+            value: topDayInfo.name,
+            subtitle: "Highest spending day",
+            icon: "calendar",
+            color: themeColor
+        ) {
+            HStack(alignment: .bottom, spacing: 4) {
                 ForEach(0..<7, id: \.self) { idx in
                     let isTop = idx == topDayInfo.dayIndex
-                    VStack(spacing: 4) {
+                    VStack(spacing: 3) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(isTop ? Color.white : Color.white.opacity(0.15))
-                            .frame(width: 14, height: isTop ? 28 : 10)
+                            .fill(isTop ? themeColor : Color.white.opacity(0.18))
+                            .frame(height: isTop ? 18 : 8)
                         
                         Text(days[idx])
-                            .font(.system(size: 9, weight: isTop ? .bold : .medium))
-                            .foregroundStyle(isTop ? .white : SpendyColors.textTertiary)
+                            .font(.system(size: 8, weight: isTop ? .bold : .medium))
+                            .foregroundStyle(isTop ? themeColor : SpendyColors.textTertiary)
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(18)
-        .frame(width: 175, height: 155, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        )
+        .frame(width: 180)
     }
     
     // Bento Card 3: Month Forecast
     private var monthForecastCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("MONTH FORECAST")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .tracking(1.0)
-                Spacer()
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeColor)
-            }
-            
-            Text(monthForecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-            
-            Spacer()
-            
-            Text("Projected spent by month-end")
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .lineLimit(2)
-        }
-        .padding(18)
-        .frame(width: 175, height: 155, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+        SharedInsightCard(
+            title: "Month Forecast",
+            value: monthForecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+            subtitle: "Projected spent by month-end",
+            icon: "sparkles",
+            color: themeColor
         )
+        .frame(width: 180)
     }
     
     // Bento Card 4: Activity / Transactions Count
     private var activityCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("ACTIVITY")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .tracking(1.0)
-                Spacer()
-                Image(systemName: "square.stack.3d.up.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeColor)
-            }
-            
-            Text("\(filteredTransactions.count)")
-                .font(.system(size: 24, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-            
-            Spacer()
-            
-            Text("Transactions in this period")
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .lineLimit(2)
-        }
-        .padding(18)
-        .frame(width: 175, height: 155, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+        SharedInsightCard(
+            title: "Activity",
+            value: "\(filteredTransactions.count)",
+            subtitle: "\(filteredTransactions.count == 1 ? "transaction" : "transactions") in this period",
+            icon: "square.stack.3d.up.fill",
+            color: themeColor
         )
+        .frame(width: 180)
     }
     
     // MARK: - 5. Date-Grouped Recent Activity Transactions Section
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("RECENT ACTIVITY")
+            Text("Recent Activity")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(SpendyColors.textTertiary)
                 .tracking(1.2)
@@ -884,7 +852,7 @@ struct CategoryAnalyticsSheet: View {
 }
 
 // MARK: - Optional Matched Geometry Extension
-fileprivate extension View {
+extension View {
     @ViewBuilder
     func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
         if let namespace = namespace {
