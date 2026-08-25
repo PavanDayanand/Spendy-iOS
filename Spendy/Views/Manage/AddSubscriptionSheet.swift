@@ -202,17 +202,16 @@ struct AddSubscriptionSheet: View {
                     showIconPickerSheet = true
                 }) {
                     ZStack {
+                        let circleColor = Color(hex: selectedColorHex)
                         Circle()
-                            .fill(Color(hex: selectedColorHex).opacity(0.18))
+                            .fill(circleColor)
                             .frame(width: 80, height: 80)
-                            .overlay {
-                                Circle()
-                                    .stroke(Color(hex: selectedColorHex).opacity(0.4), lineWidth: 1.5)
-                            }
+                            .shadow(color: circleColor.opacity(0.40), radius: 12, y: 4)
                         
+                        let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF"
                         Image(systemName: selectedSymbol)
                             .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(Color(hex: selectedColorHex))
+                            .foregroundStyle(isLightColor ? Color.black : Color.white)
                     }
                 }
                 .buttonStyle(.plain)

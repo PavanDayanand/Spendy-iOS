@@ -49,8 +49,10 @@ struct BudgetGaugeView: View {
                 
                 HStack(alignment: .center, spacing: 10) {
                     Text(spent.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                        .font(.system(size: 40, weight: .heavy))
+                        .font(.system(size: 40, weight: .heavy, design: .default).monospacedDigit())
                         .foregroundStyle(isExceeded ? Color(hex: "#FF453A") : SpendyColors.textPrimary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
                     
                     pacingStatusBadge
                 }

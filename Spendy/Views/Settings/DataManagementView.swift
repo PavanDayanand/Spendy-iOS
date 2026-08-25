@@ -109,7 +109,7 @@ struct DataManagementView: View {
                                     Text("Erase All Data")
                                         .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(SpendyColors.expenseRed)
-                                    Text("Permanently delete local transactions")
+                                    Text("Permanently delete all local data")
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundStyle(SpendyColors.textTertiary)
                                 }
@@ -172,11 +172,11 @@ struct DataManagementView: View {
             titleVisibility: .visible
         ) {
             Button("Erase All Data", role: .destructive) {
-                store.clearAllTransactions()
+                store.eraseAllData()
                 HapticsManager.shared.trigger(.warning)
             }
         } message: {
-            Text("This will permanently delete all your transactions. This action cannot be undone.")
+            Text("This will permanently delete all your data, including accounts and subscriptions. This action cannot be undone.")
         }
     }
     

@@ -17,7 +17,14 @@ struct TransactionRowView: View {
         let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == transaction.subscriptionId?.lowercased() })
         let tintColor = subscription?.color ?? category.color
         
-        HStack(spacing: 12) {
+        let accent = subscription != nil ? Color(hex: subscription!.colorHex) : nil
+        
+        SpendyRowCard(
+            accentColor: accent,
+            cornerRadius: 16,
+            paddingHorizontal: 14,
+            paddingVertical: 12
+        ) {
             // Icon Badge: Subscription glass circle if linked to subscription, else Category icon badge
             if let sub = subscription {
                 ZStack {
@@ -50,11 +57,10 @@ struct TransactionRowView: View {
                     size: .medium
                 )
             }
-            
-            // Transaction Info
+        } titleContent: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.title)
-                    .font(.system(.body, weight: .semibold))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
@@ -63,16 +69,13 @@ struct TransactionRowView: View {
                     Text("•")
                     Text(transaction.date.formattedRelative)
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(.white.opacity(0.5))
             }
-            
-            Spacer()
-            
-            // Signed Amount
+        } trailingContent: {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(amountText)
-                    .font(.system(.body, weight: .bold))
+                    .font(.system(size: 17, weight: .medium).monospacedDigit())
                     .foregroundStyle(amountColor)
                 
                 if let toId = transaction.toAccountId, transaction.type == .transfer {
@@ -82,30 +85,6 @@ struct TransactionRowView: View {
                         .foregroundStyle(SpendyColors.transferBlue)
                 }
             }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    subscription != nil ? AnyShapeStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: subscription!.colorHex).opacity(0.12),
-                                Color(hex: subscription!.colorHex).opacity(0.02)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    ) : AnyShapeStyle(SpendyColors.cardBackground)
-                )
-                .background(SpendyColors.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    let strokeColor = subscription != nil ? Color(hex: subscription!.colorHex).opacity(0.15) : Color.white.opacity(0.06)
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(strokeColor, lineWidth: 0.8)
-                }
         }
     }
     

@@ -57,76 +57,53 @@ struct Category: Identifiable, Codable, Hashable {
         Color(hex: colorHex)
     }
     
-    /// Vibrant category color hex matching Apple design specifications
-    var vibrantColorHex: String {
-        switch id.lowercased() {
-        case "groceries": return "#34C759" // Green
-        case "fuel": return "#FF9500" // Orange
-        case "restaurants": return "#FF9F0A" // Amber
-        case "food_delivery", "delivery": return "#FF6482" // Coral
-        case "public_transport", "transport": return "#007AFF" // Apple Blue
-        case "taxi": return "#FFCC00" // Yellow
-        case "car_maintenance": return "#8E8E93" // Slate Grey
-        case "rent": return "#FF3B30" // Coral Red
-        case "utilities": return "#FFD60A" // Electric Yellow
-        case "subscriptions": return "#AF52DE" // Purple
-        case "shopping": return "#5856D6" // Indigo
-        case "entertainment": return "#BF5AF2" // Magenta
-        case "health": return "#FF2D55" // Pink
-        case "internet", "mobile", "internet_mobile": return "#0A84FF" // Cyan Blue
-        case "paycheck", "salary": return "#34C759" // Green
-        case "freelance": return "#007AFF" // Blue
-        case "bonus": return "#FFD60A" // Gold
-        case "investment": return "#30B0C7" // Teal
-        case "refund": return "#32D74B" // Light Green
-        case "interest": return "#64D2FF" // Sky Blue
-        default:
-            if colorHex != "#FFFFFF" && colorHex != "#18181B" && !colorHex.isEmpty {
-                return colorHex
-            }
-            return "#007AFF" // Default primary blue hex
-        }
-    }
-    
-    /// Vibrant category color matching Apple design specifications (used for icons & badges)
-    var vibrantColor: Color {
-        Color(hex: vibrantColorHex)
-    }
-    
-    // MARK: - Default Expense Categories (Folder Grouped Monochrome)
+    // MARK: - Default Expense Categories (Vibrant Colors Baked In)
     static let defaultExpenseCategories: [Category] = [
         // Everyday Spending
-        Category(id: "groceries", label: "Groceries", sfSymbol: "cart.fill", colorHex: "#FFFFFF", type: .expense, folder: "Everyday Spending", order: 0),
-        Category(id: "restaurants", label: "Restaurants", sfSymbol: "fork.knife", colorHex: "#18181B", type: .expense, folder: "Everyday Spending", order: 1),
-        Category(id: "food_delivery", label: "Food delivery", sfSymbol: "takeoutbag.and.cup.and.straw.fill", colorHex: "#FFFFFF", type: .expense, folder: "Everyday Spending", order: 2),
+        Category(id: "groceries", label: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", type: .expense, folder: "Everyday Spending", order: 0),
+        Category(id: "restaurants", label: "Restaurants", sfSymbol: "fork.knife", colorHex: "#FF9F0A", type: .expense, folder: "Everyday Spending", order: 1),
+        Category(id: "food_delivery", label: "Food Delivery", sfSymbol: "takeoutbag.and.cup.and.straw.fill", colorHex: "#FF6482", type: .expense, folder: "Everyday Spending", order: 2),
+        Category(id: "coffee", label: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", type: .expense, folder: "Everyday Spending", order: 3),
         
         // Transport
-        Category(id: "public_transport", label: "Public transport", sfSymbol: "bus.fill", colorHex: "#18181B", type: .expense, folder: "Transport", order: 3),
-        Category(id: "fuel", label: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FFFFFF", type: .expense, folder: "Transport", order: 4),
-        Category(id: "taxi", label: "Taxi & Ride-hailing", sfSymbol: "car.fill", colorHex: "#18181B", type: .expense, folder: "Transport", order: 5),
-        Category(id: "car_maintenance", label: "Car maintenance", sfSymbol: "gearshape.2.fill", colorHex: "#FFFFFF", type: .expense, folder: "Transport", order: 6),
+        Category(id: "public_transport", label: "Public Transport", sfSymbol: "bus.fill", colorHex: "#007AFF", type: .expense, folder: "Transport", order: 4),
+        Category(id: "fuel", label: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", type: .expense, folder: "Transport", order: 5),
+        Category(id: "taxi", label: "Taxi & Ride-hailing", sfSymbol: "car.fill", colorHex: "#FFCC00", type: .expense, folder: "Transport", order: 6),
+        Category(id: "car_maintenance", label: "Car Maintenance", sfSymbol: "gearshape.2.fill", colorHex: "#8E8E93", type: .expense, folder: "Transport", order: 7),
         
         // Living
-        Category(id: "rent", label: "Rent", sfSymbol: "house.fill", colorHex: "#18181B", type: .expense, folder: "Living", order: 7),
-        Category(id: "utilities", label: "Utilities", sfSymbol: "bolt.fill", colorHex: "#FFFFFF", type: .expense, folder: "Living", order: 8),
-        Category(id: "subscriptions", label: "Subscriptions", sfSymbol: "calendar.badge.clock", colorHex: "#18181B", type: .expense, folder: "Living", order: 9),
+        Category(id: "rent", label: "Rent", sfSymbol: "house.fill", colorHex: "#FF3B30", type: .expense, folder: "Living", order: 8),
+        Category(id: "utilities", label: "Utilities", sfSymbol: "bolt.fill", colorHex: "#FFD60A", type: .expense, folder: "Living", order: 9),
+        Category(id: "subscriptions", label: "Subscriptions", sfSymbol: "calendar.badge.clock", colorHex: "#AF52DE", type: .expense, folder: "Living", order: 10),
+        Category(id: "insurance", label: "Insurance", sfSymbol: "shield.checkered", colorHex: "#0A84FF", type: .expense, folder: "Living", order: 11),
+        Category(id: "internet_mobile", label: "Internet & Mobile", sfSymbol: "wifi", colorHex: "#5AC8FA", type: .expense, folder: "Living", order: 12),
+        Category(id: "education", label: "Education", sfSymbol: "graduationcap.fill", colorHex: "#5856D6", type: .expense, folder: "Living", order: 13),
         
         // Personal & Wellness
-        Category(id: "shopping", label: "Shopping", sfSymbol: "bag.fill", colorHex: "#FFFFFF", type: .expense, folder: "Personal & Wellness", order: 10),
-        Category(id: "entertainment", label: "Entertainment", sfSymbol: "tv.fill", colorHex: "#18181B", type: .expense, folder: "Personal & Wellness", order: 11),
-        Category(id: "health", label: "Health & Fitness", sfSymbol: "heart.fill", colorHex: "#FFFFFF", type: .expense, folder: "Personal & Wellness", order: 12)
+        Category(id: "shopping", label: "Shopping", sfSymbol: "bag.fill", colorHex: "#5856D6", type: .expense, folder: "Personal & Wellness", order: 14),
+        Category(id: "entertainment", label: "Entertainment", sfSymbol: "tv.fill", colorHex: "#BF5AF2", type: .expense, folder: "Personal & Wellness", order: 15),
+        Category(id: "health", label: "Health & Fitness", sfSymbol: "heart.fill", colorHex: "#FF2D55", type: .expense, folder: "Personal & Wellness", order: 16),
+        Category(id: "gifts", label: "Gifts", sfSymbol: "gift.fill", colorHex: "#FF6482", type: .expense, folder: "Personal & Wellness", order: 17),
+        Category(id: "beauty", label: "Beauty & Personal Care", sfSymbol: "sparkles", colorHex: "#FF9FF3", type: .expense, folder: "Personal & Wellness", order: 18),
+        Category(id: "clothing", label: "Clothing", sfSymbol: "tshirt.fill", colorHex: "#AC8E68", type: .expense, folder: "Personal & Wellness", order: 19),
+        Category(id: "travel", label: "Travel", sfSymbol: "airplane", colorHex: "#30B0C7", type: .expense, folder: "Personal & Wellness", order: 20),
+        Category(id: "pets", label: "Pets", sfSymbol: "pawprint.fill", colorHex: "#FF9500", type: .expense, folder: "Personal & Wellness", order: 21)
     ]
     
-    // MARK: - Default Income Categories (Folder Grouped Monochrome)
+    // MARK: - Default Income Categories (Vibrant Colors Baked In)
     static let defaultIncomeCategories: [Category] = [
         // Salary & Career
-        Category(id: "paycheck", label: "Salary / Paycheck", sfSymbol: "dollarsign.circle.fill", colorHex: "#FFFFFF", type: .income, folder: "Salary & Career", order: 0),
-        Category(id: "freelance", label: "Freelance", sfSymbol: "briefcase.fill", colorHex: "#18181B", type: .income, folder: "Salary & Career", order: 1),
-        Category(id: "bonus", label: "Bonus", sfSymbol: "gift.fill", colorHex: "#FFFFFF", type: .income, folder: "Salary & Career", order: 2),
+        Category(id: "paycheck", label: "Salary / Paycheck", sfSymbol: "dollarsign.circle.fill", colorHex: "#34C759", type: .income, folder: "Salary & Career", order: 0),
+        Category(id: "freelance", label: "Freelance", sfSymbol: "briefcase.fill", colorHex: "#007AFF", type: .income, folder: "Salary & Career", order: 1),
+        Category(id: "bonus", label: "Bonus", sfSymbol: "gift.fill", colorHex: "#FFD60A", type: .income, folder: "Salary & Career", order: 2),
+        Category(id: "side_hustle", label: "Side Hustle", sfSymbol: "hammer.fill", colorHex: "#FF9500", type: .income, folder: "Salary & Career", order: 3),
         
         // Investments & Other
-        Category(id: "investment", label: "Investments", sfSymbol: "chart.line.uptrend.xyaxis", colorHex: "#18181B", type: .income, folder: "Investments & Other", order: 3),
-        Category(id: "refund", label: "Refunds", sfSymbol: "arrow.uturn.left.circle.fill", colorHex: "#FFFFFF", type: .income, folder: "Investments & Other", order: 4),
-        Category(id: "interest", label: "Interest", sfSymbol: "percent", colorHex: "#18181B", type: .income, folder: "Investments & Other", order: 5)
+        Category(id: "investment", label: "Investments", sfSymbol: "chart.line.uptrend.xyaxis", colorHex: "#30B0C7", type: .income, folder: "Investments & Other", order: 4),
+        Category(id: "refund", label: "Refunds", sfSymbol: "arrow.uturn.left.circle.fill", colorHex: "#32D74B", type: .income, folder: "Investments & Other", order: 5),
+        Category(id: "interest", label: "Interest", sfSymbol: "percent", colorHex: "#64D2FF", type: .income, folder: "Investments & Other", order: 6),
+        Category(id: "rental_income", label: "Rental Income", sfSymbol: "house.fill", colorHex: "#FF9F0A", type: .income, folder: "Investments & Other", order: 7),
+        Category(id: "dividends", label: "Dividends", sfSymbol: "chart.bar.fill", colorHex: "#5AC8FA", type: .income, folder: "Investments & Other", order: 8),
+        Category(id: "gifts_received", label: "Gifts Received", sfSymbol: "gift.circle.fill", colorHex: "#FF6482", type: .income, folder: "Investments & Other", order: 9)
     ]
 }

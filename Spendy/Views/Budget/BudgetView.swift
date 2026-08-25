@@ -80,7 +80,7 @@ struct BudgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(store.budget.period == .weekly ? "Weekly budget" : "Monthly budget")
-                    .font(.system(size: 28, weight: .heavy))
+                    .font(.system(size: 38, weight: .heavy))
                     .foregroundStyle(SpendyColors.textPrimary)
                 
                 Spacer()
@@ -251,10 +251,10 @@ struct BudgetView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(store.leftToday.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy))
+                        .font(.system(size: 24, weight: .heavy, design: .default).monospacedDigit())
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.5)
                     
                     Spacer(minLength: 12)
                     
@@ -287,10 +287,10 @@ struct BudgetView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy))
+                        .font(.system(size: 24, weight: .heavy, design: .default).monospacedDigit())
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.5)
                     
                     Spacer(minLength: 12)
                     
@@ -300,7 +300,7 @@ struct BudgetView: View {
                             .foregroundStyle(SpendyColors.textSecondary)
                         
                         Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 13, weight: .bold, design: .default).monospacedDigit())
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                     }
@@ -319,9 +319,8 @@ struct BudgetView: View {
             
             // What-If Budget Calculator Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("BUDGET CALCULATOR")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.0)
+                Text("Budget Calculator")
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.horizontal, 4)
                 

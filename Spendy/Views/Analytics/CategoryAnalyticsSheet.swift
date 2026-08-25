@@ -17,7 +17,6 @@ enum ChartPeriod: String, CaseIterable, Identifiable {
     case threeMonths = "3m"
     case sixMonths = "6m"
     case year = "1y"
-    case all = "All"
     
     var id: String { rawValue }
     
@@ -28,7 +27,6 @@ enum ChartPeriod: String, CaseIterable, Identifiable {
         case .threeMonths: return "3 Months"
         case .sixMonths: return "6 Months"
         case .year: return "1 Year"
-        case .all: return "All Time"
         }
     }
     
@@ -39,17 +37,25 @@ enum ChartPeriod: String, CaseIterable, Identifiable {
         case .threeMonths: return "3m"
         case .sixMonths: return "6m"
         case .year: return "1y"
-        case .all: return "all"
         }
     }
 }
 
 // MARK: - Chart Data Point
-struct CategoryChartPoint: Identifiable {
-    let id = UUID()
+struct CategoryChartPoint: Identifiable, Equatable {
+    let id: String
     let date: Date
     let label: String
     let amount: Double
+    let isPredicted: Bool
+    
+    init(id: String = UUID().uuidString, date: Date, label: String, amount: Double, isPredicted: Bool = false) {
+        self.id = id
+        self.date = date
+        self.label = label
+        self.amount = amount
+        self.isPredicted = isPredicted
+    }
 }
 
 // MARK: - Category Analytics Sheet
@@ -65,10 +71,18 @@ struct CategoryAnalyticsSheet: View {
     @State private var selectedPeriod: ChartPeriod = .month
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
+    @State private var lastInspectedTransaction: Transaction? = nil
+    @State private var editingCategoryToEdit: Category? = nil
     
     // MARK: - Computed Properties
     private var themeColor: Color {
-        category.vibrantColor
+        category.color
+    }
+    
+    private var daysInSelectedPeriod: Int {
+        let bounds = periodBounds
+        let calendar = Calendar.current
+        return max(1, calendar.dateComponents([.day], from: bounds.start, to: bounds.end).day ?? 1)
     }
     
     private var allCategoryTransactions: [Transaction] {
@@ -95,9 +109,6 @@ struct CategoryAnalyticsSheet: View {
             return (start, now.endOfDay)
         case .year:
             return (now.startOfYear, now.endOfYear)
-        case .all:
-            let earliest = allCategoryTransactions.map(\.date).min() ?? now
-            return (earliest, now)
         }
     }
     
@@ -129,9 +140,9 @@ struct CategoryAnalyticsSheet: View {
         let diff = totalSpent - previousPeriodSpent
         let pct = (diff / previousPeriodSpent) * 100
         if pct > 0 {
-            return String(format: "↑ %.1f%% vs last period", abs(pct))
+            return "↑ \(String(format: "%.0f", abs(pct)))% vs last period"
         } else if pct < 0 {
-            return String(format: "↓ %.1f%% vs last period", abs(pct))
+            return "↓ \(String(format: "%.0f", abs(pct)))% vs last period"
         } else {
             return "Same as last period"
         }
@@ -151,6 +162,8 @@ struct CategoryAnalyticsSheet: View {
         let calendar = Calendar.current
         let bounds = periodBounds
         let txs = filteredTransactions
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
         
         switch selectedPeriod {
         case .week, .month:
@@ -161,26 +174,56 @@ struct CategoryAnalyticsSheet: View {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = selectedPeriod == .week ? "EEE" : "d"
             
+            let daysElapsed = max(1, calendar.dateComponents([.day], from: bounds.start, to: min(today, bounds.end)).day ?? 1)
+            let totalSpentSoFar = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }.reduce(0) { $0 + $1.amount }
+            let dailyRate = totalSpentSoFar / Double(daysElapsed)
+            let hasEnoughTxs = allCategoryTransactions.count >= 5
+            
+            var lastActualAmount: Double = 0
+            
             while current <= endDay {
-                let dayStart = current
-                let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
-                let dayTotal = txs
-                    .filter { $0.date >= dayStart && $0.date < dayEnd }
-                    .reduce(0) { $0 + $1.amount }
+                let isActual = current <= today
                 
-                points.append(CategoryChartPoint(
-                    date: current,
-                    label: dateFormatter.string(from: current),
-                    amount: dayTotal
-                ))
-                current = dayEnd
+                if isActual {
+                    let dayStart = current
+                    let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
+                    let dayTotal = txs
+                        .filter { $0.date >= dayStart && $0.date < dayEnd }
+                        .reduce(0) { $0 + $1.amount }
+                    
+                    lastActualAmount = dayTotal
+                    points.append(CategoryChartPoint(
+                        id: "actual_\(current.timeIntervalSince1970)",
+                        date: current,
+                        label: dateFormatter.string(from: current),
+                        amount: dayTotal,
+                        isPredicted: false
+                    ))
+                } else if hasEnoughTxs {
+                    let dayOffset = calendar.dateComponents([.day], from: today, to: current).day ?? 1
+                    let predictedAmount = max(0, lastActualAmount + (dailyRate * Double(dayOffset) * 0.15))
+                    points.append(CategoryChartPoint(
+                        id: "pred_\(current.timeIntervalSince1970)",
+                        date: current,
+                        label: dateFormatter.string(from: current),
+                        amount: predictedAmount,
+                        isPredicted: true
+                    ))
+                }
+                current = calendar.date(byAdding: .day, value: 1, to: current)!
             }
             return points
             
-        case .threeMonths, .sixMonths, .year, .all:
+        case .threeMonths, .sixMonths, .year:
             var points: [CategoryChartPoint] = []
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
             let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
+            
+            let hasEnoughTxs = allCategoryTransactions.count >= 5
+            var lastActualAmount: Double = 0
+            let monthsElapsed = max(1, calendar.dateComponents([.month], from: bounds.start, to: min(now, bounds.end)).month ?? 1)
+            let totalSpentSoFar = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }.reduce(0) { $0 + $1.amount }
+            let monthlyRate = totalSpentSoFar / Double(monthsElapsed)
             
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "MMM"
@@ -188,15 +231,31 @@ struct CategoryAnalyticsSheet: View {
             while current <= endMonth {
                 let monthStart = current
                 let monthEnd = calendar.date(byAdding: .month, value: 1, to: current)!
-                let monthTotal = txs
-                    .filter { $0.date >= monthStart && $0.date < monthEnd }
-                    .reduce(0) { $0 + $1.amount }
+                let isActual = current <= now
                 
-                points.append(CategoryChartPoint(
-                    date: current,
-                    label: dateFormatter.string(from: current),
-                    amount: monthTotal
-                ))
+                if isActual {
+                    let monthTotal = txs
+                        .filter { $0.date >= monthStart && $0.date < monthEnd }
+                        .reduce(0) { $0 + $1.amount }
+                    lastActualAmount = monthTotal
+                    points.append(CategoryChartPoint(
+                        id: "actual_\(current.timeIntervalSince1970)",
+                        date: current,
+                        label: dateFormatter.string(from: current),
+                        amount: monthTotal,
+                        isPredicted: false
+                    ))
+                } else if hasEnoughTxs {
+                    let monthOffset = calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1
+                    let predictedAmount = max(0, lastActualAmount + (monthlyRate * Double(monthOffset) * 0.10))
+                    points.append(CategoryChartPoint(
+                        id: "pred_\(current.timeIntervalSince1970)",
+                        date: current,
+                        label: dateFormatter.string(from: current),
+                        amount: predictedAmount,
+                        isPredicted: true
+                    ))
+                }
                 current = monthEnd
             }
             return points
@@ -220,32 +279,26 @@ struct CategoryAnalyticsSheet: View {
         case .year:
             formatter.dateFormat = "yyyy"
             return formatter.string(from: bounds.start)
-        case .all:
-            return "All Time"
         }
     }
     
     // MARK: - Insights Calculations
     private var averageSpentPerWeek: Double {
         guard !filteredTransactions.isEmpty else { return 0 }
-        let bounds = periodBounds
-        let days = max(1.0, bounds.end.timeIntervalSince(bounds.start) / 86400.0)
-        let weeks = max(1.0, days / 7.0)
+        let weeks = max(1, Double(daysInSelectedPeriod) / 7.0)
         return totalSpent / weeks
     }
     
     private var topSpendingWeekday: (name: String, dayIndex: Int, amount: Double) {
-        var dayTotals = Array(repeating: 0.0, count: 7) // 0: Sun, 1: Mon, ... 6: Sat
+        var dayTotals = Array(repeating: 0.0, count: 7)
         let calendar = Calendar.current
-        
         for tx in filteredTransactions {
-            let weekday = calendar.component(.weekday, from: tx.date) - 1 // 0-based
+            let weekday = calendar.component(.weekday, from: tx.date) - 1
             if weekday >= 0 && weekday < 7 {
                 dayTotals[weekday] += tx.amount
             }
         }
-        
-        var maxIdx = 4 // Default Thursday if empty
+        var maxIdx = 4
         var maxAmt = 0.0
         for (idx, amt) in dayTotals.enumerated() {
             if amt > maxAmt {
@@ -253,7 +306,6 @@ struct CategoryAnalyticsSheet: View {
                 maxIdx = idx
             }
         }
-        
         let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         return (dayNames[maxIdx], maxIdx, maxAmt)
     }
@@ -265,11 +317,97 @@ struct CategoryAnalyticsSheet: View {
         let range = calendar.range(of: .day, in: .month, for: now) ?? 1..<31
         let totalDays = Double(range.count)
         let dayPassed = max(1.0, Double(calendar.component(.day, from: now)))
-        
         let monthTxs = allCategoryTransactions.filter { $0.date >= startMonth && $0.date <= now }
         let monthSpent = monthTxs.reduce(0) { $0 + $1.amount }
         let dailyRate = monthSpent / dayPassed
         return dailyRate * totalDays
+    }
+    
+    private var highestSingleDay: (Date, Double)? {
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: filteredTransactions) { calendar.startOfDay(for: $0.date) }
+        var maxDay: (Date, Double)? = nil
+        for (day, txs) in groups {
+            let total = txs.reduce(0) { $0 + $1.amount }
+            if maxDay == nil || total > (maxDay?.1 ?? 0) {
+                maxDay = (day, total)
+            }
+        }
+        return maxDay
+    }
+    
+    // Dynamic AI Category Insights Engine
+    private var dynamicCategoryInsights: [InsightItem] {
+        guard totalSpent > 0 else { return [] }
+        var items: [InsightItem] = []
+        let currSymbol = store.currencySymbol
+        
+        // 1. Pace / Trend Insight
+        if previousPeriodSpent > 0 {
+            let diff = totalSpent - previousPeriodSpent
+            let pct = abs((diff / previousPeriodSpent) * 100)
+            let isIncrease = diff > 0
+            
+            if category.type == .expense {
+                items.append(InsightItem(
+                    id: "cat_trend_\(category.id)",
+                    family: "Trend",
+                    scope: "Category",
+                    personaFit: [],
+                    confidence: 0.9,
+                    severity: isIncrease ? 0.7 : 0.3,
+                    eligibility: true,
+                    title: isIncrease ? "Spending Increased" : "Spending Decreased",
+                    value: "\(isIncrease ? "+" : "-")\(String(format: "%.0f", pct))%",
+                    desc: isIncrease ? "You spent \(diff.formattedCurrency(symbol: currSymbol, decimals: 0)) more on \(category.label) than last period." : "Great job! Spent \(abs(diff).formattedCurrency(symbol: currSymbol, decimals: 0)) less than last period.",
+                    icon: isIncrease ? "arrow.up.right" : "arrow.down.right",
+                    colorHex: isIncrease ? "#FF3B30" : "#30D158",
+                    categoryId: category.id
+                ))
+            }
+        }
+        
+        // 2. High Day Insight
+        if let (highDate, highAmount) = highestSingleDay, highAmount > 0 {
+            let df = DateFormatter()
+            df.dateFormat = "MMM d"
+            items.append(InsightItem(
+                id: "cat_peak_\(category.id)",
+                family: "Peak",
+                scope: "Category",
+                personaFit: [],
+                confidence: 0.85,
+                severity: 0.4,
+                eligibility: true,
+                title: "Peak Spending Day",
+                value: highAmount.formattedCurrency(symbol: currSymbol, decimals: 0),
+                desc: "Highest single day was \(df.string(from: highDate)).",
+                icon: "bolt.fill",
+                colorHex: category.colorHex,
+                categoryId: category.id
+            ))
+        }
+        
+        // 3. Weekly Velocity Insight
+        if averageSpentPerWeek > 0 {
+            items.append(InsightItem(
+                id: "cat_weekly_\(category.id)",
+                family: "Velocity",
+                scope: "Category",
+                personaFit: [],
+                confidence: 0.8,
+                severity: 0.3,
+                eligibility: true,
+                title: "Weekly Pace",
+                value: "\(averageSpentPerWeek.formattedCurrency(symbol: currSymbol, decimals: 0))/wk",
+                desc: "Average weekly pace in \(category.label) for this period.",
+                icon: "calendar.badge.clock",
+                colorHex: "#5E5CE6",
+                categoryId: category.id
+            ))
+        }
+        
+        return items
     }
     
     private var dateGroupedTransactions: [(String, Double, [Transaction])] {
@@ -297,80 +435,92 @@ struct CategoryAnalyticsSheet: View {
         }
     }
     
-    @State private var dragOffset: CGFloat = 0
-    
+    // MARK: - Body
     var body: some View {
         ZStack {
-            // Dark Dynamic Ambient Background Layer
-            SpendyColors.appBackground
-                .ignoresSafeArea()
+            SpendyColors.appBackground.ignoresSafeArea()
             
-            // Dynamic Category Ambient Gradient Glow
+            // Ambient Category Radial Color Glow
             VStack {
                 RadialGradient(
                     colors: [
-                        themeColor.opacity(0.40),
-                        themeColor.opacity(0.18),
+                        themeColor.opacity(0.35),
+                        themeColor.opacity(0.12),
                         Color.clear
                     ],
                     center: .top,
                     startRadius: 0,
-                    endRadius: 360
+                    endRadius: 380
                 )
                 .frame(height: 380)
                 .blur(radius: 20)
                 .ignoresSafeArea()
-                
                 Spacer()
             }
             
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         Spacer().frame(height: 56)
                         
-                        // Hero Amount & Category Logo
-                        heroSection
+                        // 1. Pure Hero Header
+                        heroHeaderSection
                             .padding(.horizontal, 20)
                         
-                        // Area Chart & Index Strip
+                        // 2. Uncarded SwiftCharts Area Graph & Glass Selector
                         chartSection
                             .padding(.horizontal, 16)
                         
-                        // Category Insight Bento Cards Carousel
-                        bentoInsightsCarousel
-                            .padding(.top, 8)
+                        // 3. Dynamic Insights Carousel
+                        if !dynamicCategoryInsights.isEmpty {
+                            categoryInsightsCarousel
+                        }
                         
-                        // Date-Grouped Recent Activity Transactions List
+                        // 4. Date-Grouped Activity List
                         transactionsSection
                             .padding(.horizontal, 16)
-                            .padding(.top, 12)
+                            .padding(.top, 4)
                             .padding(.bottom, 40)
                     }
                 }
                 
-                // Floating Sticky Top Controls Layer (Pinned on Top of Content Layer)
+                // Floating Sticky Header Bar
                 headerBar
                     .padding(.top, 8)
                     .zIndex(100)
             }
-            .sheet(item: $inspectingTransaction) { tx in
-                TransactionDetailSheet(transaction: tx) { editedTx in
-                    editingTransaction = editedTx
-                }
-            }
-            .sheet(item: $editingTransaction) { tx in
-                AddTransactionView(transactionToEdit: tx)
-            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .sheet(item: $editingCategoryToEdit) { cat in
+            AddCategorySheet(categoryToEdit: cat)
+                .presentationBackground(SpendyColors.appBackground)
+        }
+        .sheet(item: $inspectingTransaction) { tx in
+            TransactionDetailSheet(transaction: tx) { txToEdit in
+                lastInspectedTransaction = tx
+                inspectingTransaction = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                    editingTransaction = txToEdit
+                }
+            }
+        }
+        .sheet(item: $editingTransaction, onDismiss: {
+            if let last = lastInspectedTransaction {
+                let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
+                lastInspectedTransaction = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    inspectingTransaction = fresh
+                }
+            }
+        }) { tx in
+            AddTransactionView(transactionToEdit: tx)
+        }
     }
     
-    // MARK: - 1. Top Header Bar (Floating Glass Controls)
+    // MARK: - 1. Floating Sticky Header Bar
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 12) {
-            // Circular Back / Dismiss Button
             GlassCircleButton(
                 icon: "chevron.left",
                 size: 44,
@@ -380,90 +530,72 @@ struct CategoryAnalyticsSheet: View {
                 accessibilityLabel: "Back"
             ) {
                 HapticsManager.shared.trigger(.selection)
-                onDismiss?()
-                dismiss()
-            }
-            .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
-            
-            Spacer()
-            
-            // Center Category Label
-            Text(category.label)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(.white)
-                .optionalMatchedGeometry(id: "topControl_center", in: topControlsNamespace)
-            
-            Spacer()
-            
-            // Top-Right Calendar Menu Control
-            Menu {
-                ForEach(ChartPeriod.allCases) { period in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.25)) {
-                            selectedPeriod = period
-                            HapticsManager.shared.trigger(.selection)
-                        }
-                    }) {
-                        HStack {
-                            Text(period.title)
-                            if selectedPeriod == period {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+                if let onDismiss = onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
                 }
-            } label: {
-                GlassCircleIcon(
-                    icon: "calendar",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: .white
-                )
             }
-            .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
+            
+            Spacer()
+            
+            // Category Icon Badge & Title
+            HStack(spacing: 8) {
+                CategoryIconBadge(
+                    sfSymbol: category.sfSymbol,
+                    tintColor: category.color,
+                    size: .small
+                )
+                
+                Text(category.label)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            
+            Spacer()
+            
+            // Right-Side Edit Glass Button
+            GlassCircleButton(
+                icon: "pencil",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: .white,
+                accessibilityLabel: "Edit Category"
+            ) {
+                HapticsManager.shared.trigger(.light)
+                editingCategoryToEdit = category
+            }
         }
         .padding(.horizontal, 20)
     }
     
-    // MARK: - 2. Hero Section
-    private var heroSection: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Spent in \(periodHeaderLabel)")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 38, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                
+    // MARK: - 2. Clean Hero Header Section
+    private var heroHeaderSection: some View {
+        VStack(spacing: 6) {
+            Text(periodHeaderLabel)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+            
+            Text(totalSpent.formattedCurrency(symbol: store.currencySymbol))
+                .font(.system(size: 40, weight: .heavy, design: .rounded).monospacedDigit())
+                .foregroundStyle(SpendyColors.textPrimary)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+            
+            if comparisonText != "No data yet" {
                 Text(comparisonText)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(comparisonColor)
             }
-            
-            Spacer()
-            
-            // Large Vibrant Category Icon Badge
-            ZStack {
-                Circle()
-                    .fill(themeColor)
-                    .frame(width: 58, height: 58)
-                    .shadow(color: themeColor.opacity(0.4), radius: 12, x: 0, y: 6)
-                
-                Image(systemName: category.sfSymbol)
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
         }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - 3. SwiftCharts Area Graph & Index Filter Strip
     private var chartSection: some View {
         VStack(spacing: 14) {
             if chartPoints.isEmpty || totalSpent == 0 {
-                // Empty Chart State
                 VStack(spacing: 8) {
                     Image(systemName: "chart.line.flattrend.xyaxis")
                         .font(.system(size: 28))
@@ -474,16 +606,12 @@ struct CategoryAnalyticsSheet: View {
                 }
                 .frame(height: 180)
                 .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.03))
-                )
             } else {
-                // SwiftChart Area & Line Curve
                 Chart {
-                    ForEach(chartPoints) { point in
+                    // 1. Actual Area Gradient below curve
+                    ForEach(chartPoints.filter { !$0.isPredicted }) { point in
                         AreaMark(
-                            x: .value("Date", point.label),
+                            x: .value("Date", point.date),
                             y: .value("Amount", point.amount)
                         )
                         .foregroundStyle(
@@ -494,9 +622,12 @@ struct CategoryAnalyticsSheet: View {
                             )
                         )
                         .interpolationMethod(.catmullRom)
-                        
+                    }
+                    
+                    // 2. Actual Solid Line Curve
+                    ForEach(chartPoints.filter { !$0.isPredicted }) { point in
                         LineMark(
-                            x: .value("Date", point.label),
+                            x: .value("Date", point.date),
                             y: .value("Amount", point.amount)
                         )
                         .foregroundStyle(themeColor)
@@ -504,18 +635,30 @@ struct CategoryAnalyticsSheet: View {
                         .interpolationMethod(.catmullRom)
                     }
                     
-                    // Glowing Active End Point Indicator
-                    if let lastPoint = chartPoints.last, lastPoint.amount > 0 {
+                    // 3. Predictive Dotted Points for Future Days (React Expense App Style)
+                    ForEach(chartPoints.filter { $0.isPredicted }) { point in
                         PointMark(
-                            x: .value("Date", lastPoint.label),
-                            y: .value("Amount", lastPoint.amount)
+                            x: .value("Date", point.date),
+                            y: .value("Amount", point.amount)
+                        )
+                        .symbol {
+                            Circle()
+                                .fill(Color.white.opacity(0.35))
+                                .frame(width: 4, height: 4)
+                        }
+                    }
+                    
+                    // 5. Clean White Endpoint Dot at Today
+                    if let lastActual = chartPoints.filter({ !$0.isPredicted }).last {
+                        PointMark(
+                            x: .value("Date", lastActual.date),
+                            y: .value("Amount", lastActual.amount)
                         )
                         .symbol {
                             ZStack {
                                 Circle()
                                     .fill(themeColor)
                                     .frame(width: 12, height: 12)
-                                    .shadow(color: themeColor, radius: 6)
                                 Circle()
                                     .fill(Color.white)
                                     .frame(width: 5, height: 5)
@@ -523,18 +666,13 @@ struct CategoryAnalyticsSheet: View {
                         }
                     }
                 }
+                .chartXScale(domain: periodBounds.start...periodBounds.end)
                 .chartXAxis {
-                    AxisMarks { value in
-                        if let labelStr = value.as(String.self) {
-                            if selectedPeriod == .month {
-                                if let day = Int(labelStr), [1, 6, 11, 16, 21, 26, 31].contains(day) {
-                                    AxisValueLabel()
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                }
-                            } else {
-                                AxisValueLabel()
-                                    .font(.system(size: 10, weight: .medium))
+                    AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                        if let dateVal = value.as(Date.self) {
+                            AxisValueLabel {
+                                Text(axisLabelDate(dateVal))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
@@ -542,7 +680,6 @@ struct CategoryAnalyticsSheet: View {
                 }
                 .chartYAxis(.hidden)
                 .frame(height: 180)
-                .padding(.horizontal, 4)
             }
             
             // Glass Index Selector Pill Strip
@@ -552,10 +689,8 @@ struct CategoryAnalyticsSheet: View {
                     ForEach(ChartPeriod.allCases) { period in
                         let isSelected = selectedPeriod == period
                         Button {
-                            withAnimation(.spring(response: 0.25)) {
-                                selectedPeriod = period
-                                HapticsManager.shared.trigger(.selection)
-                            }
+                            selectedPeriod = period
+                            HapticsManager.shared.trigger(.selection)
                         } label: {
                             Text(period.shortLabel)
                                 .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
@@ -570,6 +705,7 @@ struct CategoryAnalyticsSheet: View {
                                     }
                                 }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(4)
@@ -583,8 +719,20 @@ struct CategoryAnalyticsSheet: View {
         }
     }
     
+    // MARK: - Helper Formatters
+    private func axisLabelDate(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        switch selectedPeriod {
+        case .week: fmt.dateFormat = "EEE"
+        case .month: fmt.dateFormat = "d MMM"
+        case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
+        case .year: fmt.dateFormat = "MMM yy"
+        }
+        return fmt.string(from: date)
+    }
+    
     // MARK: - 4. Category Insights Bento Carousel
-    private var bentoInsightsCarousel: some View {
+    private var categoryInsightsCarousel: some View {
         let bounds = periodBounds
         let catInsights = InsightsEngine.getAnalyticsInsights(
             transactions: store.transactions,
@@ -848,17 +996,5 @@ struct CategoryAnalyticsSheet: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Optional Matched Geometry Extension
-extension View {
-    @ViewBuilder
-    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
-        if let namespace = namespace {
-            self.matchedGeometryEffect(id: id, in: namespace)
-        } else {
-            self
-        }
     }
 }

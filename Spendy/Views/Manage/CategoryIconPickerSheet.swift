@@ -21,31 +21,143 @@ struct CategoryIconPickerSheet: View {
         var id: String { rawValue }
     }
     
-    // SF Symbols library matching your screenshot and designs (with photo.fill and abc removed)
+    // MARK: - Default SF Symbols (~130 icons organized by category)
     private let defaultSymbols = [
-        "sparkles", "sparkles.rectangle.stack", "alarm.fill",
-        "face.smiling.fill", "leaf.fill", "truck.box.fill", "anchor", "apple.logo",
-        "backpack.fill", "bag.fill", "dollarsign.circle.fill", "briefcase.fill", "cross.case.fill",
-        "fork.knife", "basketball.fill", "balloon.fill", "moon.fill", "bandage.fill",
-        "building.columns.fill", "frying.pan.fill", "baseball.fill", "soccerball", "battery.100",
-        "sun.max.fill", "pawprint.fill", "mug.fill", "bicycle", "camera.fill",
-        "creditcard.fill", "banknote.fill", "hand.thumbsup.fill", "bone.fill", "soup.fill",
-        "cart.fill", "gift.fill", "tag.fill", "car.fill", "fuelpump.fill",
-        "house.fill", "bolt.fill", "drop.fill", "wifi", "tv.fill",
-        "gamecontroller.fill", "heart.fill", "pills.fill", "percent", "book.fill",
-        "briefcase.circle.fill", "phone.fill", "envelope.fill", "airplane", "paperplane.fill",
-        "star.fill", "bell.fill", "bookmark.fill", "scissors", "comb.fill",
-        "paintbrush.fill", "music.note", "pencil", "hammer.fill", "wrench.and.screwdriver.fill"
+        // Food & Drink
+        "cart.fill", "fork.knife", "takeoutbag.and.cup.and.straw.fill", "cup.and.saucer.fill",
+        "mug.fill", "wineglass.fill", "waterbottle.fill", "birthday.cake.fill",
+        "frying.pan.fill", "soup.fill",
+        
+        // Finance & Money
+        "dollarsign.circle.fill", "indianrupeesign.circle.fill", "sterlingsign.circle.fill",
+        "eurosign.circle.fill", "yensign.circle.fill", "creditcard.fill", "banknote.fill",
+        "wallet.pass.fill", "chart.bar.fill", "chart.pie.fill", "chart.line.uptrend.xyaxis",
+        "percent", "building.columns.fill",
+        
+        // Transport
+        "car.fill", "car.side.fill", "bus.fill", "tram.fill", "ferry.fill",
+        "bicycle", "scooter", "fuelpump.fill", "airplane", "airplane.departure",
+        "airplane.arrival",
+        
+        // Home & Living
+        "house.fill", "bolt.fill", "drop.fill", "wifi", "lightbulb.fill",
+        "lamp.desk.fill", "bed.double.fill", "sofa.fill", "bathtub.fill",
+        "washer.fill", "refrigerator.fill", "fan.fill",
+        
+        // Shopping & Objects
+        "bag.fill", "tag.fill", "gift.fill", "gift.circle.fill", "shippingbox.fill",
+        "tshirt.fill", "scissors", "comb.fill", "key.fill", "lock.fill",
+        "ticket.fill", "crown.fill", "trophy.fill", "medal.fill",
+        
+        // Health & Fitness
+        "heart.fill", "heart.circle.fill", "pills.fill", "cross.case.fill",
+        "bandage.fill", "dumbbell.fill", "figure.run", "figure.walk",
+        "figure.strengthtraining.traditional", "figure.yoga",
+        
+        // Entertainment & Media
+        "tv.fill", "gamecontroller.fill", "music.note", "headphones",
+        "play.rectangle.fill", "film.fill", "theatermasks.fill", "camera.fill",
+        "photo.fill", "book.fill", "text.book.closed.fill",
+        
+        // Tech & Devices
+        "desktopcomputer", "laptopcomputer", "iphone", "ipad",
+        "printer.fill", "display", "externaldrive.fill", "cpu.fill",
+        
+        // People & Social
+        "person.fill", "person.2.fill", "person.3.fill",
+        "figure.2.and.child.holdinghands",
+        
+        // Nature & Weather
+        "leaf.fill", "tree.fill", "cloud.rain.fill", "sun.max.fill",
+        "moon.fill", "snowflake", "flame.fill", "pawprint.fill",
+        
+        // Communication
+        "phone.fill", "envelope.fill", "message.fill", "paperplane.fill",
+        "bell.fill", "megaphone.fill",
+        
+        // Education & Work
+        "graduationcap.fill", "briefcase.fill", "briefcase.circle.fill",
+        "hammer.fill", "wrench.and.screwdriver.fill", "gearshape.2.fill",
+        "pencil", "paintbrush.fill",
+        
+        // Misc
+        "sparkles", "star.fill", "bookmark.fill", "flag.fill",
+        "map.fill", "globe", "anchor", "shield.checkered",
+        "face.smiling.fill", "balloon.fill", "hand.thumbsup.fill",
+        "alarm.fill", "calendar.badge.clock", "arrow.uturn.left.circle.fill",
+        "backpack.fill", "bone.fill", "truck.box.fill",
+        "basketball.fill", "soccerball", "baseball.fill", "tennis.racket",
+        "battery.100", "binoculars.fill"
     ]
     
+    // MARK: - Brand & Subscription SF Symbols (~85 icons)
     private let brandSymbols = [
-        "applelogo", "playstation.logo", "xbox.logo", "play.rectangle.fill", "music.note",
-        "message.fill", "bubble.left.and.bubble.right.fill", "safari.fill", "cloud.fill", "drop.circle.fill",
-        "arrow.triangle.2.circlepath", "paperplane.fill", "bolt.horizontal.fill", "cart.badge.plus", "briefcase.circle.fill",
-        "exclamationmark.shield.fill", "g.circle.fill", "f.circle.fill", "m.circle.fill", "n.circle.fill",
-        "s.circle.fill", "y.circle.fill", "a.circle.fill", "t.circle.fill", "o.circle.fill", "w.circle.fill",
-        "bird.fill", "infinity", "graduationcap.fill", "globe", "cpu.fill",
-        "phone.circle.fill", "envelope.circle.fill", "bolt.circle.fill", "person.circle.fill", "heart.circle.fill"
+        // Platform Logos
+        "applelogo", "playstation.logo", "xbox.logo",
+        
+        // Streaming & Video (Netflix, YouTube, Disney+, Hulu, Prime Video)
+        "play.tv.fill", "play.rectangle.fill", "film.fill", "tv.and.mediabox.fill",
+        "play.circle.fill", "video.fill",
+        
+        // Music (Spotify, Apple Music, Tidal, SoundCloud)
+        "music.note", "music.note.list", "headphones.circle.fill", "waveform",
+        "hifispeaker.fill", "radio.fill",
+        
+        // Cloud & Storage (iCloud, Google Drive, Dropbox, OneDrive)
+        "icloud.fill", "cloud.fill", "arrow.up.doc.fill", "externaldrive.connected.to.line.below.fill",
+        "folder.circle.fill",
+        
+        // AI & Tech Tools (ChatGPT, Claude, Gemini, Copilot)
+        "cpu.fill", "brain.head.profile.fill", "sparkle", "wand.and.stars",
+        "brain.fill",
+        
+        // Shopping & E-Commerce (Amazon, Flipkart, eBay)
+        "shippingbox.fill", "cart.badge.plus", "bag.badge.plus", "box.truck.fill",
+        
+        // Ride-hailing & Maps (Uber, Ola, Lyft)
+        "car.side.fill", "location.circle.fill", "location.fill", "map.circle.fill",
+        
+        // Food Delivery (Swiggy, Zomato, DoorDash, UberEats)
+        "takeoutbag.and.cup.and.straw.fill", "fork.knife.circle.fill", "cup.and.heat.waves.fill",
+        
+        // Fitness & Health (Gym, Peloton, Strava, Fitbit)
+        "dumbbell.fill", "figure.strengthtraining.traditional", "figure.run.circle.fill",
+        "heart.text.clipboard.fill", "figure.cooldown",
+        
+        // Insurance & Banking (Insurance, Banks, Fintech)
+        "shield.checkered", "building.columns.circle.fill", "banknote.fill",
+        "creditcard.circle.fill", "wallet.bifold.fill",
+        
+        // Phone & Telecom (Airtel, Jio, T-Mobile, Verizon)
+        "antenna.radiowaves.left.and.right", "cellularbars", "phone.connection.fill",
+        "simcard.fill",
+        
+        // Design & Creative (Adobe, Figma, Canva, Sketch)
+        "paintpalette.fill", "wand.and.rays", "photo.artframe",
+        "paintbrush.pointed.fill", "pencil.and.ruler.fill",
+        
+        // Developer & Productivity (GitHub, VS Code, Notion, Slack, Teams)
+        "terminal.fill", "curlybraces", "chevron.left.forwardslash.chevron.right",
+        "doc.text.fill", "bubble.left.and.text.bubble.right.fill",
+        "person.3.fill", "rectangle.3.group.fill",
+        
+        // VPN & Security (NordVPN, ExpressVPN, 1Password)
+        "lock.shield.fill", "network.badge.shield.half.filled", "key.fill",
+        
+        // News & Reading (Medium, Substack, Apple News, Kindle)
+        "newspaper.fill", "text.quote", "book.circle.fill", "text.bubble.fill",
+        
+        // Social & Dating (Tinder, Bumble, Hinge)
+        "heart.rectangle.fill", "sparkles.rectangle.stack.fill",
+        
+        // Letter-circle brand placeholders (A–Z)
+        "a.circle.fill", "b.circle.fill", "c.circle.fill", "d.circle.fill",
+        "e.circle.fill", "f.circle.fill", "g.circle.fill", "h.circle.fill",
+        "i.circle.fill", "j.circle.fill", "k.circle.fill", "l.circle.fill",
+        "m.circle.fill", "n.circle.fill", "o.circle.fill", "p.circle.fill",
+        "q.circle.fill", "r.circle.fill", "s.circle.fill", "t.circle.fill",
+        "u.circle.fill", "v.circle.fill", "w.circle.fill", "x.circle.fill",
+        "y.circle.fill", "z.circle.fill"
     ]
     
     private var activeSymbols: [String] {

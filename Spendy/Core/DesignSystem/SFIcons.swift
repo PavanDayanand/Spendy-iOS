@@ -36,6 +36,13 @@ enum SFIcons {
     static let utilities = "bolt.fill"
     static let education = "graduationcap.fill"
     static let travel = "airplane"
+    static let coffee = "cup.and.saucer.fill"
+    static let insurance = "shield.checkered"
+    static let internetMobile = "wifi"
+    static let beauty = "sparkles"
+    static let clothing = "tshirt.fill"
+    static let gifts = "gift.fill"
+    static let pets = "pawprint.fill"
     
     // MARK: - Default Categories (Income)
     static let paycheck = "briefcase.fill"
@@ -45,6 +52,10 @@ enum SFIcons {
     static let gift = "gift.fill"
     static let bonus = "sparkles"
     static let interest = "percent"
+    static let sideHustle = "hammer.fill"
+    static let rentalIncome = "house.fill"
+    static let dividends = "chart.bar.fill"
+    static let giftsReceived = "gift.circle.fill"
     
     // MARK: - Accounts
     static let bankAccount = "building.columns.fill"
@@ -53,6 +64,7 @@ enum SFIcons {
     static let creditCard = "creditcard.fill"
     static let cryptoAccount = "bitcoinsign.circle.fill"
     static let investmentAccount = "chart.bar.fill"
+    static let digitalWallet = "wallet.bifold.fill"
     
     // MARK: - Subscriptions & Services
     static let streaming = "tv.fill"
@@ -63,6 +75,11 @@ enum SFIcons {
     static let fitness = "figure.run"
     static let news = "newspaper.fill"
     static let delivery = "shippingbox.fill"
+    static let vpn = "lock.shield.fill"
+    static let designTools = "paintpalette.fill"
+    static let devTools = "terminal.fill"
+    static let productivity = "doc.text.fill"
+    static let telecom = "antenna.radiowaves.left.and.right"
     
     // MARK: - Actions & UI
     static let search = "magnifyingglass"

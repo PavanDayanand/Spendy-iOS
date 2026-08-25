@@ -112,11 +112,11 @@ final class ExpenseStore {
     }
     
     var topGradientColor: Color {
-        Color(hue: topGradientHue, saturation: 0.85, brightness: min(topGradientBrightness, 0.55))
+        Color(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.95))
     }
     
     private func updateGradientHexFromHSB() {
-        let uiColor = UIColor(hue: topGradientHue, saturation: 0.85, brightness: min(topGradientBrightness, 0.55), alpha: 1.0)
+        let uiColor = UIColor(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.95), alpha: 1.0)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
             self.topGradientColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
@@ -128,7 +128,7 @@ final class ExpenseStore {
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
             self.topGradientHue = Double(h)
-            self.topGradientBrightness = Double(min(b, 0.55))
+            self.topGradientBrightness = Double(min(max(b, 0.20), 0.95))
         } else {
             let clamped = color.clampedToDarkModeAccent()
             self.topGradientColorHex = clamped.toHex()
@@ -240,7 +240,7 @@ final class ExpenseStore {
     }
     
     private func seedInitialData() {
-        self.userName = "Pavan"
+        self.userName = ""
         self.soundEnabled = true
         self.appearanceMode = .dark
         self.accounts = Account.defaultAccounts
@@ -918,10 +918,18 @@ final class ExpenseStore {
         seedInitialData()
     }
     
-    func clearAllTransactions() {
+    func eraseAllData() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             self.transactions = []
+            self.subscriptions = []
+            self.customFolders = []
+            self.budget = Budget()
+            self.userName = ""
+            // Re-seed default accounts and categories so the app is immediately usable
+            self.accounts = Account.defaultAccounts
+            self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
         }
+        saveToDisk()
     }
     
     func exportJSONData() -> Data? {

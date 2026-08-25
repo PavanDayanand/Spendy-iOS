@@ -39,11 +39,13 @@ struct BalanceCardView: View {
                     
                     if isBalanceHidden {
                         Text("\(store.currencySymbol) • • • • • •")
-                            .font(.system(size: 32, weight: .heavy))
+                            .font(.system(size: 38, weight: .bold))
+                            .minimumScaleFactor(0.5)
                             .foregroundStyle(.white)
                     } else {
                         Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 34, weight: .heavy))
+                            .font(.system(size: 38, weight: .bold).monospacedDigit())
+                            .minimumScaleFactor(0.5)
                             .foregroundStyle(.white)
                             .contentTransition(.numericText())
                     }

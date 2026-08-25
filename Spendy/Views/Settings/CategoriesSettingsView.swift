@@ -112,7 +112,7 @@ struct CategoriesSettingsView: View {
             Spacer()
             
             Text("Categories")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
@@ -234,7 +234,7 @@ struct CategoriesSettingsView: View {
             // Folder Header with "Edit" Button on right
             HStack {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
@@ -314,7 +314,7 @@ struct CategoriesSettingsView: View {
                                 }
                                 
                                 Text(cat.label)
-                                    .font(.system(size: 15, weight: .medium))
+                                    .font(.system(size: 17, weight: .regular))
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Spacer()

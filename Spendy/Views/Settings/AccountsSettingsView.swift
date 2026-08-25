@@ -104,7 +104,7 @@ struct AccountsSettingsView: View {
             Spacer()
             
             Text("Settings")
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
@@ -139,8 +139,10 @@ struct AccountsSettingsView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(formatShortCurrency(store.totalBalance))
-                        .font(.system(size: 38, weight: .heavy))
+                        .font(.system(size: 38, weight: .heavy, design: .default).monospacedDigit())
                         .foregroundStyle(SpendyColors.textPrimary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
                     
                     let change = store.netWorthChangePercentage
                     HStack(spacing: 4) {
@@ -208,14 +210,14 @@ struct AccountsSettingsView: View {
             // Section Header: Group Name on left, Total on right
             HStack {
                 Text(selectedFilter == .all ? "Wallets & Accounts" : "\(selectedFilter.rawValue) Accounts")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
                 let totalFiltered = filteredAccounts.map { store.balance(for: $0.id) }.reduce(0, +)
                 Text(totalFiltered.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 17, weight: .medium, design: .default).monospacedDigit())
                     .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.horizontal, 4)
@@ -259,23 +261,16 @@ struct AccountsSettingsView: View {
                             selectedAccountForAnalytics = account
                         }) {
                             HStack(spacing: 14) {
-                                // Rounded Square Badge using Custom Color!
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color(hex: account.colorHex))
-                                        .frame(width: 44, height: 44)
-                                        .shadow(color: Color(hex: account.colorHex).opacity(0.35), radius: 6, y: 3)
-                                    
-                                    let isLightColor = account.colorHex.uppercased() == "#FFFFFF" || account.colorHex.uppercased() == "FFFFFF" || account.colorHex.uppercased() == "#E4E4E7" || account.colorHex.uppercased() == "#D4D4D8"
-                                    
-                                    Image(systemName: account.sfSymbol)
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(isLightColor ? Color.black : Color.white)
-                                }
+                                // SpendyIconBadge using Custom Symbol & Color
+                                SpendyIconBadge(
+                                    sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
+                                    color: Color(hex: account.colorHex),
+                                    size: .medium
+                                )
                                 
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(account.label)
-                                        .font(.system(size: 15, weight: .bold))
+                                        .font(.system(size: 17, weight: .regular))
                                         .foregroundStyle(SpendyColors.textPrimary)
                                     
                                     Text("Tap for analytics & details")
@@ -286,7 +281,7 @@ struct AccountsSettingsView: View {
                                 Spacer()
                                 
                                 Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 16, weight: .heavy))
+                                    .font(.system(size: 17, weight: .medium, design: .default).monospacedDigit())
                                     .foregroundStyle(SpendyColors.textPrimary)
                             }
                             .padding(16)

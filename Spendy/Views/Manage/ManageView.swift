@@ -294,47 +294,63 @@ struct ManageView: View {
     // MARK: - Main List
 
     private var mainList: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             if filteredSubscriptions.isEmpty {
                 emptyState
             } else {
-                ForEach(filteredSubscriptions) { sub in
-                    SubscriptionRowCard(
-                        sub: sub,
-                        currencySymbol: store.currencySymbol,
-                        onTap: {
-                            HapticsManager.shared.trigger(.light)
-                            subscriptionToEdit = sub
-                        }
-                    )
-                    .contextMenu {
-                        Button {
-                            subscriptionToEdit = sub
-                        } label: {
-                            Label("Edit Subscription", systemImage: SFIcons.edit)
+                VStack(spacing: 14) {
+                    ForEach(Array(filteredSubscriptions.enumerated()), id: \.element.id) { index, sub in
+                        SubscriptionRowCard(
+                            sub: sub,
+                            currencySymbol: store.currencySymbol,
+                            onTap: {
+                                HapticsManager.shared.trigger(.light)
+                                subscriptionToEdit = sub
+                            }
+                        )
+                        .contextMenu {
+                            Button {
+                                subscriptionToEdit = sub
+                            } label: {
+                                Label("Edit Subscription", systemImage: SFIcons.edit)
+                            }
+
+                            Button {
+                                store.toggleSubscriptionPause(id: sub.id)
+                            } label: {
+                                Label(
+                                    sub.isPaused ? "Resume Subscription" : "Pause Subscription",
+                                    systemImage: sub.isPaused ? "play.fill" : "pause.fill"
+                                )
+                            }
+
+                            Button {
+                                store.cancelSubscription(id: sub.id)
+                            } label: {
+                                Label("Cancel Subscription", systemImage: SFIcons.close)
+                            }
+
+                            Button(role: .destructive) {
+                                store.deleteSubscription(id: sub.id)
+                            } label: {
+                                Label("Delete", systemImage: SFIcons.delete)
+                            }
                         }
 
-                        Button {
-                            store.toggleSubscriptionPause(id: sub.id)
-                        } label: {
-                            Label(
-                                sub.isPaused ? "Resume Subscription" : "Pause Subscription",
-                                systemImage: sub.isPaused ? "play.fill" : "pause.fill"
-                            )
-                        }
-
-                        Button {
-                            store.cancelSubscription(id: sub.id)
-                        } label: {
-                            Label("Cancel Subscription", systemImage: SFIcons.close)
-                        }
-
-                        Button(role: .destructive) {
-                            store.deleteSubscription(id: sub.id)
-                        } label: {
-                            Label("Delete", systemImage: SFIcons.delete)
+                        if index < filteredSubscriptions.count - 1 {
+                            Divider()
+                                .overlay(SpendyColors.separator)
                         }
                     }
+                }
+                .padding(18)
+                .background {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(SpendyColors.cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
                 }
             }
         }
@@ -389,14 +405,11 @@ struct ManageView: View {
                     VStack(spacing: 10) {
                         ForEach(cancelledSubs) { sub in
                             HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(SpendyColors.separator)
-                                        .frame(width: 40, height: 40)
-                                    Image(systemName: sub.sfSymbol)
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                }
+                                SpendyIconBadge(
+                                    sfSymbol: sub.sfSymbol,
+                                    color: SpendyColors.separator,
+                                    size: .small
+                                )
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(sub.name)
@@ -471,36 +484,17 @@ struct SubscriptionRowCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-
-                // Icon Badge
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: sub.colorHex).opacity(0.35),
-                                    Color(hex: sub.colorHex).opacity(0.18)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 46, height: 46)
-                        .overlay {
-                            Circle()
-                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1)
-                        }
-                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 6, x: 0, y: 3)
-                    
-                    Image(systemName: sub.sfSymbol)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color(hex: sub.colorHex))
-                }
+                // Circle Icon Avatar (Matching Subscription Color)
+                SpendyIconBadge(
+                    sfSymbol: sub.sfSymbol,
+                    color: Color(hex: sub.colorHex),
+                    size: .medium
+                )
 
                 // Name + metadata
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(sub.name)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(
                             sub.isPaused
                                 ? SpendyColors.textTertiary
@@ -509,7 +503,6 @@ struct SubscriptionRowCard: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        // Cycle or Trial badge
                         if sub.isTrial {
                             pillTag("Free Trial", color: SpendyColors.textPrimary)
                         } else {
@@ -529,9 +522,9 @@ struct SubscriptionRowCard: View {
                 Spacer()
 
                 // Amount + status pill
-                VStack(alignment: .trailing, spacing: 5) {
+                VStack(alignment: .trailing, spacing: 4) {
                     Text(sub.amount.formattedCurrency(symbol: currencySymbol))
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(
                             sub.isPaused
                                 ? SpendyColors.textTertiary
@@ -546,25 +539,9 @@ struct SubscriptionRowCard: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(SpendyColors.textTertiary.opacity(0.5))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+            .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 
     @ViewBuilder
@@ -667,29 +644,11 @@ struct DueSoonCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: sub.colorHex).opacity(0.35),
-                                    Color(hex: sub.colorHex).opacity(0.18)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
-                        .overlay {
-                            Circle()
-                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1)
-                        }
-                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 4, x: 0, y: 2)
-                    
-                    Image(systemName: sub.sfSymbol)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color(hex: sub.colorHex))
-                }
+                SpendyIconBadge(
+                    sfSymbol: sub.sfSymbol,
+                    color: Color(hex: sub.colorHex),
+                    size: .small
+                )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(sub.name)

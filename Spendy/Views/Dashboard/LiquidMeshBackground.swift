@@ -2,7 +2,7 @@
 //  LiquidMeshBackground.swift
 //  Spendy
 //
-//  Top 30% Semicircle Gradient & 70% Deep Black Canvas
+//  Smooth, Seamless Organic Top Blue Bloom Fading Naturally into Pitch Black Base
 //
 
 import SwiftUI
@@ -14,38 +14,39 @@ struct LiquidMeshBackground: View {
         GeometryReader { geometry in
             let topColor = store.topGradientColor
             let height = geometry.size.height
-            let width = geometry.size.width
             
             ZStack {
-                // Base 100% Pitch Black Canvas
+                // 1. Base Pitch Black Canvas
                 Color.black
                     .ignoresSafeArea()
                 
                 if store.isGradientBackgroundEnabled {
-                    // Top ~40% Semicircle Radial Arc Gradient Bloom
-                    RadialGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: topColor.opacity(0.85), location: 0.0),
-                            .init(color: topColor.opacity(0.55), location: 0.25),
-                            .init(color: topColor.opacity(0.25), location: 0.50),
-                            .init(color: topColor.opacity(0.08), location: 0.75),
-                            .init(color: Color.black.opacity(0.0), location: 1.0)
-                        ]),
-                        center: UnitPoint(x: 0.5, y: -0.05),
-                        startRadius: 0,
-                        endRadius: max(width * 0.85, height * 0.48)
-                    )
-                    .blendMode(.normal)
-                    .ignoresSafeArea()
-                    
-                    // Smooth linear transition layer to guarantee seamless blending down into 60% deep black
+                    // 2. Smooth Linear Flow Fading Gently into Black (No Hard Cuts)
                     LinearGradient(
-                        gradient: Gradient(colors: [
-                            topColor.opacity(0.22),
-                            Color.black.opacity(0.0)
+                        gradient: Gradient(stops: [
+                            .init(color: topColor, location: 0.0),
+                            .init(color: topColor.opacity(0.85), location: 0.08),
+                            .init(color: Color(hex: "#0A2878").opacity(0.75), location: 0.18),
+                            .init(color: Color(hex: "#041548").opacity(0.45), location: 0.28),
+                            .init(color: Color(hex: "#020924").opacity(0.18), location: 0.38),
+                            .init(color: Color.black, location: 0.48)
                         ]),
                         startPoint: .top,
-                        endPoint: UnitPoint(x: 0.5, y: 0.44)
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                    
+                    // 3. Top Center Organic Ambient Radial Bloom
+                    RadialGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: topColor.opacity(0.55), location: 0.0),
+                            .init(color: topColor.opacity(0.30), location: 0.30),
+                            .init(color: topColor.opacity(0.08), location: 0.65),
+                            .init(color: Color.black.opacity(0.0), location: 1.0)
+                        ]),
+                        center: UnitPoint(x: 0.5, y: -0.10),
+                        startRadius: 0,
+                        endRadius: height * 0.45
                     )
                     .ignoresSafeArea()
                 }

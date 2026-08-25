@@ -131,18 +131,18 @@ private struct HueSpectrumSlider: View {
             let thumbX = CGFloat(hue) * width
             
             ZStack(alignment: .leading) {
-                // Hue Spectrum Gradient Bar
+                // Vibrant Full-Spectrum Rainbow Bar
                 Capsule()
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(hue: 0.0, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 0.17, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 0.33, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 0.50, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 0.67, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 0.83, saturation: 1.0, brightness: 0.55),
-                                Color(hue: 1.0, saturation: 1.0, brightness: 0.55)
+                                Color(hue: 0.0, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 0.17, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 0.33, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 0.50, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 0.67, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 0.83, saturation: 1.0, brightness: 1.0),
+                                Color(hue: 1.0, saturation: 1.0, brightness: 1.0)
                             ]),
                             startPoint: .leading,
                             endPoint: .trailing
@@ -150,10 +150,10 @@ private struct HueSpectrumSlider: View {
                     )
                     .frame(height: 38)
                 
-                // Draggable White Ring Thumb Indicator (Image 2 style)
+                // Draggable White Ring Thumb Indicator
                 Circle()
                     .stroke(Color.white, lineWidth: 3.5)
-                    .background(Circle().fill(Color(hue: hue, saturation: 1.0, brightness: 0.55)))
+                    .background(Circle().fill(Color(hue: hue, saturation: 1.0, brightness: 1.0)))
                     .frame(width: 32, height: 32)
                     .shadow(color: Color.black.opacity(0.4), radius: 4, x: 0, y: 2)
                     .position(x: max(16, min(width - 16, thumbX)), y: 19)
@@ -172,14 +172,13 @@ private struct HueSpectrumSlider: View {
     }
 }
 
-// MARK: - Dark-to-Medium Brightness Slider Component
+// MARK: - Dark-to-Vibrant Brightness Slider Component
 private struct DarkBrightnessSlider: View {
     let hue: Double
     @Binding var brightness: Double
     
-    // Max brightness is 0.55 so user CANNOT pick light colors
-    private let minB: Double = 0.12
-    private let maxB: Double = 0.55
+    private let minB: Double = 0.15
+    private let maxB: Double = 0.95
     
     var body: some View {
         GeometryReader { geometry in
@@ -188,14 +187,14 @@ private struct DarkBrightnessSlider: View {
             let thumbX = CGFloat(max(0, min(1, normB))) * width
             
             ZStack(alignment: .leading) {
-                // Black to Saturated Dark Accent Bar
+                // Black to Saturated Vibrant Accent Bar
                 Capsule()
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 Color.black,
-                                Color(hue: hue, saturation: 0.85, brightness: 0.30),
-                                Color(hue: hue, saturation: 0.85, brightness: maxB)
+                                Color(hue: hue, saturation: 0.90, brightness: 0.50),
+                                Color(hue: hue, saturation: 0.90, brightness: maxB)
                             ]),
                             startPoint: .leading,
                             endPoint: .trailing
@@ -203,10 +202,10 @@ private struct DarkBrightnessSlider: View {
                     )
                     .frame(height: 38)
                 
-                // Draggable White Ring Thumb Indicator (Image 2 style)
+                // Draggable White Ring Thumb Indicator
                 Circle()
                     .stroke(Color.white, lineWidth: 3.5)
-                    .background(Circle().fill(Color(hue: hue, saturation: 0.85, brightness: min(brightness, maxB))))
+                    .background(Circle().fill(Color(hue: hue, saturation: 0.90, brightness: min(max(brightness, minB), maxB))))
                     .frame(width: 32, height: 32)
                     .shadow(color: Color.black.opacity(0.4), radius: 4, x: 0, y: 2)
                     .position(x: max(16, min(width - 16, thumbX)), y: 19)

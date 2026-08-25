@@ -60,7 +60,7 @@ struct UpcomingThisMonthCard: View {
             seen.insert(tx.categoryId)
             let cat = store.categories.first(where: { $0.id == tx.categoryId })
             let icon = cat?.sfSymbol ?? "dollarsign.circle.fill"
-            let color = Color(hex: cat?.vibrantColorHex ?? "#30D158")
+            let color = Color(hex: cat?.colorHex ?? "#30D158")
             results.append((icon, color))
             if results.count >= 3 { break }
         }

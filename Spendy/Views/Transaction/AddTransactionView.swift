@@ -543,7 +543,7 @@ struct AddTransactionView: View {
                             // Vibrant Category Circle Badge (32x32)
                             ZStack {
                                 Circle()
-                                    .fill(selectedCategory?.vibrantColor ?? Color(hex: "#34C759"))
+                                    .fill(selectedCategory?.color ?? Color(hex: "#34C759"))
                                     .frame(width: 32, height: 32)
                                 
                                 Image(systemName: selectedCategory?.sfSymbol ?? "cart.fill")
@@ -959,7 +959,7 @@ struct CategoryPickerDrawer: View {
                         HStack(spacing: 14) {
                             ZStack {
                                 Circle()
-                                    .fill(cat.vibrantColor)
+                                    .fill(cat.color)
                                     .frame(width: 38, height: 38)
                                 
                                 Image(systemName: cat.sfSymbol)
@@ -1075,24 +1075,18 @@ struct AccountPickerDrawer: View {
                             ForEach(accounts) { acc in
                                 let isSelected = selectedAccountId == acc.id
                                 let liveBalance = store.balance(for: acc.id)
-                                let initialLetter = String((acc.label.prefix(1))).uppercased()
-                                
                                 Button(action: {
                                     selectedAccountId = acc.id
                                     HapticsManager.shared.trigger(.selection)
                                     dismiss()
                                 }) {
                                     HStack(spacing: 14) {
-                                        // Vibrant Account Circle
-                                        ZStack {
-                                            Circle()
-                                                .fill(acc.color)
-                                                .frame(width: 38, height: 38)
-                                            
-                                            Text(initialLetter)
-                                                .font(.system(size: 16, weight: .bold))
-                                                .foregroundStyle(.white)
-                                        }
+                                        // Vibrant Account Badge
+                                        SpendyIconBadge(
+                                            sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
+                                            color: acc.color,
+                                            size: .medium
+                                        )
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(acc.label)

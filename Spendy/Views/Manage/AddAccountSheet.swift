@@ -216,22 +216,16 @@ struct AddAccountSheet: View {
                     showIconPickerSheet = true
                 }) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        Circle()
                             .fill(Color(hex: selectedColorHex))
-                            .frame(width: 96, height: 96)
+                            .frame(width: 88, height: 88)
                             .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 10, y: 4)
                         
                         let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF" || selectedColorHex.uppercased() == "#E4E4E7" || selectedColorHex.uppercased() == "#D4D4D8"
                         
-                        if selectedSymbol != SFIcons.bankAccount && selectedSymbol != SFIcons.cashAccount {
-                            Image(systemName: selectedSymbol)
-                                .font(.system(size: 38, weight: .bold))
-                                .foregroundStyle(isLightColor ? .black : .white)
-                        } else {
-                            Text(avatarLetter)
-                                .font(.system(size: 40, weight: .heavy))
-                                .foregroundStyle(isLightColor ? .black : .white)
-                        }
+                        Image(systemName: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol)
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(isLightColor ? .black : .white)
                     }
                 }
                 .buttonStyle(.plain)

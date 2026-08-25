@@ -1569,7 +1569,7 @@ struct AnalyticsView: View {
                     id: catId,
                     label: cat.label,
                     sfSymbol: cat.sfSymbol,
-                    colorHex: cat.vibrantColorHex,
+                    colorHex: cat.colorHex,
                     txCount: list.count,
                     amount: sum,
                     percentage: pct
@@ -1609,7 +1609,7 @@ struct AnalyticsView: View {
                     id: catId,
                     label: cat.label,
                     sfSymbol: cat.sfSymbol,
-                    colorHex: cat.vibrantColorHex,
+                    colorHex: cat.colorHex,
                     txCount: list.count,
                     amount: sum,
                     percentage: pct

@@ -144,8 +144,12 @@ struct FloatingSubscriptionsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 20)
                         } else {
-                            ForEach(activeSubs) { sub in
+                            ForEach(Array(activeSubs.enumerated()), id: \.element.id) { index, sub in
                                 SubscriptionRowView(sub: sub, currencySymbol: store.currencySymbol)
+                                if index < activeSubs.count - 1 {
+                                    Divider()
+                                        .overlay(SpendyColors.separator)
+                                }
                             }
                         }
                     }
@@ -189,20 +193,15 @@ struct SubscriptionRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Icon: Solid White Circle with a black system icon
-            ZStack {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: sub.sfSymbol)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.black)
-            }
+            SpendyIconBadge(
+                sfSymbol: sub.sfSymbol,
+                color: Color(hex: sub.colorHex),
+                size: .small
+            )
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(sub.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundColor(SpendyColors.textPrimary)
                 
                 Text("\(currencySymbol)\(Int(sub.amount)) • \(sub.cycle.label)")
@@ -222,12 +221,7 @@ struct SubscriptionRowView: View {
                     .foregroundColor(SpendyColors.textPrimary)
             }
         }
-        .padding(12)
-        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(SpendyColors.separator, lineWidth: 0.8)
-        }
+        .padding(.vertical, 2)
     }
     
     private func formatDate(_ date: Date) -> String {

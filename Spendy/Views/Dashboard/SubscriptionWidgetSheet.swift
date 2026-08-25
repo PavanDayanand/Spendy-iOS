@@ -156,36 +156,18 @@ struct SubscriptionWidgetSheet: View {
     }
     
     private var subscriptionsListSection: some View {
-        VStack(spacing: 12) {
-            ForEach(store.subscriptions) { sub in
+        VStack(spacing: 14) {
+            ForEach(Array(store.subscriptions.enumerated()), id: \.element.id) { index, sub in
                 HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        sub.color.opacity(0.35),
-                                        sub.color.opacity(0.18)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Circle()
-                                    .stroke(sub.color.opacity(0.35), lineWidth: 1)
-                            }
-                            .shadow(color: sub.color.opacity(0.25), radius: 6, y: 2)
-                        
-                        Image(systemName: sub.sfSymbol)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(sub.color)
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: sub.sfSymbol,
+                        color: sub.color,
+                        size: .medium
+                    )
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(sub.name)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
                         
                         Text("\(sub.cycle.label) • \(sub.amount.formattedCurrency(symbol: store.currencySymbol))")
@@ -202,16 +184,22 @@ struct SubscriptionWidgetSheet: View {
                     .labelsHidden()
                     .toggleStyle(.liquidGlass(tint: SpendyColors.incomeGreen))
                 }
-                .padding(14)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
+                .padding(.vertical, 2)
+                
+                if index < store.subscriptions.count - 1 {
+                    Divider()
+                        .overlay(SpendyColors.separator)
                 }
             }
+        }
+        .padding(18)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
         }
     }
     

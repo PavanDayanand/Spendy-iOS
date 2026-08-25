@@ -73,7 +73,7 @@ struct Account: Identifiable, Codable, Hashable {
     
     // MARK: - Default Accounts
     static let defaultAccounts: [Account] = [
-        Account(id: "cash", label: "Cash", sfSymbol: SFIcons.cashAccount, colorHex: "#FFFFFF", openingBalance: 0.0, order: 0, type: .cash),
-        Account(id: "bank", label: "SBI", sfSymbol: SFIcons.bankAccount, colorHex: "#18181B", openingBalance: 0.0, order: 1, type: .bank)
+        Account(id: "cash", label: "Cash", sfSymbol: SFIcons.cashAccount, colorHex: "#34C759", openingBalance: 0.0, order: 0, type: .cash),
+        Account(id: "bank", label: "Bank Account", sfSymbol: SFIcons.bankAccount, colorHex: "#007AFF", openingBalance: 0.0, order: 1, type: .bank)
     ]
 }
