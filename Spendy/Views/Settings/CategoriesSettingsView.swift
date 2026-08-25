@@ -301,17 +301,13 @@ struct CategoriesSettingsView: View {
                             categoryToEdit = cat
                         }) {
                             HStack(spacing: 14) {
-                                // Circular Icon Badge (Dynamic Color)
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: cat.colorHex))
-                                        .frame(width: 38, height: 38)
-                                    
-                                    let isLightColor = cat.colorHex.uppercased() == "#FFFFFF" || cat.colorHex.uppercased() == "FFFFFF" || cat.colorHex.uppercased() == "#E4E4E7" || cat.colorHex.uppercased() == "#D4D4D8"
-                                    Image(systemName: cat.sfSymbol)
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundStyle(isLightColor ? Color.black : Color.white)
-                                }
+                                // SpendyIconBadge (Dynamic Color)
+                                SpendyIconBadge(
+                                    sfSymbol: cat.sfSymbol,
+                                    color: cat.color,
+                                    size: .medium,
+                                    style: .circle
+                                )
                                 
                                 Text(cat.label)
                                     .font(.system(size: 17, weight: .regular))

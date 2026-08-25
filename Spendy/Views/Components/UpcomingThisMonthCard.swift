@@ -239,20 +239,12 @@ struct OverlappingBadgeCluster: View {
     }
     
     private func singleBadge(_ item: BadgeItem) -> some View {
-        ZStack {
-            Circle()
-                .fill(item.color)
-                .frame(width: badgeSize, height: badgeSize)
-                .overlay {
-                    Circle()
-                        .stroke(Color(uiColor: .systemBackground).opacity(0.5), lineWidth: 2.5)
-                }
-                .shadow(color: item.color.opacity(0.35), radius: 5, y: 2)
-            
-            Image(systemName: item.icon)
-                .font(.system(size: badgeSize * 0.38, weight: .bold))
-                .foregroundStyle(.white)
-        }
+        SpendyIconBadge(
+            sfSymbol: item.icon,
+            color: item.color,
+            size: .small,
+            style: .circle
+        )
     }
     
     // MARK: - Cluster Position Logic

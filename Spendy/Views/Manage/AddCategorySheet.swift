@@ -291,27 +291,17 @@ struct AddCategorySheet: View {
     private var avatarHeroSection: some View {
         VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
-                // Large Circular Avatar
+                // Large Circular Avatar using unified SpendyIconBadge
                 Button(action: {
                     HapticsManager.shared.trigger(.light)
                     showIconPickerSheet = true
                 }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(hex: selectedColorHex))
-                            .frame(width: 80, height: 80)
-                            .shadow(color: Color(hex: selectedColorHex).opacity(0.40), radius: 12, y: 4)
-                        
-                        if selectedSymbol != "tag.fill" {
-                            Image(systemName: selectedSymbol)
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundStyle(selectedColorHex == "#FFFFFF" ? .black : .white)
-                        } else {
-                            Text(avatarLetter)
-                                .font(.system(size: 34, weight: .heavy))
-                                .foregroundStyle(selectedColorHex == "#FFFFFF" ? .black : .white)
-                        }
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: selectedSymbol,
+                        color: Color(hex: selectedColorHex),
+                        size: .hero,
+                        style: .circle
+                    )
                 }
                 .buttonStyle(.plain)
                 

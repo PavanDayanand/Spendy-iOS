@@ -215,18 +215,12 @@ struct AddAccountSheet: View {
                     HapticsManager.shared.trigger(.light)
                     showIconPickerSheet = true
                 }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(hex: selectedColorHex))
-                            .frame(width: 88, height: 88)
-                            .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 10, y: 4)
-                        
-                        let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF" || selectedColorHex.uppercased() == "#E4E4E7" || selectedColorHex.uppercased() == "#D4D4D8"
-                        
-                        Image(systemName: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol)
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(isLightColor ? .black : .white)
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol,
+                        color: Color(hex: selectedColorHex),
+                        size: .hero,
+                        style: .circle
+                    )
                 }
                 .buttonStyle(.plain)
                 

@@ -195,8 +195,8 @@ struct DashboardView: View {
         }.sorted(by: { $0.id > $1.id })
     }
     
-    // Top 2 Smart Insight Cards (Driven by InsightsEngine + Category Spending)
-    private var topTwoInsightCards: [InsightCardViewModel] {
+    // All Dashboard Smart Insight Cards (Driven by InsightsEngine + Category Spending + Real Dynamic Actions)
+    private var allDashboardInsightCards: [InsightCardViewModel] {
         let engineItems = insightsEngineItems
         let catCards = categorySpendingCards
         
@@ -218,49 +218,79 @@ struct DashboardView: View {
             )
         }
         
-        // 2. Add category spending cards if fewer than 2
+        // 2. Add category spending cards
         for catCard in catCards {
-            if results.count >= 2 { break }
+            if results.count >= 6 { break }
             if !results.contains(where: { $0.id == catCard.id }) {
                 results.append(catCard)
             }
         }
         
-        // 3. Fallbacks if still fewer than 2
-        if results.count < 2 {
-            let transportCat = store.categories.first(where: { $0.label.lowercased().contains("transport") })
-            let groceryCat = store.categories.first(where: { $0.label.lowercased().contains("groc") })
-            let fallbacks = [
-                InsightCardViewModel(
-                    id: "public_transport",
-                    title: "Public Transport",
-                    icon: "bus.fill",
-                    color: Color(hex: "#007AFF"),
-                    value: hideBalance ? "••••" : 3168.formattedCurrency(symbol: store.currencySymbol),
-                    subtitle: "14 expenses this month",
-                    categoryId: transportCat?.id,
-                    family: "category"
-                ),
-                InsightCardViewModel(
-                    id: "groceries",
-                    title: "Groceries",
-                    icon: "cart.fill",
-                    color: Color(hex: "#34C759"),
-                    value: hideBalance ? "••••" : 852.formattedCurrency(symbol: store.currencySymbol),
-                    subtitle: "Under monthly limit",
-                    categoryId: groceryCat?.id,
-                    family: "category"
+        // 3. Add Safe Daily Pacing Card if budget is active
+        if store.budget.isActive && store.budgetTargetAmount(for: store.budget.period) > 0 {
+            if !results.contains(where: { $0.id == "safe_daily" }) {
+                results.append(
+                    InsightCardViewModel(
+                        id: "safe_daily",
+                        title: "Safe Daily",
+                        icon: "shield.lefthalf.filled",
+                        color: Color(hex: "#30D158"),
+                        value: hideBalance ? "••••" : store.safeDailyAllowance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        subtitle: "\(store.budgetDaysLeft) days remaining in cycle",
+                        family: "budget"
+                    )
                 )
-            ]
-            for fb in fallbacks {
-                if results.count >= 2 { break }
-                if !results.contains(where: { $0.id == fb.id }) {
-                    results.append(fb)
-                }
+            }
+        } else {
+            // Prompt user to set a budget
+            if !results.contains(where: { $0.id == "set_budget" }) {
+                results.append(
+                    InsightCardViewModel(
+                        id: "set_budget",
+                        title: "Budget Planner",
+                        icon: "target",
+                        color: SpendyColors.primaryBlue,
+                        value: "Set Limit",
+                        subtitle: "Plan your monthly budget & safe-to-spend allowance",
+                        family: "budget"
+                    )
+                )
             }
         }
         
-        return Array(results.prefix(2))
+        // 4. If user has active recurring subscriptions
+        if !upcomingExpenseSubs.isEmpty && !results.contains(where: { $0.id == "upcoming_subs" }) {
+            let subTotal = upcomingExpenseSubs.reduce(0) { $0 + $1.amount }
+            results.append(
+                InsightCardViewModel(
+                    id: "upcoming_subs",
+                    title: "Recurring Bills",
+                    icon: "calendar.badge.clock",
+                    color: Color(hex: "#FF9500"),
+                    value: hideBalance ? "••••" : subTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                    subtitle: "\(upcomingExpenseSubs.count) subscriptions due this billing cycle",
+                    family: "subscription"
+                )
+            )
+        }
+        
+        // 5. If user has fewer than 5 transactions, encourage logging to unlock full AI predictions
+        if store.transactions.count < 5 && !results.contains(where: { $0.id == "unlock_ai" }) {
+            let remainingToLog = max(1, 5 - store.transactions.count)
+            results.append(
+                InsightCardViewModel(
+                    id: "unlock_ai",
+                    title: "AI Forecasts",
+                    icon: "sparkles",
+                    color: Color(hex: "#BF5AF2"),
+                    value: "Log 5 Expenses",
+                    subtitle: "Log \(remainingToLog) more \(remainingToLog == 1 ? "expense" : "expenses") to unlock category trend predictions",
+                    family: "onboarding"
+                )
+            )
+        }
+        
+        return results
     }
     
     var body: some View {
@@ -269,7 +299,7 @@ struct DashboardView: View {
                 LiquidMeshBackground()
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
+                    VStack(spacing: 20) {
                         // 1. Top Header Bar (Profile Badge + Widget Action Buttons)
                         headerBar
                             .padding(.top, 8)
@@ -280,16 +310,19 @@ struct DashboardView: View {
                         // 3. Hero Balance Uncarded & Borderless Line Graph (directly on background!)
                         heroBalanceUncarded
                         
-                        // 4. Compact Expenses & Income Summary Row (Placed ABOVE Smart Insights)
+                        // 4. Budget Health & Pacing Card (Placed directly under hero graph)
+                        budgetHealthCard
+                        
+                        // 5. Compact Expenses & Income Summary Row (Real Monthly Spending vs Income)
                         compactExpensesAndIncomeRow
                         
-                        // 5. Smart Insights Cards Section (Placed directly below Expenses & Income)
+                        // 6. Smart Insights Cards Section (Horizontal Scroll 5+ Rich Cards)
                         smartInsightsSection
                         
-                        // 5. Accounts Unified Card Section (Image 1 Top Section)
+                        // 7. Accounts Unified Card Section
                         accountsUnifiedCardSection
                         
-                        // 6. Recent Transactions Card Section (Image 1 Bottom Section with Top 5 & Show More/Less)
+                        // 8. Recent Transactions Card Section
                         recentTransactionsSection
                     }
                     .padding(.horizontal, 20)
@@ -578,9 +611,115 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 4. Top 2 Smart Insight Cards (Image 2 Design + InsightsEngine Content)
-    // MARK: - Upcoming Expenses & Income (Smart Insights Grid)
+    // MARK: - 4. Budget Health & Pacing Card (Clean Spendy Design)
+    private var budgetHealthCard: some View {
+        let budget = store.budget
+        let target = store.budgetTargetAmount(for: budget.period)
+        let spent = store.budgetCycleExpenses
+        let isConfigured = budget.isActive && target > 0
+        let percentSpent = isConfigured ? (spent / target) : 0.0
+        let isExceeded = spent > target && isConfigured
+        let remaining = max(0, target - spent)
+        let overAmount = max(0, spent - target)
+        
+        // Dynamic Status Color
+        let statusColor: Color = {
+            if !isConfigured { return SpendyColors.primaryBlue }
+            if isExceeded { return Color(hex: "#FF453A") }
+            if percentSpent >= 0.85 { return Color(hex: "#FF9F0A") }
+            return Color(hex: "#30D158")
+        }()
+        
+        return Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            if let selectedTab = selectedTab {
+                selectedTab.wrappedValue = .budget
+            }
+        }) {
+            HStack(spacing: 14) {
+                // Circular Progress Gauge Ring
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 3.8)
+                        .frame(width: 44, height: 44)
+                    
+                    if isConfigured {
+                        Circle()
+                            .trim(from: 0.0, to: min(1.0, CGFloat(percentSpent)))
+                            .stroke(
+                                statusColor,
+                                style: StrokeStyle(lineWidth: 3.8, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: 44, height: 44)
+                            .shadow(color: statusColor.opacity(0.4), radius: 4)
+                        
+                        Text("\(Int(min(999, percentSpent * 100)))%")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    } else {
+                        Image(systemName: "target")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(SpendyColors.primaryBlue)
+                    }
+                }
+                
+                // Text Column: Status & Allowance
+                VStack(alignment: .leading, spacing: 3) {
+                    if !isConfigured {
+                        Text("Set Monthly Budget")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Text("Track spending pacing and daily allowance")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                            .lineLimit(1)
+                    } else if isExceeded {
+                        Text("Budget exceeded by \(hideBalance ? "••••" : overAmount.formattedCurrency(symbol: store.currencySymbol))")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color(hex: "#FF453A"))
+                        
+                        Text("Spent \(hideBalance ? "••••" : spent.formattedCurrency(symbol: store.currencySymbol)) of \(target.formattedCurrency(symbol: store.currencySymbol)) limit")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("\(hideBalance ? "••••" : remaining.formattedCurrency(symbol: store.currencySymbol)) remaining")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        let daysLeft = store.budgetDaysLeft
+                        let dailySafe = store.safeDailyAllowance
+                        Text("Safe pace: \(hideBalance ? "••••" : dailySafe.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day · \(daysLeft)d left")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+                
+                Spacer(minLength: 0)
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(isExceeded ? Color(hex: "#FF453A").opacity(0.35) : SpendyColors.separator, lineWidth: 0.8)
+                    }
+            }
+        }
+        .buttonStyle(InsightSubCardButtonStyle())
+    }
     
+    // MARK: - Upcoming Expenses & Income Computations
     private var upcomingExpenseSubs: [Subscription] {
         let calendar = Calendar.current
         let now = Date()
@@ -595,6 +734,32 @@ struct DashboardView: View {
         }
     }
     
+    private var currentMonthExpenseTxs: [Transaction] {
+        let calendar = Calendar.current
+        let now = Date()
+        return displayedTransactions.filter {
+            $0.type == .expense &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
+        }
+    }
+    
+    private var currentMonthExpenseTotal: Double {
+        currentMonthExpenseTxs.reduce(0) { $0 + $1.amount }
+    }
+    
+    private var expenseCategoryBadges: [(icon: String, color: Color)] {
+        var totals: [String: Double] = [:]
+        for tx in currentMonthExpenseTxs {
+            totals[tx.categoryId, default: 0] += tx.amount
+        }
+        let sorted = totals.sorted(by: { $0.value > $1.value })
+        return sorted.prefix(3).compactMap { (catId, _) in
+            guard let cat = store.categories.first(where: { $0.id == catId }) else { return nil }
+            return (cat.sfSymbol, Color(hex: cat.colorHex))
+        }
+    }
+    
     private var currentMonthIncomeTxs: [Transaction] {
         let calendar = Calendar.current
         let now = Date()
@@ -605,36 +770,39 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 4. Compact Expenses & Income Summary Row (Placed ABOVE Smart Insights)
+    // MARK: - 5. Compact Expenses & Income Summary Row (Balanced Real Spending vs Income)
     private var compactExpensesAndIncomeRow: some View {
         HStack(spacing: 10) {
-            // Compact Expenses Card
+            // Compact Expenses Card (Real Spent This Month)
             Button(action: {
                 HapticsManager.shared.trigger(.selection)
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     if let selectedTab = selectedTab {
-                        selectedTab.wrappedValue = .manage
-                    } else {
-                        showFullSubscriptionSheet = true
+                        selectedTab.wrappedValue = .analytics
                     }
                 }
             }) {
                 HStack(spacing: 10) {
-                    if !upcomingExpenseSubs.isEmpty {
+                    let expenseBadges = expenseCategoryBadges
+                    if !expenseBadges.isEmpty {
+                        OverlappingBadgeCluster(
+                            items: expenseBadges.prefix(3).map { info in
+                                BadgeItem(icon: info.icon, color: info.color)
+                            }
+                        )
+                    } else if !upcomingExpenseSubs.isEmpty {
                         OverlappingBadgeCluster(
                             items: upcomingExpenseSubs.prefix(3).map { sub in
                                 BadgeItem(icon: sub.sfSymbol, color: sub.color)
                             }
                         )
                     } else {
-                        ZStack {
-                            Circle()
-                                .fill(SpendyColors.cardBackgroundSecondary)
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
+                        SpendyIconBadge(
+                            sfSymbol: "cart.fill",
+                            color: Color(hex: "#FF453A"),
+                            size: .small,
+                            style: .circle
+                        )
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -642,15 +810,23 @@ struct DashboardView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(SpendyColors.textSecondary)
                         
-                        Text(hideBalance ? "••••" : upcomingExpenseSubs.reduce(0) { $0 + $1.amount }.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        Text(hideBalance ? "••••" : currentMonthExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                         
-                        Text("\(upcomingExpenseSubs.count) upcoming")
+                        let subtitleText: String = {
+                            if upcomingExpenseSubs.count > 0 {
+                                return "\(currentMonthExpenseTxs.count) txs · \(upcomingExpenseSubs.count) due"
+                            }
+                            return "\(currentMonthExpenseTxs.count) this month"
+                        }()
+                        
+                        Text(subtitleText)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(SpendyColors.textTertiary)
+                            .lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -671,6 +847,11 @@ struct DashboardView: View {
             // Compact Income Card
             Button(action: {
                 HapticsManager.shared.trigger(.selection)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    if let selectedTab = selectedTab {
+                        selectedTab.wrappedValue = .analytics
+                    }
+                }
             }) {
                 HStack(spacing: 10) {
                     let incomeBadges = incomeIconInfos
@@ -681,14 +862,12 @@ struct DashboardView: View {
                             }
                         )
                     } else {
-                        ZStack {
-                            Circle()
-                                .fill(SpendyColors.cardBackgroundSecondary)
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "dollarsign.circle")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
+                        SpendyIconBadge(
+                            sfSymbol: "dollarsign.circle",
+                            color: Color(hex: "#30D158"),
+                            size: .small,
+                            style: .circle
+                        )
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -725,7 +904,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 5. Smart Insights Section (Positioned Directly Below Expenses & Income)
+    // MARK: - 6. Smart Insights Section (Horizontal Scrollable 5+ Rich Cards)
     private var smartInsightsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
@@ -737,22 +916,34 @@ struct DashboardView: View {
                     .foregroundStyle(SpendyColors.textPrimary)
             }
             
-            HStack(spacing: 12) {
-                ForEach(topTwoInsightCards) { insight in
-                    SharedInsightCard(
-                        title: insight.title,
-                        value: insight.value,
-                        subtitle: insight.subtitle,
-                        icon: insight.icon,
-                        color: insight.color,
-                        action: {
-                            if let catId = insight.categoryId,
-                               let cat = store.categories.first(where: { $0.id == catId }) {
-                                selectedCategoryForSheet = cat
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(allDashboardInsightCards) { insight in
+                        SharedInsightCard(
+                            title: insight.title,
+                            value: insight.value,
+                            subtitle: insight.subtitle,
+                            icon: insight.icon,
+                            color: insight.color,
+                            action: {
+                                if let catId = insight.categoryId,
+                                   let cat = store.categories.first(where: { $0.id == catId }) {
+                                    selectedCategoryForSheet = cat
+                                } else if insight.family == "budget" || insight.id == "set_budget" {
+                                    if let selectedTab = selectedTab {
+                                        selectedTab.wrappedValue = .budget
+                                    }
+                                } else if insight.family == "subscription" || insight.id == "upcoming_subs" {
+                                    showFullSubscriptionSheet = true
+                                } else if insight.family == "onboarding" || insight.id == "unlock_ai" {
+                                    showAddTransaction = true
+                                }
                             }
-                        }
-                    )
+                        )
+                        .frame(width: 175)
+                    }
                 }
+                .padding(.vertical, 2)
             }
         }
     }
@@ -833,11 +1024,12 @@ struct DashboardView: View {
                             selectedAccountForSheet = acc
                         }) {
                             HStack(spacing: 14) {
-                                // SpendyIconBadge using the account's icon and color
+                                // SpendyIconBadge using the account's actual icon and custom color
                                 SpendyIconBadge(
                                     sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
-                                    color: accountBadgeColor(for: acc),
-                                    size: .medium
+                                    color: acc.color,
+                                    size: .medium,
+                                    style: .circle
                                 )
                                 
                                 Text(acc.label)
@@ -931,32 +1123,40 @@ struct DashboardView: View {
     private func transactionRow(_ tx: Transaction) -> some View {
         let cat = store.categories.first(where: { $0.id == tx.categoryId })
         let acc = store.accounts.first(where: { $0.id == tx.accountId })
+        let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
+        
+        let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
+        let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#34C759"))
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
             inspectingTransaction = tx
         }) {
             HStack(spacing: 14) {
-                // Circle Icon Avatar (Matching Category Color)
+                // Circle Icon Avatar (Matching Category or Subscription Color)
                 SpendyIconBadge(
-                    sfSymbol: cat?.sfSymbol ?? "cart.fill",
-                    color: categoryCircleColor(cat: cat),
-                    size: .medium
+                    sfSymbol: iconSymbol,
+                    color: iconColor,
+                    size: .medium,
+                    style: .circle
                 )
                 
                 // Title & Account Pill
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(tx.title.isEmpty ? (cat?.label ?? "Groceries") : tx.title)
+                    Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     if let acc = acc {
                         HStack(spacing: 4) {
-                            Text(acc.label.prefix(1).lowercased())
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Color.white)
-                                .frame(width: 14, height: 14)
-                                .background(accountBadgeColor(for: acc), in: RoundedRectangle(cornerRadius: 4))
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(acc.color)
+                                    .frame(width: 14, height: 14)
+                                Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
                             
                             Text(acc.label)
                                 .font(.system(size: 11, weight: .bold))
@@ -975,28 +1175,6 @@ struct DashboardView: View {
             .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
-    }
-    
-    private func categoryCircleColor(cat: Category?) -> Color {
-        guard let cat = cat else { return Color(hex: "#34C759") }
-        return Color(hex: cat.colorHex)
-    }
-    
-    private func accountBadgeColor(for acc: Account) -> Color {
-        let labelLower = acc.label.lowercased()
-        if labelLower.contains("revolut") {
-            return Color(hex: "#18181B")
-        } else if labelLower.contains("chime") {
-            return Color(hex: "#34C759")
-        } else if labelLower.contains("sbi") {
-            return Color(hex: "#007AFF")
-        } else if labelLower.contains("canara") {
-            return Color(hex: "#0A84FF")
-        } else if labelLower.contains("cash") {
-            return Color(hex: "#34C759")
-        } else {
-            return Color(hex: acc.colorHex)
-        }
     }
     
     private func formattedRowAmount(_ tx: Transaction) -> String {

@@ -71,6 +71,7 @@ struct AnalyticsView: View {
     @State private var selectedCategorySectorId: String? = nil
     @State private var selectedIncomeSectorId: String? = nil
     @State private var selectedCategoryForSheet: Category? = nil
+    @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
     
     // Collapsible List Expand States
@@ -116,7 +117,7 @@ struct AnalyticsView: View {
                                 
                                 // Card 5: Smart Insights Carousel
                                 smartInsightsCarousel
-                                    .padding(.horizontal, -20)
+                                     .padding(.horizontal, -20)
                                     .padding(.bottom, 30)
                             }
                             .padding(.horizontal, 20)
@@ -137,6 +138,9 @@ struct AnalyticsView: View {
             }
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionWidgetSheet()
+            }
+            .sheet(item: $selectedAccountForSheet) { account in
+                AccountAnalyticsSheet(account: account)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
@@ -728,15 +732,12 @@ struct AnalyticsView: View {
                     ForEach(displayedItems) { item in
                         let isSectorSelected = selectedCategorySectorId == item.id
                         HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: item.colorHex).opacity(0.2))
-                                    .frame(width: 40, height: 40)
-                                
-                                Image(systemName: item.sfSymbol)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(Color(hex: item.colorHex))
-                            }
+                            SpendyIconBadge(
+                                sfSymbol: item.sfSymbol,
+                                color: Color(hex: item.colorHex),
+                                size: .medium,
+                                style: .circle
+                            )
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.label)
@@ -770,12 +771,8 @@ struct AnalyticsView: View {
                                 let cat = store.categories.first(where: { $0.id == item.id }) ?? store.category(for: item.id)
                                 selectedCategoryForSheet = cat
                             } else {
-                                withAnimation(.spring(response: 0.3)) {
-                                    if selectedCategorySectorId == item.id {
-                                        selectedCategorySectorId = nil
-                                    } else {
-                                        selectedCategorySectorId = item.id
-                                    }
+                                if let acc = store.accounts.first(where: { $0.id == item.id }) {
+                                    selectedAccountForSheet = acc
                                 }
                             }
                         }
@@ -1038,15 +1035,12 @@ struct AnalyticsView: View {
                     ForEach(displayedItems) { item in
                         let isSelected = selectedIncomeSectorId == item.id
                         HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: item.colorHex).opacity(0.2))
-                                    .frame(width: 40, height: 40)
-                                
-                                Image(systemName: item.sfSymbol)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(Color(hex: item.colorHex))
-                            }
+                            SpendyIconBadge(
+                                sfSymbol: item.sfSymbol,
+                                color: Color(hex: item.colorHex),
+                                size: .medium,
+                                style: .circle
+                            )
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.label)
@@ -1075,13 +1069,14 @@ struct AnalyticsView: View {
                             }
                         }
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.3)) {
-                                if selectedIncomeSectorId == item.id {
-                                    selectedIncomeSectorId = nil
-                                } else {
-                                    selectedIncomeSectorId = item.id
+                            HapticsManager.shared.trigger(.selection)
+                            if groupingMode == .categories {
+                                let cat = store.categories.first(where: { $0.id == item.id }) ?? store.category(for: item.id)
+                                selectedCategoryForSheet = cat
+                            } else {
+                                if let acc = store.accounts.first(where: { $0.id == item.id }) {
+                                    selectedAccountForSheet = acc
                                 }
-                                HapticsManager.shared.trigger(.selection)
                             }
                         }
                     }

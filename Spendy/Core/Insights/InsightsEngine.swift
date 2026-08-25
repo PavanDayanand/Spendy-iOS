@@ -367,6 +367,32 @@ struct InsightsEngine {
                         icon: catSymbol, colorHex: catColor, categoryId: cat.id
                     ))
                 }
+                
+                // Dynamic Predictive Forecast (Unlocked at 5+ transactions)
+                if facts.elapsedDays >= 3 && total > 0 && dataType == .expense {
+                    let calendar = Calendar.current
+                    let daysInMonth = calendar.range(of: .day, in: .month, for: facts.periodStart)?.count ?? 30
+                    let dailyRunRate = total / Double(max(1, facts.elapsedDays))
+                    let projectedTotal = dailyRunRate * Double(daysInMonth)
+                    
+                    let isTrendingHigher = prevTotal > 0 ? (projectedTotal > prevTotal * 1.15) : false
+                    
+                    insights.append(InsightItem(
+                        id: "cat_predictive_\(cat.id)",
+                        family: "category",
+                        scope: "category",
+                        personaFit: ["optimizer", "guardian", "planner"],
+                        confidence: 0.88,
+                        severity: isTrendingHigher ? 0.65 : 0.35,
+                        eligibility: true,
+                        title: "Forecast Pace",
+                        value: "\(currencySymbol)\(projectedTotal.safeInt)",
+                        desc: "Projected to reach \(currencySymbol)\(projectedTotal.safeInt) this month based on \(allCatTxs.count) transactions.",
+                        icon: isTrendingHigher ? "chart.line.uptrend.xyaxis" : "sparkles",
+                        colorHex: catColor,
+                        categoryId: cat.id
+                    ))
+                }
             }
         }
         

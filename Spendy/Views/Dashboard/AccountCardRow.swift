@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AccountCardRow: View {
     @Environment(ExpenseStore.self) private var store
+    @State private var selectedAccountForSheet: Account? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -29,13 +30,15 @@ struct AccountCardRow: View {
                         
                         Button(action: {
                             HapticsManager.shared.trigger(.selection)
+                            selectedAccountForSheet = account
                         }) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
-                                    CategoryIconBadge(
-                                        sfSymbol: account.sfSymbol,
-                                        tintColor: account.color,
-                                        size: .small
+                                    SpendyIconBadge(
+                                        sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
+                                        color: account.color,
+                                        size: .small,
+                                        style: .circle
                                     )
                                     
                                     Spacer()
@@ -68,6 +71,9 @@ struct AccountCardRow: View {
                 }
                 .padding(.horizontal, 2)
             }
+        }
+        .sheet(item: $selectedAccountForSheet) { account in
+            AccountAnalyticsSheet(account: account)
         }
     }
 }

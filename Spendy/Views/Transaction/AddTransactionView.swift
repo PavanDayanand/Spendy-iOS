@@ -540,16 +540,13 @@ struct AddTransactionView: View {
                         HapticsManager.shared.trigger(.selection)
                     }) {
                         HStack(spacing: 8) {
-                            // Vibrant Category Circle Badge (32x32)
-                            ZStack {
-                                Circle()
-                                    .fill(selectedCategory?.color ?? Color(hex: "#34C759"))
-                                    .frame(width: 32, height: 32)
-                                
-                                Image(systemName: selectedCategory?.sfSymbol ?? "cart.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
+                            // Vibrant Category Circle Badge
+                            SpendyIconBadge(
+                                sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
+                                color: selectedCategory?.color ?? Color(hex: "#34C759"),
+                                size: .small,
+                                style: .circle
+                            )
                             .padding(.leading, 6)
                             
                             Text(selectedCategory?.label ?? "Groceries")
@@ -957,15 +954,12 @@ struct CategoryPickerDrawer: View {
                         dismiss()
                     }) {
                         HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(cat.color)
-                                    .frame(width: 38, height: 38)
-                                
-                                Image(systemName: cat.sfSymbol)
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
+                            SpendyIconBadge(
+                                sfSymbol: cat.sfSymbol,
+                                color: cat.color,
+                                size: .small,
+                                style: .circle
+                            )
                             
                             Text(cat.label)
                                 .font(.system(size: 15, weight: .medium))

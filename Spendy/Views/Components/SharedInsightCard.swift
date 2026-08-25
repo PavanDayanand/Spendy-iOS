@@ -93,22 +93,12 @@ struct SharedInsightCard<MiddleContent: View>: View {
                 
                 // Bottom Footer Row: Insight Icon Circle Avatar (Bottom-Left) + Engine Description Text (Bottom-Right)
                 HStack(alignment: .center, spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [color, color.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 34, height: 34)
-                            .shadow(color: color.opacity(0.40), radius: 6, x: 0, y: 2)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color.white)
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: icon,
+                        color: color,
+                        size: .small,
+                        style: .circle
+                    )
                     
                     Text(subtitle)
                         .font(.system(size: 11.5, weight: .medium))

@@ -201,18 +201,12 @@ struct AddSubscriptionSheet: View {
                     HapticsManager.shared.trigger(.light)
                     showIconPickerSheet = true
                 }) {
-                    ZStack {
-                        let circleColor = Color(hex: selectedColorHex)
-                        Circle()
-                            .fill(circleColor)
-                            .frame(width: 80, height: 80)
-                            .shadow(color: circleColor.opacity(0.40), radius: 12, y: 4)
-                        
-                        let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF"
-                        Image(systemName: selectedSymbol)
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(isLightColor ? Color.black : Color.white)
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: selectedSymbol,
+                        color: Color(hex: selectedColorHex),
+                        size: .hero,
+                        style: .circle
+                    )
                 }
                 .buttonStyle(.plain)
 

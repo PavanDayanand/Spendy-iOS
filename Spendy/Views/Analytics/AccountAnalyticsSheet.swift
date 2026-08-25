@@ -33,23 +33,11 @@ struct AccountAnalyticsSheet: View {
     @State private var lastInspectedTransaction: Transaction? = nil
     @State private var editingAccountToEdit: Account? = nil
     @State private var rawSelectedDate: Date? = nil
+    @State private var showDatePicker: Bool = false
     
     // MARK: - Computed Properties
     private var themeColor: Color {
-        let labelLower = account.label.lowercased()
-        if labelLower.contains("revolut") {
-            return Color(hex: "#5E5CE6")
-        } else if labelLower.contains("chime") {
-            return Color(hex: "#30D158")
-        } else if labelLower.contains("sbi") {
-            return Color(hex: "#007AFF")
-        } else if labelLower.contains("canara") {
-            return Color(hex: "#0A84FF")
-        } else if labelLower.contains("cash") || labelLower.contains("wallet") {
-            return Color(hex: "#34C759")
-        } else {
-            return Color(hex: account.colorHex)
-        }
+        account.color
     }
     
     private var allAccountTransactions: [Transaction] {
@@ -117,60 +105,12 @@ struct AccountAnalyticsSheet: View {
         return totalOutflow / Double(expenseTxs.count)
     }
     
-    private var historicalChartPoints: [CategoryChartPoint] {
-        let calendar = Calendar.current
-        let bounds = periodBounds
-        let txs = filteredTransactions
-        
-        switch selectedPeriod {
-        case .week, .month:
-            var points: [CategoryChartPoint] = []
-            var current = calendar.startOfDay(for: bounds.start)
-            let endDay = calendar.startOfDay(for: bounds.end)
-            
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = selectedPeriod == .week ? "EEE" : "d"
-            
-            while current <= endDay {
-                let dayStart = current
-                let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
-                let dayIn = txs.filter { $0.date >= dayStart && $0.date < dayEnd && $0.type == .income }.reduce(0) { $0 + $1.amount }
-                let dayOut = txs.filter { $0.date >= dayStart && $0.date < dayEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
-                let dayNet = dayIn - dayOut
-                
-                points.append(CategoryChartPoint(
-                    date: current,
-                    label: dateFormatter.string(from: current),
-                    amount: dayNet
-                ))
-                current = dayEnd
-            }
-            return points
-            
-        case .threeMonths, .sixMonths, .year:
-            var points: [CategoryChartPoint] = []
-            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
-            let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
-            
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM"
-            
-            while current <= endMonth {
-                let monthStart = current
-                let monthEnd = calendar.date(byAdding: .month, value: 1, to: current)!
-                let monthIn = txs.filter { $0.date >= monthStart && $0.date < monthEnd && $0.type == .income }.reduce(0) { $0 + $1.amount }
-                let monthOut = txs.filter { $0.date >= monthStart && $0.date < monthEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
-                let monthNet = monthIn - monthOut
-                
-                points.append(CategoryChartPoint(
-                    date: current,
-                    label: dateFormatter.string(from: current),
-                    amount: monthNet
-                ))
-                current = monthEnd
-            }
-            return points
-        }
+    private var predictiveChartPoints: [CategoryChartPoint] {
+        let actuals = chartPoints.filter { !$0.isPredicted }
+        guard let lastActual = actuals.last else { return [] }
+        let preds = chartPoints.filter { $0.isPredicted }
+        guard !preds.isEmpty else { return [] }
+        return [lastActual] + preds
     }
     
     private var chartPoints: [CategoryChartPoint] {
@@ -179,6 +119,7 @@ struct AccountAnalyticsSheet: View {
         let txs = filteredTransactions
         let now = Date()
         let today = calendar.startOfDay(for: now)
+        let hasEnoughTxs = allAccountTransactions.count >= 5
         
         switch selectedPeriod {
         case .week, .month:
@@ -192,10 +133,9 @@ struct AccountAnalyticsSheet: View {
             let daysInPeriod = max(1, calendar.dateComponents([.day], from: bounds.start, to: min(today, bounds.end)).day ?? 1)
             let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
             let netTotal = actualTxs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount } - actualTxs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-            let avgDailyNet = netTotal / Double(daysInPeriod)
-            let hasEnoughTxs = allAccountTransactions.count >= 5
+            let avgDailyNet = daysInPeriod > 0 ? (netTotal / Double(daysInPeriod)) : 0
             
-            var lastActualAmount: Double = 0
+            var cumulativeNet: Double = 0
             
             while current <= endDay {
                 let isActual = current <= today
@@ -207,17 +147,17 @@ struct AccountAnalyticsSheet: View {
                     let dayOut = txs.filter { $0.date >= dayStart && $0.date < dayEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
                     let dayNet = dayIn - dayOut
                     
-                    lastActualAmount = dayNet
+                    cumulativeNet += dayNet
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
-                        amount: dayNet,
+                        amount: cumulativeNet,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
-                    let dayOffset = calendar.dateComponents([.day], from: today, to: current).day ?? 1
-                    let predictedAmount = lastActualAmount + (avgDailyNet * Double(dayOffset) * 0.15)
+                    let dayOffset = max(1, calendar.dateComponents([.day], from: today, to: current).day ?? 1)
+                    let predictedAmount = cumulativeNet + (avgDailyNet * Double(dayOffset))
                     points.append(CategoryChartPoint(
                         id: "pred_\(current.timeIntervalSince1970)",
                         date: current,
@@ -236,15 +176,15 @@ struct AccountAnalyticsSheet: View {
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
             let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
             
-            let hasEnoughTxs = allAccountTransactions.count >= 5
-            var lastActualAmount: Double = 0
             let monthsElapsed = max(1, calendar.dateComponents([.month], from: bounds.start, to: min(now, bounds.end)).month ?? 1)
             let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
             let netTotal = actualTxs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount } - actualTxs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-            let avgMonthlyNet = netTotal / Double(monthsElapsed)
+            let avgMonthlyNet = monthsElapsed > 0 ? (netTotal / Double(monthsElapsed)) : 0
             
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "MMM"
+            
+            var cumulativeNet: Double = 0
             
             while current <= endMonth {
                 let monthStart = current
@@ -256,17 +196,17 @@ struct AccountAnalyticsSheet: View {
                     let monthOut = txs.filter { $0.date >= monthStart && $0.date < monthEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
                     let monthNet = monthIn - monthOut
                     
-                    lastActualAmount = monthNet
+                    cumulativeNet += monthNet
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
-                        amount: monthNet,
+                        amount: cumulativeNet,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
-                    let monthOffset = calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1
-                    let predictedAmount = lastActualAmount + (avgMonthlyNet * Double(monthOffset) * 0.10)
+                    let monthOffset = max(1, calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1)
+                    let predictedAmount = cumulativeNet + (avgMonthlyNet * Double(monthOffset))
                     points.append(CategoryChartPoint(
                         id: "pred_\(current.timeIntervalSince1970)",
                         date: current,
@@ -278,6 +218,26 @@ struct AccountAnalyticsSheet: View {
                 current = monthEnd
             }
             return points
+        }
+    }
+    
+    private var periodHeaderLabel: String {
+        let formatter = DateFormatter()
+        let bounds = periodBounds
+        switch selectedPeriod {
+        case .week:
+            formatter.dateFormat = "MMM d"
+            return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
+        case .month:
+            formatter.dateFormat = "MMMM"
+            return "Balance in \(formatter.string(from: bounds.start))"
+        case .threeMonths:
+            return "Last 3 Months"
+        case .sixMonths:
+            return "Last 6 Months"
+        case .year:
+            formatter.dateFormat = "yyyy"
+            return "Balance in \(formatter.string(from: bounds.start))"
         }
     }
     
@@ -408,22 +368,6 @@ struct AccountAnalyticsSheet: View {
             
             Spacer()
             
-            // Account Badge & Name in Center
-            HStack(spacing: 8) {
-                SpendyIconBadge(
-                    sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
-                    color: themeColor,
-                    size: .small
-                )
-                
-                Text(account.label)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            .optionalMatchedGeometry(id: "topControl_center", in: topControlsNamespace)
-            
-            Spacer()
-            
             // Top-Right Glass Edit Account Button
             GlassCircleButton(
                 icon: "pencil",
@@ -443,19 +387,38 @@ struct AccountAnalyticsSheet: View {
     
     // MARK: - 2. Hero Header Section (Clean Apple Wallet Typography)
     private var heroHeaderSection: some View {
-        VStack(spacing: 4) {
-            Text(currentBalance.formattedCurrency(symbol: store.currencySymbol))
-                .font(.system(size: 40, weight: .heavy, design: .rounded).monospacedDigit())
-                .foregroundStyle(SpendyColors.textPrimary)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(periodHeaderLabel)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                
+                Text(currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .font(.system(size: 38, weight: .heavy, design: .rounded).monospacedDigit())
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                
+                Text(account.label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+            
+            Spacer(minLength: 16)
+            
+            SpendyIconBadge(
+                sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
+                color: themeColor,
+                size: .hero,
+                style: .circle
+            )
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
     }
     
     // MARK: - 3. Uncarded SwiftCharts Area Graph & Glass Index Strip
     private var chartSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             if chartPoints.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "chart.line.flattrend.xyaxis")
@@ -469,7 +432,7 @@ struct AccountAnalyticsSheet: View {
                 .frame(maxWidth: .infinity)
             } else {
                 Chart {
-                    // 1. Actual Area Gradient below curve
+                    // 1. Actual Area Gradient below historical curve
                     ForEach(chartPoints.filter { !$0.isPredicted }) { point in
                         AreaMark(
                             x: .value("Date", point.date),
@@ -477,12 +440,12 @@ struct AccountAnalyticsSheet: View {
                         )
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [themeColor.opacity(0.48), themeColor.opacity(0.0)],
+                                colors: [themeColor.opacity(0.35), themeColor.opacity(0.0)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .interpolationMethod(.catmullRom)
+                        .interpolationMethod(.monotone)
                     }
                     
                     // 2. Actual Solid Line Curve
@@ -492,24 +455,37 @@ struct AccountAnalyticsSheet: View {
                             y: .value("Amount", point.amount)
                         )
                         .foregroundStyle(themeColor)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        .interpolationMethod(.catmullRom)
+                        .lineStyle(StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
+                        .interpolationMethod(.monotone)
                     }
                     
-                    // 3. Predictive Dotted Points for Future Days (React Expense App Style)
-                    ForEach(chartPoints.filter { $0.isPredicted }) { point in
-                        PointMark(
-                            x: .value("Date", point.date),
-                            y: .value("Amount", point.amount)
-                        )
-                        .symbol {
-                            Circle()
-                                .fill(Color.white.opacity(0.35))
-                                .frame(width: 4, height: 4)
+                    // 3. Predictive Continuous Dashed Forecast Curve & Area (when >= 5 transactions)
+                    if !predictiveChartPoints.isEmpty {
+                        ForEach(predictiveChartPoints) { point in
+                            AreaMark(
+                                x: .value("Date", point.date),
+                                y: .value("Amount", point.amount)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [themeColor.opacity(0.18), themeColor.opacity(0.0)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .interpolationMethod(.monotone)
+                            
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Amount", point.amount)
+                            )
+                            .foregroundStyle(themeColor.opacity(0.85))
+                            .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round, dash: [6, 4]))
+                            .interpolationMethod(.monotone)
                         }
                     }
                     
-                    // 5. Clean White Endpoint Dot at Today
+                    // 4. Luminous "Today" Anchor Beacon
                     if let lastActual = chartPoints.filter({ !$0.isPredicted }).last {
                         PointMark(
                             x: .value("Date", lastActual.date),
@@ -518,12 +494,14 @@ struct AccountAnalyticsSheet: View {
                         .symbol {
                             ZStack {
                                 Circle()
+                                    .fill(themeColor.opacity(0.35))
+                                    .frame(width: 18, height: 18)
+                                Circle()
                                     .fill(themeColor)
-                                    .frame(width: 10, height: 10)
-                                    .shadow(color: themeColor, radius: 6)
+                                    .frame(width: 9, height: 9)
                                 Circle()
                                     .fill(Color.white)
-                                    .frame(width: 5, height: 5)
+                                    .frame(width: 4, height: 4)
                             }
                         }
                     }
@@ -534,7 +512,7 @@ struct AccountAnalyticsSheet: View {
                         if let dateVal = value.as(Date.self) {
                             AxisValueLabel {
                                 Text(axisLabelDate(dateVal))
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
@@ -542,44 +520,91 @@ struct AccountAnalyticsSheet: View {
                 }
                 .chartYAxis(.hidden)
                 .frame(height: 180)
+                
+                // Clean Legend Row
+                HStack(spacing: 16) {
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(themeColor)
+                            .frame(width: 14, height: 2.5)
+                        Text("Actual")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    if !predictiveChartPoints.isEmpty {
+                        HStack(spacing: 6) {
+                            HStack(spacing: 2) {
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                            }
+                            Text("Predicted")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                    }
+                    
+                    Spacer()
+                }
                 .padding(.horizontal, 4)
             }
             
-            // Glass Index Selector Pill Strip
-            HStack {
-                Spacer()
+            // Native Liquid Glass Index Selector Pill Strip + Date Picker Button
+            HStack(spacing: 10) {
                 HStack(spacing: 4) {
                     ForEach(ChartPeriod.allCases) { period in
                         let isSelected = selectedPeriod == period
                         Button {
-                            selectedPeriod = period
-                            rawSelectedDate = nil
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+                                selectedPeriod = period
+                                rawSelectedDate = nil
+                            }
                             HapticsManager.shared.trigger(.selection)
                         } label: {
                             Text(period.shortLabel)
-                                .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
-                                .foregroundStyle(isSelected ? .black : .white.opacity(0.7))
+                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? Color.white : SpendyColors.textSecondary)
                                 .padding(.horizontal, 14)
-                                .padding(.vertical, 7)
+                                .padding(.vertical, 8)
                                 .background {
                                     if isSelected {
                                         Capsule()
-                                            .fill(Color.white)
-                                            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                            .fill(Color.white.opacity(0.20))
                                     }
                                 }
+                                .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(4)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(0.10))
-                        .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
-                )
-                Spacer()
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                
+                // Calendar Date Picker Button
+                Button {
+                    HapticsManager.shared.trigger(.selection)
+                    showDatePicker = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            Circle()
+                                .fill(Color(hex: "#1C1C1E").opacity(0.75))
+                                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+                        }
+                }
+                .buttonStyle(.plain)
             }
+            .padding(.top, 4)
         }
     }
     
@@ -718,6 +743,9 @@ struct AccountAnalyticsSheet: View {
                             VStack(spacing: 0) {
                                 ForEach(Array(txs.enumerated()), id: \.element.id) { idx, tx in
                                     let cat = store.categories.first(where: { $0.id == tx.categoryId })
+                                    let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
+                                    let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
+                                    let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#34C759"))
                                     
                                     Button(action: {
                                         HapticsManager.shared.trigger(.selection)
@@ -725,9 +753,10 @@ struct AccountAnalyticsSheet: View {
                                     }) {
                                         HStack(spacing: 14) {
                                             SpendyIconBadge(
-                                                sfSymbol: cat?.sfSymbol ?? "cart.fill",
-                                                color: Color(hex: cat?.colorHex ?? "#34C759"),
-                                                size: .medium
+                                                sfSymbol: iconSymbol,
+                                                color: iconColor,
+                                                size: .medium,
+                                                style: .circle
                                             )
                                             
                                             VStack(alignment: .leading, spacing: 3) {

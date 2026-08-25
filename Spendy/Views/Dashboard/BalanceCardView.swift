@@ -72,10 +72,11 @@ struct BalanceCardView: View {
             HStack(spacing: 12) {
                 // Income Pill
                 HStack(spacing: 10) {
-                    CategoryIconBadge(
+                    SpendyIconBadge(
                         sfSymbol: SFIcons.income,
-                        tintColor: SpendyColors.incomeGreen,
-                        size: .small
+                        color: SpendyColors.incomeGreen,
+                        size: .small,
+                        style: .circle
                     )
                     
                     VStack(alignment: .leading, spacing: 1) {
@@ -98,10 +99,11 @@ struct BalanceCardView: View {
                 
                 // Expense Pill
                 HStack(spacing: 10) {
-                    CategoryIconBadge(
+                    SpendyIconBadge(
                         sfSymbol: SFIcons.expense,
-                        tintColor: SpendyColors.expenseRed,
-                        size: .small
+                        color: SpendyColors.expenseRed,
+                        size: .small,
+                        style: .circle
                     )
                     
                     VStack(alignment: .leading, spacing: 1) {

@@ -73,6 +73,7 @@ struct CategoryAnalyticsSheet: View {
     @State private var editingTransaction: Transaction? = nil
     @State private var lastInspectedTransaction: Transaction? = nil
     @State private var editingCategoryToEdit: Category? = nil
+    @State private var showDatePicker: Bool = false
     
     // MARK: - Computed Properties
     private var themeColor: Color {
@@ -158,12 +159,22 @@ struct CategoryAnalyticsSheet: View {
         }
     }
     
+    private var predictiveChartPoints: [CategoryChartPoint] {
+        let actuals = chartPoints.filter { !$0.isPredicted }
+        guard let lastActual = actuals.last else { return [] }
+        let preds = chartPoints.filter { $0.isPredicted }
+        guard !preds.isEmpty else { return [] }
+        // Prepend last actual to make a continuous dashed line from today onward
+        return [lastActual] + preds
+    }
+    
     private var chartPoints: [CategoryChartPoint] {
         let calendar = Calendar.current
         let bounds = periodBounds
         let txs = filteredTransactions
         let now = Date()
         let today = calendar.startOfDay(for: now)
+        let hasEnoughTxs = allCategoryTransactions.count >= 5
         
         switch selectedPeriod {
         case .week, .month:
@@ -176,10 +187,9 @@ struct CategoryAnalyticsSheet: View {
             
             let daysElapsed = max(1, calendar.dateComponents([.day], from: bounds.start, to: min(today, bounds.end)).day ?? 1)
             let totalSpentSoFar = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }.reduce(0) { $0 + $1.amount }
-            let dailyRate = totalSpentSoFar / Double(daysElapsed)
-            let hasEnoughTxs = allCategoryTransactions.count >= 5
+            let dailyRate = daysElapsed > 0 ? (totalSpentSoFar / Double(daysElapsed)) : 0
             
-            var lastActualAmount: Double = 0
+            var cumulativeSpend: Double = 0
             
             while current <= endDay {
                 let isActual = current <= today
@@ -187,21 +197,21 @@ struct CategoryAnalyticsSheet: View {
                 if isActual {
                     let dayStart = current
                     let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
-                    let dayTotal = txs
+                    let daySpent = txs
                         .filter { $0.date >= dayStart && $0.date < dayEnd }
                         .reduce(0) { $0 + $1.amount }
                     
-                    lastActualAmount = dayTotal
+                    cumulativeSpend += daySpent
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
-                        amount: dayTotal,
+                        amount: cumulativeSpend,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
-                    let dayOffset = calendar.dateComponents([.day], from: today, to: current).day ?? 1
-                    let predictedAmount = max(0, lastActualAmount + (dailyRate * Double(dayOffset) * 0.15))
+                    let dayOffset = max(1, calendar.dateComponents([.day], from: today, to: current).day ?? 1)
+                    let predictedAmount = cumulativeSpend + (dailyRate * Double(dayOffset))
                     points.append(CategoryChartPoint(
                         id: "pred_\(current.timeIntervalSince1970)",
                         date: current,
@@ -219,14 +229,14 @@ struct CategoryAnalyticsSheet: View {
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
             let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
             
-            let hasEnoughTxs = allCategoryTransactions.count >= 5
-            var lastActualAmount: Double = 0
             let monthsElapsed = max(1, calendar.dateComponents([.month], from: bounds.start, to: min(now, bounds.end)).month ?? 1)
             let totalSpentSoFar = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }.reduce(0) { $0 + $1.amount }
-            let monthlyRate = totalSpentSoFar / Double(monthsElapsed)
+            let monthlyRate = monthsElapsed > 0 ? (totalSpentSoFar / Double(monthsElapsed)) : 0
             
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "MMM"
+            
+            var cumulativeSpend: Double = 0
             
             while current <= endMonth {
                 let monthStart = current
@@ -234,20 +244,20 @@ struct CategoryAnalyticsSheet: View {
                 let isActual = current <= now
                 
                 if isActual {
-                    let monthTotal = txs
+                    let monthSpent = txs
                         .filter { $0.date >= monthStart && $0.date < monthEnd }
                         .reduce(0) { $0 + $1.amount }
-                    lastActualAmount = monthTotal
+                    cumulativeSpend += monthSpent
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
-                        amount: monthTotal,
+                        amount: cumulativeSpend,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
-                    let monthOffset = calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1
-                    let predictedAmount = max(0, lastActualAmount + (monthlyRate * Double(monthOffset) * 0.10))
+                    let monthOffset = max(1, calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1)
+                    let predictedAmount = cumulativeSpend + (monthlyRate * Double(monthOffset))
                     points.append(CategoryChartPoint(
                         id: "pred_\(current.timeIntervalSince1970)",
                         date: current,
@@ -270,15 +280,15 @@ struct CategoryAnalyticsSheet: View {
             formatter.dateFormat = "MMM d"
             return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
         case .month:
-            formatter.dateFormat = "MMMM yyyy"
-            return formatter.string(from: bounds.start)
+            formatter.dateFormat = "MMMM"
+            return "Spent in \(formatter.string(from: bounds.start))"
         case .threeMonths:
             return "Last 3 Months"
         case .sixMonths:
             return "Last 6 Months"
         case .year:
             formatter.dateFormat = "yyyy"
-            return formatter.string(from: bounds.start)
+            return "Spent in \(formatter.string(from: bounds.start))"
         }
     }
     
@@ -539,21 +549,6 @@ struct CategoryAnalyticsSheet: View {
             
             Spacer()
             
-            // Category Icon Badge & Title
-            HStack(spacing: 8) {
-                CategoryIconBadge(
-                    sfSymbol: category.sfSymbol,
-                    tintColor: category.color,
-                    size: .small
-                )
-                
-                Text(category.label)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            
-            Spacer()
-            
             // Right-Side Edit Glass Button
             GlassCircleButton(
                 icon: "pencil",
@@ -572,24 +567,33 @@ struct CategoryAnalyticsSheet: View {
     
     // MARK: - 2. Clean Hero Header Section
     private var heroHeaderSection: some View {
-        VStack(spacing: 6) {
-            Text(periodHeaderLabel)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-            
-            Text(totalSpent.formattedCurrency(symbol: store.currencySymbol))
-                .font(.system(size: 40, weight: .heavy, design: .rounded).monospacedDigit())
-                .foregroundStyle(SpendyColors.textPrimary)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-            
-            if comparisonText != "No data yet" {
-                Text(comparisonText)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(periodHeaderLabel)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                
+                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .font(.system(size: 38, weight: .heavy, design: .rounded).monospacedDigit())
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                
+                Text(comparisonText == "No data yet" ? "No data from last period" : comparisonText)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(comparisonColor)
             }
+            
+            Spacer(minLength: 16)
+            
+            SpendyIconBadge(
+                sfSymbol: category.sfSymbol,
+                color: themeColor,
+                size: .hero,
+                style: .circle
+            )
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
     }
     
     // MARK: - 3. SwiftCharts Area Graph & Index Filter Strip
@@ -608,7 +612,7 @@ struct CategoryAnalyticsSheet: View {
                 .frame(maxWidth: .infinity)
             } else {
                 Chart {
-                    // 1. Actual Area Gradient below curve
+                    // 1. Actual Area Gradient below historical curve
                     ForEach(chartPoints.filter { !$0.isPredicted }) { point in
                         AreaMark(
                             x: .value("Date", point.date),
@@ -616,12 +620,12 @@ struct CategoryAnalyticsSheet: View {
                         )
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [themeColor.opacity(0.45), themeColor.opacity(0.0)],
+                                colors: [themeColor.opacity(0.35), themeColor.opacity(0.0)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .interpolationMethod(.catmullRom)
+                        .interpolationMethod(.monotone)
                     }
                     
                     // 2. Actual Solid Line Curve
@@ -631,24 +635,37 @@ struct CategoryAnalyticsSheet: View {
                             y: .value("Amount", point.amount)
                         )
                         .foregroundStyle(themeColor)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        .interpolationMethod(.catmullRom)
+                        .lineStyle(StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
+                        .interpolationMethod(.monotone)
                     }
                     
-                    // 3. Predictive Dotted Points for Future Days (React Expense App Style)
-                    ForEach(chartPoints.filter { $0.isPredicted }) { point in
-                        PointMark(
-                            x: .value("Date", point.date),
-                            y: .value("Amount", point.amount)
-                        )
-                        .symbol {
-                            Circle()
-                                .fill(Color.white.opacity(0.35))
-                                .frame(width: 4, height: 4)
+                    // 3. Predictive Continuous Dashed Forecast Curve & Glow Area
+                    if !predictiveChartPoints.isEmpty {
+                        ForEach(predictiveChartPoints) { point in
+                            AreaMark(
+                                x: .value("Date", point.date),
+                                y: .value("Amount", point.amount)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [themeColor.opacity(0.18), themeColor.opacity(0.0)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .interpolationMethod(.monotone)
+                            
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Amount", point.amount)
+                            )
+                            .foregroundStyle(themeColor.opacity(0.85))
+                            .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round, dash: [6, 4]))
+                            .interpolationMethod(.monotone)
                         }
                     }
                     
-                    // 5. Clean White Endpoint Dot at Today
+                    // 4. Luminous "Today" Anchor Beacon
                     if let lastActual = chartPoints.filter({ !$0.isPredicted }).last {
                         PointMark(
                             x: .value("Date", lastActual.date),
@@ -657,11 +674,14 @@ struct CategoryAnalyticsSheet: View {
                         .symbol {
                             ZStack {
                                 Circle()
+                                    .fill(themeColor.opacity(0.35))
+                                    .frame(width: 18, height: 18)
+                                Circle()
                                     .fill(themeColor)
-                                    .frame(width: 12, height: 12)
+                                    .frame(width: 9, height: 9)
                                 Circle()
                                     .fill(Color.white)
-                                    .frame(width: 5, height: 5)
+                                    .frame(width: 4, height: 4)
                             }
                         }
                     }
@@ -672,7 +692,7 @@ struct CategoryAnalyticsSheet: View {
                         if let dateVal = value.as(Date.self) {
                             AxisValueLabel {
                                 Text(axisLabelDate(dateVal))
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
                         }
@@ -680,42 +700,90 @@ struct CategoryAnalyticsSheet: View {
                 }
                 .chartYAxis(.hidden)
                 .frame(height: 180)
+                
+                // Clean Legend Row
+                HStack(spacing: 16) {
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(themeColor)
+                            .frame(width: 14, height: 2.5)
+                        Text("Actual")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    if !predictiveChartPoints.isEmpty {
+                        HStack(spacing: 6) {
+                            HStack(spacing: 2) {
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(themeColor.opacity(0.8))
+                                    .frame(width: 3, height: 2.5)
+                            }
+                            Text("Predicted")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
             }
             
-            // Glass Index Selector Pill Strip
-            HStack {
-                Spacer()
+            // Native Liquid Glass Index Selector Pill Strip + Date Picker Button
+            HStack(spacing: 10) {
                 HStack(spacing: 4) {
                     ForEach(ChartPeriod.allCases) { period in
                         let isSelected = selectedPeriod == period
                         Button {
-                            selectedPeriod = period
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+                                selectedPeriod = period
+                            }
                             HapticsManager.shared.trigger(.selection)
                         } label: {
                             Text(period.shortLabel)
-                                .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
-                                .foregroundStyle(isSelected ? .black : .white.opacity(0.7))
+                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? Color.white : SpendyColors.textSecondary)
                                 .padding(.horizontal, 14)
-                                .padding(.vertical, 7)
+                                .padding(.vertical, 8)
                                 .background {
                                     if isSelected {
                                         Capsule()
-                                            .fill(Color.white)
-                                            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                            .fill(Color.white.opacity(0.20))
                                     }
                                 }
+                                .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(4)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(0.10))
-                        .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
-                )
-                Spacer()
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                
+                // Calendar Date Picker Button
+                Button {
+                    HapticsManager.shared.trigger(.selection)
+                    showDatePicker = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            Circle()
+                                .fill(Color(hex: "#1C1C1E").opacity(0.75))
+                                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+                        }
+                }
+                .buttonStyle(.plain)
             }
+            .padding(.top, 4)
         }
     }
     
@@ -724,9 +792,9 @@ struct CategoryAnalyticsSheet: View {
         let fmt = DateFormatter()
         switch selectedPeriod {
         case .week: fmt.dateFormat = "EEE"
-        case .month: fmt.dateFormat = "d MMM"
+        case .month: fmt.dateFormat = "d"
         case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
-        case .year: fmt.dateFormat = "MMM yy"
+        case .year: fmt.dateFormat = "MMM"
         }
         return fmt.string(from: date)
     }
@@ -939,15 +1007,12 @@ struct CategoryAnalyticsSheet: View {
         
         return HStack(spacing: 14) {
             // Category Icon Badge
-            ZStack {
-                Circle()
-                    .fill(themeColor)
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: category.sfSymbol)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
+            SpendyIconBadge(
+                sfSymbol: category.sfSymbol,
+                color: category.color,
+                size: .small,
+                style: .circle
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(tx.title)

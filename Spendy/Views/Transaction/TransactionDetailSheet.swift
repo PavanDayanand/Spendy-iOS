@@ -174,13 +174,14 @@ struct TransactionDetailSheet: View {
                     sfSymbol: sub.sfSymbol,
                     color: Color(hex: sub.colorHex),
                     size: .large,
-                    isGradient: true
+                    style: .circle
                 )
             } else {
                 SpendyIconBadge(
                     sfSymbol: category?.sfSymbol ?? "tag.fill",
                     color: category != nil ? Color(hex: category!.colorHex) : SpendyColors.primaryBlue,
-                    size: .large
+                    size: .large,
+                    style: .circle
                 )
             }
             
@@ -217,25 +218,22 @@ struct TransactionDetailSheet: View {
     @ViewBuilder
     private var detailsList: some View {
         VStack(spacing: 12) {
-            // Category Row — GlassCircleIcon shared circle
+            // Category Row — SpendyIconBadge
             detailRow(icon: "tag.fill", label: "Category") {
                 HStack(spacing: 8) {
-                    GlassCircleIcon(
-                        size: 32,
-                        tintColor: category != nil ? Color(hex: category!.colorHex) : SpendyColors.primaryBlue,
-                        isInteractive: false
-                    ) {
-                        Image(systemName: category?.sfSymbol ?? "tag.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+                    SpendyIconBadge(
+                        sfSymbol: category?.sfSymbol ?? "tag.fill",
+                        color: category != nil ? Color(hex: category!.colorHex) : SpendyColors.primaryBlue,
+                        size: .small,
+                        style: .circle
+                    )
                     Text(category?.label ?? "General")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
             
-            // Account Row — GlassCircleIcon shared circle
+            // Account Row — SpendyIconBadge
             if transaction.type == .transfer {
                 detailRow(icon: "arrow.up.arrow.down", label: "Route") {
                     Text("\(account?.label ?? "Account") → \(toAccount?.label ?? "Account")")
@@ -245,15 +243,12 @@ struct TransactionDetailSheet: View {
             } else {
                 detailRow(icon: "creditcard.fill", label: "Account") {
                     HStack(spacing: 8) {
-                        GlassCircleIcon(
-                            size: 32,
-                            tintColor: account != nil ? Color(hex: account!.colorHex) : SpendyColors.incomeGreen,
-                            isInteractive: false
-                        ) {
-                            Image(systemName: account?.sfSymbol ?? "building.columns.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
+                        SpendyIconBadge(
+                            sfSymbol: account?.sfSymbol.isEmpty == false ? account!.sfSymbol : (account?.type.defaultSymbol ?? "building.columns.fill"),
+                            color: account != nil ? Color(hex: account!.colorHex) : SpendyColors.incomeGreen,
+                            size: .small,
+                            style: .circle
+                        )
                         Text(account?.label ?? "Cash")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(SpendyColors.textPrimary)

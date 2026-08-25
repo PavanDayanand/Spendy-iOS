@@ -697,6 +697,13 @@ final class ExpenseStore {
         return max(0.0, safeDaily - todayExpenses)
     }
     
+    /// Safe daily average allowance for remaining days in cycle
+    var safeDailyAllowance: Double {
+        let target = budgetTargetAmount(for: budget.period)
+        let days = max(1, budgetDaysLeft)
+        return max(0.0, (target - budgetCycleExpenses) / Double(days))
+    }
+    
     /// Total expenses over the last 30 days
     var last30DaysExpenses: Double {
         let now = Date()

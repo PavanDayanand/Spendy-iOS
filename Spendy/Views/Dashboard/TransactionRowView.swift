@@ -25,36 +25,20 @@ struct TransactionRowView: View {
             paddingHorizontal: 14,
             paddingVertical: 12
         ) {
-            // Icon Badge: Subscription glass circle if linked to subscription, else Category icon badge
+            // Icon Badge: Unified SpendyIconBadge for Subscription (if linked) or Category
             if let sub = subscription {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: sub.colorHex).opacity(0.35),
-                                    Color(hex: sub.colorHex).opacity(0.18)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 46, height: 46)
-                        .overlay {
-                            Circle()
-                                .stroke(Color(hex: sub.colorHex).opacity(0.35), lineWidth: 1)
-                        }
-                        .shadow(color: Color(hex: sub.colorHex).opacity(0.25), radius: 6, x: 0, y: 3)
-                    
-                    Image(systemName: sub.sfSymbol)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color(hex: sub.colorHex))
-                }
+                SpendyIconBadge(
+                    sfSymbol: sub.sfSymbol,
+                    color: Color(hex: sub.colorHex),
+                    size: .medium,
+                    style: .circle
+                )
             } else {
-                CategoryIconBadge(
+                SpendyIconBadge(
                     sfSymbol: category.sfSymbol,
-                    tintColor: category.color,
-                    size: .medium
+                    color: category.color,
+                    size: .medium,
+                    style: .circle
                 )
             }
         } titleContent: {
