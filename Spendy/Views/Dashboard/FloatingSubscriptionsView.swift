@@ -104,29 +104,6 @@ struct FloatingSubscriptionsView: View {
                     .padding(.vertical, 5)
                     .background(Color.white.opacity(0.06), in: Capsule())
                 }
-                // Subscription Insights Carousel (if any insights available)
-                let subInsights = InsightsEngine.getSubscriptionInsights(
-                    transactions: store.transactions,
-                    subscriptions: store.subscriptions,
-                    currencySymbol: store.currencySymbol
-                )
-                if !subInsights.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(subInsights) { insight in
-                                SharedInsightCard(
-                                    title: insight.title,
-                                    value: insight.value,
-                                    subtitle: insight.desc,
-                                    icon: insight.icon,
-                                    color: insight.color
-                                )
-                                .frame(width: 170)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
                 
                 // Scrollable List of Subscriptions
                 ScrollView(showsIndicators: false) {
@@ -160,13 +137,16 @@ struct FloatingSubscriptionsView: View {
             .background(Color.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(SpendyColors.separator, lineWidth: 0.8)
+                .stroke(SpendyColors.separator, lineWidth: 0.8)
             }
             
             // Bottom "Manage Subscriptions" Button
             Button(action: {
                 HapticsManager.shared.trigger(.selection)
-                showAddSubscription = true
+                onManageTap?()
+                withAnimation(.spring(response: 0.4)) {
+                    isPresented = false
+                }
             }) {
                 Text("Manage Subscriptions")
                     .font(.system(size: 16, weight: .bold))
@@ -184,6 +164,8 @@ struct FloatingSubscriptionsView: View {
             AddSubscriptionSheet()
         }
     }
+    
+    var onManageTap: (() -> Void)? = nil
 }
 
 // Inner row view matching screenshot

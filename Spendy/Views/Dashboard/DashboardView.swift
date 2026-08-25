@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-// MARK: - Helper Model for Top 2 Smart Insight Cards
+// MARK: - Helper Model for Smart Insight Cards (Max 5 Clean Cards on Home Dashboard)
 struct InsightCardViewModel: Identifiable {
     let id: String
     let title: String
@@ -100,8 +100,7 @@ struct AccountsMiniSparkline: View {
                         )
                     }
                 }
-                .stroke(col, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-                .shadow(color: col.opacity(0.3), radius: 3, y: 1)
+                .stroke(col, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
             }
         }
     }
@@ -116,8 +115,6 @@ struct DashboardView: View {
     @State private var showSettings: Bool = false
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showCurrencyConverter: Bool = false
-    @State private var showSubscriptions: Bool = false
-    @State private var showFullSubscriptionSheet: Bool = false
     @State private var showReceiptPrinter: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
@@ -195,89 +192,146 @@ struct DashboardView: View {
         }.sorted(by: { $0.id > $1.id })
     }
     
-    // All Dashboard Smart Insight Cards (Driven by InsightsEngine + Category Spending + Real Dynamic Actions)
+    // All Dashboard Smart Insight Cards (Max 5 Clean, Story-Driven Cards)
     private var allDashboardInsightCards: [InsightCardViewModel] {
-        let engineItems = insightsEngineItems
-        let catCards = categorySpendingCards
+        var cards: [InsightCardViewModel] = []
+        let calendar = Calendar.current
+        let now = Date()
+        let totalExpense = currentMonthExpenseTotal
+        let expTxs = currentMonthExpenseTxs
         
-        var results: [InsightCardViewModel] = []
+        // 1. Card 1: Top Category Velocity / Dominance
+        if !expTxs.isEmpty {
+            var catTotals: [String: (total: Double, count: Int)] = [:]
+            for tx in expTxs {
+                let cur = catTotals[tx.categoryId, default: (0.0, 0)]
+                catTotals[tx.categoryId] = (cur.total + tx.amount, cur.count + 1)
+            }
+            if let topEntry = catTotals.max(by: { $0.value.total < $1.value.total }),
+               let topCat = store.categories.first(where: { $0.id == topEntry.key }) {
+                let catPct = totalExpense > 0 ? Int((topEntry.value.total / totalExpense) * 100) : 0
+                cards.append(
+                    InsightCardViewModel(
+                        id: "top_category_\(topCat.id)",
+                        title: topCat.label,
+                        icon: topCat.sfSymbol,
+                        color: Color(hex: topCat.colorHex),
+                        value: hideBalance ? "••••" : topEntry.value.total.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        subtitle: "\(topEntry.value.count) \(topEntry.value.count == 1 ? "expense" : "expenses") · \(catPct)% of spend",
+                        categoryId: topCat.id,
+                        family: "category"
+                    )
+                )
+            }
+        }
         
-        // 1. Add top engine items first
-        for item in engineItems {
-            results.append(
+        // 2. Card 2: Safe Daily Pacing & Allowance
+        if store.budget.isActive && store.budgetTargetAmount(for: store.budget.period) > 0 {
+            let budgetTarget = store.budgetTargetAmount(for: store.budget.period)
+            let spent = store.budgetCycleExpenses
+            let isOver = spent > budgetTarget
+            
+            cards.append(
                 InsightCardViewModel(
-                    id: item.id,
-                    title: item.title,
-                    icon: item.icon,
-                    color: item.color,
-                    value: item.value,
-                    subtitle: item.desc,
-                    categoryId: item.categoryId,
-                    family: item.family
+                    id: "safe_daily",
+                    title: "Daily Allowance",
+                    icon: isOver ? "exclamationmark.shield.fill" : "shield.lefthalf.filled",
+                    color: isOver ? Color(hex: "#FF453A") : Color(hex: "#30D158"),
+                    value: hideBalance ? "••••" : "\(store.safeDailyAllowance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
+                    subtitle: isOver ? "Budget exceeded · Restrict daily spend" : "\(store.budgetDaysLeft) days remaining in cycle",
+                    family: "budget"
+                )
+            )
+        } else {
+            cards.append(
+                InsightCardViewModel(
+                    id: "set_budget",
+                    title: "Budget Planner",
+                    icon: "target",
+                    color: SpendyColors.primaryBlue,
+                    value: "Set Limit",
+                    subtitle: "Plan your monthly limit & unlock safe daily allowance",
+                    family: "budget"
                 )
             )
         }
         
-        // 2. Add category spending cards
-        for catCard in catCards {
-            if results.count >= 6 { break }
-            if !results.contains(where: { $0.id == catCard.id }) {
-                results.append(catCard)
+        // 3. Card 3: Peak Spending Day / Weekday Rhythm
+        if expTxs.count >= 2 {
+            var weekdayTotals: [Int: Double] = [:]
+            for tx in expTxs {
+                let wd = calendar.component(.weekday, from: tx.date) - 1 // 0 (Sun) to 6 (Sat)
+                weekdayTotals[wd, default: 0] += tx.amount
+            }
+            if let topDayEntry = weekdayTotals.max(by: { $0.value < $1.value }) {
+                let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                let topDayName = dayNames[topDayEntry.key]
+                cards.append(
+                    InsightCardViewModel(
+                        id: "peak_spending_day",
+                        title: "Peak Spend Day",
+                        icon: "calendar.badge.clock",
+                        color: Color(hex: "#BF5AF2"),
+                        value: topDayName,
+                        subtitle: "Highest spending day this month",
+                        family: "analytics"
+                    )
+                )
             }
         }
         
-        // 3. Add Safe Daily Pacing Card if budget is active
-        if store.budget.isActive && store.budgetTargetAmount(for: store.budget.period) > 0 {
-            if !results.contains(where: { $0.id == "safe_daily" }) {
-                results.append(
+        // 4. Card 4: Upcoming Recurring Bills / Countdown
+        if !upcomingExpenseSubs.isEmpty {
+            let sortedSubs = upcomingExpenseSubs.sorted(by: { $0.nextBillingDate < $1.nextBillingDate })
+            if let nextSub = sortedSubs.first {
+                let days = max(0, calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: nextSub.nextBillingDate)).day ?? 0)
+                let daysText = days == 0 ? "Due today" : "Due in \(days)d"
+                cards.append(
                     InsightCardViewModel(
-                        id: "safe_daily",
-                        title: "Safe Daily",
-                        icon: "shield.lefthalf.filled",
-                        color: Color(hex: "#30D158"),
-                        value: hideBalance ? "••••" : store.safeDailyAllowance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                        subtitle: "\(store.budgetDaysLeft) days remaining in cycle",
-                        family: "budget"
+                        id: "next_bill_\(nextSub.id.uuidString)",
+                        title: "Next Bill",
+                        icon: nextSub.sfSymbol,
+                        color: nextSub.color,
+                        value: hideBalance ? "••••" : nextSub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        subtitle: "\(nextSub.name) · \(daysText)",
+                        family: "subscription"
                     )
                 )
             }
         } else {
-            // Prompt user to set a budget
-            if !results.contains(where: { $0.id == "set_budget" }) {
-                results.append(
-                    InsightCardViewModel(
-                        id: "set_budget",
-                        title: "Budget Planner",
-                        icon: "target",
-                        color: SpendyColors.primaryBlue,
-                        value: "Set Limit",
-                        subtitle: "Plan your monthly budget & safe-to-spend allowance",
-                        family: "budget"
-                    )
-                )
-            }
-        }
-        
-        // 4. If user has active recurring subscriptions
-        if !upcomingExpenseSubs.isEmpty && !results.contains(where: { $0.id == "upcoming_subs" }) {
-            let subTotal = upcomingExpenseSubs.reduce(0) { $0 + $1.amount }
-            results.append(
+            cards.append(
                 InsightCardViewModel(
-                    id: "upcoming_subs",
-                    title: "Recurring Bills",
+                    id: "track_subs",
+                    title: "Subscriptions",
                     icon: "calendar.badge.clock",
                     color: Color(hex: "#FF9500"),
-                    value: hideBalance ? "••••" : subTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                    subtitle: "\(upcomingExpenseSubs.count) subscriptions due this billing cycle",
+                    value: "Add Bills",
+                    subtitle: "Track Netflix, Spotify & renewal dates",
                     family: "subscription"
                 )
             )
         }
         
-        // 5. If user has fewer than 5 transactions, encourage logging to unlock full AI predictions
-        if store.transactions.count < 5 && !results.contains(where: { $0.id == "unlock_ai" }) {
+        // 5. Card 5: Behavioral Highlight / Largest Purchase / AI Milestone
+        if expTxs.count >= 3,
+           let maxTx = expTxs.max(by: { $0.amount < $1.amount }),
+           totalExpense > 0 && (maxTx.amount / totalExpense) >= 0.15 {
+            let maxCat = store.categories.first(where: { $0.id == maxTx.categoryId })
+            let txPct = Int((maxTx.amount / totalExpense) * 100)
+            cards.append(
+                InsightCardViewModel(
+                    id: "largest_purchase",
+                    title: "Largest Purchase",
+                    icon: maxCat?.sfSymbol ?? "star.fill",
+                    color: maxCat?.color ?? Color(hex: "#FF375F"),
+                    value: hideBalance ? "••••" : maxTx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                    subtitle: "\(maxTx.title.isEmpty ? (maxCat?.label ?? "Single expense") : maxTx.title) · \(txPct)% of month",
+                    family: "analytics"
+                )
+            )
+        } else if store.transactions.count < 5 {
             let remainingToLog = max(1, 5 - store.transactions.count)
-            results.append(
+            cards.append(
                 InsightCardViewModel(
                     id: "unlock_ai",
                     title: "AI Forecasts",
@@ -288,9 +342,25 @@ struct DashboardView: View {
                     family: "onboarding"
                 )
             )
+        } else {
+            // General engine insight fallback
+            if let firstEngine = insightsEngineItems.first {
+                cards.append(
+                    InsightCardViewModel(
+                        id: firstEngine.id,
+                        title: firstEngine.title,
+                        icon: firstEngine.icon,
+                        color: firstEngine.color,
+                        value: firstEngine.value,
+                        subtitle: firstEngine.desc,
+                        categoryId: firstEngine.categoryId,
+                        family: firstEngine.family
+                    )
+                )
+            }
         }
         
-        return results
+        return Array(cards.prefix(5))
     }
     
     var body: some View {
@@ -357,31 +427,6 @@ struct DashboardView: View {
                     .zIndex(10)
                 }
                 
-                if showSubscriptions {
-                    // Dimmed background overlay that dismisses on tap
-                    Color.black.opacity(0.35)
-                        .ignoresSafeArea()
-                        .transition(.opacity)
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                                showSubscriptions = false
-                            }
-                        }
-                    
-                    // Floating drawer from top
-                    GeometryReader { geometry in
-                        VStack {
-                            FloatingSubscriptionsView(isPresented: $showSubscriptions)
-                                .padding(.horizontal, 16)
-                                .padding(.top, geometry.safeAreaInsets.top + 60)
-                            Spacer()
-                        }
-                    }
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
-                    .ignoresSafeArea(edges: .top)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(10)
-                }
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showSettings, onDismiss: {
@@ -391,9 +436,6 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showReceiptPrinter) {
                 ReceiptPrinterSheet()
-            }
-            .sheet(isPresented: $showFullSubscriptionSheet) {
-                SubscriptionWidgetSheet()
             }
             .sheet(item: $inspectingTransaction) { tx in
                 TransactionDetailSheet(transaction: tx) { txToEdit in
@@ -483,7 +525,7 @@ struct DashboardView: View {
                     }
                 }
                 
-                // Subscription Widget Button
+                // Subscription Quick Button -> Direct navigation to Manage Tab
                 GlassCircleButton(
                     icon: "calendar.badge.clock",
                     size: 44,
@@ -491,8 +533,8 @@ struct DashboardView: View {
                     accessibilityLabel: "Subscriptions"
                 ) {
                     HapticsManager.shared.trigger(.selection)
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                        showSubscriptions = true
+                    if let selectedTab = selectedTab {
+                        selectedTab.wrappedValue = .manage
                     }
                 }
                 
@@ -904,7 +946,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 6. Smart Insights Section (Horizontal Scrollable 5+ Rich Cards)
+    // MARK: - 6. Smart Insights Section (Max 5 Clean & Story-Driven Insight Cards)
     private var smartInsightsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
@@ -933,10 +975,16 @@ struct DashboardView: View {
                                     if let selectedTab = selectedTab {
                                         selectedTab.wrappedValue = .budget
                                     }
-                                } else if insight.family == "subscription" || insight.id == "upcoming_subs" {
-                                    showFullSubscriptionSheet = true
+                                } else if insight.family == "subscription" || insight.id == "upcoming_subs" || insight.id.hasPrefix("next_bill_") || insight.id == "track_subs" {
+                                    if let selectedTab = selectedTab {
+                                        selectedTab.wrappedValue = .manage
+                                    }
                                 } else if insight.family == "onboarding" || insight.id == "unlock_ai" {
                                     showAddTransaction = true
+                                } else if insight.family == "analytics" {
+                                    if let selectedTab = selectedTab {
+                                        selectedTab.wrappedValue = .analytics
+                                    }
                                 }
                             }
                         )
