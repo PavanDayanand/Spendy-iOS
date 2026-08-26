@@ -174,9 +174,45 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
     }
 }
 
+// MARK: - Native Liquid Glass Morphing Modifiers
+
+struct GlassEffectIDModifier<ID: Hashable>: ViewModifier {
+    var id: ID
+    var namespace: Namespace.ID
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .glassEffectID(id, in: namespace)
+        } else {
+            content
+                .matchedGeometryEffect(id: id, in: namespace)
+        }
+    }
+}
+
+struct GlassEffectUnionModifier<ID: Hashable>: ViewModifier {
+    var id: ID?
+    var namespace: Namespace.ID?
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            if let id = id, let namespace = namespace {
+                content
+                    .glassEffectUnion(id: id, namespace: namespace)
+            } else {
+                content
+            }
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Native Apple Liquid Glass Toggle Style
 struct GlassToggleStyle: ToggleStyle {
     var tintColor: Color = SpendyColors.primaryBlue
+    @Namespace private var toggleNamespace
     
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -190,36 +226,64 @@ struct GlassToggleStyle: ToggleStyle {
                 }
                 HapticsManager.shared.trigger(.selection)
             }) {
-                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                    // Glass Pill Track
-                    Capsule(style: .continuous)
-                        .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
-                        .overlay {
-                            if !configuration.isOn {
-                                Capsule(style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                            }
-                        }
-                        .overlay {
+                if #available(iOS 26, *) {
+                    GlassEffectContainer(spacing: 0) {
+                        ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                            // Glass Pill Track
                             Capsule(style: .continuous)
-                                .stroke(
-                                    SpendyColors.separator,
-                                    lineWidth: 0.8
-                                )
+                                .fill(configuration.isOn ? tintColor.opacity(0.85) : SpendyColors.cardBackgroundSecondary.opacity(0.6))
+                                .glassEffect(.regular.tint(configuration.isOn ? tintColor : nil).interactive(), in: .capsule)
+                                .frame(width: 50, height: 30)
+                                .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
+                                .glassEffectID("track", in: toggleNamespace)
+                            
+                            // Specular Liquid Thumb Knob
+                            Circle()
+                                .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
+                                .overlay {
+                                    Circle()
+                                        .stroke(SpendyColors.separator.opacity(0.6), lineWidth: 0.5)
+                                }
+                                .glassEffect(.regular.interactive(), in: .circle)
+                                .frame(width: 26, height: 26)
+                                .padding(.horizontal, 2)
+                                .shadow(color: Color.black.opacity(0.25), radius: 3, x: 0, y: 1.5)
+                                .glassEffectID("knob", in: toggleNamespace)
                         }
                         .frame(width: 50, height: 30)
-                        .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
-                    
-                    // Specular Thumb Knob
-                    Circle()
-                        .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
-                        .overlay {
-                            Circle()
-                                .stroke(SpendyColors.separator, lineWidth: 0.5)
-                        }
-                        .frame(width: 26, height: 26)
-                        .padding(.horizontal, 2)
-                        .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
+                    }
+                } else {
+                    ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                        // Glass Pill Track
+                        Capsule(style: .continuous)
+                            .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
+                            .overlay {
+                                if !configuration.isOn {
+                                    Capsule(style: .continuous)
+                                        .fill(.ultraThinMaterial)
+                                }
+                            }
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .stroke(
+                                        SpendyColors.separator,
+                                        lineWidth: 0.8
+                                    )
+                            }
+                            .frame(width: 50, height: 30)
+                            .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
+                        
+                        // Specular Thumb Knob
+                        Circle()
+                            .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
+                            .overlay {
+                                Circle()
+                                    .stroke(SpendyColors.separator, lineWidth: 0.5)
+                            }
+                            .frame(width: 26, height: 26)
+                            .padding(.horizontal, 2)
+                            .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -243,6 +307,16 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     @Namespace private var segmentNamespace
     
     var body: some View {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 4) {
+                pickerContent
+            }
+        } else {
+            pickerContent
+        }
+    }
+    
+    private var pickerContent: some View {
         HStack(spacing: 4) {
             ForEach(items) { item in
                 let isSelected = selection == item
@@ -270,17 +344,25 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     .frame(height: 38)
                     .background {
                         if isSelected {
-                            Capsule(style: .continuous)
-                                .fill(activeTint)
-                                .overlay {
-                                    Capsule(style: .continuous)
-                                        .stroke(
-                                            SpendyColors.separator.opacity(0.4),
-                                            lineWidth: 0.8
-                                        )
-                                }
-                                .shadow(color: activeTint.opacity(0.25), radius: 6, y: 1.5)
-                                .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
+                            if #available(iOS 26, *) {
+                                Capsule(style: .continuous)
+                                    .fill(activeTint)
+                                    .glassEffect(.regular.tint(activeTint).interactive(), in: .capsule)
+                                    .shadow(color: activeTint.opacity(0.30), radius: 6, y: 1.5)
+                                    .glassEffectID("activeSegmentHighlight", in: segmentNamespace)
+                            } else {
+                                Capsule(style: .continuous)
+                                    .fill(activeTint)
+                                    .overlay {
+                                        Capsule(style: .continuous)
+                                            .stroke(
+                                                SpendyColors.separator.opacity(0.4),
+                                                lineWidth: 0.8
+                                            )
+                                    }
+                                    .shadow(color: activeTint.opacity(0.25), radius: 6, y: 1.5)
+                                    .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
+                            }
                         }
                     }
                     .contentShape(Capsule())
@@ -290,15 +372,21 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         }
         .padding(4)
         .background {
-            Capsule(style: .continuous)
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .stroke(
-                            SpendyColors.separator,
-                            lineWidth: 0.8
-                        )
-                }
+            if #available(iOS 26, *) {
+                Capsule(style: .continuous)
+                    .fill(SpendyColors.cardBackgroundSecondary.opacity(0.4))
+                    .glassEffect(.clear.interactive(), in: .capsule)
+            } else {
+                Capsule(style: .continuous)
+                    .fill(SpendyColors.cardBackgroundSecondary)
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(
+                                SpendyColors.separator,
+                                lineWidth: 0.8
+                            )
+                    }
+            }
         }
     }
 }
@@ -340,6 +428,14 @@ extension View {
     func nativeLiquidGlassPill(isSelected: Bool = false, tint: Color? = nil) -> some View {
         modifier(NativeLiquidGlassPillModifier(isSelected: isSelected, tintColor: tint))
     }
+    
+    func glassMorphID<ID: Hashable>(_ id: ID, in namespace: Namespace.ID) -> some View {
+        modifier(GlassEffectIDModifier(id: id, namespace: namespace))
+    }
+    
+    func glassMorphUnion<ID: Hashable>(id: ID? = nil, namespace: Namespace.ID? = nil) -> some View {
+        modifier(GlassEffectUnionModifier(id: id, namespace: namespace))
+    }
 }
 
 // MARK: - Spendy Glass Effect Container
@@ -348,8 +444,33 @@ struct SpendyGlassEffectContainer<Content: View>: View {
     @ViewBuilder var content: () -> Content
     
     var body: some View {
-        HStack(spacing: spacing) {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content()
+            }
+        } else {
             content()
         }
     }
 }
+
+// MARK: - Glass Button Group (Fluid Liquid Cluster)
+struct GlassButtonGroup<Content: View>: View {
+    var spacing: CGFloat = 8
+    @ViewBuilder var content: () -> Content
+    
+    var body: some View {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: spacing) {
+                HStack(spacing: spacing) {
+                    content()
+                }
+            }
+        } else {
+            HStack(spacing: spacing) {
+                content()
+            }
+        }
+    }
+}
+

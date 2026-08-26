@@ -42,6 +42,7 @@ struct AddTransactionView: View {
     // UI Mode State (Inline Note Editor)
     @State private var isEditingNote: Bool = false
     @FocusState private var isNoteFocused: Bool
+    @Namespace private var transactionNamespace
     
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
@@ -101,45 +102,46 @@ struct AddTransactionView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.black
+            Color(hex: "#101012")
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // 1. Top Header Bar (Close ✕ | Type Switcher | More ...)
+                // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
                 topHeaderBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
                 
-                // 2. Subheader Row: Account Pill (Left) & Currency Flag Pill (Right)
+                // MARK: - 2. Subheader Row (Account Pill + Currency Flag)
                 subHeaderRow
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 4)
                 
-                if type == .transfer {
-                    // Transfer Mode: Dual Account & Amount Cards
-                    transferCardsSection
-                        .padding(.top, 12)
-                } else {
-                    // Standard Expense / Income Layout
-                    standardAmountSection
-                }
-                
-                Spacer(minLength: 8)
-                
-                // 3. Lower Control Section (Keypad or Inline Note Editor)
                 if isEditingNote {
                     inlineNoteEditorView
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                    Spacer()
                 } else {
+                    // MARK: - 3. Amount Display
+                    if type == .transfer {
+                        transferCardsSection
+                    } else {
+                        standardAmountSection
+                    }
+                    
+                    Spacer(minLength: 8)
+                    
+                    // MARK: - 5. Bottom Keypad & Actions
                     keypadAndActionsSection
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                        .transition(.opacity)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
                 }
             }
         }
+        .presentationBackground(Color(hex: "#101012"))
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .category:
@@ -158,19 +160,6 @@ struct AddTransactionView: View {
                 CustomCalendarDrawer(selectedDate: $date)
             }
         }
-        .onAppear {
-            if transactionToEdit == nil {
-                if let firstCat = availableCategories.first {
-                    selectedCategoryId = firstCat.id
-                }
-                if let firstAcc = store.accounts.first {
-                    fromAccountId = firstAcc.id
-                }
-                if store.accounts.count > 1 {
-                    toAccountId = store.accounts[1].id
-                }
-            }
-        }
     }
     
     // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
@@ -183,7 +172,9 @@ struct AddTransactionView: View {
                 iconSize: 15,
                 foregroundColor: .white,
                 haptic: .selection,
-                accessibilityLabel: "Close"
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: transactionNamespace
             ) {
                 dismiss()
             }
@@ -220,7 +211,11 @@ struct AddTransactionView: View {
                     Label("Add Note", systemImage: "square.and.pencil")
                 }
             } label: {
-                GlassCircleIcon(size: 44) {
+                GlassCircleIcon(
+                    size: 44,
+                    morphID: "moreButton",
+                    namespace: transactionNamespace
+                ) {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.white)
@@ -229,7 +224,7 @@ struct AddTransactionView: View {
         }
     }
     
-    // MARK: - Clean Capsule Type Switcher (No Liquid Glass)
+    // MARK: - Clean Capsule Type Switcher
     private var liquidGlassTypeSwitcher: some View {
         HStack(spacing: 6) {
             typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
@@ -242,7 +237,7 @@ struct AddTransactionView: View {
             Capsule()
                 .fill(Color(hex: "#18181A"))
                 .overlay {
-                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
                 }
         }
     }
@@ -254,14 +249,10 @@ struct AddTransactionView: View {
         Button(action: {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                 type = typeOption
-                if let first = store.categories.filter({ $0.type == typeOption }).first {
-                    selectedCategoryId = first.id
-                }
             }
             HapticsManager.shared.trigger(.selection)
         }) {
             if isSelected {
-                // Selected Tab: Elevated dark capsule with white circular badge containing black arrow + bold text
                 HStack(spacing: 8) {
                     ZStack {
                         Circle()
@@ -281,13 +272,13 @@ struct AddTransactionView: View {
                 .frame(height: 36)
                 .background {
                     Capsule()
-                        .fill(Color(hex: "#242426"))
+                        .fill(Color(hex: "#2C2C2E"))
                         .overlay {
-                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
                         }
+                        .glassMorphID("activeTypePill", in: transactionNamespace)
                 }
                 .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
-                .transition(.scale.combined(with: .opacity))
             } else {
                 // Unselected Tab: Circular disc with icon only (36x36)
                 ZStack {
@@ -303,7 +294,6 @@ struct AddTransactionView: View {
                             Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.8)
                         }
                 }
-                .transition(.scale.combined(with: .opacity))
             }
         }
         .buttonStyle(.plain)
@@ -491,39 +481,44 @@ struct AddTransactionView: View {
     private var keypadAndActionsSection: some View {
         VStack(spacing: 12) {
             // Action Buttons Row: [ 📅 Today ] on left, ( 🏷 ) on right
-            HStack(spacing: 10) {
-                // Date Selector Pill (44pt height & iOS Liquid Glass Styling)
-                Button(action: {
-                    activeSheet = .calendar
-                    HapticsManager.shared.trigger(.light)
-                }) {
-                    HStack(spacing: 7) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 15, weight: .semibold))
-                        
-                        Text(formattedDateLabel)
-                            .font(.system(size: 14, weight: .semibold))
+            SpendyGlassEffectContainer(spacing: 10) {
+                HStack(spacing: 10) {
+                    // Date Selector Pill (44pt height & iOS Liquid Glass Styling)
+                    Button(action: {
+                        activeSheet = .calendar
+                        HapticsManager.shared.trigger(.light)
+                    }) {
+                        HStack(spacing: 7) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 15, weight: .semibold))
+                            
+                            Text(formattedDateLabel)
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .frame(height: 44)
+                        .nativeLiquidGlassCapsule(isInteractive: true)
+                        .glassMorphID("datePill", in: transactionNamespace)
                     }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
-                
-                // Note / Tag Button (44x44 Circular Button)
-                GlassCircleButton(
-                    icon: note.isEmpty ? "tag" : "tag.fill",
-                    size: 44,
-                    iconSize: 15,
-                    foregroundColor: note.isEmpty ? .white : SpendyColors.primaryBlue,
-                    haptic: .light,
-                    accessibilityLabel: "Add Note"
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        isEditingNote = true
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    // Note / Tag Button (44x44 Circular Button)
+                    GlassCircleButton(
+                        icon: note.isEmpty ? "tag" : "tag.fill",
+                        size: 44,
+                        iconSize: 15,
+                        foregroundColor: note.isEmpty ? .white : SpendyColors.primaryBlue,
+                        haptic: .light,
+                        accessibilityLabel: "Add Note",
+                        morphID: "noteButton",
+                        namespace: transactionNamespace
+                    ) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            isEditingNote = true
+                        }
                     }
                 }
             }
@@ -533,52 +528,56 @@ struct AddTransactionView: View {
             
             // Bottom Action Row: [ (🛒) Category ] + [ Save ]
             if type != .transfer {
-                HStack(spacing: 12) {
-                    // Category Selector Pill (44pt height, iOS Liquid Glass, and perfect padding)
-                    Button(action: {
-                        activeSheet = .category
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
-                        HStack(spacing: 8) {
-                            // Vibrant Category Circle Badge
-                            SpendyIconBadge(
-                                sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
-                                color: selectedCategory?.color ?? Color(hex: "#34C759"),
-                                size: .small,
-                                style: .circle
-                            )
-                            .padding(.leading, 6)
-                            
-                            Text(selectedCategory?.label ?? "Groceries")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .padding(.trailing, 16)
-                        }
-                        .frame(height: 44)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Spacer()
-                    
-                    // Save Button (44pt height)
-                    Button(action: {
-                        saveTransaction()
-                    }) {
-                        Text(isEditing ? "Save" : "Save")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
-                            .padding(.horizontal, 32)
-                            .frame(height: 44)
-                            .background {
-                                Capsule()
-                                    .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
-                                    .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                SpendyGlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        // Category Selector Pill (44pt height, iOS Liquid Glass, and perfect padding)
+                        Button(action: {
+                            activeSheet = .category
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            HStack(spacing: 8) {
+                                // Vibrant Category Circle Badge
+                                SpendyIconBadge(
+                                    sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
+                                    color: selectedCategory?.color ?? Color(hex: "#34C759"),
+                                    size: .small,
+                                    style: .circle
+                                )
+                                .padding(.leading, 6)
+                                
+                                Text(selectedCategory?.label ?? "Groceries")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                    .padding(.trailing, 16)
                             }
+                            .frame(height: 44)
+                            .nativeLiquidGlassCapsule(isInteractive: true)
+                            .glassMorphID("categoryPill", in: transactionNamespace)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Spacer()
+                        
+                        // Save Button (44pt height)
+                        Button(action: {
+                            saveTransaction()
+                        }) {
+                            Text(isEditing ? "Save" : "Save")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                                .padding(.horizontal, 32)
+                                .frame(height: 44)
+                                .background {
+                                    Capsule()
+                                        .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
+                                        .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                                }
+                                .glassMorphID("saveButton", in: transactionNamespace)
+                        }
+                        .buttonStyle(KeypadPressStyle())
+                        .disabled(currentAmountValue <= 0)
                     }
-                    .buttonStyle(KeypadPressStyle())
-                    .disabled(currentAmountValue <= 0)
                 }
             } else {
                 // Transfer Mode Full-Width Save Button

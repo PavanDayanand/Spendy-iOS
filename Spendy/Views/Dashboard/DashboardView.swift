@@ -538,13 +538,15 @@ struct DashboardView: View {
             Spacer()
             
             // Top Right Widget Action Buttons
-            HStack(spacing: 10) {
+            GlassButtonGroup(spacing: 10) {
                 // Currency Converter Button
                 GlassCircleButton(
                     icon: "arrow.left.arrow.right",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Currency converter"
+                    accessibilityLabel: "Currency converter",
+                    morphID: "currencyConverterButton",
+                    namespace: topControlsNamespace
                 ) {
                     HapticsManager.shared.trigger(.selection)
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
@@ -557,7 +559,9 @@ struct DashboardView: View {
                     icon: "calendar.badge.clock",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Subscriptions"
+                    accessibilityLabel: "Subscriptions",
+                    morphID: "subscriptionsButton",
+                    namespace: topControlsNamespace
                 ) {
                     HapticsManager.shared.trigger(.selection)
                     if let selectedTab = selectedTab {
@@ -570,7 +574,9 @@ struct DashboardView: View {
                     icon: "printer.fill",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Monthly receipt printer"
+                    accessibilityLabel: "Monthly receipt printer",
+                    morphID: "receiptPrinterButton",
+                    namespace: topControlsNamespace
                 ) {
                     showReceiptPrinter = true
                 }
@@ -581,68 +587,73 @@ struct DashboardView: View {
     
     // MARK: - 2. Account Selector Dropdown Menu Chip
     private var accountDropdownSelector: some View {
-        HStack {
-            Menu {
-                Button(action: {
-                    withAnimation(.spring(response: 0.3)) { selectedAccountId = "all" }
-                    HapticsManager.shared.trigger(.selection)
-                }) {
-                    HStack {
-                        Text("All Accounts")
-                        if selectedAccountId == "all" {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-                
-                Divider()
-                
-                ForEach(store.accounts) { acc in
+        SpendyGlassEffectContainer(spacing: 10) {
+            HStack {
+                Menu {
                     Button(action: {
-                        withAnimation(.spring(response: 0.3)) { selectedAccountId = acc.id }
+                        withAnimation(.spring(response: 0.3)) { selectedAccountId = "all" }
                         HapticsManager.shared.trigger(.selection)
                     }) {
                         HStack {
-                            Text("\(acc.label) (\(store.balance(for: acc.id).formattedCurrency(symbol: store.currencySymbol)))")
-                            if selectedAccountId == acc.id {
+                            Text("All Accounts")
+                            if selectedAccountId == "all" {
                                 Image(systemName: "checkmark")
                             }
                         }
                     }
-                }
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: selectedAccountSymbol)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.primaryBlue)
                     
-                    Text(selectedAccountLabel)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                    Divider()
                     
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                    ForEach(store.accounts) { acc in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3)) { selectedAccountId = acc.id }
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            HStack {
+                                Text("\(acc.label) (\(store.balance(for: acc.id).formattedCurrency(symbol: store.currencySymbol)))")
+                                if selectedAccountId == acc.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: selectedAccountSymbol)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.primaryBlue)
+                        
+                        Text(selectedAccountLabel)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 38)
+                    .nativeLiquidGlassCapsule(isInteractive: true)
+                    .glassMorphID("accountDropdownCapsule", in: topControlsNamespace)
                 }
-                .padding(.horizontal, 14)
-                .frame(height: 38)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-            }
-            .buttonStyle(.plain)
-            .matchedGeometryEffect(id: "topControl_center", in: topControlsNamespace)
-            
-            Spacer()
-            
-            // Privacy Eye Toggle Button
-            GlassCircleButton(
-                icon: hideBalance ? "eye.slash.fill" : "eye.fill",
-                size: 38,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textSecondary,
-                accessibilityLabel: hideBalance ? "Show balance" : "Hide balance"
-            ) {
-                withAnimation(.spring(response: 0.25)) {
-                    hideBalance.toggle()
+                .buttonStyle(.plain)
+                .matchedGeometryEffect(id: "topControl_center", in: topControlsNamespace)
+                
+                Spacer()
+                
+                // Privacy Eye Toggle Button
+                GlassCircleButton(
+                    icon: hideBalance ? "eye.slash.fill" : "eye.fill",
+                    size: 38,
+                    iconSize: 14,
+                    foregroundColor: SpendyColors.textSecondary,
+                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance",
+                    morphID: "privacyEyeButton",
+                    namespace: topControlsNamespace
+                ) {
+                    withAnimation(.spring(response: 0.25)) {
+                        hideBalance.toggle()
+                    }
                 }
             }
         }

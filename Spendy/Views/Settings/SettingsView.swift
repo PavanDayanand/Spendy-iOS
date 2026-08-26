@@ -34,6 +34,7 @@ struct SettingsView: View {
     @State private var showCurrencyPicker: Bool = false
     @State private var showWhatsNewSheet: Bool = false
     @State private var showCoffeeSheet: Bool = false
+    @Namespace private var settingsNamespace
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -111,30 +112,34 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - Top Header Bar
+    // MARK: - Sticky Header Bar (Close ✕ Button)
     private var headerBar: some View {
-        HStack {
-            // Circular Glass Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close"
-            ) {
-                dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Close Button
+                GlassCircleButton(
+                    icon: "xmark",
+                    size: 44,
+                    iconSize: 14,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: settingsNamespace
+                ) {
+                    dismiss()
+                }
+                
+                Spacer()
+                
+                Text("Settings")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            
-            Spacer()
-            
-            Text("Settings")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            Color.clear.frame(width: 44, height: 44)
         }
     }
     

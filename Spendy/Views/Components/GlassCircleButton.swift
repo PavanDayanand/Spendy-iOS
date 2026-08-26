@@ -37,17 +37,23 @@ struct GlassCircleIcon<Content: View>: View {
     var size: CGFloat = 44
     var tintColor: Color? = nil
     var isInteractive: Bool = true
+    var morphID: AnyHashable? = nil
+    var namespace: Namespace.ID? = nil
     @ViewBuilder var content: () -> Content
     
     init(
         size: CGFloat = 44,
         tintColor: Color? = nil,
         isInteractive: Bool = true,
+        morphID: AnyHashable? = nil,
+        namespace: Namespace.ID? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.size = size
         self.tintColor = tintColor
         self.isInteractive = isInteractive
+        self.morphID = morphID
+        self.namespace = namespace
         self.content = content
     }
     
@@ -57,6 +63,20 @@ struct GlassCircleIcon<Content: View>: View {
         }
         .frame(width: size, height: size)
         .nativeLiquidGlassCircle(isInteractive: isInteractive, tint: tintColor)
+        .modifier(OptionalGlassMorphModifier(id: morphID, namespace: namespace))
+    }
+}
+
+struct OptionalGlassMorphModifier: ViewModifier {
+    var id: AnyHashable?
+    var namespace: Namespace.ID?
+    
+    func body(content: Content) -> some View {
+        if let id = id, let namespace = namespace {
+            content.glassMorphID(id, in: namespace)
+        } else {
+            content
+        }
     }
 }
 
@@ -68,11 +88,15 @@ extension GlassCircleIcon where Content == GlassCircleDefaultIconView {
         iconWeight: Font.Weight = .bold,
         tintColor: Color? = nil,
         foregroundColor: Color = SpendyColors.textPrimary,
-        isInteractive: Bool = true
+        isInteractive: Bool = true,
+        morphID: AnyHashable? = nil,
+        namespace: Namespace.ID? = nil
     ) {
         self.size = size
         self.tintColor = tintColor
         self.isInteractive = isInteractive
+        self.morphID = morphID
+        self.namespace = namespace
         self.content = {
             GlassCircleDefaultIconView(
                 icon: icon,
@@ -90,6 +114,8 @@ struct GlassCircleButton<Content: View>: View {
     var tintColor: Color? = nil
     var haptic: HapticsManager.FeedbackStyle? = .light
     var accessibilityLabel: String? = nil
+    var morphID: AnyHashable? = nil
+    var namespace: Namespace.ID? = nil
     var action: () -> Void
     @ViewBuilder var content: () -> Content
     
@@ -99,6 +125,8 @@ struct GlassCircleButton<Content: View>: View {
         tintColor: Color? = nil,
         haptic: HapticsManager.FeedbackStyle? = .light,
         accessibilityLabel: String? = nil,
+        morphID: AnyHashable? = nil,
+        namespace: Namespace.ID? = nil,
         action: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -106,6 +134,8 @@ struct GlassCircleButton<Content: View>: View {
         self.tintColor = tintColor
         self.haptic = haptic
         self.accessibilityLabel = accessibilityLabel
+        self.morphID = morphID
+        self.namespace = namespace
         self.action = action
         self.content = content
     }
@@ -117,7 +147,13 @@ struct GlassCircleButton<Content: View>: View {
             }
             action()
         }) {
-            GlassCircleIcon(size: size, tintColor: tintColor, isInteractive: false) {
+            GlassCircleIcon(
+                size: size,
+                tintColor: tintColor,
+                isInteractive: false,
+                morphID: morphID,
+                namespace: namespace
+            ) {
                 content()
             }
             .contentShape(Circle())
@@ -138,12 +174,16 @@ extension GlassCircleButton where Content == GlassCircleDefaultIconView {
         foregroundColor: Color = SpendyColors.textPrimary,
         haptic: HapticsManager.FeedbackStyle? = .light,
         accessibilityLabel: String? = nil,
+        morphID: AnyHashable? = nil,
+        namespace: Namespace.ID? = nil,
         action: @escaping () -> Void
     ) {
         self.size = size
         self.tintColor = tintColor
         self.haptic = haptic
         self.accessibilityLabel = accessibilityLabel
+        self.morphID = morphID
+        self.namespace = namespace
         self.action = action
         self.content = {
             GlassCircleDefaultIconView(

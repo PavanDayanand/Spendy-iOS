@@ -22,6 +22,7 @@ struct CategoriesSettingsView: View {
     @State private var categoryToEdit: Category? = nil
     @State private var folderToEdit: Folder? = nil
     @State private var categoryToDelete: Category? = nil
+    @Namespace private var categoriesNamespace
     
     // Default folder ordering for clean layout
     private let expenseFolderOrder = ["Everyday Spending", "Transport", "Living", "Personal & Wellness", "Uncategorized"]
@@ -103,38 +104,44 @@ struct CategoriesSettingsView: View {
     
     // MARK: - Top Header Bar
     private var headerBar: some View {
-        HStack {
-            // Circular Glass Back Button
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back"
-            ) {
-                dismiss()
-            }
-            
-            Spacer()
-            
-            Text("Categories")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Right "Edit" Circle Toggle Button
-            GlassCircleButton(
-                icon: isEditMode ? "checkmark" : "pencil",
-                size: 44,
-                iconSize: 15,
-                foregroundColor: isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Toggle Edit Mode"
-            ) {
-                withAnimation(.spring(response: 0.25)) {
-                    isEditMode.toggle()
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Circular Glass Back Button
+                GlassCircleButton(
+                    icon: "chevron.left",
+                    size: 44,
+                    iconSize: 15,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Back",
+                    morphID: "backButton",
+                    namespace: categoriesNamespace
+                ) {
+                    dismiss()
+                }
+                
+                Spacer()
+                
+                Text("Categories")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                // Right "Edit" Circle Toggle Button
+                GlassCircleButton(
+                    icon: isEditMode ? "checkmark" : "pencil",
+                    size: 44,
+                    iconSize: 15,
+                    foregroundColor: isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
+                    haptic: .light,
+                    accessibilityLabel: "Toggle Edit Mode",
+                    morphID: "editModeButton",
+                    namespace: categoriesNamespace
+                ) {
+                    withAnimation(.spring(response: 0.25)) {
+                        isEditMode.toggle()
+                    }
                 }
             }
         }
@@ -152,7 +159,7 @@ struct CategoriesSettingsView: View {
             Capsule()
                 .fill(Color(hex: "#18181A"))
                 .overlay {
-                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
                 }
         }
     }
@@ -178,28 +185,33 @@ struct CategoriesSettingsView: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.black)
                     }
+                    
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.white)
                 } else {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.65))
+                    
+                    Text(title)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.65))
                 }
-                
-                Text(title)
-                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.65))
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
             .frame(height: 36)
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(Color(hex: "#242426"))
+                        .fill(Color(hex: "#2C2C2E"))
                         .overlay {
-                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
                         }
-                        .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
+                        .glassMorphID("categoriesTypePill", in: categoriesNamespace)
                 }
             }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -401,57 +413,62 @@ struct CategoriesSettingsView: View {
     
     // MARK: - Bottom Floating Bar (Search Capsule + Plus Button)
     private var bottomFloatingBar: some View {
-        HStack(spacing: 12) {
-            // Search Bar Capsule
-            HStack(spacing: 8) {
-                Image(systemName: SFIcons.search)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                TextField("Search categories", text: $searchQuery)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                if !searchQuery.isEmpty {
-                    Button {
-                        searchQuery = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(SpendyColors.textTertiary)
+        SpendyGlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                // Search Bar Capsule
+                HStack(spacing: 8) {
+                    Image(systemName: SFIcons.search)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    
+                    TextField("Search categories", text: $searchQuery)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    if !searchQuery.isEmpty {
+                        Button {
+                            searchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
                     }
                 }
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            .nativeLiquidGlassCapsule(isInteractive: true)
-            
-            // Floating Plus (+) Button with context menu dropdown options
-            Menu {
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    showAddFolder = true
-                }) {
-                    Label("Create a Folder", systemImage: "folder.badge.plus")
-                }
+                .padding(.horizontal, 16)
+                .frame(height: 52)
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .glassMorphID("searchCapsule", in: categoriesNamespace)
                 
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    selectedFolderForAdd = nil
-                    showAddCategory = true
-                }) {
-                    Label("Create a Category", systemImage: "plus.circle")
-                }
-            } label: {
-                GlassCircleButton(
-                    icon: SFIcons.plus,
-                    size: 52,
-                    iconSize: 20,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .medium,
-                    accessibilityLabel: "Add Options Menu"
-                ) {
-                    // Tap action intercepted by Menu wrapper
+                // Floating Plus (+) Button with context menu dropdown options
+                Menu {
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        showAddFolder = true
+                    }) {
+                        Label("Create a Folder", systemImage: "folder.badge.plus")
+                    }
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        selectedFolderForAdd = nil
+                        showAddCategory = true
+                    }) {
+                        Label("Create a Category", systemImage: "plus.circle")
+                    }
+                } label: {
+                    GlassCircleButton(
+                        icon: SFIcons.plus,
+                        size: 52,
+                        iconSize: 20,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .medium,
+                        accessibilityLabel: "Add Options Menu",
+                        morphID: "addPlusButton",
+                        namespace: categoriesNamespace
+                    ) {
+                        // Tap action intercepted by Menu wrapper
+                    }
                 }
             }
         }

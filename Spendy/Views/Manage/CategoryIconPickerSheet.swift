@@ -19,6 +19,7 @@ struct CategoryIconPickerSheet: View {
     
     @State private var selectedTab: IconTab = .defaults
     @State private var searchText: String = ""
+    @Namespace private var iconSheetNamespace
     
     enum IconTab: String, CaseIterable, Identifiable {
         case defaults = "Defaults"
@@ -295,24 +296,28 @@ struct CategoryIconPickerSheet: View {
     
     // MARK: - Header
     private var headerBar: some View {
-        ZStack {
-            HStack {
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close"
-                ) {
-                    dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            ZStack {
+                HStack {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 14,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Close",
+                        morphID: "closeButton",
+                        namespace: iconSheetNamespace
+                    ) {
+                        dismiss()
+                    }
+                    Spacer()
                 }
-                Spacer()
+                
+                Text("Choose Icon")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
             }
-            
-            Text("Choose Icon")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
         }
     }
     
@@ -325,11 +330,17 @@ struct CategoryIconPickerSheet: View {
         .padding(4)
         .frame(height: 44)
         .background {
-            Capsule()
-                .fill(Color(hex: "#18181A"))
-                .overlay {
-                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                }
+            if #available(iOS 26, *) {
+                Capsule()
+                    .fill(Color(hex: "#18181A").opacity(0.7))
+                    .glassEffect(.clear.interactive(), in: .capsule)
+            } else {
+                Capsule()
+                    .fill(Color(hex: "#18181A"))
+                    .overlay {
+                        Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
         }
     }
     
@@ -368,14 +379,22 @@ struct CategoryIconPickerSheet: View {
             .frame(height: 36)
             .background {
                 if isSelected {
-                    Capsule()
-                        .fill(Color(hex: "#242426"))
-                        .overlay {
-                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
-                        }
-                        .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
+                    if #available(iOS 26, *) {
+                        Capsule()
+                            .fill(Color(hex: "#242426"))
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .glassEffectID("activeTabPill", in: iconSheetNamespace)
+                    } else {
+                        Capsule()
+                            .fill(Color(hex: "#242426"))
+                            .overlay {
+                                Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                            }
+                            .matchedGeometryEffect(id: "activeTabPill", in: iconSheetNamespace)
+                    }
                 }
             }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

@@ -14,6 +14,7 @@ struct FloatingSubscriptionsView: View {
     
     @State private var showAddSubscription: Bool = false
     @State private var dragOffset: CGFloat = 0.0
+    @Namespace private var floatingSubNamespace
     
     private var activeSubs: [Subscription] {
         store.subscriptions.filter { !$0.isPaused }
@@ -34,28 +35,31 @@ struct FloatingSubscriptionsView: View {
             // Header Row: Close button on Left, Centered Title
             // Drag gesture is attached here so dragging the header dismisses the card,
             // without intercepting scrolls on the subscription list.
-            ZStack {
-                HStack {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                            isPresented = false
+            SpendyGlassEffectContainer(spacing: 0) {
+                ZStack {
+                    HStack {
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+                                isPresented = false
+                            }
+                        }) {
+                            Image(systemName: SFIcons.close)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(SpendyColors.textPrimary)
+                                .frame(width: 40, height: 40)
+                                .nativeLiquidGlassCircle(isInteractive: true)
+                                .glassMorphID("closeButton", in: floatingSubNamespace)
                         }
-                    }) {
-                        Image(systemName: SFIcons.close)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(SpendyColors.textPrimary)
-                            .frame(width: 40, height: 40)
-                            .nativeLiquidGlassCircle(isInteractive: true)
+                        .buttonStyle(.plain)
+                        
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
                     
-                    Spacer()
+                    Text("Subscriptions")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(SpendyColors.textPrimary)
                 }
-                
-                Text("Subscriptions")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(SpendyColors.textPrimary)
             }
             .padding(.bottom, 4)
             .contentShape(Rectangle())

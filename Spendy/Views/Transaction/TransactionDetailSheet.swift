@@ -15,6 +15,7 @@ struct TransactionDetailSheet: View {
     var onEdit: (Transaction) -> Void
     
     @State private var showDeleteConfirm: Bool = false
+    @Namespace private var sheetNamespace
     
     private var category: Category? {
         store.categories.first(where: { $0.id == transaction.categoryId })
@@ -122,7 +123,9 @@ struct TransactionDetailSheet: View {
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .selection,
-                    accessibilityLabel: "Close"
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: sheetNamespace
                 ) {
                     dismiss()
                 }
@@ -139,7 +142,9 @@ struct TransactionDetailSheet: View {
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .light,
-                    accessibilityLabel: "Edit Transaction"
+                    accessibilityLabel: "Edit Transaction",
+                    morphID: "editButton",
+                    namespace: sheetNamespace
                 ) {
                     onEdit(transaction)
                 }
@@ -152,7 +157,9 @@ struct TransactionDetailSheet: View {
                     tintColor: SpendyColors.expenseRed.opacity(0.18),
                     foregroundColor: SpendyColors.expenseRed,
                     haptic: .warning,
-                    accessibilityLabel: "Delete Transaction"
+                    accessibilityLabel: "Delete Transaction",
+                    morphID: "deleteButton",
+                    namespace: sheetNamespace
                 ) {
                     showDeleteConfirm = true
                 }

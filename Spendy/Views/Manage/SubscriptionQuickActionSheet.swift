@@ -20,6 +20,7 @@ struct SubscriptionQuickActionSheet: View {
     @State private var isProcessing: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var showEditSheet: Bool = false
+    @Namespace private var actionSheetNamespace
     
     // Live subscription lookup so edits update in real-time
     private var liveSub: Subscription {
@@ -129,7 +130,9 @@ struct SubscriptionQuickActionSheet: View {
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .selection,
-                    accessibilityLabel: "Close"
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: actionSheetNamespace
                 ) {
                     dismiss()
                 }
@@ -146,7 +149,9 @@ struct SubscriptionQuickActionSheet: View {
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .light,
-                    accessibilityLabel: "Edit Subscription"
+                    accessibilityLabel: "Edit Subscription",
+                    morphID: "editButton",
+                    namespace: actionSheetNamespace
                 ) {
                     showEditSheet = true
                 }

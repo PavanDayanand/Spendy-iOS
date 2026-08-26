@@ -191,91 +191,98 @@ struct AnalyticsView: View {
     
     // MARK: - 1. Compact Header Row
     private var compactHeader: some View {
-        HStack(spacing: 0) {
-            // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
-            Menu {
-                Picker("Timeframe", selection: $granularity) {
-                    ForEach(TimeGranularity.allCases) { item in
-                        Text(item.rawValue).tag(item)
-                    }
-                }
-            } label: {
-                GlassCircleIcon(
-                    icon: "calendar",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary
-                )
-            }
-            .accessibilityLabel("Select Timeframe")
-            
-            Spacer()
-            
-            // Center: Period Navigation  ◀  Aug 2026  ▶
-            HStack(spacing: 8) {
-                Button(action: { stepPeriod(by: -1) }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showMonthPicker = true
-                }) {
-                    Text(formattedPillTitle)
-                        .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .contentTransition(.numericText())
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: { stepPeriod(by: 1) }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 44)
-            .nativeLiquidGlassCapsule(isInteractive: true)
-            
-            Spacer()
-            
-            // Right: Settings Menu (Account Filter + Category/Account Grouping with Apple Native Pickers)
-            let isFiltered = selectedAccountId != "all"
-            Menu {
-                Section("Filter by Account") {
-                    Picker("Account", selection: $selectedAccountId) {
-                        Label("All Accounts", systemImage: "wallet.pass.fill")
-                            .tag("all")
-                        ForEach(store.accounts) { acc in
-                            Label(acc.label, systemImage: acc.sfSymbol)
-                                .tag(acc.id)
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
+                // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
+                Menu {
+                    Picker("Timeframe", selection: $granularity) {
+                        ForEach(TimeGranularity.allCases) { item in
+                            Text(item.rawValue).tag(item)
                         }
                     }
+                } label: {
+                    GlassCircleIcon(
+                        icon: "calendar",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        morphID: "calendarMenu",
+                        namespace: analyticsControlsNamespace
+                    )
                 }
+                .accessibilityLabel("Select Timeframe")
                 
-                Section("Group Breakdown") {
-                    Picker("Grouping", selection: $groupingMode) {
-                        Label("Categories", systemImage: "square.grid.2x2.fill")
-                            .tag(AnalyticsGroupingMode.categories)
-                        Label("Accounts", systemImage: "building.columns.fill")
-                            .tag(AnalyticsGroupingMode.accounts)
+                Spacer()
+                
+                // Center: Period Navigation  ◀  Aug 2026  ▶
+                HStack(spacing: 8) {
+                    Button(action: { stepPeriod(by: -1) }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(SpendyColors.textSecondary)
                     }
+                    .buttonStyle(.plain)
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.light)
+                        showMonthPicker = true
+                    }) {
+                        Text(formattedPillTitle)
+                            .font(.system(size: 15, weight: .heavy))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .contentTransition(.numericText())
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(action: { stepPeriod(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-            } label: {
-                GlassCircleIcon(
-                    icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
-                    size: 44,
-                    iconSize: 18,
-                    iconWeight: .semibold,
-                    tintColor: isFiltered ? SpendyColors.primaryBlue : nil,
-                    foregroundColor: isFiltered ? SpendyColors.primaryBlue : SpendyColors.textPrimary
-                )
+                .padding(.horizontal, 14)
+                .frame(height: 44)
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .glassMorphID("periodNavCapsule", in: analyticsControlsNamespace)
+                
+                Spacer()
+                
+                // Right: Settings Menu (Account Filter + Category/Account Grouping with Apple Native Pickers)
+                let isFiltered = selectedAccountId != "all"
+                Menu {
+                    Section("Filter by Account") {
+                        Picker("Account", selection: $selectedAccountId) {
+                            Label("All Accounts", systemImage: "wallet.pass.fill")
+                                .tag("all")
+                            ForEach(store.accounts) { acc in
+                                Label(acc.label, systemImage: acc.sfSymbol)
+                                    .tag(acc.id)
+                            }
+                        }
+                    }
+                    
+                    Section("Group Breakdown") {
+                        Picker("Grouping", selection: $groupingMode) {
+                            Label("Categories", systemImage: "square.grid.2x2.fill")
+                                .tag(AnalyticsGroupingMode.categories)
+                            Label("Accounts", systemImage: "building.columns.fill")
+                                .tag(AnalyticsGroupingMode.accounts)
+                        }
+                    }
+                } label: {
+                    GlassCircleIcon(
+                        icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
+                        size: 44,
+                        iconSize: 18,
+                        iconWeight: .semibold,
+                        tintColor: isFiltered ? SpendyColors.primaryBlue : nil,
+                        foregroundColor: isFiltered ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
+                        morphID: "settingsMenu",
+                        namespace: analyticsControlsNamespace
+                    )
+                }
             }
         }
     }

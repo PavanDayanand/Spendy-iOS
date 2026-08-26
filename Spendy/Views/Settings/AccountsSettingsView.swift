@@ -16,6 +16,7 @@ struct AccountsSettingsView: View {
     @State private var editingAccount: Account? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
     @State private var selectedFilter: AccountFilter = .all
+    @Namespace private var accountsNamespace
     
     enum AccountFilter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -60,15 +61,14 @@ struct AccountsSettingsView: View {
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        // Net Worth & Trend Hero
+                        // Net Worth Hero Card with Currency Switcher
                         heroNetWorthSection
                         
-                        // Accounts List
+                        // Accounts List Section (with horizontal type filters)
                         accountsListSection
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 120) // Clearance for floating bottom bar
+                    .padding(.bottom, 120) // Clearance for bottom button
                 }
             }
             
@@ -80,12 +80,12 @@ struct AccountsSettingsView: View {
             AddAccountSheet()
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(isPresented: $showCurrencyPicker) {
-            CurrencyPickerSheet()
-        }
         .sheet(item: $editingAccount) { acc in
             AddAccountSheet(accountToEdit: acc)
                 .presentationBackground(SpendyColors.appBackground)
+        }
+        .sheet(isPresented: $showCurrencyPicker) {
+            CurrencyPickerSheet()
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
             AccountAnalyticsSheet(account: acc)
@@ -94,30 +94,34 @@ struct AccountsSettingsView: View {
     
     // MARK: - Top Header Bar
     private var headerBar: some View {
-        HStack {
-            // Circular Glass Back Button
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back"
-            ) {
-                dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Circular Glass Back Button
+                GlassCircleButton(
+                    icon: "chevron.left",
+                    size: 44,
+                    iconSize: 15,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Back",
+                    morphID: "backButton",
+                    namespace: accountsNamespace
+                ) {
+                    dismiss()
+                }
+                
+                Spacer()
+                
+                Text("Settings")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                // Placeholder to align title
+                Spacer()
+                    .frame(width: 44)
             }
-            
-            Spacer()
-            
-            Text("Settings")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Placeholder to align title
-            Spacer()
-                .frame(width: 44)
         }
     }
     
@@ -139,6 +143,7 @@ struct AccountsSettingsView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .nativeLiquidGlassCapsule(isInteractive: true)
+                .glassMorphID("currencyPill", in: accountsNamespace)
             }
             .buttonStyle(.plain)
             
@@ -173,33 +178,43 @@ struct AccountsSettingsView: View {
     // MARK: - Account Filter Tabs Switcher
     private var filterTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(AccountFilter.allCases) { filter in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.25)) {
-                            selectedFilter = filter
-                        }
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
-                        Text(filter.rawValue)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(selectedFilter == filter ? Color.black : SpendyColors.textPrimary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background {
-                                if selectedFilter == filter {
-                                    Capsule()
-                                        .fill(Color.white)
-                                } else {
-                                    Capsule()
-                                        .fill(Color.white.opacity(0.08))
-                                        .overlay {
-                                            Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                                        }
-                                }
+            SpendyGlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    ForEach(AccountFilter.allCases) { filter in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.25)) {
+                                selectedFilter = filter
                             }
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            Text(filter.rawValue)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(selectedFilter == filter ? Color.black : SpendyColors.textPrimary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background {
+                                    if selectedFilter == filter {
+                                        if #available(iOS 26, *) {
+                                            Capsule()
+                                                .fill(Color.white)
+                                                .glassEffect(.regular.interactive(), in: .capsule)
+                                                .glassEffectID("activeFilterPill", in: accountsNamespace)
+                                        } else {
+                                            Capsule()
+                                                .fill(Color.white)
+                                                .matchedGeometryEffect(id: "activeFilterPill", in: accountsNamespace)
+                                        }
+                                    } else {
+                                        Capsule()
+                                            .fill(Color.white.opacity(0.08))
+                                            .overlay {
+                                                Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                            }
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 4)
@@ -370,22 +385,26 @@ struct AccountsSettingsView: View {
     
     // MARK: - Bottom Floating Action Buttons
     private var bottomFloatingBar: some View {
-        HStack {
-            Spacer()
-            
-            // Plus (+) Add Account Button
-            GlassCircleButton(
-                icon: SFIcons.plus,
-                size: 54,
-                iconSize: 20,
-                tintColor: SpendyColors.primaryBlue,
-                foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
-                haptic: .medium,
-                accessibilityLabel: "Add Account"
-            ) {
-                showAddAccount = true
+        SpendyGlassEffectContainer {
+            HStack {
+                Spacer()
+                
+                // Plus (+) Add Account Button
+                GlassCircleButton(
+                    icon: SFIcons.plus,
+                    size: 54,
+                    iconSize: 20,
+                    tintColor: SpendyColors.primaryBlue,
+                    foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
+                    haptic: .medium,
+                    accessibilityLabel: "Add Account",
+                    morphID: "addAccountButton",
+                    namespace: accountsNamespace
+                ) {
+                    showAddAccount = true
+                }
+                .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
             }
-            .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 20)

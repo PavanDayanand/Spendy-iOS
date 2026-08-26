@@ -97,6 +97,7 @@ struct GlassTabBar: View {
 
     @GestureState private var isDragging: Bool = false
     @State private var dragX: CGFloat? = nil
+    @Namespace private var tabBarNamespace
 
     private let barHeight: CGFloat = 64
     private let quickAddSize: CGFloat = 60
@@ -108,6 +109,7 @@ struct GlassTabBar: View {
                     tabBarContent(isGlass: true)
                         .frame(height: barHeight)
                         .glassEffect(.regular.interactive(), in: .capsule)
+                        .glassEffectID("tabBarPill", in: tabBarNamespace)
                         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
 
                     // Quick Add Floating Button
@@ -121,6 +123,7 @@ struct GlassTabBar: View {
                             .foregroundStyle(Color.primary)
                             .frame(width: quickAddSize, height: quickAddSize)
                             .glassEffect(.regular.interactive(), in: .circle)
+                            .glassEffectID("quickAddButton", in: tabBarNamespace)
                             .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
                     }
                     .buttonStyle(LiquidScaleButtonStyle())

@@ -153,44 +153,51 @@ struct AddAccountSheet: View {
     }
     
     // MARK: - Components
+    @Namespace private var headerNamespace
     
     private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close"
-            ) {
-                dismiss()
-            }
-            
-            Spacer()
-            
-            Text(isEditing ? "Edit Account" : "New Account")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Delete button (visible in Edit Mode, except for Cash account)
-            if isEditing && accountToEdit?.id != "cash" && store.accounts.count > 1 {
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Close Button
                 GlassCircleButton(
-                    icon: "trash.fill",
+                    icon: "xmark",
                     size: 44,
                     iconSize: 14,
-                    tintColor: SpendyColors.expenseRed,
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Account"
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: headerNamespace
                 ) {
-                    showDeleteConfirm = true
+                    dismiss()
                 }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
+                
+                Spacer()
+                
+                Text(isEditing ? "Edit Account" : "New Account")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                // Delete button (visible in Edit Mode, except for Cash account)
+                if isEditing && accountToEdit?.id != "cash" && store.accounts.count > 1 {
+                    GlassCircleButton(
+                        icon: "trash.fill",
+                        size: 44,
+                        iconSize: 14,
+                        tintColor: SpendyColors.expenseRed,
+                        foregroundColor: SpendyColors.expenseRed,
+                        haptic: .warning,
+                        accessibilityLabel: "Delete Account",
+                        morphID: "deleteButton",
+                        namespace: headerNamespace
+                    ) {
+                        showDeleteConfirm = true
+                    }
+                } else {
+                    Color.clear.frame(width: 44, height: 44)
+                }
             }
         }
     }

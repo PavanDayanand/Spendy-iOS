@@ -25,6 +25,7 @@ struct EditBudgetSheet: View {
     @State private var amountString: String = "0"
     @State private var selectedPeriod: BudgetPeriod = .monthly
     @State private var selectedStartDay: Int = 1
+    @Namespace private var budgetSheetNamespace
     
     let isEditing: Bool
     var onSave: (() -> Void)? = nil
@@ -81,27 +82,31 @@ struct EditBudgetSheet: View {
             
             VStack(spacing: 0) {
                 // Header Bar
-                HStack {
-                    GlassCircleButton(
-                        icon: "xmark",
-                        size: 44,
-                        iconSize: 15,
-                        foregroundColor: .white,
-                        haptic: .selection,
-                        accessibilityLabel: "Close"
-                    ) {
-                        dismiss()
+                SpendyGlassEffectContainer(spacing: 0) {
+                    HStack {
+                        GlassCircleButton(
+                            icon: "xmark",
+                            size: 44,
+                            iconSize: 15,
+                            foregroundColor: .white,
+                            haptic: .selection,
+                            accessibilityLabel: "Close",
+                            morphID: "closeButton",
+                            namespace: budgetSheetNamespace
+                        ) {
+                            dismiss()
+                        }
+                        
+                        Spacer()
+                        
+                        Text("Edit Budget")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(.white)
+                        
+                        Spacer()
+                        
+                        Color.clear.frame(width: 44, height: 44)
                     }
-                    
-                    Spacer()
-                    
-                    Text("Edit Budget")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.white)
-                    
-                    Spacer()
-                    
-                    Color.clear.frame(width: 44, height: 44)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -114,101 +119,109 @@ struct EditBudgetSheet: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color(hex: "#8E8E93"))
                     
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text(store.currencySymbol)
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(Color(hex: "#505054"))
-                        
-                        Text(formattedAmountDisplay)
-                            .font(.system(size: 56, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                    }
+                    Text("\(store.currencySymbol)\(formattedAmountDisplay)")
+                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 24)
                 
                 Spacer()
                 
-                // Controls Row: Period Selector & dynamic Start Day Menu (Uniform 44pt height)
-                HStack(spacing: 12) {
-                    // Period Selector (Monthly vs Weekly)
-                    HStack(spacing: 4) {
-                        ForEach(BudgetPeriod.allCases) { period in
-                            let isSelected = selectedPeriod == period
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                    selectedPeriod = period
-                                }
-                            }) {
-                                Text(period.title)
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(isSelected ? .white : Color(hex: "#8E8E93"))
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 36)
-                                    .background {
-                                        if isSelected {
-                                            Capsule()
-                                                .fill(Color(hex: "#242426"))
-                                                .overlay {
-                                                    Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                // Mode Selectors Row: [ Monthly / Weekly ] + [ Starts: 1st ⌄ ]
+                SpendyGlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        // Monthly / Weekly Toggle Capsule (44pt height)
+                        HStack(spacing: 2) {
+                            ForEach([BudgetPeriod.monthly, BudgetPeriod.weekly], id: \.self) { period in
+                                let isSelected = selectedPeriod == period
+                                
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                        selectedPeriod = period
+                                        selectedStartDay = period == .weekly ? 2 : 1
+                                    }
+                                    HapticsManager.shared.trigger(.selection)
+                                }) {
+                                    Text(period.title)
+                                        .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                                        .foregroundStyle(isSelected ? Color.white : Color(hex: "#8E8E93"))
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 36)
+                                        .background {
+                                            if isSelected {
+                                                if #available(iOS 26, *) {
+                                                    Capsule()
+                                                        .fill(Color(hex: "#242426"))
+                                                        .glassEffect(.regular.interactive(), in: .capsule)
+                                                        .glassEffectID("activePeriodPill", in: budgetSheetNamespace)
+                                                } else {
+                                                    Capsule()
+                                                        .fill(Color(hex: "#242426"))
+                                                        .overlay {
+                                                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                                                        }
+                                                        .matchedGeometryEffect(id: "activePeriodPill", in: budgetSheetNamespace)
                                                 }
+                                            }
                                         }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(4)
-                    .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
-                    
-                    Spacer()
-                    
-                    // Start Day Dropdown (44pt height, changes dynamically)
-                    Menu {
-                        if selectedPeriod == .weekly {
-                            ForEach(weekdays) { day in
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.selection)
-                                    selectedStartDay = day.id
-                                }) {
-                                    HStack {
-                                        Text(day.name)
-                                        if selectedStartDay == day.id {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
                                 }
-                            }
-                        } else {
-                            ForEach(1...28, id: \.self) { day in
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.selection)
-                                    selectedStartDay = day
-                                }) {
-                                    HStack {
-                                        Text(ordinalSuffix(for: day))
-                                        if selectedStartDay == day {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 14))
-                            
-                            Text("Starts: \(startDayLabel)")
-                                .font(.system(size: 13, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
+                        .padding(4)
                         .frame(height: 44)
                         .nativeLiquidGlassCapsule(isInteractive: true)
+                        .glassMorphID("periodCapsule", in: budgetSheetNamespace)
+                        
+                        Spacer()
+                        
+                        // Start Day Dropdown (44pt height, changes dynamically)
+                        Menu {
+                            if selectedPeriod == .weekly {
+                                ForEach(weekdays) { day in
+                                    Button(action: {
+                                        HapticsManager.shared.trigger(.selection)
+                                        selectedStartDay = day.id
+                                    }) {
+                                        HStack {
+                                            Text(day.name)
+                                            if selectedStartDay == day.id {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                ForEach(1...28, id: \.self) { day in
+                                    Button(action: {
+                                        HapticsManager.shared.trigger(.selection)
+                                        selectedStartDay = day
+                                    }) {
+                                        HStack {
+                                            Text(ordinalSuffix(for: day))
+                                            if selectedStartDay == day {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 14))
+                                
+                                Text("Starts: \(startDayLabel)")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .frame(height: 44)
+                            .nativeLiquidGlassCapsule(isInteractive: true)
+                            .glassMorphID("startDayDropdown", in: budgetSheetNamespace)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)

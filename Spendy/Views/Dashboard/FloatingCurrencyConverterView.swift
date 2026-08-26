@@ -21,6 +21,7 @@ struct FloatingCurrencyConverterView: View {
     @FocusState private var isAmountFocused: Bool
     
     @State private var dragOffset: CGFloat = 0.0
+    @Namespace private var converterNamespace
     
     private var convertedAmount: Double {
         guard let amount = Double(fromAmount.replacingOccurrences(of: ",", with: "")) else {
@@ -42,29 +43,32 @@ struct FloatingCurrencyConverterView: View {
     var body: some View {
         VStack(spacing: 16) {
             // Header Row: Close button on Left, Centered Title
-            ZStack {
-                HStack {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        isAmountFocused = false // Resign keyboard focus
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                            isPresented = false
+            SpendyGlassEffectContainer(spacing: 0) {
+                ZStack {
+                    HStack {
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            isAmountFocused = false // Resign keyboard focus
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+                                isPresented = false
+                            }
+                        }) {
+                            Image(systemName: SFIcons.close)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(SpendyColors.textPrimary)
+                                .frame(width: 40, height: 40)
+                                .nativeLiquidGlassCircle(isInteractive: true)
+                                .glassMorphID("closeButton", in: converterNamespace)
                         }
-                    }) {
-                        Image(systemName: SFIcons.close)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(SpendyColors.textPrimary)
-                            .frame(width: 40, height: 40)
-                            .nativeLiquidGlassCircle(isInteractive: true)
+                        .buttonStyle(.plain)
+                        
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
                     
-                    Spacer()
+                    Text("Currency converter")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(SpendyColors.textPrimary)
                 }
-                
-                Text("Currency converter")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(SpendyColors.textPrimary)
             }
             .padding(.bottom, 4)
             
@@ -118,34 +122,37 @@ struct FloatingCurrencyConverterView: View {
                     .fill(SpendyColors.separator)
                     .frame(height: 1)
                 
-                Button(action: {
-                    HapticsManager.shared.trigger(.medium)
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        let temp = fromCurrency
-                        fromCurrency = toCurrency
-                        toCurrency = temp
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.left.and.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(SpendyColors.textPrimary)
-                        
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("1 \(fromCurrency) =")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(SpendyColors.textSecondary)
-                            Text("\(CurrencyInfo.symbol(for: toCurrency))\(String(format: "%.2f", exchangeRate))")
+                SpendyGlassEffectContainer {
+                    Button(action: {
+                        HapticsManager.shared.trigger(.medium)
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            let temp = fromCurrency
+                            fromCurrency = toCurrency
+                            toCurrency = temp
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.left.and.right")
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(SpendyColors.textPrimary)
+                            
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("1 \(fromCurrency) =")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(SpendyColors.textSecondary)
+                                Text("\(CurrencyInfo.symbol(for: toCurrency))\(String(format: "%.2f", exchangeRate))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(SpendyColors.textPrimary)
+                            }
                         }
+                        .foregroundColor(SpendyColors.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .nativeLiquidGlassCapsule(isInteractive: true)
+                        .glassMorphID("swapRatePill", in: converterNamespace)
                     }
-                    .foregroundColor(SpendyColors.textPrimary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
                 
                 Rectangle()
                     .fill(SpendyColors.separator)

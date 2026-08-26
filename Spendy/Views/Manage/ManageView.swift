@@ -26,6 +26,7 @@ struct ManageView: View {
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
+    @Namespace private var manageNamespace
 
     // MARK: - Computed Properties
 
@@ -104,15 +105,19 @@ struct ManageView: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                GlassCircleButton(
-                    icon: SFIcons.plus,
-                    size: 44,
-                    iconSize: 18,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .light,
-                    accessibilityLabel: "Add Subscription"
-                ) {
-                    showAddSubscription = true
+                SpendyGlassEffectContainer {
+                    GlassCircleButton(
+                        icon: SFIcons.plus,
+                        size: 44,
+                        iconSize: 18,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .light,
+                        accessibilityLabel: "Add Subscription",
+                        morphID: "addSubscriptionButton",
+                        namespace: manageNamespace
+                    ) {
+                        showAddSubscription = true
+                    }
                 }
                 .padding(.trailing, 20)
                 .padding(.top, 10)
@@ -138,95 +143,80 @@ struct ManageView: View {
     private var titleHeader: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Subscriptions")
-                    .font(.system(size: 28, weight: .heavy))
+                Text("Manage")
+                    .font(.system(size: 32, weight: .heavy))
                     .foregroundStyle(SpendyColors.textPrimary)
-                Text("Manage recurring bills & free trials")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
+
+                Text("\(activeCount) active • \(store.currencySymbol)\(String(format: "%.2f", totalMonthly))/mo")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
+
             Spacer()
         }
-        .padding(.top, 8)
     }
 
-    // MARK: - Airy Hero Spend Section (Image 1 Style)
-
-    // MARK: - Prominent Hero Spend Card
-
-    // MARK: - Prominent Hero Spend Card
+    // MARK: - Hero Spend Section
 
     private var heroSpendSection: some View {
-        HStack(alignment: .center, spacing: 16) {
-            // Left: Overlapping Subscription Icon Cluster with Continuous Motion (Up to 5 icons)
-            let subItems = activeAndTrialSubs.prefix(5).map { sub in
-                BadgeItem(icon: sub.sfSymbol, color: Color(hex: sub.colorHex))
-            }
-            
-            if !subItems.isEmpty {
-                AnimatedBadgeCluster(items: Array(subItems), badgeSize: 34)
-            } else {
-                SpendyIconBadge(
-                    sfSymbol: SFIcons.subscriptions,
-                    color: Color(hex: "#007AFF"),
-                    size: .medium,
-                    style: .circle
-                )
-            }
-            
-            Spacer(minLength: 8)
-            
-            // Right: Text Details Stack (RIGHT ALIGNED)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("Total monthly bills")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 26, weight: .heavy, design: .default).monospacedDigit())
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                
-                HStack(spacing: 6) {
-                    Text("\(activeCount) active")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    Text("•")
-                        .font(.system(size: 9))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    Text(totalAnnual.formattedCurrency(symbol: store.currencySymbol, decimals: 0) + "/yr")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
+        HStack(spacing: 12) {
+            heroStatCard(
+                title: "MONTHLY",
+                amount: totalMonthly,
+                icon: "calendar",
+                tint: SpendyColors.primaryBlue
+            )
+
+            heroStatCard(
+                title: "YEARLY",
+                amount: totalAnnual,
+                icon: "calendar.badge.clock",
+                tint: SpendyColors.accentCyan
+            )
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func heroStatCard(title: String, amount: Double, icon: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(tint)
+
+                Text(title)
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .tracking(0.5)
+            }
+
+            Text(amount.formattedCurrency(symbol: store.currencySymbol))
+                .font(.system(size: 22, weight: .heavy, design: .default).monospacedDigit())
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(SpendyColors.cardBackground)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
 
-    // MARK: - Next Bill Due Card
+    // MARK: - Upcoming Action Section (Hero Highlight)
 
     @ViewBuilder
     private var upcomingActionSection: some View {
         if let nextSub = upcomingSubscriptions.first {
             Button {
-                HapticsManager.shared.trigger(.selection)
                 selectedSubscriptionForDetail = nextSub
             } label: {
-                HStack(spacing: 14) {
-                    // Circle Brand Icon Avatar
+                HStack(spacing: 12) {
                     SpendyIconBadge(
                         sfSymbol: nextSub.sfSymbol,
                         color: Color(hex: nextSub.colorHex),
@@ -291,48 +281,44 @@ struct ManageView: View {
     // MARK: - Apple Native Filter & Sort Menu Bar
 
     private var filterBar: some View {
-        HStack(alignment: .center) {
-            Text(subFilter == .all ? "All Subscriptions" : "\(subFilter.rawValue) Subscriptions")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack(alignment: .center) {
+                Text(subFilter == .all ? "All Subscriptions" : "\(subFilter.rawValue) Subscriptions")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
 
-            Spacer()
+                Spacer()
 
-            Menu {
-                Picker("Filter Subscriptions", selection: $subFilter) {
-                    ForEach(SubscriptionFilter.allCases) { filter in
-                        Label(filter.rawValue, systemImage: filterSystemImage(filter))
-                            .tag(filter)
+                Menu {
+                    Picker("Filter Subscriptions", selection: $subFilter) {
+                        ForEach(SubscriptionFilter.allCases) { filter in
+                            Label(filter.rawValue, systemImage: filterSystemImage(filter))
+                                .tag(filter)
+                        }
                     }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#007AFF"))
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#007AFF"))
 
-                    Text(subFilter.rawValue)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        Text(subFilter.rawValue)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
 
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .nativeLiquidGlassCapsule(isInteractive: true)
+                    .glassMorphID("manageFilterCapsule", in: manageNamespace)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        )
-                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
         }
-        .padding(.horizontal, 4)
     }
 
     private func filterSystemImage(_ filter: SubscriptionFilter) -> String {

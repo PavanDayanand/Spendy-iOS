@@ -31,6 +31,7 @@ struct EditProfileSheet: View {
     @State private var sliderBrightness: Double = 0.45
     
     @State private var showCurrencyPicker: Bool = false
+    @Namespace private var profileNamespace
     
     private let presetColors = [
         "#FF3B30", // Red
@@ -155,28 +156,32 @@ struct EditProfileSheet: View {
     
     // MARK: - Top Header Bar
     private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close"
-            ) {
-                dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Close Button
+                GlassCircleButton(
+                    icon: "xmark",
+                    size: 44,
+                    iconSize: 14,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: profileNamespace
+                ) {
+                    dismiss()
+                }
+                
+                Spacer()
+                
+                Text("Edit Space")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            
-            Spacer()
-            
-            Text("Edit Space")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            Color.clear.frame(width: 44, height: 44)
         }
     }
     

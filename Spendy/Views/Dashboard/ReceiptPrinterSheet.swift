@@ -14,6 +14,7 @@ struct ReceiptPrinterSheet: View {
     @State private var selectedMonthOffset: Int = 0
     @State private var showShareSheet: Bool = false
     @State private var renderedReceiptImage: UIImage? = nil
+    @Namespace private var receiptNamespace
     
     private var targetDate: Date {
         Calendar.current.date(byAdding: .month, value: selectedMonthOffset, to: Date()) ?? Date()
@@ -59,70 +60,84 @@ struct ReceiptPrinterSheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         // Top Header Bar
-                        HStack {
-                            GlassCircleButton(
-                                icon: "xmark",
-                                size: 44,
-                                iconSize: 14,
-                                foregroundColor: .white,
-                                haptic: .selection,
-                                accessibilityLabel: "Close"
-                            ) {
-                                dismiss()
-                            }
-                            
-                            Spacer()
-                            
-                            Text("Monthly Receipt")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.white)
-                            
-                            Spacer()
-                            
-                            GlassCircleButton(
-                                icon: "square.and.arrow.up",
-                                size: 44,
-                                iconSize: 15,
-                                foregroundColor: .white,
-                                haptic: .light,
-                                accessibilityLabel: "Share Receipt"
-                            ) {
-                                exportReceipt()
+                        SpendyGlassEffectContainer(spacing: 0) {
+                            HStack {
+                                GlassCircleButton(
+                                    icon: "xmark",
+                                    size: 44,
+                                    iconSize: 14,
+                                    foregroundColor: .white,
+                                    haptic: .selection,
+                                    accessibilityLabel: "Close",
+                                    morphID: "closeButton",
+                                    namespace: receiptNamespace
+                                ) {
+                                    dismiss()
+                                }
+                                
+                                Spacer()
+                                
+                                Text("Monthly Receipt")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundStyle(.white)
+                                
+                                Spacer()
+                                
+                                GlassCircleButton(
+                                    icon: "square.and.arrow.up",
+                                    size: 44,
+                                    iconSize: 15,
+                                    foregroundColor: .white,
+                                    haptic: .light,
+                                    accessibilityLabel: "Share Receipt",
+                                    morphID: "shareButton",
+                                    namespace: receiptNamespace
+                                ) {
+                                    exportReceipt()
+                                }
                             }
                         }
                         .padding(.top, 10)
                         
                         // Month Navigation Pill
-                        HStack(spacing: 16) {
-                            Button(action: {
-                                selectedMonthOffset -= 1
-                                HapticsManager.shared.trigger(.light)
-                            }) {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 14, weight: .bold))
+                        SpendyGlassEffectContainer(spacing: 16) {
+                            HStack(spacing: 16) {
+                                Button(action: {
+                                    selectedMonthOffset -= 1
+                                    HapticsManager.shared.trigger(.light)
+                                }) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 36, height: 36)
+                                        .contentShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Text(monthTitle)
+                                    .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(.white)
-                            }
-                            
-                            Text(monthTitle)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(minWidth: 140)
-                            
-                            Button(action: {
-                                if selectedMonthOffset < 0 {
+                                    .frame(minWidth: 140)
+                                
+                                Button(action: {
                                     selectedMonthOffset += 1
                                     HapticsManager.shared.trigger(.light)
+                                }) {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 36, height: 36)
+                                        .contentShape(Circle())
                                 }
-                            }) {
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(selectedMonthOffset < 0 ? .white : .white.opacity(0.3))
+                                .buttonStyle(.plain)
+                                .disabled(selectedMonthOffset >= 0)
+                                .opacity(selectedMonthOffset >= 0 ? 0.3 : 1.0)
                             }
-                            .disabled(selectedMonthOffset >= 0)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .nativeLiquidGlassCapsule(isInteractive: true)
+                            .glassMorphID("monthNavPill", in: receiptNamespace)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
                         
                         // Thermal Receipt Visual Card
                         receiptCardView

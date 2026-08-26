@@ -34,6 +34,7 @@ struct AccountAnalyticsSheet: View {
     @State private var editingAccountToEdit: Account? = nil
     @State private var rawSelectedDate: Date? = nil
     @State private var showDatePicker: Bool = false
+    @Namespace private var accountSheetNamespace
     
     // MARK: - Computed Properties
     private var themeColor: Color {
@@ -333,14 +334,16 @@ struct AccountAnalyticsSheet: View {
     
     // MARK: - 1. Floating Header Bar
     private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
+        HStack {
             GlassCircleButton(
                 icon: "chevron.left",
                 size: 44,
                 iconSize: 16,
                 iconWeight: .bold,
                 foregroundColor: .white,
-                accessibilityLabel: "Back"
+                accessibilityLabel: "Back",
+                morphID: "backButton",
+                namespace: accountSheetNamespace
             ) {
                 HapticsManager.shared.trigger(.selection)
                 if let onDismiss = onDismiss {
@@ -360,7 +363,9 @@ struct AccountAnalyticsSheet: View {
                 iconSize: 16,
                 iconWeight: .bold,
                 foregroundColor: .white,
-                accessibilityLabel: "Edit Account"
+                accessibilityLabel: "Edit Account",
+                morphID: "editButton",
+                namespace: accountSheetNamespace
             ) {
                 HapticsManager.shared.trigger(.light)
                 editingAccountToEdit = account
@@ -542,7 +547,7 @@ struct AccountAnalyticsSheet: View {
             }
             
             // Native Liquid Glass Index Selector Pill Strip + Date Picker Button
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 HStack(spacing: 4) {
                     ForEach(ChartPeriod.allCases) { period in
                         let isSelected = selectedPeriod == period
@@ -560,8 +565,16 @@ struct AccountAnalyticsSheet: View {
                                 .padding(.vertical, 8)
                                 .background {
                                     if isSelected {
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.20))
+                                        if #available(iOS 26, *) {
+                                            Capsule()
+                                                .fill(Color.white.opacity(0.20))
+                                                .glassEffect(.regular.interactive(), in: .capsule)
+                                                .glassEffectID("activePeriodPill", in: accountSheetNamespace)
+                                        } else {
+                                            Capsule()
+                                                .fill(Color.white.opacity(0.20))
+                                                .matchedGeometryEffect(id: "activePeriodPill", in: accountSheetNamespace)
+                                        }
                                     }
                                 }
                                 .contentShape(Capsule())
@@ -571,6 +584,7 @@ struct AccountAnalyticsSheet: View {
                 }
                 .padding(4)
                 .nativeLiquidGlassCapsule(isInteractive: true)
+                .glassMorphID("periodCapsule", in: accountSheetNamespace)
                 
                 // Calendar Date Picker Button
                 Button {
@@ -586,6 +600,7 @@ struct AccountAnalyticsSheet: View {
                                 .fill(Color(hex: "#1C1C1E").opacity(0.75))
                                 .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
                         }
+                        .glassMorphID("calendarButton", in: accountSheetNamespace)
                 }
                 .buttonStyle(.plain)
             }

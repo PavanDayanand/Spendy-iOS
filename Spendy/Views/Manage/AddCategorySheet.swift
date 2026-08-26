@@ -157,42 +157,50 @@ struct AddCategorySheet: View {
     }
     
     // MARK: - Top Header Bar
+    @Namespace private var headerNamespace
+    
     private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close"
-            ) {
-                dismiss()
-            }
-            
-            Spacer()
-            
-            // Type toggleSwitcher (Expense / Income)
-            typeToggleCapsule
-            
-            Spacer()
-            
-            // Delete Button (if editing)
-            if isEditing {
+        SpendyGlassEffectContainer(spacing: 0) {
+            HStack {
+                // Close Button
                 GlassCircleButton(
-                    icon: "trash.fill",
+                    icon: "xmark",
                     size: 44,
                     iconSize: 14,
-                    tintColor: SpendyColors.expenseRed,
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Category"
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
+                    namespace: headerNamespace
                 ) {
-                    showDeleteConfirm = true
+                    dismiss()
                 }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
+                
+                Spacer()
+                
+                // Type toggleSwitcher (Expense / Income)
+                typeToggleCapsule
+                
+                Spacer()
+                
+                // Delete Button (if editing)
+                if isEditing {
+                    GlassCircleButton(
+                        icon: "trash.fill",
+                        size: 44,
+                        iconSize: 14,
+                        tintColor: SpendyColors.expenseRed,
+                        foregroundColor: SpendyColors.expenseRed,
+                        haptic: .warning,
+                        accessibilityLabel: "Delete Category",
+                        morphID: "deleteButton",
+                        namespace: headerNamespace
+                    ) {
+                        showDeleteConfirm = true
+                    }
+                } else {
+                    Color.clear.frame(width: 44, height: 44)
+                }
             }
         }
     }
@@ -209,7 +217,7 @@ struct AddCategorySheet: View {
             Capsule()
                 .fill(Color(hex: "#18181A"))
                 .overlay {
-                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
                 }
         }
     }
@@ -250,10 +258,11 @@ struct AddCategorySheet: View {
                 .frame(height: 36)
                 .background {
                     Capsule()
-                        .fill(Color(hex: "#242426"))
+                        .fill(Color(hex: "#2C2C2E"))
                         .overlay {
-                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
                         }
+                        .glassMorphID("categoryTypePill", in: headerNamespace)
                 }
                 .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
             } else {

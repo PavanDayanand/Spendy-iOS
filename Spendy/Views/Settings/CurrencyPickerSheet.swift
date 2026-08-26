@@ -76,6 +76,7 @@ struct CurrencyPickerSheet: View {
     @Environment(ExpenseStore.self) private var store
     
     @State private var searchText: String = ""
+    @Namespace private var currencySheetNamespace
     
     // Custom highlights & selection triggers
     var selectedCode: String? = nil
@@ -216,24 +217,28 @@ struct CurrencyPickerSheet: View {
     
     // MARK: - Header
     private var headerBar: some View {
-        ZStack {
-            HStack {
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close"
-                ) {
-                    dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            ZStack {
+                HStack {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 14,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Close",
+                        morphID: "closeButton",
+                        namespace: currencySheetNamespace
+                    ) {
+                        dismiss()
+                    }
+                    Spacer()
                 }
-                Spacer()
+                
+                Text("Select Currency")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(SpendyColors.textPrimary)
             }
-            
-            Text("Select Currency")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(SpendyColors.textPrimary)
         }
     }
     

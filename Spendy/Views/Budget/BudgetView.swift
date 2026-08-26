@@ -98,7 +98,7 @@ struct BudgetView: View {
     
     // MARK: - Sticky Action Buttons (Stay fixed at top right)
     private var actionButtons: some View {
-        HStack(spacing: 10) {
+        GlassButtonGroup(spacing: 10) {
             // Edit Liquid Glass Button
             GlassCircleButton(
                 icon: SFIcons.edit,
@@ -106,7 +106,9 @@ struct BudgetView: View {
                 iconSize: 15,
                 foregroundColor: SpendyColors.textPrimary,
                 haptic: .light,
-                accessibilityLabel: "Edit Budget"
+                accessibilityLabel: "Edit Budget",
+                morphID: "editButton",
+                namespace: budgetControlsNamespace
             ) {
                 isEditingExisting = true
                 showEditBudgetSheet = true
@@ -119,7 +121,9 @@ struct BudgetView: View {
                 iconSize: 15,
                 foregroundColor: SpendyColors.expenseRed,
                 haptic: .medium,
-                accessibilityLabel: "Delete Budget"
+                accessibilityLabel: "Delete Budget",
+                morphID: "deleteButton",
+                namespace: budgetControlsNamespace
             ) {
                 showDeleteConfirmation = true
             }
