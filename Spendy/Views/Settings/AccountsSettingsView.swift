@@ -47,7 +47,7 @@ struct AccountsSettingsView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: "#1C1C1E")
+            SpendyColors.appBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -56,7 +56,7 @@ struct AccountsSettingsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 10)
-                    .background(Color(hex: "#1C1C1E"))
+                    .background(SpendyColors.appBackground)
                     .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
@@ -76,6 +76,7 @@ struct AccountsSettingsView: View {
             bottomFloatingBar
         }
         .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
                 .presentationBackground(SpendyColors.appBackground)
@@ -112,7 +113,7 @@ struct AccountsSettingsView: View {
                 
                 Spacer()
                 
-                Text("Settings")
+                Text("Accounts")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                 

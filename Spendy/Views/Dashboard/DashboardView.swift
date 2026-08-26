@@ -481,7 +481,7 @@ struct DashboardView: View {
                 }
             }
             .navigationDestination(isPresented: $showAccountsHub) {
-                AccountsSettingsView()
+                AccountsView(topControlsNamespace: topControlsNamespace)
             }
         }
     }
