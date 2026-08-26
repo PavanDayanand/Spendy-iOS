@@ -140,7 +140,7 @@ struct CurrencyPickerSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color(hex: "#1C1C1E")
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -201,13 +201,14 @@ struct CurrencyPickerSheet: View {
             }
             .background {
                 LinearGradient(
-                    colors: [Color.clear, SpendyColors.appBackground.opacity(0.95), SpendyColors.appBackground],
+                    colors: [Color.clear, Color(hex: "#1C1C1E").opacity(0.95), Color(hex: "#1C1C1E")],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .presentationBackground(Color(hex: "#1C1C1E"))
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)

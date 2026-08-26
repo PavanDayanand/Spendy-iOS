@@ -217,15 +217,16 @@ struct BadgeItem: Identifiable {
 // MARK: - Overlapping Badge Cluster
 
 /// Renders circular icon badges in a compact triangle cluster, matching the reference design.
+// MARK: - Overlapping Badge Cluster
+
+/// Renders circular icon badges in a compact cluster pattern, matching the reference design.
 struct OverlappingBadgeCluster: View {
     let items: [BadgeItem]
     var badgeSize: CGFloat = 34
     
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Position badges in a cluster pattern:
-            // [0] top-left, [1] top-right (overlapping), [2] bottom-left offset
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            ForEach(Array(items.prefix(5).enumerated()), id: \.element.id) { index, item in
                 singleBadge(item)
                     .offset(x: offsetX(for: index), y: offsetY(for: index))
                     .zIndex(Double(items.count - index))
@@ -252,9 +253,10 @@ struct OverlappingBadgeCluster: View {
     private func offsetX(for index: Int) -> CGFloat {
         switch index {
         case 0: return 0                        // top-left
-        case 1: return badgeSize * 0.7          // top-right, overlapping
+        case 1: return badgeSize * 0.65         // top-right, overlapping
         case 2: return badgeSize * 0.2          // bottom-left, offset slightly
-        case 3: return badgeSize * 0.9          // bottom-right
+        case 3: return badgeSize * 0.85         // bottom-right
+        case 4: return badgeSize * 0.5          // center-bottom peek
         default: return 0
         }
     }
@@ -263,8 +265,9 @@ struct OverlappingBadgeCluster: View {
         switch index {
         case 0: return 0                        // top row
         case 1: return 0                        // top row
-        case 2: return badgeSize * 0.65         // bottom row
-        case 3: return badgeSize * 0.65         // bottom row
+        case 2: return badgeSize * 0.6          // bottom row
+        case 3: return badgeSize * 0.6          // bottom row
+        case 4: return badgeSize * 0.8          // extra bottom peek
         default: return 0
         }
     }
@@ -273,13 +276,27 @@ struct OverlappingBadgeCluster: View {
         switch items.count {
         case 0: return 0
         case 1: return badgeSize
-        case 2: return badgeSize * 1.7
-        case 3: return badgeSize * 1.7
-        default: return badgeSize * 1.9
+        case 2: return badgeSize * 1.65
+        case 3: return badgeSize * 1.65
+        case 4: return badgeSize * 1.85
+        default: return badgeSize * 1.85
         }
     }
     
     private var clusterHeight: CGFloat {
-        items.count <= 2 ? badgeSize : badgeSize * 1.65
+        if items.count <= 2 { return badgeSize }
+        if items.count <= 4 { return badgeSize * 1.6 }
+        return badgeSize * 1.8
+    }
+}
+
+// MARK: - Animated Badge Cluster (Controlled In-Bounds Layout)
+
+struct AnimatedBadgeCluster: View {
+    let items: [BadgeItem]
+    var badgeSize: CGFloat = 28
+    
+    var body: some View {
+        OverlappingBadgeCluster(items: items, badgeSize: badgeSize)
     }
 }

@@ -31,6 +31,25 @@ final class ExpenseStore {
         didSet { saveToDisk() }
     }
     
+    var hapticsEnabled: Bool = true {
+        didSet {
+            HapticsManager.shared.isEnabled = hapticsEnabled
+            saveToDisk()
+        }
+    }
+    
+    var profileImageData: Data? = nil {
+        didSet { saveToDisk() }
+    }
+    
+    var profileIconSymbol: String? = nil {
+        didSet { saveToDisk() }
+    }
+    
+    var profileColorHex: String? = nil {
+        didSet { saveToDisk() }
+    }
+    
     var soundEnabled: Bool = true {
         didSet { saveToDisk() }
     }
@@ -139,10 +158,15 @@ final class ExpenseStore {
     init() {
         loadFromDisk()
         fetchLiveRates()
+        HapticsManager.shared.isEnabled = hapticsEnabled
     }
     
     private struct StoragePayload: Codable {
         var userName: String?
+        var hapticsEnabled: Bool?
+        var profileImageData: Data?
+        var profileIconSymbol: String?
+        var profileColorHex: String?
         var soundEnabled: Bool?
         var appearanceMode: AppearanceMode?
         var topGradientColorHex: String?
@@ -171,6 +195,10 @@ final class ExpenseStore {
                 let data = try Data(contentsOf: storageURL)
                 let payload = try JSONDecoder().decode(StoragePayload.self, from: data)
                 self.userName = payload.userName ?? ""
+                self.hapticsEnabled = payload.hapticsEnabled ?? true
+                self.profileImageData = payload.profileImageData
+                self.profileIconSymbol = payload.profileIconSymbol
+                self.profileColorHex = payload.profileColorHex
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.appearanceMode = .dark
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#4F46E5"
@@ -216,6 +244,10 @@ final class ExpenseStore {
         do {
             let payload = StoragePayload(
                 userName: userName,
+                hapticsEnabled: hapticsEnabled,
+                profileImageData: profileImageData,
+                profileIconSymbol: profileIconSymbol,
+                profileColorHex: profileColorHex,
                 soundEnabled: soundEnabled,
                 appearanceMode: .dark,
                 topGradientColorHex: topGradientColorHex,

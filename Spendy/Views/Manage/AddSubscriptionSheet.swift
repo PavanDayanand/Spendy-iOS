@@ -83,25 +83,9 @@ struct AddSubscriptionSheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
 
-            // Top ambient gradient glow based on selected color
+            // Top full-width ambient gradient glow based on selected color
             let themeColor = Color(hex: selectedColorHex)
-            VStack {
-                RadialGradient(
-                    colors: [
-                        themeColor.opacity(0.3),
-                        themeColor.opacity(0.08),
-                        Color.clear
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 360
-                )
-                .frame(height: 380)
-                .blur(radius: 15)
-                .ignoresSafeArea()
-
-                Spacer()
-            }
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.30)
 
             VStack(spacing: 0) {
                 // Top Header Bar
@@ -158,8 +142,8 @@ struct AddSubscriptionSheet: View {
             // Close Button
             GlassCircleButton(
                 icon: "xmark",
-                size: 44,
-                iconSize: 14,
+                size: 40,
+                iconSize: 13,
                 foregroundColor: SpendyColors.textPrimary,
                 haptic: .selection,
                 accessibilityLabel: "Close"
@@ -175,13 +159,12 @@ struct AddSubscriptionSheet: View {
 
             Spacer()
 
-            // Delete button (visible in Edit Mode)
+            // Delete button (visible in Edit Mode, matches close button glass circle with red icon)
             if isEditing {
                 GlassCircleButton(
                     icon: "trash.fill",
-                    size: 44,
-                    iconSize: 14,
-                    tintColor: SpendyColors.expenseRed,
+                    size: 40,
+                    iconSize: 13,
                     foregroundColor: SpendyColors.expenseRed,
                     haptic: .warning,
                     accessibilityLabel: "Delete Subscription"
@@ -189,7 +172,7 @@ struct AddSubscriptionSheet: View {
                     showDeleteConfirmation = true
                 }
             } else {
-                Color.clear.frame(width: 44, height: 44)
+                Color.clear.frame(width: 40, height: 40)
             }
         }
     }
@@ -342,16 +325,16 @@ struct AddSubscriptionSheet: View {
 
                 // Free Trial
                 Toggle(isOn: $isTrial) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Free Trial")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
+                            .foregroundStyle(SpendyColors.textPrimary)
                         Text("Remind before trial ends")
                             .font(.system(size: 12))
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
-                .tint(SpendyColors.primaryBlue)
+                .tint(Color(hex: "#34C759"))
                 .padding(.vertical, 8)
 
                 Divider().background(SpendyColors.separator)
@@ -480,15 +463,26 @@ struct AddSubscriptionSheet: View {
         Button(action: {
             saveSubscription()
         }) {
-            let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF" || selectedColorHex.uppercased() == "#E4E4E7" || selectedColorHex.uppercased() == "#D4D4D8"
-
             Text(isEditing ? "Save Changes" : "Create Subscription")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(isLightColor ? Color.black : Color.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color(hex: selectedColorHex), in: Capsule())
-                .shadow(color: Color(hex: selectedColorHex).opacity(0.2), radius: 10, y: 4)
+                .frame(height: 52)
+                .background {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: selectedColorHex), Color(hex: selectedColorHex).opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                    }
+                    .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 12, y: 5)
+                }
         }
         .buttonStyle(.plain)
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Double(amountString) ?? 0) <= 0)

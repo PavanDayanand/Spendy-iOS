@@ -80,37 +80,23 @@ struct AddCategorySheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Dynamic Category Ambient Gradient Glow based on selected category color
+            // Dynamic Category Full-Width Ambient Header Glow based on selected category color
             let themeColor = Color(hex: selectedColorHex)
-            VStack {
-                RadialGradient(
-                    colors: [
-                        themeColor.opacity(0.35),
-                        themeColor.opacity(0.12),
-                        Color.clear
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 360
-                )
-                .frame(height: 380)
-                .blur(radius: 15)
-                .ignoresSafeArea()
-                
-                Spacer()
-            }
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
             
             VStack(spacing: 0) {
-                // Top Header: Close, Type Toggle Switcher, Delete
+                // Top Header: Close, Type Toggle Switcher, Delete (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
+                    .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Hero Circle Avatar
                         avatarHeroSection
-                            .padding(.top, 52)
+                            .padding(.top, 32)
                         
                         // Category Name Field & Color Circle button
                         nameAndColorCard
@@ -440,10 +426,10 @@ struct AddCategorySheet: View {
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(Color(hex: "#141416"))
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }
@@ -495,10 +481,10 @@ struct AddCategorySheet: View {
                 .padding(.vertical, 16)
                 .background {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
+                        .fill(Color.white.opacity(0.06))
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                         }
                 }
             }

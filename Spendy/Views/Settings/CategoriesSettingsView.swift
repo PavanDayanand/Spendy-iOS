@@ -29,30 +29,37 @@ struct CategoriesSettingsView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color(hex: "#1C1C1E")
                 .ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    // Top Custom Header Bar
-                    headerBar
-                    
-                    // Expense / Income Segmented Glass Toggle
-                    typeSegmentedControl
-                        .padding(.top, 4)
-                    
-                    // Grouped Categories Content
-                    if filteredCategories.isEmpty {
-                        emptyStateView
-                    } else if searchQuery.isEmpty {
-                        folderSectionsView
-                    } else {
-                        searchResultsView
+            VStack(spacing: 0) {
+                // Top Custom Header Bar (Sticky at top!)
+                headerBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 10)
+                    .background(Color(hex: "#1C1C1E"))
+                    .zIndex(10)
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        // Expense / Income Segmented Glass Toggle
+                        typeSegmentedControl
+                            .padding(.top, 4)
+                        
+                        // Grouped Categories Content
+                        if filteredCategories.isEmpty {
+                            emptyStateView
+                        } else if searchQuery.isEmpty {
+                            folderSectionsView
+                        } else {
+                            searchResultsView
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 120) // Clearance for bottom floating bar
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 120) // Clearance for bottom floating bar
             }
             
             // Bottom Floating Bar: Search Capsule + Plus Button
@@ -344,7 +351,7 @@ struct CategoriesSettingsView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)

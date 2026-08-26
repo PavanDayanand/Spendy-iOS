@@ -19,37 +19,43 @@ struct DataManagementView: View {
     @State private var importAlertMessage: String? = nil
     
     var body: some View {
-        ZStack {
-            SpendyColors.appBackground
+        ZStack(alignment: .top) {
+            Color(hex: "#1C1C1E")
                 .ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Header
-                    HStack {
-                        GlassCircleButton(
-                            icon: "chevron.left",
-                            size: 44,
-                            iconSize: 15,
-                            foregroundColor: SpendyColors.textPrimary,
-                            haptic: .selection,
-                            accessibilityLabel: "Back"
-                        ) {
-                            dismiss()
-                        }
-                        
-                        Spacer()
-                        
-                        Text("Data Management")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Spacer()
-                        
-                        Color.clear.frame(width: 44, height: 44)
+            VStack(spacing: 0) {
+                // Header (Sticky at top!)
+                HStack {
+                    GlassCircleButton(
+                        icon: "chevron.left",
+                        size: 44,
+                        iconSize: 15,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Back"
+                    ) {
+                        dismiss()
                     }
                     
-                    // Backup & Export Section
+                    Spacer()
+                    
+                    Text("Data Management")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Color.clear.frame(width: 44, height: 44)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+                .background(Color(hex: "#1C1C1E"))
+                .zIndex(10)
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        // Backup & Export Section
                     VStack(alignment: .leading, spacing: 10) {
                         Text("BACKUP & EXPORT")
                             .font(.system(size: 11, weight: .bold))
@@ -128,9 +134,11 @@ struct DataManagementView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
             }
         }
         .navigationBarHidden(true)

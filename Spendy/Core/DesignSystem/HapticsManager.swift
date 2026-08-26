@@ -11,6 +11,8 @@ final class HapticsManager {
     static let shared = HapticsManager()
     private init() {}
     
+    var isEnabled: Bool = true
+    
     enum FeedbackStyle {
         case light
         case medium
@@ -24,6 +26,7 @@ final class HapticsManager {
     }
     
     func trigger(_ style: FeedbackStyle) {
+        guard isEnabled else { return }
         Task { @MainActor in
             switch style {
             case .light:

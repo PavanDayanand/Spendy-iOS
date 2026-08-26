@@ -36,17 +36,16 @@ struct LiquidMeshBackground: View {
                     )
                     .ignoresSafeArea()
                     
-                    // 3. Top Center Organic Ambient Radial Bloom
-                    RadialGradient(
+                    // 3. Top Ambient Full-Width Luminous Flow
+                    LinearGradient(
                         gradient: Gradient(stops: [
-                            .init(color: topColor.opacity(0.55), location: 0.0),
-                            .init(color: topColor.opacity(0.30), location: 0.30),
-                            .init(color: topColor.opacity(0.08), location: 0.65),
-                            .init(color: Color.black.opacity(0.0), location: 1.0)
+                            .init(color: topColor.opacity(0.45), location: 0.0),
+                            .init(color: topColor.opacity(0.20), location: 0.15),
+                            .init(color: topColor.opacity(0.05), location: 0.30),
+                            .init(color: Color.black.opacity(0.0), location: 0.48)
                         ]),
-                        center: UnitPoint(x: 0.5, y: -0.10),
-                        startRadius: 0,
-                        endRadius: height * 0.45
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                     .ignoresSafeArea()
                 }

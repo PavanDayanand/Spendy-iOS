@@ -46,23 +46,30 @@ struct AccountsSettingsView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color(hex: "#1C1C1E")
                 .ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Top Custom Header Bar
-                    headerBar
-                    
-                    // Net Worth & Trend Hero
-                    heroNetWorthSection
-                    
-                    // Accounts List
-                    accountsListSection
+            VStack(spacing: 0) {
+                // Top Custom Header Bar (Sticky at top!)
+                headerBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 10)
+                    .background(Color(hex: "#1C1C1E"))
+                    .zIndex(10)
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        // Net Worth & Trend Hero
+                        heroNetWorthSection
+                        
+                        // Accounts List
+                        accountsListSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 120) // Clearance for floating bottom bar
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 120) // Clearance for floating bottom bar
             }
             
             // Bottom Floating Action (Add +)
@@ -246,7 +253,7 @@ struct AccountsSettingsView: View {
                     .frame(maxWidth: .infinity)
                     .background {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(SpendyColors.cardBackground)
+                            .fill(SpendyColors.sheetCardBackground)
                             .overlay {
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -287,7 +294,7 @@ struct AccountsSettingsView: View {
                             .padding(16)
                             .background {
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
+                                    .fill(SpendyColors.sheetCardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                                             .stroke(SpendyColors.separator, lineWidth: 0.8)

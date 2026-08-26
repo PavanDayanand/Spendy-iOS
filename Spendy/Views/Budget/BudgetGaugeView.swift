@@ -40,24 +40,20 @@ struct BudgetGaugeView: View {
     
     var body: some View {
         VStack(spacing: 24) {
-            // 1. Title, Large Amount, & Status Badge
+            // 1. Title & Large Amount (Cleanly Centered Hero)
             VStack(spacing: 6) {
                 Text(periodTitle == "Weekly" ? "Spent this week" : "Spent this month")
                     .font(.system(size: 13, weight: .bold))
                     .tracking(0.5)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
-                HStack(alignment: .center, spacing: 10) {
-                    Text(spent.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                        .font(.system(size: 40, weight: .heavy, design: .default).monospacedDigit())
-                        .foregroundStyle(isExceeded ? Color(hex: "#FF453A") : SpendyColors.textPrimary)
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(1)
-                    
-                    pacingStatusBadge
-                }
+                Text(spent.formattedCurrency(symbol: currencySymbol, decimals: 0))
+                    .font(.system(size: 42, weight: .heavy, design: .default).monospacedDigit())
+                    .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.textPrimary)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
             }
-            .padding(.top, 10)
+            .padding(.top, 8)
             
             // 2. 240-Degree Segmented Arc of "Small Cards"
             ZStack {
@@ -86,8 +82,8 @@ struct BudgetGaugeView: View {
                         )
                 }
                 
-                // Centered text inside the circle
-                VStack(spacing: 2) {
+                // Centered text & Status Badge inside the arc
+                VStack(spacing: 4) {
                     Text("\(daysLeft)")
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
@@ -97,8 +93,12 @@ struct BudgetGaugeView: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                         .textCase(.uppercase)
+                        .tracking(0.5)
+                    
+                    pacingStatusBadge
+                        .padding(.top, 4)
                 }
-                .offset(y: radius * 0.25)
+                .offset(y: radius * 0.22)
             }
             .frame(width: radius * 2 + 40, height: radius * 1.5 + 40)
             
@@ -107,7 +107,7 @@ struct BudgetGaugeView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(isExceeded ? Color(hex: "#FF453A") : Color(hex: "#30D158"))
+                        .foregroundStyle(isExceeded ? SpendyColors.warningOrange : Color(hex: "#30D158"))
                         .padding(.top, 2)
                     
                     Text(msg)
@@ -149,15 +149,15 @@ struct BudgetGaugeView: View {
         case .overPace(let pctDiff):
             iconName = "arrow.up.forward.circle.fill"
             badgeText = "↑ \(pctDiff)% high"
-            badgeColor = Color(hex: "#FF9500")
+            badgeColor = SpendyColors.warningOrange
         case .underPace(let pctDiff):
             iconName = "arrow.down.forward.circle.fill"
             badgeText = "↓ \(pctDiff)% less"
             badgeColor = Color(hex: "#30D158")
         case .exceeded:
-            iconName = "exclamationmark.octagon.fill"
+            iconName = "exclamationmark.triangle.fill"
             badgeText = "Exceeded"
-            badgeColor = Color(hex: "#FF453A")
+            badgeColor = SpendyColors.warningOrange
         }
         
         return HStack(spacing: 4) {

@@ -74,37 +74,23 @@ struct AddAccountSheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Top ambient gradient glow based on selected color
+            // Top full-width ambient gradient glow based on selected color
             let themeColor = Color(hex: selectedColorHex)
-            VStack {
-                RadialGradient(
-                    colors: [
-                        themeColor.opacity(0.3),
-                        themeColor.opacity(0.08),
-                        Color.clear
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 360
-                )
-                .frame(height: 380)
-                .blur(radius: 15)
-                .ignoresSafeArea()
-                
-                Spacer()
-            }
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
             
             VStack(spacing: 0) {
-                // Top Header Bar
+                // Top Header Bar (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
+                    .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Hero Rounded Square Avatar
                         avatarHeroSection
-                            .padding(.top, 52)
+                            .padding(.top, 32)
                         
                         // Form list
                         formContentSection
@@ -458,10 +444,10 @@ struct AddAccountSheet: View {
         .padding(18)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(Color(hex: "#141416"))
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }

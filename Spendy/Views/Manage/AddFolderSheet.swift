@@ -53,10 +53,12 @@ struct AddFolderSheet: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Top Header: Close, Type Toggle, Delete
+                // Top Header: Close, Type Toggle, Delete (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
+                    .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
@@ -234,10 +236,10 @@ struct AddFolderSheet: View {
         .padding(.vertical, 16)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(Color.white.opacity(0.06))
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }

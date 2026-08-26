@@ -73,6 +73,7 @@ struct AnalyticsView: View {
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
+    @State private var showEditBudgetSheet: Bool = false
     
     // Collapsible List Expand States
     @State private var isSpendingListExpanded: Bool = false
@@ -114,13 +115,9 @@ struct AnalyticsView: View {
                                 
                                 // Card 4: Budget Ring & Pacing Card
                                 budgetRingPacingCard
-                                
-                                // Card 5: Smart Insights Carousel
-                                smartInsightsCarousel
-                                     .padding(.horizontal, -20)
-                                    .padding(.bottom, 30)
                             }
                             .padding(.horizontal, 20)
+                            .padding(.bottom, 30)
                         } header: {
                             // Sticky Toolbar floating on top
                             compactHeader
@@ -138,6 +135,13 @@ struct AnalyticsView: View {
             }
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionWidgetSheet()
+            }
+            .sheet(isPresented: $showEditBudgetSheet) {
+                EditBudgetSheet(isEditing: false) {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        selectedTab?.wrappedValue = .budget
+                    }
+                }
             }
             .sheet(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(account: account)
@@ -188,19 +192,11 @@ struct AnalyticsView: View {
     // MARK: - 1. Compact Header Row
     private var compactHeader: some View {
         HStack(spacing: 0) {
-            // Left: Timeframe Granularity Selector
+            // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
             Menu {
-                ForEach(TimeGranularity.allCases) { item in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            granularity = item
-                            resetSelections()
-                        }
-                    }) {
-                        HStack {
-                            Text(item.rawValue)
-                            if granularity == item { Image(systemName: "checkmark") }
-                        }
+                Picker("Timeframe", selection: $granularity) {
+                    ForEach(TimeGranularity.allCases) { item in
+                        Text(item.rawValue).tag(item)
                     }
                 }
             } label: {
@@ -249,58 +245,42 @@ struct AnalyticsView: View {
             
             Spacer()
             
-            // Right: Settings Menu (Account Filter + Category/Account Grouping)
+            // Right: Settings Menu (Account Filter + Category/Account Grouping with Apple Native Pickers)
+            let isFiltered = selectedAccountId != "all"
             Menu {
-                Section("Account") {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3)) { selectedAccountId = "all" }
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
+                Section("Filter by Account") {
+                    Picker("Account", selection: $selectedAccountId) {
                         Label("All Accounts", systemImage: "wallet.pass.fill")
-                        if selectedAccountId == "all" { Image(systemName: "checkmark") }
-                    }
-                    ForEach(store.accounts) { acc in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3)) { selectedAccountId = acc.id }
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
+                            .tag("all")
+                        ForEach(store.accounts) { acc in
                             Label(acc.label, systemImage: acc.sfSymbol)
-                            if selectedAccountId == acc.id { Image(systemName: "checkmark") }
+                                .tag(acc.id)
                         }
                     }
                 }
                 
-                Divider()
-                
-                Section("Group Breakdown By") {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3)) { groupingMode = .categories }
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
+                Section("Group Breakdown") {
+                    Picker("Grouping", selection: $groupingMode) {
                         Label("Categories", systemImage: "square.grid.2x2.fill")
-                        if groupingMode == .categories { Image(systemName: "checkmark") }
-                    }
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3)) { groupingMode = .accounts }
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
+                            .tag(AnalyticsGroupingMode.categories)
                         Label("Accounts", systemImage: "building.columns.fill")
-                        if groupingMode == .accounts { Image(systemName: "checkmark") }
+                            .tag(AnalyticsGroupingMode.accounts)
                     }
                 }
             } label: {
                 GlassCircleIcon(
-                    icon: "line.3.horizontal.decrease.circle.fill",
+                    icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
                     size: 44,
                     iconSize: 18,
-                    iconWeight: .medium,
-                    foregroundColor: selectedAccountId != "all" || groupingMode != .categories ? SpendyColors.textPrimary : SpendyColors.textSecondary
+                    iconWeight: .semibold,
+                    tintColor: isFiltered ? SpendyColors.primaryBlue : nil,
+                    foregroundColor: isFiltered ? SpendyColors.primaryBlue : SpendyColors.textPrimary
                 )
             }
         }
     }
 
-    // MARK: - Card 1: Cashflow Overview Card
+    // MARK: - Card 1: Cashflow Overview Card (Clean Gray & Green)
     private var cashflowOverviewCard: some View {
         let net = totalIncome - totalSpending
         let isPositive = net >= 0
@@ -316,29 +296,10 @@ struct AnalyticsView: View {
                     
                     Text(net.formattedSignedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 34, weight: .heavy))
-                        .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
+                        .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                 }
                 
                 Spacer()
-                
-                // Savings Rate Badge
-                if totalIncome > 0 {
-                    let rate = savingsRatePercentage
-                    HStack(spacing: 4) {
-                        Image(systemName: rate >= 0 ? "leaf.fill" : "exclamationmark.triangle.fill")
-                            .font(.system(size: 10, weight: .bold))
-                        Text(String(format: "%.0f%% Savings", abs(rate)))
-                            .font(.system(size: 11, weight: .bold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .foregroundStyle(rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
-                    .background {
-                        Capsule()
-                            .fill((rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed).opacity(0.15))
-                            .overlay(Capsule().stroke((rate >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed).opacity(0.3), lineWidth: 0.8))
-                    }
-                }
                 
                 if let sel = selectedInterval {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -348,8 +309,8 @@ struct AnalyticsView: View {
                         
                         let selNet = sel.incomeAmount - sel.spendingAmount
                         Text(selNet.formattedSignedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 14, weight: .heavy))
-                            .foregroundStyle(selNet >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
+                            .font(.system(size: 15, weight: .heavy))
+                            .foregroundStyle(selNet >= 0 ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -362,7 +323,7 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Interactive Cashflow Multi-Bar Chart with Flow Animation
+            // Native Swift Chart: Interactive Cashflow Multi-Bar Chart with Gray & Green Flow
             Chart(intervals) { item in
                 let isSelected = selectedCashflowLabel == item.label
                 
@@ -372,8 +333,8 @@ struct AnalyticsView: View {
                 )
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color(hex: "#FF3B30").opacity(isSelected ? 1.0 : (item.spendingAmount > 0 ? 0.9 : 0.2)),
-                                 Color(hex: "#FF3B30").opacity(isSelected ? 0.8 : 0.35)],
+                        colors: [Color(hex: "#8E8E93").opacity(isSelected ? 1.0 : (item.spendingAmount > 0 ? 0.9 : 0.2)),
+                                 Color(hex: "#636366").opacity(isSelected ? 0.85 : 0.35)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -387,8 +348,8 @@ struct AnalyticsView: View {
                 )
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color(hex: "#34C759").opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
-                                 Color(hex: "#34C759").opacity(isSelected ? 0.85 : 0.4)],
+                        colors: [Color(hex: "#30D158").opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
+                                 Color(hex: "#248A3D").opacity(isSelected ? 0.85 : 0.4)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -451,28 +412,28 @@ struct AnalyticsView: View {
             
             Divider().background(SpendyColors.separator)
             
-            // Legend Rows
+            // Legend Rows (Right-aligned numbers)
             VStack(spacing: 8) {
                 HStack {
-                    Circle().fill(Color(hex: "#FF3B30")).frame(width: 7, height: 7)
+                    Circle().fill(Color(hex: "#8E8E93")).frame(width: 7, height: 7)
                     Text("Spending")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(Color(hex: "#FF3B30"))
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
                 HStack {
-                    Circle().fill(Color(hex: "#34C759")).frame(width: 7, height: 7)
+                    Circle().fill(Color(hex: "#30D158")).frame(width: 7, height: 7)
                     Text("Income")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(Color(hex: "#34C759"))
+                        .foregroundStyle(Color(hex: "#30D158"))
                 }
             }
         }
@@ -483,8 +444,7 @@ struct AnalyticsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         }
     }
-    
-    // MARK: - Card 2: Spending Breakdown Card
+     // MARK: - Card 2: Spending Breakdown Card (No Donut, Neutral Gray)
     private var spendingBreakdownCard: some View {
         let items = spendingBreakdownItems
         let intervals = intervalData
@@ -526,20 +486,20 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Spending Line & Area Chart with Flow Animation
+            // Native Swift Chart: Spending Line & Area Chart (Neutral Slate Gray)
             Chart {
                 ForEach(intervals) { item in
                     LineMark(
                         x: .value("Period", item.label),
                         y: .value("Spending", item.spendingAmount * chartProgress)
                     )
-                    .foregroundStyle(Color(hex: "#FF3B30"))
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    .foregroundStyle(Color(hex: "#8E8E93"))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                     .symbol {
                         Circle()
-                            .fill(selectedSpendingLabel == item.label ? Color(hex: "#FF3B30") : SpendyColors.cardBackground)
-                            .stroke(Color(hex: "#FF3B30"), lineWidth: 2)
-                            .frame(width: selectedSpendingLabel == item.label ? 10 : 6, height: selectedSpendingLabel == item.label ? 10 : 6)
+                            .fill(selectedSpendingLabel == item.label ? SpendyColors.textPrimary : SpendyColors.cardBackground)
+                            .stroke(Color(hex: "#8E8E93"), lineWidth: 2)
+                            .frame(width: selectedSpendingLabel == item.label ? 9 : 5, height: selectedSpendingLabel == item.label ? 9 : 5)
                     }
                     .interpolationMethod(.catmullRom)
                     
@@ -549,7 +509,7 @@ struct AnalyticsView: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color(hex: "#FF3B30").opacity(0.35), Color(hex: "#FF3B30").opacity(0.02)],
+                            colors: [Color.white.opacity(0.18), Color.white.opacity(0.01)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -560,24 +520,24 @@ struct AnalyticsView: View {
                 // Average Spending RuleMark
                 if avgSpend > 0 {
                     RuleMark(y: .value("Average", avgSpend * chartProgress))
-                        .foregroundStyle(Color(hex: "#FF3B30").opacity(0.5))
+                        .foregroundStyle(SpendyColors.textTertiary.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .annotation(position: .top, alignment: .trailing) {
                             Text("AVG \(formatAxisAmount(avgSpend))")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Color(hex: "#FF3B30"))
+                                .foregroundStyle(SpendyColors.textTertiary)
                                 .padding(.horizontal, 4)
                         }
                 }
                 
                 if let selectedLabel = selectedSpendingLabel, let sel = selectedInterval {
                     RuleMark(x: .value("Selected", selectedLabel))
-                        .foregroundStyle(Color(hex: "#FF3B30").opacity(0.6))
+                        .foregroundStyle(SpendyColors.textPrimary.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .annotation(position: .top, alignment: .center) {
                             Text(sel.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color(hex: "#FF3B30"))
+                                .foregroundStyle(SpendyColors.textPrimary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background {
@@ -617,82 +577,6 @@ struct AnalyticsView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            // Interactive Donut Chart for Category / Account Distribution with Flow Animation
-            if !items.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider().background(SpendyColors.separator)
-                    
-                    Text(groupingMode == .categories ? "Category Distribution" : "Account Distribution")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    HStack(spacing: 16) {
-                        Chart(items) { item in
-                            let isSelected = selectedCategorySectorId == item.id
-                            SectorMark(
-                                angle: .value("Amount", max(0.01, item.amount * chartProgress)),
-                                innerRadius: .ratio(0.62),
-                                angularInset: 1.5
-                            )
-                            .cornerRadius(4)
-                            .foregroundStyle(Color(hex: item.colorHex))
-                            .opacity(selectedCategorySectorId == nil || isSelected ? 1.0 : 0.35)
-                        }
-                        .chartAngleSelection(value: $selectedCategorySectorId)
-                        .frame(width: 100, height: 100)
-                        .overlay {
-                            VStack(spacing: 0) {
-                                Text("\(items.count)")
-                                    .font(.system(size: 18, weight: .heavy))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                Text(groupingMode == .categories ? "Categories" : "Accounts")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(items.prefix(4)) { item in
-                                HStack(spacing: 8) {
-                                    Circle()
-                                        .fill(Color(hex: item.colorHex))
-                                        .frame(width: 8, height: 8)
-                                    
-                                    Text(item.label)
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                        .lineLimit(1)
-                                    
-                                    Spacer()
-                                    
-                                    Text(String(format: "%.0f%%", item.percentage))
-                                        .font(.system(size: 11, weight: .heavy))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background {
-                                    if selectedCategorySectorId == item.id {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color(hex: item.colorHex).opacity(0.15))
-                                    }
-                                }
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        if selectedCategorySectorId == item.id {
-                                            selectedCategorySectorId = nil
-                                        } else {
-                                            selectedCategorySectorId = item.id
-                                        }
-                                        HapticsManager.shared.trigger(.selection)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
             Divider().background(SpendyColors.separator)
             
             // Sub-header: Spending by Category / Account
@@ -703,7 +587,7 @@ struct AnalyticsView: View {
                 
                 Spacer()
                 
-                if items.count > 3 {
+                if items.count > 4 {
                     Image(systemName: isSpendingListExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
@@ -711,7 +595,7 @@ struct AnalyticsView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                if items.count > 3 {
+                if items.count > 4 {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         isSpendingListExpanded.toggle()
                         HapticsManager.shared.trigger(.selection)
@@ -727,10 +611,9 @@ struct AnalyticsView: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
-                let displayedItems = isSpendingListExpanded ? items : Array(items.prefix(3))
+                let displayedItems = isSpendingListExpanded ? items : Array(items.prefix(4))
                 VStack(spacing: 12) {
                     ForEach(displayedItems) { item in
-                        let isSectorSelected = selectedCategorySectorId == item.id
                         HStack(spacing: 12) {
                             SpendyIconBadge(
                                 sfSymbol: item.sfSymbol,
@@ -751,20 +634,12 @@ struct AnalyticsView: View {
                             
                             Spacer()
                             
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 15, weight: .heavy))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                            }
+                            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                .font(.system(size: 15, weight: .heavy))
+                                .foregroundStyle(SpendyColors.textPrimary)
                         }
-                        .padding(8)
-                        .background {
-                            if isSectorSelected {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color(hex: item.colorHex).opacity(0.12))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: item.colorHex).opacity(0.4), lineWidth: 1))
-                            }
-                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             HapticsManager.shared.trigger(.selection)
                             if groupingMode == .categories {
@@ -788,7 +663,7 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - Card 3: Income Breakdown Card
+    // MARK: - Card 3: Income Breakdown Card (No Donut, Green Accent)
     private var incomeBreakdownCard: some View {
         let items = incomeBreakdownItems
         let intervals = intervalData
@@ -830,20 +705,20 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Income Line Chart with Flow Animation
+            // Native Swift Chart: Income Line Chart
             Chart {
                 ForEach(intervals) { item in
                     LineMark(
                         x: .value("Period", item.label),
                         y: .value("Income", item.incomeAmount * chartProgress)
                     )
-                    .foregroundStyle(Color(hex: "#34C759"))
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    .foregroundStyle(Color(hex: "#30D158"))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                     .symbol {
                         Circle()
-                            .fill(selectedIncomeLabel == item.label ? Color(hex: "#34C759") : SpendyColors.cardBackground)
-                            .stroke(Color(hex: "#34C759"), lineWidth: 2)
-                            .frame(width: selectedIncomeLabel == item.label ? 10 : 6, height: selectedIncomeLabel == item.label ? 10 : 6)
+                            .fill(selectedIncomeLabel == item.label ? Color(hex: "#30D158") : SpendyColors.cardBackground)
+                            .stroke(Color(hex: "#30D158"), lineWidth: 2)
+                            .frame(width: selectedIncomeLabel == item.label ? 9 : 5, height: selectedIncomeLabel == item.label ? 9 : 5)
                     }
                     .interpolationMethod(.catmullRom)
                     
@@ -853,7 +728,7 @@ struct AnalyticsView: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color(hex: "#34C759").opacity(0.35), Color(hex: "#34C759").opacity(0.02)],
+                            colors: [Color(hex: "#30D158").opacity(0.25), Color(hex: "#30D158").opacity(0.01)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -863,24 +738,24 @@ struct AnalyticsView: View {
                 
                 if avgIncome > 0 {
                     RuleMark(y: .value("Average", avgIncome * chartProgress))
-                        .foregroundStyle(Color(hex: "#34C759").opacity(0.5))
+                        .foregroundStyle(Color(hex: "#30D158").opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .annotation(position: .top, alignment: .trailing) {
                             Text("AVG \(formatAxisAmount(avgIncome))")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Color(hex: "#34C759"))
+                                .foregroundStyle(Color(hex: "#30D158"))
                                 .padding(.horizontal, 4)
                         }
                 }
                 
                 if let selectedLabel = selectedIncomeLabel, let sel = selectedInterval {
                     RuleMark(x: .value("Selected", selectedLabel))
-                        .foregroundStyle(Color(hex: "#34C759").opacity(0.6))
+                        .foregroundStyle(Color(hex: "#30D158").opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .annotation(position: .top, alignment: .center) {
                             Text("+" + sel.incomeAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color(hex: "#34C759"))
+                                .foregroundStyle(Color(hex: "#30D158"))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background {
@@ -920,82 +795,6 @@ struct AnalyticsView: View {
                 HapticsManager.shared.trigger(.selection)
             }
             
-            // Donut SectorMark Chart for Income Distribution with Flow Animation
-            if !items.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider().background(SpendyColors.separator)
-                    
-                    Text(groupingMode == .categories ? "Income Source Distribution" : "Income Account Distribution")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    HStack(spacing: 16) {
-                        Chart(items) { item in
-                            let isSelected = selectedIncomeSectorId == item.id
-                            SectorMark(
-                                angle: .value("Amount", max(0.01, item.amount * chartProgress)),
-                                innerRadius: .ratio(0.62),
-                                angularInset: 1.5
-                            )
-                            .cornerRadius(4)
-                            .foregroundStyle(Color(hex: item.colorHex))
-                            .opacity(selectedIncomeSectorId == nil || isSelected ? 1.0 : 0.35)
-                        }
-                        .chartAngleSelection(value: $selectedIncomeSectorId)
-                        .frame(width: 100, height: 100)
-                        .overlay {
-                            VStack(spacing: 0) {
-                                Text("\(items.count)")
-                                    .font(.system(size: 18, weight: .heavy))
-                                    .foregroundStyle(SpendyColors.incomeGreen)
-                                Text(groupingMode == .categories ? "Sources" : "Accounts")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(items.prefix(4)) { item in
-                                HStack(spacing: 8) {
-                                    Circle()
-                                        .fill(Color(hex: item.colorHex))
-                                        .frame(width: 8, height: 8)
-                                    
-                                    Text(item.label)
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                        .lineLimit(1)
-                                    
-                                    Spacer()
-                                    
-                                    Text(String(format: "%.0f%%", item.percentage))
-                                        .font(.system(size: 11, weight: .heavy))
-                                        .foregroundStyle(SpendyColors.incomeGreen)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background {
-                                    if selectedIncomeSectorId == item.id {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color(hex: item.colorHex).opacity(0.15))
-                                    }
-                                }
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        if selectedIncomeSectorId == item.id {
-                                            selectedIncomeSectorId = nil
-                                        } else {
-                                            selectedIncomeSectorId = item.id
-                                        }
-                                        HapticsManager.shared.trigger(.selection)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
             Divider().background(SpendyColors.separator)
             
             // Sub-header: Income by Category / Account
@@ -1006,7 +805,7 @@ struct AnalyticsView: View {
                 
                 Spacer()
                 
-                if items.count > 3 {
+                if items.count > 4 {
                     Image(systemName: isIncomeListExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
@@ -1014,7 +813,7 @@ struct AnalyticsView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                if items.count > 3 {
+                if items.count > 4 {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         isIncomeListExpanded.toggle()
                         HapticsManager.shared.trigger(.selection)
@@ -1030,10 +829,9 @@ struct AnalyticsView: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                     .padding(.vertical, 8)
             } else {
-                let displayedItems = isIncomeListExpanded ? items : Array(items.prefix(3))
+                let displayedItems = isIncomeListExpanded ? items : Array(items.prefix(4))
                 VStack(spacing: 12) {
                     ForEach(displayedItems) { item in
-                        let isSelected = selectedIncomeSectorId == item.id
                         HStack(spacing: 12) {
                             SpendyIconBadge(
                                 sfSymbol: item.sfSymbol,
@@ -1054,20 +852,12 @@ struct AnalyticsView: View {
                             
                             Spacer()
                             
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 15, weight: .heavy))
-                                    .foregroundStyle(SpendyColors.incomeGreen)
-                            }
+                            Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                .font(.system(size: 15, weight: .heavy))
+                                .foregroundStyle(SpendyColors.incomeGreen)
                         }
-                        .padding(8)
-                        .background {
-                            if isSelected {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color(hex: item.colorHex).opacity(0.12))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: item.colorHex).opacity(0.4), lineWidth: 1))
-                            }
-                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             HapticsManager.shared.trigger(.selection)
                             if groupingMode == .categories {
@@ -1091,7 +881,8 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - Card 4: Budget Ring & Pacing Card
+    // MARK: - Card 4: Budget Ring & Pacing Card (Clean Alignment, Slate & Green)
+    @ViewBuilder
     private var budgetRingPacingCard: some View {
         let budgetLimit = store.budgetTargetAmount(for: .monthly)
         let spent = totalSpending
@@ -1099,273 +890,235 @@ struct AnalyticsView: View {
         let isExceeded = pct > 100
         let ringProgress = min(1.0, pct / 100.0) * chartProgress
         
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("Budget Status")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
-            
-            HStack(spacing: 20) {
-                // Circular Progress Gauge Ring with Flow Animation
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.12), lineWidth: 8)
-                        .frame(width: 84, height: 84)
+        if budgetLimit <= 0 {
+            // Zero-Budget Empty State with Liquid Glass Action Button
+            VStack(spacing: 16) {
+                HStack(spacing: 14) {
+                    SpendyIconBadge(
+                        sfSymbol: "target",
+                        color: SpendyColors.primaryBlue,
+                        size: .large,
+                        style: .circle
+                    )
                     
-                    Circle()
-                        .trim(from: 0.0, to: ringProgress)
-                        .stroke(
-                            isExceeded ? SpendyColors.expenseRed : SpendyColors.textPrimary,
-                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 84, height: 84)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No Monthly Budget Set")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Text("Set a monthly limit to monitor daily spending velocity and pace.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                            .lineLimit(2)
+                    }
                     
-                    Text(String(format: "%.0f%%", pct * chartProgress))
-                        .font(.system(size: 16, weight: .heavy))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                    Spacer()
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(isExceeded ? String(format: "Budget exceeded by %.0f%%", pct - 100) : "Within budget limit")
+                Button(action: {
+                    HapticsManager.shared.trigger(.light)
+                    showEditBudgetSheet = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Set Monthly Budget")
+                            .font(.system(size: 14, weight: .heavy))
+                    }
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 16) {
+                // Standard Top Header: Amount on Left, Progress Gauge on Right
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Budget Status")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        
+                        Text(spent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                            .font(.system(size: 34, weight: .heavy))
+                            .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.textPrimary)
+                        
+                        Text("of \(budgetLimit.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) monthly limit")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Right: Circular Gauge Ring with Percentage
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.12), lineWidth: 6)
+                            .frame(width: 58, height: 58)
+                        
+                        Circle()
+                            .trim(from: 0.0, to: ringProgress)
+                            .stroke(
+                                isExceeded ? SpendyColors.warningOrange : SpendyColors.primaryBlue,
+                                style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: 58, height: 58)
+                        
+                        Text(String(format: "%.0f%%", pct * chartProgress))
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                    .padding(.top, 4)
+                }
+                
+                // Pacing note
+                HStack(spacing: 8) {
+                    Image(systemName: isExceeded ? "exclamationmark.triangle.fill" : "sparkles")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
+                    
+                    Text(isExceeded ? String(format: "At this pace, budget is exceeded by ↑ %@", (spent - budgetLimit).formattedCurrency(symbol: store.currencySymbol, decimals: 0)) : "You are pacing comfortably within your budget.")
                         .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                
+                Divider().background(SpendyColors.separator)
+                
+                // Sub-metrics: Left Period Range, Right Remaining Days status (Right aligned!)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Period")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        Text(formattedMonthRange(selectedDate))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Status")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        Text(remainingDaysText)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                }
+                
+                Divider().background(SpendyColors.separator)
+                
+                // Daily Budget Pacing Chart (Slate Gray & Mint Green)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Daily Budget Pacing")
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                     
-                    Text(spent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy))
-                        .foregroundStyle(isExceeded ? SpendyColors.expenseRed : SpendyColors.textPrimary)
-                    
-                    Text("of \(budgetLimit.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) limit")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
-            .padding(.vertical, 4)
-            
-            // Pacing note
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
-                
-                Text(isExceeded ? String(format: "At this pace, the budget will be exceeded by ↑ %@", (spent - budgetLimit).formattedCurrency(symbol: store.currencySymbol, decimals: 0)) : "You are pacing within safe limits for this month.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            
-            Divider().background(SpendyColors.separator)
-            
-            // Sub-metrics (Monthly date bounds & Days status)
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Period")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    Text(formattedMonthRange(selectedDate))
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Status")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    Text(remainingDaysText)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-            }
-            
-            Divider().background(SpendyColors.separator)
-            
-            // Calibrated Daily Budget Pacing Chart with Flow Animation
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Daily Budget Pacing")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                let pacingItems = velocityPacingData
-                Chart {
-                    ForEach(pacingItems) { item in
-                        if item.isPeak && item.amount > 0 {
-                            RectangleMark(
+                    let pacingItems = velocityPacingData
+                    Chart {
+                        ForEach(pacingItems) { item in
+                            if item.isPeak && item.amount > 0 {
+                                RectangleMark(
+                                    x: .value("Period", item.label),
+                                    yStart: .value("Min", 0),
+                                    yEnd: .value("Max", (pacingItems.map(\.amount).max() ?? 1.0) * 1.15 * chartProgress)
+                                )
+                                .foregroundStyle(
+                                    item.isOverTarget 
+                                        ? Color(hex: "#FF9F0A").opacity(0.12)
+                                        : Color(hex: "#30D158").opacity(0.12)
+                                )
+                                .cornerRadius(6)
+                            }
+                            
+                            BarMark(
                                 x: .value("Period", item.label),
-                                yStart: .value("Min", 0),
-                                yEnd: .value("Max", (pacingItems.map(\.amount).max() ?? 1.0) * 1.15 * chartProgress)
+                                y: .value("Spending", item.amount * chartProgress)
                             )
                             .foregroundStyle(
-                                item.isOverTarget 
-                                    ? Color(hex: "#FF3B30").opacity(0.12)
-                                    : Color(hex: "#30D158").opacity(0.12)
+                                item.amount <= 0 
+                                    ? SpendyColors.separator.opacity(0.35)
+                                    : (item.isOverTarget ? Color(hex: "#8E8E93") : Color(hex: "#30D158"))
                             )
-                            .cornerRadius(6)
+                            .cornerRadius(5)
+                            .annotation(position: .top, alignment: .center, spacing: 4) {
+                                if item.isPeak && item.amount > 0 {
+                                    Image(systemName: item.isOverTarget ? "flame.fill" : "bolt.fill")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(item.isOverTarget ? Color(hex: "#FF9F0A") : Color(hex: "#30D158"))
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background {
+                                            Capsule()
+                                                .fill(SpendyColors.cardBackground)
+                                                .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                        }
+                                }
+                            }
                         }
                         
-                        BarMark(
-                            x: .value("Period", item.label),
-                            y: .value("Spending", item.amount * chartProgress)
-                        )
-                        .foregroundStyle(
-                            item.amount <= 0 
-                                ? SpendyColors.separator.opacity(0.4)
-                                : (item.isOverTarget ? Color(hex: "#FF3B30") : Color(hex: "#30D158"))
-                        )
-                        .cornerRadius(5)
-                        .annotation(position: .top, alignment: .center, spacing: 4) {
-                            if item.isPeak && item.amount > 0 {
-                                Image(systemName: item.isOverTarget ? "flame.fill" : "bolt.fill")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(item.isOverTarget ? Color(hex: "#FF3B30") : Color(hex: "#30D158"))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background {
-                                        Capsule()
-                                            .fill(SpendyColors.cardBackground)
-                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
-                                    }
-                            }
-                        }
-                    }
-                    
-                    if let selectedLabel = selectedVelocityLabel, let sel = pacingItems.first(where: { $0.label == selectedLabel }) {
-                        RuleMark(x: .value("Selected", selectedLabel))
-                            .foregroundStyle(SpendyColors.textPrimary.opacity(0.6))
-                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                            .annotation(position: .top, alignment: .center) {
-                                Text(sel.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background {
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .fill(SpendyColors.cardBackground)
-                                            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-                                    }
-                            }
-                    }
-                }
-                .chartXSelection(value: $selectedVelocityLabel)
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .trailing) { value in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [4, 4]))
-                            .foregroundStyle(SpendyColors.separator.opacity(0.6))
-                        AxisValueLabel {
-                            if let doubleVal = value.as(Double.self) {
-                                Text(formatAxisAmount(doubleVal))
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                        }
-                    }
-                }
-                .frame(height: 140)
-                .padding(.vertical, 4)
-                .onChange(of: selectedVelocityLabel) { _, _ in
-                    HapticsManager.shared.trigger(.selection)
-                }
-            }
-        }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        }
-    }
-    
-    // MARK: - Smart Insights Carousel
-    private var smartInsightsCarousel: some View {
-        let bounds = currentPeriodBounds
-        let prevBounds = priorPeriodBounds
-        
-        let insights = InsightsEngine.getAnalyticsInsights(
-            transactions: store.transactions,
-            budget: store.budget,
-            categories: store.categories,
-            subscriptions: store.subscriptions,
-            periodStart: bounds.start,
-            periodEnd: bounds.end,
-            prevStart: prevBounds.start,
-            prevEnd: prevBounds.end,
-            dataType: .expense,
-            currencySymbol: store.currencySymbol
-        )
-        
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(SpendyColors.primaryBlue)
-                Text("Smart Insights")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.horizontal, 20)
-            
-            Text("Specifically generated based on your spendings")
-                .font(.system(size: 11.5, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 20)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 14) {
-                    Spacer().frame(width: 4)
-                    
-                    if insights.isEmpty {
-                        Text("No insights generated for this period.")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .padding(.vertical, 40)
-                            .padding(.horizontal, 20)
-                    } else {
-                        ForEach(insights) { insight in
-                            SharedInsightCard(
-                                title: insight.title,
-                                value: insight.value,
-                                subtitle: insight.desc,
-                                icon: insight.icon,
-                                color: insight.color,
-                                action: {
-                                    if insight.id.hasPrefix("sub_") || insight.family == "subscription" {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                            if let selectedTab = selectedTab {
-                                                selectedTab.wrappedValue = .manage
-                                            } else {
-                                                showSubscriptionSheet = true
-                                            }
+                        if let selectedLabel = selectedVelocityLabel, let sel = pacingItems.first(where: { $0.label == selectedLabel }) {
+                            RuleMark(x: .value("Selected", selectedLabel))
+                                .foregroundStyle(SpendyColors.textPrimary.opacity(0.6))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                                .annotation(position: .top, alignment: .center) {
+                                    Text(sel.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background {
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .fill(SpendyColors.cardBackground)
+                                                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
                                         }
-                                    } else if let catId = insight.categoryId, let cat = store.categories.first(where: { $0.id == catId }) {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                            selectedCategoryForSheet = cat
-                                        }
-                                    } else if let cat = store.categories.first(where: { $0.id == insight.id || $0.label.lowercased() == insight.title.lowercased() }) {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                            selectedCategoryForSheet = cat
-                                        }
-                                    } else if let firstCat = store.categories.first {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                            selectedCategoryForSheet = firstCat
-                                        }
-                                    }
                                 }
-                            )
-                            .frame(width: 180)
                         }
                     }
-                    
-                    Spacer().frame(width: 4)
+                    .chartXSelection(value: $selectedVelocityLabel)
+                    .chartXAxis {
+                        AxisMarks { _ in
+                            AxisValueLabel()
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .trailing) { value in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [4, 4]))
+                                .foregroundStyle(SpendyColors.separator.opacity(0.6))
+                            AxisValueLabel {
+                                if let doubleVal = value.as(Double.self) {
+                                    Text(formatAxisAmount(doubleVal))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textTertiary)
+                                }
+                            }
+                        }
+                    }
+                    .frame(height: 140)
+                    .padding(.vertical, 4)
+                    .onChange(of: selectedVelocityLabel) { _, _ in
+                        HapticsManager.shared.trigger(.selection)
+                    }
                 }
-                .padding(.vertical, 10)
+            }
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
             }
         }
     }

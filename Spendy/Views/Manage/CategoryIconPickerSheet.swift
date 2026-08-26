@@ -10,6 +10,11 @@ import SwiftUI
 struct CategoryIconPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedSymbol: String
+    var showPhotoOption: Bool = false
+    var isPhotoSet: Bool = false
+    var onPhotoLibrarySelected: (() -> Void)? = nil
+    var onCameraSelected: (() -> Void)? = nil
+    var onRemovePhotoSelected: (() -> Void)? = nil
     
     @State private var selectedTab: IconTab = .defaults
     @State private var searchText: String = ""
@@ -171,7 +176,7 @@ struct CategoryIconPickerSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color(hex: "#1C1C1E")
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -188,6 +193,49 @@ struct CategoryIconPickerSheet: View {
                 // Grid Content Scroll
                 ScrollView(showsIndicators: false) {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 5), spacing: 14) {
+                        if showPhotoOption && searchText.isEmpty {
+                            Menu {
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.selection)
+                                    onPhotoLibrarySelected?()
+                                }) {
+                                    Label("Choose from Library", systemImage: "photo.on.rectangle")
+                                }
+                                
+                                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                    Button(action: {
+                                        HapticsManager.shared.trigger(.selection)
+                                        onCameraSelected?()
+                                    }) {
+                                        Label("Take Photo", systemImage: "camera")
+                                    }
+                                }
+                                
+                                if isPhotoSet {
+                                    Button(role: .destructive, action: {
+                                        HapticsManager.shared.trigger(.warning)
+                                        onRemovePhotoSelected?()
+                                    }) {
+                                        Label("Remove Photo", systemImage: "trash")
+                                    }
+                                }
+                            } label: {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(hex: "#1C1C1E"))
+                                        .frame(width: 52, height: 52)
+                                        .overlay {
+                                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                        }
+                                    
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        
                         ForEach(activeSymbols, id: \.self) { sym in
                             Button(action: {
                                 selectedSymbol = sym
@@ -232,13 +280,15 @@ struct CategoryIconPickerSheet: View {
             }
             .background {
                 LinearGradient(
-                    colors: [Color.clear, SpendyColors.appBackground.opacity(0.95), SpendyColors.appBackground],
+                    colors: [Color.clear, Color(hex: "#1C1C1E").opacity(0.95), Color(hex: "#1C1C1E")],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .presentationBackground(Color(hex: "#1C1C1E"))
+        .presentationDragIndicator(.visible)
     }
     
     // MARK: - Header

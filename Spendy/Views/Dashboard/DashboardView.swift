@@ -433,6 +433,8 @@ struct DashboardView: View {
                 settingsInitialDestination = nil
             }) {
                 SettingsView(initialDestination: settingsInitialDestination)
+                    .presentationBackground(Color(hex: "#1C1C1E"))
+                    .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showReceiptPrinter) {
                 ReceiptPrinterSheet()
@@ -494,14 +496,39 @@ struct DashboardView: View {
                 showSettings = true
             }) {
                 ZStack {
-                    Circle()
-                        .fill(SpendyColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
-                    
-                    Text(store.userName.prefix(1).uppercased().isEmpty ? "P" : String(store.userName.prefix(1).uppercased()))
-                        .font(.system(size: 17, weight: .heavy))
-                        .foregroundStyle(SpendyColors.appBackground)
+                    if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 44, height: 44)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
+                    } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
+                        Circle()
+                            .fill(Color(hex: store.profileColorHex ?? "#007AFF"))
+                            .frame(width: 44, height: 44)
+                            .shadow(color: Color(hex: store.profileColorHex ?? "#007AFF").opacity(0.35), radius: 4, y: 2)
+                        
+                        Image(systemName: symbol)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: store.profileColorHex ?? "#007AFF"), SpendyColors.accentCyan],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 44, height: 44)
+                            .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
+                        
+                        Text(store.userName.prefix(1).uppercased().isEmpty ? "P" : String(store.userName.prefix(1).uppercased()))
+                            .font(.system(size: 17, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
                 }
             }
             .buttonStyle(.plain)

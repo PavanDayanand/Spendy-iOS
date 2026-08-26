@@ -92,6 +92,16 @@ enum SpendyColors {
         dark: UIColor(red: 0.080, green: 0.080, blue: 0.085, alpha: 1.0) // Charcoal Grey Surface (#141416)
     ))
     
+    static let sheetCardBackground = Color(uiColor: .dynamic(
+        light: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1.0),
+        dark: UIColor(red: 0.145, green: 0.145, blue: 0.155, alpha: 1.0) // Elevated Sheet Card Gray (#252528)
+    ))
+    
+    static let settingsBackground = Color(uiColor: .dynamic(
+        light: UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1.0),
+        dark: UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0) // Apple Dark Gray Sheet (#1C1C1E)
+    ))
+    
     static let separator = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.08),
         dark: UIColor(white: 1.0, alpha: 0.07)

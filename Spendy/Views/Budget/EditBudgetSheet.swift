@@ -27,6 +27,7 @@ struct EditBudgetSheet: View {
     @State private var selectedStartDay: Int = 1
     
     let isEditing: Bool
+    var onSave: (() -> Void)? = nil
     
     private let weekdays = [
         WeekdayItem(id: 2, name: "Mon"),
@@ -332,5 +333,6 @@ struct EditBudgetSheet: View {
             startDay: selectedStartDay
         )
         dismiss()
+        onSave?()
     }
 }

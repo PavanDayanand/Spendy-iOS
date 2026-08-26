@@ -103,12 +103,7 @@ struct TransactionDetailSheet: View {
         .presentationBackground {
             ZStack {
                 SpendyColors.cardBackground
-                RadialGradient(
-                    colors: [themeColor.opacity(0.16), Color.clear],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 260
-                )
+                SpendyAmbientHeaderBackground(color: themeColor, height: 260, opacity: 0.20)
             }
         }
     }

@@ -450,23 +450,8 @@ struct CategoryAnalyticsSheet: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            // Ambient Category Radial Color Glow
-            VStack {
-                RadialGradient(
-                    colors: [
-                        themeColor.opacity(0.35),
-                        themeColor.opacity(0.12),
-                        Color.clear
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 380
-                )
-                .frame(height: 380)
-                .blur(radius: 20)
-                .ignoresSafeArea()
-                Spacer()
-            }
+            // Ambient Category Full-Width Header Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 380, opacity: 0.34)
             
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
@@ -991,8 +976,8 @@ struct CategoryAnalyticsSheet: View {
                             }
                             .background(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color(hex: "#0A0A0C"))
-                                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.06), lineWidth: 1))
+                                    .fill(Color(hex: "#141416"))
+                                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 0.8))
                             )
                         }
                     }

@@ -268,23 +268,8 @@ struct AccountAnalyticsSheet: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            // Dynamic Ambient Radial Gradient Glow
-            VStack {
-                RadialGradient(
-                    colors: [
-                        themeColor.opacity(0.38),
-                        themeColor.opacity(0.12),
-                        Color.clear
-                    ],
-                    center: .top,
-                    startRadius: 0,
-                    endRadius: 400
-                )
-                .frame(height: 420)
-                .blur(radius: 25)
-                .ignoresSafeArea()
-                Spacer()
-            }
+            // Dynamic Ambient Full-Width Header Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 380, opacity: 0.34)
             
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
@@ -661,10 +646,10 @@ struct AccountAnalyticsSheet: View {
         .padding(18)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(Color(hex: "#141416"))
                 .overlay {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }
@@ -788,10 +773,10 @@ struct AccountAnalyticsSheet: View {
                             }
                             .background {
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
+                                    .fill(Color(hex: "#141416"))
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                                     }
                             }
                         }

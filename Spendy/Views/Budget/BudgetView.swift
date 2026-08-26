@@ -260,12 +260,12 @@ struct BudgetView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Capsule()
-                            .fill(isExceededToday ? SpendyColors.expenseRed : Color(hex: "#34C759"))
+                            .fill(isExceededToday ? SpendyColors.warningOrange : Color(hex: "#30D158"))
                             .frame(height: 6)
                         
-                        Text(isExceededToday ? "Budget exceeded" : "Safe daily pace")
+                        Text(isExceededToday ? "Above daily target" : "Safe daily pace")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(isExceededToday ? SpendyColors.expenseRed : SpendyColors.textSecondary)
+                            .foregroundStyle(isExceededToday ? SpendyColors.warningOrange : SpendyColors.textSecondary)
                             .lineLimit(1)
                     }
                 }

@@ -30,47 +30,53 @@ struct SettingsView: View {
     }
     
     // Sheets & Dialogs
-    @State private var showNameEdit: Bool = false
-    @State private var tempName: String = ""
+    @State private var showProfileEdit: Bool = false
     @State private var showCurrencyPicker: Bool = false
     @State private var showWhatsNewSheet: Bool = false
     @State private var showCoffeeSheet: Bool = false
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                Color.black
+            ZStack(alignment: .top) {
+                Color(hex: "#1C1C1E")
                     .ignoresSafeArea()
                 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
-                        // Top Header Bar with Circular Glass Close Button
-                        headerBar
-                        
-                        // Suggest a Feature Banner (from React app)
-                        featureSuggestionBanner
-                        
-                        // User Profile Card
-                        userProfileCard
-                        
-                        // 1. Manage Section (Accounts & Categories)
-                        manageSection
-                        
-                        // 2. Preferences Section (Currency & Sound Effects)
-                        preferencesSection
-                        
-                        // 3. Data & Backup Section (Export, Import, Reset)
-                        dataBackupSection
-                        
-                        // 4. About & Community Section (Instagram, Web, Buy Me Coffee, Changelog)
-                        aboutSection
-                        
-                        // 5. Footer App Branding
-                        footerSection
+                VStack(spacing: 0) {
+                    // Sticky Header Bar (Fixed at top of sheet!)
+                    headerBar
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 12)
+                        .background(Color(hex: "#1C1C1E"))
+                        .zIndex(10)
+                    
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 22) {
+                            // Suggest a Feature Banner
+                            featureSuggestionBanner
+                            
+                            // User Profile Card
+                            userProfileCard
+                            
+                            // 1. Manage Section (Accounts & Categories)
+                            manageSection
+                            
+                            // 2. Preferences Section (Currency & Haptics)
+                            preferencesSection
+                            
+                            // 3. Data & Backup Section (Export, Import, Reset)
+                            dataBackupSection
+                            
+                            // 4. About & Community Section
+                            aboutSection
+                            
+                            // 5. Footer App Branding
+                            footerSection
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 40)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    .padding(.bottom, 40)
                 }
             }
             .navigationBarHidden(true)
@@ -90,8 +96,8 @@ struct SettingsView: View {
                 }
             }
             // MARK: - Modals & Sheets
-            .sheet(isPresented: $showNameEdit) {
-                editNameSheet
+            .sheet(isPresented: $showProfileEdit) {
+                EditProfileSheet()
             }
             .sheet(isPresented: $showCurrencyPicker) {
                 CurrencyPickerSheet()
@@ -159,7 +165,7 @@ struct SettingsView: View {
             .padding(14)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -170,64 +176,81 @@ struct SettingsView: View {
     
     // MARK: - User Profile Card
     private var userProfileCard: some View {
-        HStack(spacing: 16) {
-            // Profile Photo Circle
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [SpendyColors.primaryBlue, SpendyColors.accentCyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 56, height: 56)
-                    .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 2)
-                
-                if !store.userName.isEmpty {
-                    Text(String(store.userName.prefix(1)).uppercased())
-                        .font(.system(size: 24, weight: .heavy))
-                        .foregroundStyle(.white)
-                } else {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
+        Button(action: {
+            HapticsManager.shared.trigger(.light)
+            showProfileEdit = true
+        }) {
+            HStack(spacing: 16) {
+                // Profile Photo / Icon / Initial Avatar Circle
+                ZStack {
+                    if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 56, height: 56)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1.5))
+                            .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
+                    } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
+                        Circle()
+                            .fill(Color(hex: store.profileColorHex ?? "#007AFF"))
+                            .frame(width: 56, height: 56)
+                            .shadow(color: Color(hex: store.profileColorHex ?? "#007AFF").opacity(0.35), radius: 6, y: 2)
+                        
+                        Image(systemName: symbol)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: store.profileColorHex ?? "#007AFF"), SpendyColors.accentCyan],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 56, height: 56)
+                            .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 6, y: 2)
+                        
+                        if !store.userName.isEmpty {
+                            Text(String(store.userName.prefix(1)).uppercased())
+                                .font(.system(size: 24, weight: .heavy))
+                                .foregroundStyle(.white)
+                        } else {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                    }
                 }
-            }
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(store.userName.isEmpty ? "Your Name" : store.userName)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
                 
-                Text("Local-First & Offline Ready")
-                    .font(.system(size: 12, weight: .medium))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(store.userName.isEmpty ? "Your Name" : store.userName)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Text("Profile & Appearance")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textTertiary)
             }
-            
-            Spacer()
-            
-            GlassCircleButton(
-                icon: SFIcons.edit,
-                size: 38,
-                iconSize: 13,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Edit Name"
-            ) {
-                tempName = store.userName
-                showNameEdit = true
+            .padding(16)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.sheetCardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
             }
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - 1. Manage Section (Accounts & Categories)
@@ -264,7 +287,7 @@ struct SettingsView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -281,9 +304,6 @@ struct SettingsView: View {
                 .tracking(1.0)
                 .foregroundStyle(SpendyColors.textTertiary)
                 .padding(.horizontal, 4)
-            
-            // Custom Image 2 Style Color Picker & Gradient Background Card
-            CustomColorSliderPickerView()
             
             VStack(spacing: 0) {
                 // Currency Selector
@@ -302,31 +322,31 @@ struct SettingsView: View {
                 
                 Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
-                // Sound Effects & Haptics Toggle
+                // Haptic Feedback Toggle (Replaces sound effects)
                 HStack(spacing: 14) {
-                    Image(systemName: "speaker.wave.2.fill")
+                    Image(systemName: "iphone.radiowaves.left.and.right")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .foregroundStyle(SpendyColors.primaryBlue)
                         .frame(width: 28, height: 28)
                     
-                    Text("Sound Effects")
+                    Text("Haptic Feedback")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
                     Toggle("", isOn: Binding(
-                        get: { store.soundEnabled },
-                        set: { store.soundEnabled = $0 }
+                        get: { store.hapticsEnabled },
+                        set: { store.hapticsEnabled = $0 }
                     ))
                     .labelsHidden()
-                    .toggleStyle(.liquidGlass(tint: SpendyColors.textPrimary))
+                    .toggleStyle(.liquidGlass(tint: SpendyColors.primaryBlue))
                 }
                 .padding(14)
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -356,7 +376,7 @@ struct SettingsView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -401,7 +421,7 @@ struct SettingsView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(SpendyColors.sheetCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -487,44 +507,6 @@ struct SettingsView: View {
                 .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(14)
-    }
-
-    
-    // MARK: - Edit Name Sheet
-    private var editNameSheet: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    TextField("Enter your name", text: $tempName)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .padding(16)
-                        .background {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(SpendyColors.cardBackground)
-                        }
-                    
-                    Spacer()
-                }
-                .padding(20)
-            }
-            .navigationTitle("Your Name")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showNameEdit = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        showNameEdit = false
-                    }
-                }
-            }
-        }
-        .presentationDetents([.fraction(0.35)])
     }
     
     // MARK: - What's New Sheet
