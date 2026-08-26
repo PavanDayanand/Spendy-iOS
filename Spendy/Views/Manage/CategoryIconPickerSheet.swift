@@ -15,6 +15,7 @@ struct CategoryIconPickerSheet: View {
     var onPhotoLibrarySelected: (() -> Void)? = nil
     var onCameraSelected: (() -> Void)? = nil
     var onRemovePhotoSelected: (() -> Void)? = nil
+    var onIconSelected: ((String) -> Void)? = nil
     
     @State private var selectedTab: IconTab = .defaults
     @State private var searchText: String = ""
@@ -239,6 +240,7 @@ struct CategoryIconPickerSheet: View {
                         ForEach(activeSymbols, id: \.self) { sym in
                             Button(action: {
                                 selectedSymbol = sym
+                                onIconSelected?(sym)
                                 HapticsManager.shared.trigger(.selection)
                                 dismiss()
                             }) {
@@ -288,7 +290,7 @@ struct CategoryIconPickerSheet: View {
             }
         }
         .presentationBackground(Color(hex: "#1C1C1E"))
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
     }
     
     // MARK: - Header

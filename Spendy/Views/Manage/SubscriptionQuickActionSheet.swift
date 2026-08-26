@@ -99,7 +99,7 @@ struct SubscriptionQuickActionSheet: View {
             }
         }
         .presentationDetents([.fraction(0.85), .large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .onAppear {
             autoDeductToggle = liveSub.autoDeduct
         }

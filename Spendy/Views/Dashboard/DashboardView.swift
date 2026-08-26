@@ -434,7 +434,7 @@ struct DashboardView: View {
             }) {
                 SettingsView(initialDestination: settingsInitialDestination)
                     .presentationBackground(Color(hex: "#1C1C1E"))
-                    .presentationDragIndicator(.visible)
+                    .presentationDragIndicator(.hidden)
             }
             .sheet(isPresented: $showReceiptPrinter) {
                 ReceiptPrinterSheet()

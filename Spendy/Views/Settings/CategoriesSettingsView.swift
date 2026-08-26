@@ -246,28 +246,18 @@ struct CategoriesSettingsView: View {
                 
                 Spacer()
                 
-                if isCustom {
+                if title != "Uncategorized" {
                     Button(action: {
+                        HapticsManager.shared.trigger(.light)
                         if let folderObj = store.customFolders.first(where: { $0.name == title && $0.type == selectedType }) {
-                            HapticsManager.shared.trigger(.light)
                             folderToEdit = folderObj
+                        } else {
+                            folderToEdit = Folder(name: title, type: selectedType)
                         }
                     }) {
                         Text("Edit")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(SpendyColors.primaryBlue)
-                    }
-                    .buttonStyle(.plain)
-                } else if !categories.isEmpty {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.25)) {
-                            isEditMode.toggle()
-                        }
-                        HapticsManager.shared.trigger(.light)
-                    }) {
-                        Text(isEditMode ? "Done" : "Edit")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -340,6 +330,22 @@ struct CategoriesSettingsView: View {
                             .padding(.vertical, 13)
                         }
                         .buttonStyle(.plain)
+                        .draggable(cat.id) {
+                            HStack(spacing: 10) {
+                                SpendyIconBadge(
+                                    sfSymbol: cat.sfSymbol,
+                                    color: cat.color,
+                                    size: .small,
+                                    style: .circle
+                                )
+                                Text(cat.label)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(SpendyColors.sheetCardBackground, in: Capsule())
+                        }
                         
                         if index < categories.count - 1 {
                             Divider()
@@ -356,6 +362,17 @@ struct CategoriesSettingsView: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
+            }
+            .dropDestination(for: String.self) { items, _ in
+                guard let catId = items.first else { return false }
+                if let idx = store.categories.firstIndex(where: { $0.id == catId }) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        store.categories[idx].folder = title
+                    }
+                    HapticsManager.shared.trigger(.success)
+                    return true
+                }
+                return false
             }
         }
     }
@@ -430,18 +447,16 @@ struct CategoriesSettingsView: View {
                     icon: SFIcons.plus,
                     size: 52,
                     iconSize: 20,
-                    tintColor: SpendyColors.primaryBlue,
-                    foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
+                    foregroundColor: SpendyColors.textPrimary,
                     haptic: .medium,
                     accessibilityLabel: "Add Options Menu"
                 ) {
                     // Tap action intercepted by Menu wrapper
                 }
-                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 4)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, 20)
+        .padding(.bottom, 8)
     }
     
     private var filteredCategories: [Category] {

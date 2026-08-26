@@ -193,9 +193,9 @@ struct SettingsView: View {
                             .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
                     } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
                         Circle()
-                            .fill(Color(hex: store.profileColorHex ?? "#007AFF"))
+                            .fill(store.topGradientColor)
                             .frame(width: 56, height: 56)
-                            .shadow(color: Color(hex: store.profileColorHex ?? "#007AFF").opacity(0.35), radius: 6, y: 2)
+                            .shadow(color: store.topGradientColor.opacity(0.35), radius: 6, y: 2)
                         
                         Image(systemName: symbol)
                             .font(.system(size: 24, weight: .semibold))
@@ -204,13 +204,13 @@ struct SettingsView: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color(hex: store.profileColorHex ?? "#007AFF"), SpendyColors.accentCyan],
+                                    colors: [store.topGradientColor, SpendyColors.accentCyan],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
                             .frame(width: 56, height: 56)
-                            .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 6, y: 2)
+                            .shadow(color: store.topGradientColor.opacity(0.35), radius: 6, y: 2)
                         
                         if !store.userName.isEmpty {
                             Text(String(store.userName.prefix(1)).uppercased())

@@ -276,7 +276,7 @@ struct EditBudgetSheet: View {
             }
         }
         .presentationDetents([.fraction(0.85), .large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationBackground(.ultraThinMaterial)
         .onChange(of: selectedPeriod) { oldValue, newValue in
             if newValue == .weekly {

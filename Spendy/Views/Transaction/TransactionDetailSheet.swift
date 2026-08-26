@@ -98,7 +98,7 @@ struct TransactionDetailSheet: View {
             }
         }
         .presentationDetents([.height(525), .medium])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
         .presentationBackground {
             ZStack {

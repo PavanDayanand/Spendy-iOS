@@ -210,7 +210,7 @@ struct CurrencyPickerSheet: View {
         }
         .presentationBackground(Color(hex: "#1C1C1E"))
         .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
     }
     

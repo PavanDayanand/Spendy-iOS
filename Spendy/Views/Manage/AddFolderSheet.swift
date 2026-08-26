@@ -2,7 +2,7 @@
 //  AddFolderSheet.swift
 //  Spendy
 //
-//  Drawer Sheet for Adding & Editing Folders with Liquid Glass Controls
+//  Drawer Sheet for Adding & Editing Folders matching AddCategorySheet Format
 //
 
 import SwiftUI
@@ -39,21 +39,12 @@ struct AddFolderSheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Top vertical gradient glow
-            LinearGradient(
-                colors: [
-                    SpendyColors.textPrimary.opacity(0.12),
-                    SpendyColors.textPrimary.opacity(0.03),
-                    Color.clear
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 220)
-            .ignoresSafeArea()
+            // Dynamic Ambient Header Glow based on selected folder type
+            let themeColor = type == .expense ? SpendyColors.primaryBlue : SpendyColors.incomeGreen
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
             
             VStack(spacing: 0) {
-                // Top Header: Close, Type Toggle, Delete (Sticky at top!)
+                // Top Header: Close, Type Toggle Switcher, Delete (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -62,23 +53,19 @@ struct AddFolderSheet: View {
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        Spacer().frame(height: 20)
+                        // Hero Circle Avatar (Matching AddCategorySheet)
+                        avatarHeroSection
+                            .padding(.top, 32)
                         
-                        // Folder Name input card
+                        // Folder Name Field (Matching AddCategorySheet)
                         folderNameCard
-                        
-                        Text("Folders help you group similar categories together for cleaner insights.")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 16)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // clearance for action button
+                    .padding(.bottom, 120) // Clearance for bottom button
                 }
             }
             
-            // Bottom Action Button Container (Full Width)
+            // Bottom Fixed Action Button Container (Full Width)
             VStack(spacing: 0) {
                 bottomActionButton
                     .padding(.horizontal, 20)
@@ -94,6 +81,8 @@ struct AddFolderSheet: View {
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .presentationBackground(SpendyColors.appBackground)
+        .presentationDragIndicator(.hidden)
         .confirmationDialog(
             "Delete Folder?",
             isPresented: $showDeleteConfirm,
@@ -101,7 +90,7 @@ struct AddFolderSheet: View {
         ) {
             Button("Delete Folder", role: .destructive) {
                 if let folder = folderToEdit {
-                    store.deleteFolder(id: folder.id)
+                    store.deleteFolder(id: folder.id, name: folder.name, type: folder.type)
                     HapticsManager.shared.trigger(.warning)
                     dismiss()
                 }
@@ -112,7 +101,7 @@ struct AddFolderSheet: View {
         }
     }
     
-    // MARK: - Top Header Bar
+    // MARK: - Top Header Bar (Matching AddCategorySheet)
     private var topHeaderBar: some View {
         HStack {
             // Close Button
@@ -129,7 +118,7 @@ struct AddFolderSheet: View {
             
             Spacer()
             
-            // Segmented Type Toggle
+            // Type toggleSwitcher (Expense / Income)
             typeToggleCapsule
             
             Spacer()
@@ -153,7 +142,7 @@ struct AddFolderSheet: View {
         }
     }
     
-    // MARK: - Type Toggle Capsule
+    // MARK: - Type Toggle Capsule (Exact Match with AddCategorySheet)
     private var typeToggleCapsule: some View {
         HStack(spacing: 6) {
             typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
@@ -225,26 +214,36 @@ struct AddFolderSheet: View {
         .buttonStyle(.plain)
     }
     
-    // MARK: - Folder Name Card
-    private var folderNameCard: some View {
-        HStack(spacing: 12) {
-            TextField("Folder Name", text: $name)
-                .font(.system(size: 15, weight: .medium))
+    // MARK: - Avatar Hero Section (Matching AddCategorySheet)
+    private var avatarHeroSection: some View {
+        VStack(spacing: 12) {
+            SpendyIconBadge(
+                sfSymbol: "folder.fill",
+                color: type == .expense ? SpendyColors.primaryBlue : SpendyColors.incomeGreen,
+                size: .hero,
+                style: .circle
+            )
+            
+            Text(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Folder Name" : name)
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                }
         }
     }
     
-    // MARK: - Bottom Action Button
+    // MARK: - Folder Name Card (Matching AddCategorySheet Capsule)
+    private var folderNameCard: some View {
+        HStack {
+            TextField("Folder Name", text: $name)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .autocorrectionDisabled()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.white.opacity(0.06), in: Capsule())
+    }
+    
+    // MARK: - Bottom Action Button (Matching AddCategorySheet)
     private var bottomActionButton: some View {
         Button(action: {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -261,13 +260,13 @@ struct AddFolderSheet: View {
             }
             dismiss()
         }) {
-            Text(isEditing ? "Save Changes" : "Create")
+            Text(isEditing ? "Save Changes" : "Create Folder")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
+                .foregroundStyle(Color.black)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(SpendyColors.primaryBlue, in: Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
+                .background(Color.white, in: Capsule())
+                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

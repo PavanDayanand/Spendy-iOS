@@ -522,33 +522,37 @@ final class ExpenseStore {
     }
     
     func updateFolder(_ folder: Folder, oldName: String) {
-        if let index = customFolders.firstIndex(where: { $0.id == folder.id }) {
-            withAnimation(.spring(response: 0.35)) {
+        withAnimation(.spring(response: 0.35)) {
+            if let index = customFolders.firstIndex(where: { $0.id == folder.id }) {
                 customFolders[index] = folder
-                // Also update any categories that were in the old folder to the new folder name
-                for catIndex in categories.indices {
-                    if categories[catIndex].folder == oldName && categories[catIndex].type == folder.type {
-                        categories[catIndex].folder = folder.name
-                    }
+            } else {
+                customFolders.append(folder)
+            }
+            // Also update any categories that were in the old folder to the new folder name
+            for catIndex in categories.indices {
+                if categories[catIndex].folder == oldName && categories[catIndex].type == folder.type {
+                    categories[catIndex].folder = folder.name
                 }
             }
-            HapticsManager.shared.trigger(.light)
         }
+        HapticsManager.shared.trigger(.light)
     }
     
-    func deleteFolder(id: String) {
-        if let folderToDelete = customFolders.first(where: { $0.id == id }) {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                // Reassign all categories in this folder to Uncategorized
+    func deleteFolder(id: String, name: String? = nil, type: TransactionType? = nil) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            let targetName = name ?? customFolders.first(where: { $0.id == id })?.name
+            let targetType = type ?? customFolders.first(where: { $0.id == id })?.type
+            
+            if let folderName = targetName {
                 for index in categories.indices {
-                    if categories[index].folder == folderToDelete.name && categories[index].type == folderToDelete.type {
+                    if categories[index].folder == folderName && (targetType == nil || categories[index].type == targetType) {
                         categories[index].folder = "Uncategorized"
                     }
                 }
-                customFolders.removeAll(where: { $0.id == id })
             }
-            HapticsManager.shared.trigger(.medium)
+            customFolders.removeAll(where: { $0.id == id || (targetName != nil && $0.name == targetName) })
         }
+        HapticsManager.shared.trigger(.medium)
     }
     
     func addSubscription(_ subscription: Subscription) {

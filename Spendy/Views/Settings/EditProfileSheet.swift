@@ -45,8 +45,12 @@ struct EditProfileSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: "#1C1C1E")
+            SpendyColors.appBackground
                 .ignoresSafeArea()
+            
+            // Dynamic Space Ambient Gradient Glow based on selected theme color
+            let themeColor = Color(hex: selectedColorHex)
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
             
             VStack(spacing: 0) {
                 // Top Header Bar: Close, Title "Edit Space" (Sticky at top!)
@@ -54,7 +58,6 @@ struct EditProfileSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
-                    .background(Color(hex: "#1C1C1E"))
                     .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
@@ -95,15 +98,15 @@ struct EditProfileSheet: View {
             }
             .background {
                 LinearGradient(
-                    colors: [Color.clear, Color(hex: "#1C1C1E").opacity(0.95), Color(hex: "#1C1C1E")],
+                    colors: [Color.clear, SpendyColors.appBackground.opacity(0.95), SpendyColors.appBackground],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea(edges: .bottom)
             }
         }
-        .presentationBackground(Color(hex: "#1C1C1E"))
-        .presentationDragIndicator(.visible)
+        .presentationBackground(SpendyColors.appBackground)
+        .presentationDragIndicator(.hidden)
         // MARK: - Modals & Pickers
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(
@@ -117,6 +120,9 @@ struct EditProfileSheet: View {
                     showCameraPicker = true
                 },
                 onRemovePhotoSelected: {
+                    selectedImageData = nil
+                },
+                onIconSelected: { _ in
                     selectedImageData = nil
                 }
             )

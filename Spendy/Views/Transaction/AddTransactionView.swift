@@ -933,7 +933,7 @@ struct CategoryPickerDrawer: View {
                 .padding(.bottom, 16)
         }
         .presentationDetents([.fraction(0.88), .large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationBackground(.ultraThinMaterial)
     }
     
@@ -1129,7 +1129,7 @@ struct AccountPickerDrawer: View {
             }
         }
         .presentationDetents([.fraction(0.55), .medium])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationBackground(.ultraThinMaterial)
     }
 }
@@ -1320,7 +1320,7 @@ struct CustomCalendarDrawer: View {
             }
         }
         .presentationDetents([.fraction(0.68)])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationBackground(.ultraThinMaterial)
     }
     

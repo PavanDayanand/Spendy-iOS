@@ -81,8 +81,7 @@ struct AccountsSettingsView: View {
                 .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(isPresented: $showCurrencyPicker) {
-            currencyPickerSheet
-                .presentationBackground(SpendyColors.appBackground)
+            CurrencyPickerSheet()
         }
         .sheet(item: $editingAccount) { acc in
             AddAccountSheet(accountToEdit: acc)
@@ -392,66 +391,6 @@ struct AccountsSettingsView: View {
         .padding(.bottom, 20)
     }
     
-    // MARK: - Currency Picker Sheet
-    private var currencyPickerSheet: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(supportedCurrencies, id: \.code) { curr in
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
-                                store.currencySymbol = curr.symbol
-                                store.currencyCode = curr.code
-                                showCurrencyPicker = false
-                            }) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(curr.code)
-                                            .font(.system(size: 15, weight: .bold))
-                                            .foregroundStyle(SpendyColors.textPrimary)
-                                        Text(curr.name)
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(SpendyColors.textSecondary)
-                                    }
-                                    Spacer()
-                                    Text(curr.symbol)
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(store.currencyCode == curr.code ? SpendyColors.primaryBlue : SpendyColors.textSecondary)
-                                }
-                                .padding(16)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(SpendyColors.cardBackground)
-                                        .overlay {
-                                            if store.currencyCode == curr.code {
-                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .stroke(SpendyColors.primaryBlue, lineWidth: 1.5)
-                                            } else {
-                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                            }
-                                        }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(20)
-                }
-            }
-            .navigationTitle("Select Currency")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showCurrencyPicker = false }
-                }
-            }
-        }
-    }
-    
     private func formatShortCurrency(_ value: Double) -> String {
         let sym = store.currencySymbol
         if abs(value) >= 1_000_000 {
@@ -462,16 +401,4 @@ struct AccountsSettingsView: View {
             return value.formattedCurrency(symbol: sym, decimals: 0)
         }
     }
-    
-    private let supportedCurrencies: [(code: String, symbol: String, name: String)] = [
-        ("INR", "₹", "Indian Rupee"),
-        ("USD", "$", "US Dollar"),
-        ("EUR", "€", "Euro"),
-        ("GBP", "£", "British Pound"),
-        ("JPY", "¥", "Japanese Yen"),
-        ("CAD", "$", "Canadian Dollar"),
-        ("AUD", "$", "Australian Dollar"),
-        ("AED", "د.إ", "UAE Dirham"),
-        ("SGD", "$", "Singapore Dollar")
-    ]
 }

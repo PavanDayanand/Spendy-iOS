@@ -120,6 +120,7 @@ struct AddSubscriptionSheet: View {
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
                 .presentationBackground(SpendyColors.appBackground)

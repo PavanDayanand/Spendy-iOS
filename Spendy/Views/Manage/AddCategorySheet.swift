@@ -133,6 +133,8 @@ struct AddCategorySheet: View {
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .presentationBackground(SpendyColors.appBackground)
+        .presentationDragIndicator(.hidden)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
         }
@@ -454,9 +456,15 @@ struct AddCategorySheet: View {
         VStack(alignment: .leading, spacing: 8) {
             Menu {
                 ForEach(availableFolders, id: \.self) { folder in
-                    Button(folder) {
+                    Button(action: {
                         selectedFolder = folder
                         HapticsManager.shared.trigger(.selection)
+                    }) {
+                        if selectedFolder == folder {
+                            Label(folder, systemImage: "checkmark")
+                        } else {
+                            Text(folder)
+                        }
                     }
                 }
             } label: {
