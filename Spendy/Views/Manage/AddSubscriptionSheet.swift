@@ -140,47 +140,45 @@ struct AddSubscriptionSheet: View {
     // MARK: - Components
 
     private var topHeaderBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Close Button
+        HStack {
+            // Close Button
+            GlassCircleButton(
+                icon: "xmark",
+                size: 40,
+                iconSize: 13,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: headerNamespace
+            ) {
+                dismiss()
+            }
+
+            Spacer()
+
+            Text(isEditing ? "Edit Subscription" : "New Subscription")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+
+            Spacer()
+
+            // Delete button (visible in Edit Mode, matches close button glass circle with red icon)
+            if isEditing {
                 GlassCircleButton(
-                    icon: "xmark",
+                    icon: "trash.fill",
                     size: 40,
                     iconSize: 13,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
+                    foregroundColor: SpendyColors.expenseRed,
+                    haptic: .warning,
+                    accessibilityLabel: "Delete Subscription",
+                    morphID: "deleteButton",
                     namespace: headerNamespace
                 ) {
-                    dismiss()
+                    showDeleteConfirmation = true
                 }
-
-                Spacer()
-
-                Text(isEditing ? "Edit Subscription" : "New Subscription")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-
-                Spacer()
-
-                // Delete button (visible in Edit Mode, matches close button glass circle with red icon)
-                if isEditing {
-                    GlassCircleButton(
-                        icon: "trash.fill",
-                        size: 40,
-                        iconSize: 13,
-                        foregroundColor: SpendyColors.expenseRed,
-                        haptic: .warning,
-                        accessibilityLabel: "Delete Subscription",
-                        morphID: "deleteButton",
-                        namespace: headerNamespace
-                    ) {
-                        showDeleteConfirmation = true
-                    }
-                } else {
-                    Color.clear.frame(width: 40, height: 40)
-                }
+            } else {
+                Color.clear.frame(width: 40, height: 40)
             }
         }
     }

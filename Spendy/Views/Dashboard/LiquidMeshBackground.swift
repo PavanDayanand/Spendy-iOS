@@ -11,14 +11,12 @@ struct LiquidMeshBackground: View {
     @Environment(ExpenseStore.self) private var store
     
     var body: some View {
-        GeometryReader { geometry in
-            let topColor = store.topGradientColor
-            let height = geometry.size.height
-            
-            ZStack {
-                // 1. Base Pitch Black Canvas
-                Color.black
-                    .ignoresSafeArea()
+        let topColor = store.topGradientColor
+        
+        ZStack {
+            // 1. Base Pitch Black Canvas
+            Color.black
+                .ignoresSafeArea()
                 
                 if store.isGradientBackgroundEnabled {
                     // 2. Smooth Linear Flow Fading Gently into Black (No Hard Cuts)
@@ -48,7 +46,6 @@ struct LiquidMeshBackground: View {
                         endPoint: .bottom
                     )
                     .ignoresSafeArea()
-                }
             }
         }
         .ignoresSafeArea()

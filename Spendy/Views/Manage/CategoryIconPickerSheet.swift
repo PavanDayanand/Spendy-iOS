@@ -330,17 +330,11 @@ struct CategoryIconPickerSheet: View {
         .padding(4)
         .frame(height: 44)
         .background {
-            if #available(iOS 26, *) {
-                Capsule()
-                    .fill(Color(hex: "#18181A").opacity(0.7))
-                    .glassEffect(.clear.interactive(), in: .capsule)
-            } else {
-                Capsule()
-                    .fill(Color(hex: "#18181A"))
-                    .overlay {
-                        Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                    }
-            }
+            Capsule()
+                .fill(Color(hex: "#18181A"))
+                .overlay {
+                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                }
         }
     }
     
@@ -379,19 +373,12 @@ struct CategoryIconPickerSheet: View {
             .frame(height: 36)
             .background {
                 if isSelected {
-                    if #available(iOS 26, *) {
-                        Capsule()
-                            .fill(Color(hex: "#242426"))
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .glassEffectID("activeTabPill", in: iconSheetNamespace)
-                    } else {
-                        Capsule()
-                            .fill(Color(hex: "#242426"))
-                            .overlay {
-                                Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
-                            }
-                            .matchedGeometryEffect(id: "activeTabPill", in: iconSheetNamespace)
-                    }
+                    Capsule()
+                        .fill(Color(hex: "#2C2C2E"))
+                        .overlay {
+                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
+                        }
+                        .glassMorphID("activeTabPill", in: iconSheetNamespace)
                 }
             }
             .contentShape(Capsule())

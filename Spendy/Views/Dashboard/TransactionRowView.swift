@@ -15,7 +15,6 @@ struct TransactionRowView: View {
         let category = store.category(for: transaction.categoryId)
         let account = store.account(for: transaction.accountId)
         let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == transaction.subscriptionId?.lowercased() })
-        let tintColor = subscription?.color ?? category.color
         
         let accent = subscription != nil ? Color(hex: subscription!.colorHex) : nil
         

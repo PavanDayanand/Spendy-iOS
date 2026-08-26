@@ -60,41 +60,39 @@ struct ReceiptPrinterSheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         // Top Header Bar
-                        SpendyGlassEffectContainer(spacing: 0) {
-                            HStack {
-                                GlassCircleButton(
-                                    icon: "xmark",
-                                    size: 44,
-                                    iconSize: 14,
-                                    foregroundColor: .white,
-                                    haptic: .selection,
-                                    accessibilityLabel: "Close",
-                                    morphID: "closeButton",
-                                    namespace: receiptNamespace
-                                ) {
-                                    dismiss()
-                                }
-                                
-                                Spacer()
-                                
-                                Text("Monthly Receipt")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundStyle(.white)
-                                
-                                Spacer()
-                                
-                                GlassCircleButton(
-                                    icon: "square.and.arrow.up",
-                                    size: 44,
-                                    iconSize: 15,
-                                    foregroundColor: .white,
-                                    haptic: .light,
-                                    accessibilityLabel: "Share Receipt",
-                                    morphID: "shareButton",
-                                    namespace: receiptNamespace
-                                ) {
-                                    exportReceipt()
-                                }
+                        HStack {
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: .white,
+                                haptic: .selection,
+                                accessibilityLabel: "Close",
+                                morphID: "closeButton",
+                                namespace: receiptNamespace
+                            ) {
+                                dismiss()
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Monthly Receipt")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.white)
+                            
+                            Spacer()
+                            
+                            GlassCircleButton(
+                                icon: "square.and.arrow.up",
+                                size: 44,
+                                iconSize: 15,
+                                foregroundColor: .white,
+                                haptic: .light,
+                                accessibilityLabel: "Share Receipt",
+                                morphID: "shareButton",
+                                namespace: receiptNamespace
+                            ) {
+                                exportReceipt()
                             }
                         }
                         .padding(.top, 10)

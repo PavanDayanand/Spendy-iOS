@@ -79,7 +79,7 @@ struct BudgetView: View {
     private var titleHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(store.budget.period == .weekly ? "Weekly budget" : "Monthly budget")
+                Text("Budget")
                     .font(.system(size: 38, weight: .heavy))
                     .foregroundStyle(SpendyColors.textPrimary)
                 

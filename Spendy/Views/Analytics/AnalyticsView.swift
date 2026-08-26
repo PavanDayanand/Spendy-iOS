@@ -143,8 +143,15 @@ struct AnalyticsView: View {
                     }
                 }
             }
-            .sheet(item: $selectedAccountForSheet) { account in
-                AccountAnalyticsSheet(account: account)
+            .navigationDestination(item: $selectedAccountForSheet) { account in
+                AccountAnalyticsSheet(
+                    account: account,
+                    topControlsNamespace: analyticsControlsNamespace
+                ) {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        selectedAccountForSheet = nil
+                    }
+                }
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(

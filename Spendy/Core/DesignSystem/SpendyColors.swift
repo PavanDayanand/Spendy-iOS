@@ -129,6 +129,9 @@ enum SpendyColors {
         dark: UIColor(white: 1.0, alpha: 1.0)
     ))
     
+    // Tab Bar Accent Blue (Default Apple System Blue)
+    static let tabSelectedBlue = Color.blue
+    
     static let accentCyan = Color(uiColor: .dynamic(
         light: UIColor(white: 0.20, alpha: 1.0),
         dark: UIColor(white: 0.85, alpha: 1.0)

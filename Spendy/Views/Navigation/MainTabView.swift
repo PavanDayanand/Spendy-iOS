@@ -40,7 +40,7 @@ struct MainTabView: View {
             }
             .tabViewStyle(.sidebarAdaptable)
             .tabBarMinimizeBehavior(.onScrollDown)
-            .tint(SpendyColors.primaryBlue)
+            .tint(SpendyColors.tabSelectedBlue)
             .onChange(of: selectedTab) { oldTab, newTab in
                 if newTab == .quickAdd {
                     withAnimation {

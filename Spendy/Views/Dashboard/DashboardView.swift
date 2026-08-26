@@ -436,18 +436,6 @@ struct DashboardView: View {
                     .presentationBackground(Color(hex: "#1C1C1E"))
                     .presentationDragIndicator(.hidden)
             }
-            .sheet(isPresented: $showReceiptPrinter) {
-                ReceiptPrinterSheet()
-            }
-            .sheet(item: $inspectingTransaction) { tx in
-                TransactionDetailSheet(transaction: tx) { txToEdit in
-                    lastInspectedTransaction = tx
-                    inspectingTransaction = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                        editingTransaction = txToEdit
-                    }
-                }
-            }
             .sheet(item: $editingTransaction, onDismiss: {
                 // Re-open detail sheet with fresh (possibly edited) transaction data
                 if let last = lastInspectedTransaction {
@@ -459,6 +447,18 @@ struct DashboardView: View {
                 }
             }) { tx in
                 AddTransactionView(transactionToEdit: tx)
+            }
+            .sheet(isPresented: $showReceiptPrinter) {
+                ReceiptPrinterSheet()
+            }
+            .sheet(item: $inspectingTransaction) { tx in
+                TransactionDetailSheet(transaction: tx) { txToEdit in
+                    lastInspectedTransaction = tx
+                    inspectingTransaction = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                        editingTransaction = txToEdit
+                    }
+                }
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(

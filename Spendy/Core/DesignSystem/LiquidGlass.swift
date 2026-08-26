@@ -191,6 +191,17 @@ struct GlassEffectIDModifier<ID: Hashable>: ViewModifier {
     }
 }
 
+struct GlassEffectTransitionModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .glassEffectTransition(.identity)
+        } else {
+            content
+        }
+    }
+}
+
 struct GlassEffectUnionModifier<ID: Hashable>: ViewModifier {
     var id: ID?
     var namespace: Namespace.ID?
@@ -431,6 +442,10 @@ extension View {
     
     func glassMorphID<ID: Hashable>(_ id: ID, in namespace: Namespace.ID) -> some View {
         modifier(GlassEffectIDModifier(id: id, namespace: namespace))
+    }
+    
+    func glassMorphTransition() -> some View {
+        modifier(GlassEffectTransitionModifier())
     }
     
     func glassMorphUnion<ID: Hashable>(id: ID? = nil, namespace: Namespace.ID? = nil) -> some View {

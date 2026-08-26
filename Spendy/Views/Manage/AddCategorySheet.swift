@@ -160,47 +160,45 @@ struct AddCategorySheet: View {
     @Namespace private var headerNamespace
     
     private var topHeaderBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Close Button
+        HStack {
+            // Close Button
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 14,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: headerNamespace
+            ) {
+                dismiss()
+            }
+            
+            Spacer()
+            
+            // Type toggleSwitcher (Expense / Income)
+            typeToggleCapsule
+            
+            Spacer()
+            
+            // Delete Button (if editing)
+            if isEditing {
                 GlassCircleButton(
-                    icon: "xmark",
+                    icon: "trash.fill",
                     size: 44,
                     iconSize: 14,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
+                    tintColor: SpendyColors.expenseRed,
+                    foregroundColor: SpendyColors.expenseRed,
+                    haptic: .warning,
+                    accessibilityLabel: "Delete Category",
+                    morphID: "deleteButton",
                     namespace: headerNamespace
                 ) {
-                    dismiss()
+                    showDeleteConfirm = true
                 }
-                
-                Spacer()
-                
-                // Type toggleSwitcher (Expense / Income)
-                typeToggleCapsule
-                
-                Spacer()
-                
-                // Delete Button (if editing)
-                if isEditing {
-                    GlassCircleButton(
-                        icon: "trash.fill",
-                        size: 44,
-                        iconSize: 14,
-                        tintColor: SpendyColors.expenseRed,
-                        foregroundColor: SpendyColors.expenseRed,
-                        haptic: .warning,
-                        accessibilityLabel: "Delete Category",
-                        morphID: "deleteButton",
-                        namespace: headerNamespace
-                    ) {
-                        showDeleteConfirm = true
-                    }
-                } else {
-                    Color.clear.frame(width: 44, height: 44)
-                }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
             }
         }
     }

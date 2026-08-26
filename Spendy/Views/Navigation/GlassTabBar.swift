@@ -33,7 +33,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .analytics: return "chart.bar.fill"
         case .budget: return "dollarsign.circle.fill"
-        case .manage: return "repeat.circle.fill"
+        case .manage: return "repeat"
         case .quickAdd: return "plus"
         }
     }
@@ -204,11 +204,12 @@ private extension GlassTabBar {
 
                 // Dynamic Gliding Pill Indicator (Expanded bubble when dragging/holding)
                 Capsule(style: .continuous)
-                    .fill(Color.primary.opacity(isDragging ? 0.20 : 0.12))
+                    .fill(Color.blue)
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(Color.primary.opacity(isDragging ? 0.30 : 0.18), lineWidth: 1)
+                            .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
                     )
+                    .shadow(color: Color.blue.opacity(isDragging ? 0.40 : 0.25), radius: 8, y: 2)
                     .frame(width: pillWidth, height: pillHeight)
                     .offset(x: currentOffset)
                     .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selectedTab)
@@ -223,12 +224,12 @@ private extension GlassTabBar {
                         VStack(spacing: 3) {
                             Image(systemName: tab.sfSymbol)
                                 .font(.system(size: 19, weight: isSelected ? .bold : .regular))
-                                .foregroundStyle(isSelected ? Color.primary : Color.primary.opacity(0.55))
+                                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.55))
                                 .scaleEffect(isSelected && isDragging ? 1.15 : 1.0)
 
                             Text(tab.label)
                                 .font(.system(size: 10, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? Color.primary : Color.primary.opacity(0.55))
+                                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.55))
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())

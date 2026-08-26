@@ -143,7 +143,7 @@ struct ManageView: View {
     private var titleHeader: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Manage")
+                Text("Subscriptions")
                     .font(.system(size: 32, weight: .heavy))
                     .foregroundStyle(SpendyColors.textPrimary)
 

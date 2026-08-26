@@ -115,26 +115,24 @@ struct TransactionDetailSheet: View {
     private var topActionBar: some View {
         HStack {
             // Close Button ✕ — matches home page size: 44
-            SpendyGlassEffectContainer(spacing: 0) {
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
-                    namespace: sheetNamespace
-                ) {
-                    dismiss()
-                }
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: sheetNamespace
+            ) {
+                dismiss()
             }
             
             Spacer()
             
             // Edit ✎ + Delete 🗑 — matches home page size: 44
-            SpendyGlassEffectContainer(spacing: 10) {
+            GlassButtonGroup(spacing: 10) {
                 GlassCircleButton(
                     icon: "pencil",
                     size: 44,
