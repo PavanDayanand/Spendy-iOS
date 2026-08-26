@@ -29,34 +29,24 @@ struct BudgetView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+            ZStack(alignment: .top) {
+                // 1. Dynamic Canvas Background framing the centerpiece card
+                store.canvasBackgroundColor
+                    .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // Title Header (Scrolls away with page)
-                        titleHeader
+                    VStack(spacing: 10) {
+                        // 2. Detached Top Capsule Navbar (44x44 Circular Action Buttons)
+                        topDetachedPillBar
+                            .padding(.top, 4)
                         
-                        if !store.budget.isActive || store.budget.amount <= 0 {
-                            // Empty State View
-                            emptyStateView
-                        } else {
-                            // Active Budget Content
-                            activeBudgetContent
-                        }
+                        // 3. Main Centerpiece Sheet Card
+                        centerpieceWhiteCard
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 140)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 16)
                 }
-            }
-            .overlay(alignment: .topTrailing) {
-                // Sticky Action Buttons (Stay fixed at top right)
-                if store.budget.isActive {
-                    actionButtons
-                        .padding(.trailing, 16)
-                        .padding(.top, 8)
-                        .zIndex(100)
-                }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showEditBudgetSheet) {
@@ -75,62 +65,134 @@ struct BudgetView: View {
         }
     }
     
-    // MARK: - Title Header (Scrolls away)
-    private var titleHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Budget")
-                    .font(.system(size: 38, weight: .heavy))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
+    // MARK: - 1. Top Detached Capsule Navbar (44x44 Circular Buttons)
+    private var topDetachedPillBar: some View {
+        HStack(alignment: .center) {
+            // Target Icon Badge (44x44 Circle)
+            ZStack {
+                Circle()
+                    .fill(store.cardChipBackground)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "target")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(store.canvasBackgroundColor)
             }
             
-            Text(cycleDateRangeString)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(SpendyColors.separator, in: Capsule())
+            Spacer()
+            
+            // Top Right Action Buttons Group (Edit, Delete / Create)
+            HStack(spacing: 8) {
+                if store.budget.isActive && store.budget.amount > 0 {
+                    // Edit Budget Button (44x44 Circle)
+                    Button(action: {
+                        HapticsManager.shared.trigger(.light)
+                        isEditingExisting = true
+                        showEditBudgetSheet = true
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(store.cardChipBackground)
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "pencil")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(store.cardChipText)
+                        }
+                    }
+                    .buttonStyle(PressableSpringButtonStyle())
+                    
+                    // Delete Budget Button (44x44 Circle)
+                    Button(action: {
+                        HapticsManager.shared.trigger(.medium)
+                        showDeleteConfirmation = true
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(store.cardChipBackground)
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(SpendyColors.expenseRed)
+                        }
+                    }
+                    .buttonStyle(PressableSpringButtonStyle())
+                    .popover(isPresented: $showDeleteConfirmation, arrowEdge: .top) {
+                        deleteConfirmationPopover
+                            .presentationCompactAdaptation(.popover)
+                    }
+                } else {
+                    // Create Budget Button (44x44 Circle)
+                    Button(action: {
+                        HapticsManager.shared.trigger(.medium)
+                        isEditingExisting = false
+                        showEditBudgetSheet = true
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(store.cardChipBackground)
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(store.cardChipText)
+                        }
+                    }
+                    .buttonStyle(PressableSpringButtonStyle())
+                }
+            }
         }
-        .padding(.top, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            Capsule()
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    Capsule().stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: 10, y: 3)
+        }
     }
     
-    // MARK: - Sticky Action Buttons (Stay fixed at top right)
-    private var actionButtons: some View {
-        GlassButtonGroup(spacing: 10) {
-            // Edit Liquid Glass Button
-            GlassCircleButton(
-                icon: SFIcons.edit,
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Edit Budget",
-                morphID: "editButton",
-                namespace: budgetControlsNamespace
-            ) {
-                isEditingExisting = true
-                showEditBudgetSheet = true
+    // MARK: - 2. Main Centerpiece Sheet Card
+    private var centerpieceWhiteCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header Row inside Card: Title + Date Range Pill
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Budget")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(store.cardTextPrimary)
+                }
+                
+                Spacer()
+                
+                Text(cycleDateRangeString)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(store.canvasBackgroundColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(store.cardChipBackground))
             }
             
-            // Delete Liquid Glass Button with Anchored Popover
-            GlassCircleButton(
-                icon: SFIcons.trash,
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.expenseRed,
-                haptic: .medium,
-                accessibilityLabel: "Delete Budget",
-                morphID: "deleteButton",
-                namespace: budgetControlsNamespace
-            ) {
-                showDeleteConfirmation = true
+            Divider()
+                .overlay(store.cardDividerColor)
+            
+            if !store.budget.isActive || store.budget.amount <= 0 {
+                // Empty State View
+                emptyStateView
+            } else {
+                // Active Budget Content
+                activeBudgetContent
             }
-            .popover(isPresented: $showDeleteConfirmation, arrowEdge: .top) {
-                deleteConfirmationPopover
-                    .presentationCompactAdaptation(.popover)
-            }
+        }
+        .padding(20)
+        .padding(.bottom, 100) // Full clearance for bottom GlassTabBar
+        .background {
+            RoundedRectangle(cornerRadius: 38, style: .continuous)
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 38, style: .continuous)
+                        .stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 24, y: 8)
         }
     }
     
@@ -331,5 +393,15 @@ struct BudgetView: View {
                 WhatIfPlannerView()
             }
         }
+    }
+}
+
+// MARK: - Pressable Spring Button Style
+private struct PressableSpringButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
     }
 }

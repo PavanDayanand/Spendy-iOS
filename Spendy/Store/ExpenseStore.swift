@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import Observation
 
 enum AppearanceMode: String, Codable, CaseIterable, Identifiable {
     case dark = "Dark"
@@ -154,6 +155,90 @@ final class ExpenseStore {
         }
     }
     
+    // MARK: - App Custom Theme & Surface Colors
+    var canvasBackgroundColorHex: String = "#2432F6" {
+        didSet { saveToDisk() }
+    }
+    
+    var cardBackgroundColorHex: String = "#FFFFFF" {
+        didSet { saveToDisk() }
+    }
+    
+    var canvasBackgroundColor: Color {
+        Color(hex: canvasBackgroundColorHex)
+    }
+    
+    var cardBackgroundColor: Color {
+        Color(hex: cardBackgroundColorHex)
+    }
+    
+    // Dynamic Luminance & Contrast Adapters
+    var isCardDark: Bool {
+        let hex = cardBackgroundColorHex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b: Double
+        switch hex.count {
+        case 3:
+            r = Double((int >> 8) * 17) / 255.0
+            g = Double((int >> 4 & 0xF) * 17) / 255.0
+            b = Double((int & 0xF) * 17) / 255.0
+        case 6, 8:
+            r = Double((int >> 16) & 0xFF) / 255.0
+            g = Double((int >> 8) & 0xFF) / 255.0
+            b = Double(int & 0xFF) / 255.0
+        default:
+            return false
+        }
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        return luminance < 0.48
+    }
+    
+    var isCanvasDark: Bool {
+        let hex = canvasBackgroundColorHex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b: Double
+        switch hex.count {
+        case 3:
+            r = Double((int >> 8) * 17) / 255.0
+            g = Double((int >> 4 & 0xF) * 17) / 255.0
+            b = Double((int & 0xF) * 17) / 255.0
+        case 6, 8:
+            r = Double((int >> 16) & 0xFF) / 255.0
+            g = Double((int >> 8) & 0xFF) / 255.0
+            b = Double(int & 0xFF) / 255.0
+        default:
+            return true
+        }
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        return luminance < 0.48
+    }
+    
+    var cardTextPrimary: Color {
+        isCardDark ? Color.white : Color.black
+    }
+    
+    var cardTextSecondary: Color {
+        isCardDark ? Color(hex: "#9CA3AF") : Color(hex: "#6B7280")
+    }
+    
+    var cardChipBackground: Color {
+        isCardDark ? Color(hex: "#27272A") : Color(hex: "#F2F2F7")
+    }
+    
+    var cardChipText: Color {
+        isCardDark ? Color.white : Color.black
+    }
+    
+    var cardDividerColor: Color {
+        isCardDark ? Color.white.opacity(0.12) : Color.black.opacity(0.08)
+    }
+    
+    var cardBorderColor: Color {
+        isCardDark ? Color.white.opacity(0.12) : Color.clear
+    }
+    
     // MARK: - Initializer & Persistence
     init() {
         loadFromDisk()
@@ -173,6 +258,8 @@ final class ExpenseStore {
         var isGradientBackgroundEnabled: Bool?
         var topGradientHue: Double?
         var topGradientBrightness: Double?
+        var canvasBackgroundColorHex: String?
+        var cardBackgroundColorHex: String?
         var transactions: [Transaction]
         var accounts: [Account]
         var categories: [Category]
@@ -205,6 +292,8 @@ final class ExpenseStore {
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
                 self.topGradientHue = payload.topGradientHue ?? 0.65
                 self.topGradientBrightness = payload.topGradientBrightness ?? 0.45
+                self.canvasBackgroundColorHex = payload.canvasBackgroundColorHex ?? "#2432F6"
+                self.cardBackgroundColorHex = payload.cardBackgroundColorHex ?? "#FFFFFF"
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories
@@ -254,6 +343,8 @@ final class ExpenseStore {
                 isGradientBackgroundEnabled: isGradientBackgroundEnabled,
                 topGradientHue: topGradientHue,
                 topGradientBrightness: topGradientBrightness,
+                canvasBackgroundColorHex: canvasBackgroundColorHex,
+                cardBackgroundColorHex: cardBackgroundColorHex,
                 transactions: transactions,
                 accounts: accounts,
                 categories: categories,

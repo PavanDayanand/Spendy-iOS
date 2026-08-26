@@ -62,16 +62,19 @@ struct SettingsView: View {
                             // 1. Manage Section (Accounts & Categories)
                             manageSection
                             
-                            // 2. Preferences Section (Currency & Haptics)
+                            // 2. Theme & Custom Surfaces (Canvas Color & Card Color)
+                            themeCustomizerSection
+                            
+                            // 3. Preferences Section (Currency & Haptics)
                             preferencesSection
                             
-                            // 3. Data & Backup Section (Export, Import, Reset)
+                            // 4. Data & Backup Section (Export, Import, Reset)
                             dataBackupSection
                             
-                            // 4. About & Community Section
+                            // 5. About & Community Section
                             aboutSection
                             
-                            // 5. Footer App Branding
+                            // 6. Footer App Branding
                             footerSection
                         }
                         .padding(.horizontal, 20)
@@ -301,7 +304,215 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - 2. Preferences Section
+    // MARK: - 2. Theme & Custom Surfaces (Canvas & Card Colors)
+    private var themeCustomizerSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("THEME & SURFACES")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1.0)
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 12) {
+                // Live Interactive Mini Preview of Selected Canvas & Card
+                HStack(spacing: 14) {
+                    ZStack(alignment: .top) {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(store.canvasBackgroundColor)
+                            .frame(width: 80, height: 72)
+                        
+                        VStack(spacing: 3) {
+                            // Mini Pill Navbar
+                            Capsule()
+                                .fill(store.cardBackgroundColor)
+                                .frame(width: 64, height: 12)
+                                .padding(.top, 6)
+                            
+                            // Mini Card
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(store.cardBackgroundColor)
+                                .frame(width: 68, height: 44)
+                                .overlay {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        RoundedRectangle(cornerRadius: 1.5)
+                                            .fill(store.cardTextPrimary.opacity(0.8))
+                                            .frame(width: 24, height: 3)
+                                        RoundedRectangle(cornerRadius: 1.5)
+                                            .fill(store.cardTextSecondary.opacity(0.5))
+                                            .frame(width: 36, height: 2.5)
+                                    }
+                                    .padding(.leading, 6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Custom Palette")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Text("Personalize canvas background and centerpiece card surface.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                }
+                .padding(14)
+                .background {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(SpendyColors.sheetCardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
+                
+                // Color 1: Outer Canvas Background Color Picker
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "paintpalette.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(store.canvasBackgroundColor)
+                        
+                        Text("Canvas Background")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Spacer()
+                        
+                        ColorPicker("", selection: Binding(
+                            get: { store.canvasBackgroundColor },
+                            set: { newColor in
+                                store.canvasBackgroundColorHex = newColor.toHex()
+                            }
+                        ))
+                        .labelsHidden()
+                    }
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach([
+                                ("#2432F6", "Electric Cobalt"),
+                                ("#4338CA", "Royal Indigo"),
+                                ("#6D28D9", "Deep Violet"),
+                                ("#059669", "Cyber Emerald"),
+                                ("#D97706", "Sunset Amber"),
+                                ("#DC2626", "Crimson Ember"),
+                                ("#18181B", "Midnight Charcoal"),
+                                ("#000000", "Pitch Obsidian")
+                            ], id: \.0) { hex, label in
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.selection)
+                                    withAnimation(.spring(response: 0.35)) {
+                                        store.canvasBackgroundColorHex = hex
+                                    }
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: hex))
+                                            .frame(width: 32, height: 32)
+                                        
+                                        if store.canvasBackgroundColorHex.uppercased() == hex.uppercased() {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 12, weight: .heavy))
+                                                .foregroundStyle(.white)
+                                        }
+                                    }
+                                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding(14)
+                .background {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(SpendyColors.sheetCardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
+                
+                // Color 2: Centerpiece Card / Sheet Color Picker
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "square.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(store.cardBackgroundColor)
+                        
+                        Text("Card & Sheet Surface")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Spacer()
+                        
+                        ColorPicker("", selection: Binding(
+                            get: { store.cardBackgroundColor },
+                            set: { newColor in
+                                store.cardBackgroundColorHex = newColor.toHex()
+                            }
+                        ))
+                        .labelsHidden()
+                    }
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach([
+                                ("#FFFFFF", "Crisp White"),
+                                ("#F8FAFC", "Pure Snow"),
+                                ("#F5F5F0", "Warm Cream"),
+                                ("#E2E8F0", "Soft Pearl"),
+                                ("#1E293B", "Slate Dark"),
+                                ("#18181B", "Velvet Obsidian"),
+                                ("#000000", "OLED Black")
+                            ], id: \.0) { hex, label in
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.selection)
+                                    withAnimation(.spring(response: 0.35)) {
+                                        store.cardBackgroundColorHex = hex
+                                    }
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: hex))
+                                            .frame(width: 32, height: 32)
+                                        
+                                        if store.cardBackgroundColorHex.uppercased() == hex.uppercased() {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 12, weight: .heavy))
+                                                .foregroundStyle(hex == "#FFFFFF" || hex == "#F8FAFC" || hex == "#F5F5F0" || hex == "#E2E8F0" ? .black : .white)
+                                        }
+                                    }
+                                    .overlay(Circle().stroke(Color.gray.opacity(0.3), lineWidth: 1.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding(14)
+                .background {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(SpendyColors.sheetCardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
+            }
+        }
+    }
+    
+    // MARK: - 3. Preferences Section
     private var preferencesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("PREFERENCES")

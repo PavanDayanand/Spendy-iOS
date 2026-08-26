@@ -183,6 +183,15 @@ enum SpendyColors {
         dark: UIColor(white: 0.80, alpha: 1.0)
     ))
     
+    // Gen-Z Electric Solid Palette Tokens
+    static let electricCobalt = Color(hex: "#2432F6")
+    static let electricCobaltDark = Color(hex: "#1823C7")
+    static let electricCobaltPill = Color(hex: "#5C6CFE")
+    static let electricCobaltText = Color(hex: "#9EAAFF")
+    static let electricEmerald = Color(hex: "#00E676")
+    static let electricRose = Color(hex: "#FF334B")
+    static let electricAmber = Color(hex: "#FFB300")
+    
     // Static Helpers
     static let monochromeBlack = Color(hex: "#000000")
     static let monochromeWhite = Color(hex: "#FFFFFF")

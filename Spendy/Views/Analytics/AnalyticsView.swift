@@ -91,43 +91,24 @@ struct AnalyticsView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+            ZStack(alignment: .top) {
+                // 1. Dynamic Canvas Background framing the centerpiece card
+                store.canvasBackgroundColor
+                    .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                        // 1. Unpinned Header Bar: Large Title "Analytics"
-                        headerBar
-                            .padding(.horizontal, 20)
-                            .padding(.top, 10)
+                    VStack(spacing: 10) {
+                        // 2. Detached Top Capsule Navbar (44x44 Circular Action Buttons)
+                        topDetachedPillBar
+                            .padding(.top, 4)
                         
-                        // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
-                        Section {
-                            VStack(spacing: 18) {
-                                // Card 1: Cashflow Overview Card
-                                cashflowOverviewCard
-                                
-                                // Card 2: Spending Breakdown Card & List
-                                spendingBreakdownCard
-                                
-                                // Card 3: Income Breakdown Card & List
-                                incomeBreakdownCard
-                                
-                                // Card 4: Budget Ring & Pacing Card
-                                budgetRingPacingCard
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 30)
-                        } header: {
-                            // Sticky Toolbar floating on top
-                            compactHeader
-                                .padding(.horizontal, 20)
-                                .padding(.top, 6)
-                                .padding(.bottom, 12)
-                        }
+                        // 3. Main Centerpiece Sheet Card
+                        centerpieceWhiteCard
                     }
-                    .padding(.bottom, 140) // Full clearance for floating bottom GlassTabBar
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 16)
                 }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showMonthPicker) {
@@ -185,22 +166,24 @@ struct AnalyticsView: View {
         chartProgress = 1.0
     }
     
-    // MARK: - Header Bar (Large Title)
-    private var headerBar: some View {
+    // MARK: - 1. Top Detached Capsule Navbar (44x44 Circular Buttons)
+    private var topDetachedPillBar: some View {
         HStack(alignment: .center) {
-            Text("Analytics")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(SpendyColors.textPrimary)
+            // Analytics Icon Badge (44x44 Circle)
+            ZStack {
+                Circle()
+                    .fill(store.cardChipBackground)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(store.canvasBackgroundColor)
+            }
             
             Spacer()
-        }
-    }
-    
-    // MARK: - 1. Compact Header Row
-    private var compactHeader: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack(spacing: 0) {
-                // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
+            
+            // Top Right Action Buttons Group (Timeframe, Month Picker, Account Filter)
+            HStack(spacing: 8) {
+                // Timeframe Granularity Picker (44x44 Circle)
                 Menu {
                     Picker("Timeframe", selection: $granularity) {
                         ForEach(TimeGranularity.allCases) { item in
@@ -208,89 +191,200 @@ struct AnalyticsView: View {
                         }
                     }
                 } label: {
-                    GlassCircleIcon(
-                        icon: "calendar",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        morphID: "calendarMenu",
-                        namespace: analyticsControlsNamespace
-                    )
+                    ZStack {
+                        Circle()
+                            .fill(store.cardChipBackground)
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(store.cardChipText)
+                    }
                 }
-                .accessibilityLabel("Select Timeframe")
+                .buttonStyle(PressableSpringButtonStyle())
                 
-                Spacer()
-                
-                // Center: Period Navigation  ◀  Aug 2026  ▶
-                HStack(spacing: 8) {
-                    Button(action: { stepPeriod(by: -1) }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(SpendyColors.textSecondary)
+                // Date / Month Picker Button (44x44 Circle)
+                Button(action: {
+                    HapticsManager.shared.trigger(.light)
+                    showMonthPicker = true
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(store.cardChipBackground)
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(store.cardChipText)
                     }
-                    .buttonStyle(.plain)
-                    
-                    Button(action: {
-                        HapticsManager.shared.trigger(.light)
-                        showMonthPicker = true
-                    }) {
-                        Text(formattedPillTitle)
-                            .font(.system(size: 15, weight: .heavy))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .contentTransition(.numericText())
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button(action: { stepPeriod(by: 1) }) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .frame(height: 44)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-                .glassMorphID("periodNavCapsule", in: analyticsControlsNamespace)
+                .buttonStyle(PressableSpringButtonStyle())
                 
-                Spacer()
-                
-                // Right: Settings Menu (Account Filter + Category/Account Grouping with Apple Native Pickers)
-                let isFiltered = selectedAccountId != "all"
+                // Account Filter Menu (44x44 Circle)
                 Menu {
-                    Section("Filter by Account") {
-                        Picker("Account", selection: $selectedAccountId) {
-                            Label("All Accounts", systemImage: "wallet.pass.fill")
-                                .tag("all")
-                            ForEach(store.accounts) { acc in
-                                Label(acc.label, systemImage: acc.sfSymbol)
-                                    .tag(acc.id)
+                    Button(action: {
+                        selectedAccountId = "all"
+                        HapticsManager.shared.trigger(.selection)
+                    }) {
+                        HStack {
+                            Text("All Accounts")
+                            if selectedAccountId == "all" { Image(systemName: "checkmark") }
+                        }
+                    }
+                    Divider()
+                    ForEach(store.accounts) { acc in
+                        Button(action: {
+                            selectedAccountId = acc.id
+                            HapticsManager.shared.trigger(.selection)
+                        }) {
+                            HStack {
+                                Text(acc.label)
+                                if selectedAccountId == acc.id { Image(systemName: "checkmark") }
                             }
                         }
                     }
-                    
-                    Section("Group Breakdown") {
-                        Picker("Grouping", selection: $groupingMode) {
-                            Label("Categories", systemImage: "square.grid.2x2.fill")
-                                .tag(AnalyticsGroupingMode.categories)
-                            Label("Accounts", systemImage: "building.columns.fill")
-                                .tag(AnalyticsGroupingMode.accounts)
-                        }
-                    }
                 } label: {
-                    GlassCircleIcon(
-                        icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
-                        size: 44,
-                        iconSize: 18,
-                        iconWeight: .semibold,
-                        tintColor: isFiltered ? SpendyColors.primaryBlue : nil,
-                        foregroundColor: isFiltered ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
-                        morphID: "settingsMenu",
-                        namespace: analyticsControlsNamespace
-                    )
+                    ZStack {
+                        Circle()
+                            .fill(store.cardChipBackground)
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "wallet.pass.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(store.cardChipText)
+                    }
+                }
+                .buttonStyle(PressableSpringButtonStyle())
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            Capsule()
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    Capsule().stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: 10, y: 3)
+        }
+    }
+    
+    // MARK: - 2. Main Centerpiece Sheet Card
+    private var centerpieceWhiteCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header Row inside Card: Title + Mode Switcher
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Analytics")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(store.cardTextPrimary)
+                    
+                    Text(formattedPillTitle)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(store.canvasBackgroundColor)
+                }
+                
+                Spacer()
+                
+                // Categories vs Accounts Switcher
+                HStack(spacing: 3) {
+                    ForEach(AnalyticsGroupingMode.allCases) { mode in
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                groupingMode = mode
+                            }
+                        }) {
+                            Text(mode.rawValue)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(groupingMode == mode ? store.cardTextPrimary : store.cardTextSecondary)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background {
+                                    if groupingMode == mode {
+                                        Capsule()
+                                            .fill(store.isCardDark ? Color(hex: "#3A3A3C") : Color.white)
+                                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(3)
+                .background {
+                    Capsule()
+                        .fill(store.cardChipBackground)
                 }
             }
+            
+            // Period Quick Stepper ( ◀  Aug 2026  ▶ )
+            HStack {
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    stepPeriod(by: -1)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Prev")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(store.cardTextSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(store.cardChipBackground))
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Text(formattedPillTitle)
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(store.cardTextPrimary)
+                
+                Spacer()
+                
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    stepPeriod(by: 1)
+                }) {
+                    HStack(spacing: 4) {
+                        Text("Next")
+                            .font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(store.cardTextSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(store.cardChipBackground))
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Divider()
+                .overlay(store.cardDividerColor)
+            
+            // Card 1: Cashflow Overview Card
+            cashflowOverviewCard
+            
+            // Card 2: Spending Breakdown Card & List
+            spendingBreakdownCard
+            
+            // Card 3: Income Breakdown Card & List
+            incomeBreakdownCard
+            
+            // Card 4: Budget Ring & Pacing Card
+            budgetRingPacingCard
+        }
+        .padding(20)
+        .padding(.bottom, 100) // Full clearance for bottom GlassTabBar
+        .background {
+            RoundedRectangle(cornerRadius: 38, style: .continuous)
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 38, style: .continuous)
+                        .stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 24, y: 8)
         }
     }
 
@@ -1521,6 +1615,16 @@ struct AnalyticsView: View {
         selectedVelocityLabel = nil
         selectedCategorySectorId = nil
         selectedIncomeSectorId = nil
+    }
+}
+
+// MARK: - Pressable Spring Button Style
+private struct PressableSpringButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
     }
 }
 

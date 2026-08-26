@@ -86,42 +86,28 @@ struct ManageView: View {
 
     // MARK: - Body
 
+    // MARK: - Body
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+            ZStack(alignment: .top) {
+                // 1. Dynamic Canvas Background framing the centerpiece card
+                store.canvasBackgroundColor
+                    .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        titleHeader
-                        heroSpendSection
-                        upcomingActionSection
-                        filterBar
-                        mainList
-                        pastAndCancelled
+                    VStack(spacing: 10) {
+                        // 2. Detached Top Capsule Navbar (44x44 Circular Action Buttons)
+                        topDetachedPillBar
+                            .padding(.top, 4)
+
+                        // 3. Main Centerpiece Sheet Card
+                        centerpieceWhiteCard
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 140)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 16)
                 }
-            }
-            .overlay(alignment: .topTrailing) {
-                SpendyGlassEffectContainer {
-                    GlassCircleButton(
-                        icon: SFIcons.plus,
-                        size: 44,
-                        iconSize: 18,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .light,
-                        accessibilityLabel: "Add Subscription",
-                        morphID: "addSubscriptionButton",
-                        namespace: manageNamespace
-                    ) {
-                        showAddSubscription = true
-                    }
-                }
-                .padding(.trailing, 20)
-                .padding(.top, 10)
-                .zIndex(100)
+                .scrollBounceBehavior(.basedOnSize)
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showAddSubscription) {
@@ -138,21 +124,88 @@ struct ManageView: View {
         }
     }
 
-    // MARK: - Title Header
-
-    private var titleHeader: some View {
+    // MARK: - 1. Top Detached Capsule Navbar (44x44 Circular Buttons)
+    private var topDetachedPillBar: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Subscriptions")
-                    .font(.system(size: 32, weight: .heavy))
-                    .foregroundStyle(SpendyColors.textPrimary)
-
-                Text("\(activeCount) active • \(store.currencySymbol)\(String(format: "%.2f", totalMonthly))/mo")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
+            // Subscriptions Repeat Badge (44x44 Circle)
+            ZStack {
+                Circle()
+                    .fill(store.cardChipBackground)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "repeat")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(store.canvasBackgroundColor)
             }
 
             Spacer()
+
+            // Top Right Action Buttons Group (Add Subscription - 44x44 Circle)
+            HStack(spacing: 8) {
+                Button(action: {
+                    HapticsManager.shared.trigger(.light)
+                    showAddSubscription = true
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(store.cardChipBackground)
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(store.cardChipText)
+                    }
+                }
+                .buttonStyle(PressableSpringButtonStyle())
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            Capsule()
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    Capsule().stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: 10, y: 3)
+        }
+    }
+
+    // MARK: - 2. Main Centerpiece Sheet Card
+    private var centerpieceWhiteCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header Row inside Card: Title + Subtitle
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Subscriptions")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(store.cardTextPrimary)
+
+                    Text("\(activeCount) active • \(store.currencySymbol)\(String(format: "%.0f", totalMonthly))/mo")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(store.cardTextSecondary)
+                }
+
+                Spacer()
+            }
+
+            Divider()
+                .overlay(store.cardDividerColor)
+
+            heroSpendSection
+            upcomingActionSection
+            filterBar
+            mainList
+            pastAndCancelled
+        }
+        .padding(20)
+        .padding(.bottom, 100) // Full clearance for bottom GlassTabBar
+        .background {
+            RoundedRectangle(cornerRadius: 38, style: .continuous)
+                .fill(store.cardBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 38, style: .continuous)
+                        .stroke(store.cardBorderColor, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 24, y: 8)
         }
     }
 
@@ -164,7 +217,7 @@ struct ManageView: View {
                 title: "MONTHLY",
                 amount: totalMonthly,
                 icon: "calendar",
-                tint: SpendyColors.primaryBlue
+                tint: store.canvasBackgroundColor
             )
 
             heroStatCard(
@@ -185,13 +238,13 @@ struct ManageView: View {
 
                 Text(title)
                     .font(.system(size: 11, weight: .heavy))
-                    .foregroundStyle(SpendyColors.textTertiary)
+                    .foregroundStyle(store.cardTextSecondary)
                     .tracking(0.5)
             }
 
             Text(amount.formattedCurrency(symbol: store.currencySymbol))
                 .font(.system(size: 22, weight: .heavy, design: .default).monospacedDigit())
-                .foregroundStyle(SpendyColors.textPrimary)
+                .foregroundStyle(store.cardTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -200,11 +253,7 @@ struct ManageView: View {
         .padding(.vertical, 14)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
+                .fill(store.cardChipBackground)
         }
     }
 
@@ -677,3 +726,14 @@ fileprivate func dueColor(for date: Date) -> Color {
     if days <= 3   { return SpendyColors.warningOrange }
     return SpendyColors.textTertiary
 }
+
+// MARK: - Pressable Spring Button Style
+private struct PressableSpringButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
+    }
+}
+
