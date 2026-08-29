@@ -187,4 +187,10 @@ enum SpendyColors {
     static let monochromeBlack = Color(hex: "#000000")
     static let monochromeWhite = Color(hex: "#FFFFFF")
     static let monochromeGray = Color(hex: "#71717A")
+
+    // Preset accent swatches
+    static let presetAccentColors: [String] = [
+        "#FF3B30", "#FF9500", "#FFCC00", "#34C759",
+        "#00C7BE", "#007AFF", "#5856D6", "#AF52DE"
+    ]
 }

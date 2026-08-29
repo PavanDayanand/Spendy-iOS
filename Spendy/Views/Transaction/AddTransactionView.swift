@@ -262,7 +262,7 @@ struct AddTransactionView: View {
     
     private var currencyFlagPill: some View {
         HStack(spacing: 6) {
-            Text("🇮🇳")
+            Text(currencyFlag(for: store.currencyCode))
                 .font(.system(size: 14))
             
             Text(store.currencySymbol)
@@ -272,6 +272,21 @@ struct AddTransactionView: View {
         .padding(.horizontal, 14)
         .frame(height: 44)
         .nativeLiquidGlassCapsule(isInteractive: false)
+    }
+    
+    private func currencyFlag(for code: String) -> String {
+        switch code {
+        case "INR": return "🇮🇳"
+        case "USD": return "🇺🇸"
+        case "EUR": return "🇪🇺"
+        case "GBP": return "🇬🇧"
+        case "JPY": return "🇯🇵"
+        case "CAD": return "🇨🇦"
+        case "AUD": return "🇦🇺"
+        case "AED": return "🇦🇪"
+        case "SGD": return "🇸🇬"
+        default: return "🏳️"
+        }
     }
     
     // Account Pill Button (Strict 44pt Height & iOS Liquid Glass Styling)
@@ -471,7 +486,7 @@ struct AddTransactionView: View {
             }
             
             // Full-Width 3-Column Calculator Grid (No math operators)
-            tactileCalculatorGrid
+            SpendyKeypad(amountString: $amountString)
             
             // Bottom Action Row: [ (🛒) Category ] + [ Save ]
             if type != .transfer {
@@ -548,93 +563,7 @@ struct AddTransactionView: View {
         }
     }
     
-    // MARK: - Tactile 3-Column Calculator Grid (No Math Operators)
-    private var tactileCalculatorGrid: some View {
-        let rows = [
-            ["7", "8", "9"],
-            ["4", "5", "6"],
-            ["1", "2", "3"],
-            [".", "0", "delete"]
-        ]
-        
-        return VStack(spacing: 8) {
-            ForEach(rows, id: \.self) { row in
-                HStack(spacing: 8) {
-                    ForEach(row, id: \.self) { key in
-                        keypadCell(key: key)
-                    }
-                }
-            }
-        }
-    }
     
-    private func keypadCell(key: String) -> some View {
-        return Button(action: {
-            handleKeypress(key)
-        }) {
-            ZStack {
-                if key == "delete" {
-                    Image(systemName: "delete.left.fill")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(.white)
-                } else {
-                    Text(key)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(hex: "#18181A"))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                    }
-            }
-        }
-        .buttonStyle(KeypadPressStyle())
-    }
-    
-    // MARK: - Keypad Handling Logic
-    private func handleKeypress(_ key: String) {
-        if key == "delete" {
-            HapticsManager.shared.trigger(.light)
-            if amountString.count > 1 {
-                amountString.removeLast()
-            } else {
-                amountString = "0"
-            }
-            return
-        }
-        
-        if key == "." {
-            HapticsManager.shared.trigger(.selection)
-            if !amountString.contains(".") {
-                amountString += "."
-            }
-            return
-        }
-        
-        // Digit (0-9)
-        HapticsManager.shared.trigger(.light)
-        if amountString == "0" {
-            amountString = key
-        } else {
-            if let dotIndex = amountString.firstIndex(of: ".") {
-                let decimals = amountString[dotIndex...].count - 1
-                if decimals >= 2 { return }
-            }
-            if amountString.count < 10 {
-                amountString += key
-            }
-        }
-    }
-    
-    private func clearAll() {
-        amountString = "0"
-    }
     
     // MARK: - 6. Inline Note Editor (Matching Image 2 with iOS Liquid Glass styling)
     private var inlineNoteEditorView: some View {
@@ -716,17 +645,13 @@ struct AddTransactionView: View {
         }
         dismiss()
     }
-}
-
-// MARK: - Keypad Button Tactile Press Style
-struct KeypadPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
-            .opacity(configuration.isPressed ? 0.82 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+    
+    private func clearAll() {
+        amountString = "0"
     }
 }
+
+
 
 // MARK: - Flow Layout Helper
 struct FlowLayout: Layout {

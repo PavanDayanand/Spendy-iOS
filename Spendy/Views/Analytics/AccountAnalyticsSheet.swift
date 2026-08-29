@@ -11,13 +11,7 @@
 import SwiftUI
 import Charts
 
-// MARK: - Account Category Spend Model
-private struct AccountCategorySpend: Identifiable {
-    var id: String { category.id }
-    let category: Category
-    let totalAmount: Double
-    let percentage: Double
-}
+
 
 struct AccountAnalyticsSheet: View {
     @Environment(ExpenseStore.self) private var store
@@ -34,6 +28,7 @@ struct AccountAnalyticsSheet: View {
     @State private var selectedPeriod: ChartPeriod = .month
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
+    @State private var pendingEditTransaction: Transaction? = nil
     @State private var lastInspectedTransaction: Transaction? = nil
     @State private var editingAccountToEdit: Account? = nil
     @State private var rawSelectedDate: Date? = nil
@@ -60,24 +55,7 @@ struct AccountAnalyticsSheet: View {
     }
     
     private var periodBounds: (start: Date, end: Date) {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch selectedPeriod {
-        case .week:
-            let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now)
-        case .month:
-            return (now.startOfMonth, now.endOfMonth)
-        case .threeMonths:
-            let start = calendar.date(byAdding: .month, value: -2, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now.endOfDay)
-        case .sixMonths:
-            let start = calendar.date(byAdding: .month, value: -5, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now.endOfDay)
-        case .year:
-            return (now.startOfYear, now.endOfYear)
-        }
+        AnalyticsChartEngine.periodBounds(for: selectedPeriod)
     }
     
     private var filteredTransactions: [Transaction] {
@@ -104,9 +82,7 @@ struct AccountAnalyticsSheet: View {
     }
     
     private var daysInSelectedPeriod: Int {
-        let bounds = periodBounds
-        let components = Calendar.current.dateComponents([.day], from: bounds.start, to: bounds.end)
-        return max(1, (components.day ?? 1) + 1)
+        AnalyticsChartEngine.daysInPeriod(for: selectedPeriod)
     }
     
     private var dailyAvgOutflow: Double {
@@ -120,119 +96,21 @@ struct AccountAnalyticsSheet: View {
     }
     
     private var predictiveChartPoints: [CategoryChartPoint] {
-        let actuals = chartPoints.filter { !$0.isPredicted }
-        guard let lastActual = actuals.last else { return [] }
-        let preds = chartPoints.filter { $0.isPredicted }
-        guard !preds.isEmpty else { return [] }
-        return [lastActual] + preds
+        AnalyticsChartEngine.predictiveChartPoints(from: chartPoints)
     }
     
     private var chartPoints: [CategoryChartPoint] {
-        let calendar = Calendar.current
-        let bounds = periodBounds
-        let txs = filteredTransactions
-        let now = Date()
-        let today = calendar.startOfDay(for: now)
         let hasEnoughTxs = allAccountTransactions.count >= 5
-        
-        switch selectedPeriod {
-        case .week, .month:
-            var points: [CategoryChartPoint] = []
-            var current = calendar.startOfDay(for: bounds.start)
-            let endDay = calendar.startOfDay(for: bounds.end)
-            
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = selectedPeriod == .week ? "EEE" : "d"
-            
-            let daysInPeriod = max(1, calendar.dateComponents([.day], from: bounds.start, to: min(today, bounds.end)).day ?? 1)
-            let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
-            let netTotal = actualTxs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount } - actualTxs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-            let avgDailyNet = daysInPeriod > 0 ? (netTotal / Double(daysInPeriod)) : 0
-            
-            var cumulativeNet: Double = 0
-            
-            while current <= endDay {
-                let isActual = current <= today
-                
-                if isActual {
-                    let dayStart = current
-                    let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
-                    let dayIn = txs.filter { $0.date >= dayStart && $0.date < dayEnd && $0.type == .income }.reduce(0) { $0 + $1.amount }
-                    let dayOut = txs.filter { $0.date >= dayStart && $0.date < dayEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
-                    let dayNet = dayIn - dayOut
-                    
-                    cumulativeNet += dayNet
-                    points.append(CategoryChartPoint(
-                        id: "actual_\(current.timeIntervalSince1970)",
-                        date: current,
-                        label: dateFormatter.string(from: current),
-                        amount: cumulativeNet,
-                        isPredicted: false
-                    ))
-                } else if hasEnoughTxs {
-                    let dayOffset = max(1, calendar.dateComponents([.day], from: today, to: current).day ?? 1)
-                    let predictedAmount = cumulativeNet + (avgDailyNet * Double(dayOffset))
-                    points.append(CategoryChartPoint(
-                        id: "pred_\(current.timeIntervalSince1970)",
-                        date: current,
-                        label: dateFormatter.string(from: current),
-                        amount: predictedAmount,
-                        isPredicted: true
-                    ))
-                }
-                
-                current = calendar.date(byAdding: .day, value: 1, to: current)!
+        return AnalyticsChartEngine.generateChartPoints(
+            transactions: allAccountTransactions,
+            period: selectedPeriod,
+            hasEnoughTxs: hasEnoughTxs,
+            valueForDay: { txs in
+                let inflow = txs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+                let outflow = txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+                return inflow - outflow
             }
-            return points
-            
-        case .threeMonths, .sixMonths, .year:
-            var points: [CategoryChartPoint] = []
-            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
-            let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
-            
-            let monthsElapsed = max(1, calendar.dateComponents([.month], from: bounds.start, to: min(now, bounds.end)).month ?? 1)
-            let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
-            let netTotal = actualTxs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount } - actualTxs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-            let avgMonthlyNet = monthsElapsed > 0 ? (netTotal / Double(monthsElapsed)) : 0
-            
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM"
-            
-            var cumulativeNet: Double = 0
-            
-            while current <= endMonth {
-                let monthStart = current
-                let monthEnd = calendar.date(byAdding: .month, value: 1, to: current)!
-                let isActual = current <= now
-                
-                if isActual {
-                    let monthIn = txs.filter { $0.date >= monthStart && $0.date < monthEnd && $0.type == .income }.reduce(0) { $0 + $1.amount }
-                    let monthOut = txs.filter { $0.date >= monthStart && $0.date < monthEnd && $0.type == .expense }.reduce(0) { $0 + $1.amount }
-                    let monthNet = monthIn - monthOut
-                    
-                    cumulativeNet += monthNet
-                    points.append(CategoryChartPoint(
-                        id: "actual_\(current.timeIntervalSince1970)",
-                        date: current,
-                        label: dateFormatter.string(from: current),
-                        amount: cumulativeNet,
-                        isPredicted: false
-                    ))
-                } else if hasEnoughTxs {
-                    let monthOffset = max(1, calendar.dateComponents([.month], from: calendar.date(from: calendar.dateComponents([.year, .month], from: now))!, to: current).month ?? 1)
-                    let predictedAmount = cumulativeNet + (avgMonthlyNet * Double(monthOffset))
-                    points.append(CategoryChartPoint(
-                        id: "pred_\(current.timeIntervalSince1970)",
-                        date: current,
-                        label: dateFormatter.string(from: current),
-                        amount: predictedAmount,
-                        isPredicted: true
-                    ))
-                }
-                current = monthEnd
-            }
-            return points
-        }
+        )
     }
     
     private var periodHeaderLabel: String {
@@ -256,25 +134,7 @@ struct AccountAnalyticsSheet: View {
     }
     
     private var dateGroupedTransactions: [(String, Double, [Transaction])] {
-        let calendar = Calendar.current
-        let groups = Dictionary(grouping: filteredTransactions) { tx -> Date in
-            calendar.startOfDay(for: tx.date)
-        }
-        let dateFormatter = DateFormatter()
-        return groups.keys.sorted(by: >).map { day -> (String, Double, [Transaction]) in
-            let dayTxs = groups[day]!.sorted { $0.date > $1.date }
-            let dayTotal = dayTxs.reduce(0) { $0 + $1.amount }
-            let label: String
-            if calendar.isDateInToday(day) {
-                label = "Today"
-            } else if calendar.isDateInYesterday(day) {
-                label = "Yesterday"
-            } else {
-                dateFormatter.dateFormat = "d MMM yyyy"
-                label = dateFormatter.string(from: day)
-            }
-            return (label, dayTotal, dayTxs)
-        }
+        AnalyticsChartEngine.dateGroupedTransactions(from: filteredTransactions)
     }
     
     // MARK: - Body
@@ -350,22 +210,25 @@ struct AccountAnalyticsSheet: View {
             AddAccountSheet(accountToEdit: acc)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $inspectingTransaction) { tx in
+        .sheet(item: $inspectingTransaction, onDismiss: {
+            if let pending = pendingEditTransaction {
+                editingTransaction = pending
+                pendingEditTransaction = nil
+            }
+        }) { tx in
             TransactionDetailSheet(transaction: tx) { txToEdit in
                 lastInspectedTransaction = tx
+                pendingEditTransaction = txToEdit
                 inspectingTransaction = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                    editingTransaction = txToEdit
-                }
             }
         }
         .sheet(item: $editingTransaction, onDismiss: {
             if let last = lastInspectedTransaction {
                 let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
                 lastInspectedTransaction = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    inspectingTransaction = fresh
-                }
+                pendingEditTransaction = fresh
+                // In iOS 17+, modifying state that triggers another sheet presentation in onDismiss works
+                inspectingTransaction = fresh
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
@@ -828,30 +691,15 @@ struct AccountAnalyticsSheet: View {
     
     // MARK: - Helper Formatters
     private func formattedTime(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "h:mm a"
-        return fmt.string(from: date)
+        AnalyticsChartEngine.formattedTime(date)
     }
     
     private func formattedPointDate(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        if selectedPeriod == .week || selectedPeriod == .month {
-            fmt.dateFormat = "d MMM"
-        } else {
-            fmt.dateFormat = "MMM yyyy"
-        }
-        return fmt.string(from: date)
+        AnalyticsChartEngine.formattedPointDate(date, period: selectedPeriod)
     }
     
     private func axisLabelDate(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        switch selectedPeriod {
-        case .week: fmt.dateFormat = "EEE"
-        case .month: fmt.dateFormat = "d MMM"
-        case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
-        case .year: fmt.dateFormat = "MMM yy"
-        }
-        return fmt.string(from: date)
+        AnalyticsChartEngine.axisLabel(for: date, period: selectedPeriod)
     }
     
     private func formattedAmount(_ tx: Transaction) -> String {
@@ -864,14 +712,4 @@ struct AccountAnalyticsSheet: View {
     }
 }
 
-// MARK: - Optional Matched Geometry Extension
-extension View {
-    @ViewBuilder
-    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
-        if let namespace = namespace {
-            self.matchedGeometryEffect(id: id, in: namespace)
-        } else {
-            self
-        }
-    }
-}
+

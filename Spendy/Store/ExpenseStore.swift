@@ -28,63 +28,75 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable {
 @Observable
 final class ExpenseStore {
     // MARK: - App State
+    
+    @ObservationIgnored private var _saveTask: Task<Void, Never>?
+    
+    private func scheduleSave() {
+        _saveTask?.cancel()
+        _saveTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            self.saveToDisk()
+        }
+    }
+
     var userName: String = "" {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var hapticsEnabled: Bool = true {
         didSet {
             HapticsManager.shared.isEnabled = hapticsEnabled
-            saveToDisk()
+            scheduleSave()
         }
     }
     
     var profileImageData: Data? = nil {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var profileIconSymbol: String? = nil {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var profileColorHex: String? = nil {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var soundEnabled: Bool = true {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var transactions: [Transaction] = [] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var accounts: [Account] = [] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var categories: [Category] = [] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var customFolders: [Folder] = [] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var subscriptions: [Subscription] = [] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var budget: Budget = Budget() {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var currencySymbol: String = "₹" {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var currencyCode: String = "INR" {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var ratesToUSD: [String: Double] = [
@@ -98,11 +110,11 @@ final class ExpenseStore {
         "AED": 3.67,
         "SGD": 1.34
     ] {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var appearanceMode: AppearanceMode = .dark {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var colorScheme: ColorScheme? {
@@ -110,25 +122,25 @@ final class ExpenseStore {
     }
     
     var isGradientBackgroundEnabled: Bool = true {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var topGradientHue: Double = 0.60 {
         didSet {
             updateGradientHexFromHSB()
-            saveToDisk()
+            scheduleSave()
         }
     }
     
     var topGradientBrightness: Double = 0.85 {
         didSet {
             updateGradientHexFromHSB()
-            saveToDisk()
+            scheduleSave()
         }
     }
     
     var topGradientColorHex: String = "#007AFF" {
-        didSet { saveToDisk() }
+        didSet { scheduleSave() }
     }
     
     var topGradientColor: Color {
@@ -283,7 +295,7 @@ final class ExpenseStore {
         self.budget = Budget()
         self.currencySymbol = "₹"
         self.currencyCode = "INR"
-        saveToDisk()
+        scheduleSave()
     }
     
     // MARK: - Computed Properties
@@ -948,7 +960,7 @@ final class ExpenseStore {
                             updatedRates[code] = rate
                         }
                         self.ratesToUSD = updatedRates
-                        self.saveToDisk()
+                        self.scheduleSave()
                     }
                 }
             } catch {
@@ -973,7 +985,7 @@ final class ExpenseStore {
             self.accounts = Account.defaultAccounts
             self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
         }
-        saveToDisk()
+        scheduleSave()
     }
     
     func exportJSONData() -> Data? {

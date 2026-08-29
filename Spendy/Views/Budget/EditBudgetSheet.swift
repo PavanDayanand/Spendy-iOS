@@ -192,46 +192,8 @@ struct EditBudgetSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
                 
-                // Custom 3x4 Numpad Grid (Standard 3-column no-operator style)
-                let numPadGrid: [[String]] = [
-                    ["7", "8", "9"],
-                    ["4", "5", "6"],
-                    ["1", "2", "3"],
-                    [".", "0", "backspace"]
-                ]
-                
-                VStack(spacing: 8) {
-                    ForEach(0..<numPadGrid.count, id: \.self) { rowIdx in
-                        HStack(spacing: 8) {
-                            ForEach(numPadGrid[rowIdx], id: \.self) { key in
-                                Button(action: {
-                                    handleNumPadKey(key)
-                                }) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .fill(Color(hex: "#18181A"))
-                                            .overlay {
-                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                                            }
-                                            .frame(height: 52)
-                                        
-                                        if key == "backspace" {
-                                            Image(systemName: "delete.left.fill")
-                                                .font(.system(size: 19, weight: .bold))
-                                                .foregroundStyle(.white)
-                                        } else {
-                                            Text(key)
-                                                .font(.system(size: 24, weight: .medium))
-                                                .foregroundStyle(.white)
-                                        }
-                                    }
-                                }
-                                .buttonStyle(KeypadPressStyle())
-                            }
-                        }
-                    }
-                }
+                // Shared 3x4 Numpad Grid
+                SpendyKeypad(amountString: $amountString, maxDigits: 8)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
                 
@@ -276,31 +238,7 @@ struct EditBudgetSheet: View {
         }
     }
     
-    private func handleNumPadKey(_ key: String) {
-        if key == "backspace" {
-            HapticsManager.shared.trigger(.light)
-            if amountString.count <= 1 {
-                amountString = "0"
-            } else {
-                amountString.removeLast()
-            }
-        } else if key == "." {
-            HapticsManager.shared.trigger(.selection)
-            if !amountString.contains(".") {
-                amountString += "."
-            }
-        } else {
-            HapticsManager.shared.trigger(.light)
-            if amountString == "0" {
-                amountString = key
-            } else {
-                let parts = amountString.split(separator: ".")
-                if parts.count > 1 && parts[1].count >= 2 { return }
-                if parts.count == 1 && amountString.count >= 8 { return }
-                amountString += key
-            }
-        }
-    }
+    
     
     private func handleSave() {
         guard let amt = Double(amountString), amt > 0 else { return }

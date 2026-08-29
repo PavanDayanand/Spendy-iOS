@@ -463,3 +463,15 @@ struct GlassButtonGroup<Content: View>: View {
         }
     }
 }
+
+// MARK: - Optional Matched Geometry Extension
+extension View {
+    @ViewBuilder
+    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
+        if let namespace = namespace {
+            self.matchedGeometryEffect(id: id, in: namespace)
+        } else {
+            self
+        }
+    }
+}

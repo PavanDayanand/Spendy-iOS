@@ -22,24 +22,11 @@ struct AddAccountSheet: View {
     // Color picker sliders
     @State private var sliderHue: Double = 0.65
     @State private var sliderBrightness: Double = 0.45
-    @State private var showSliders: Bool = false
     @State private var showIconPickerSheet: Bool = false
     @State private var showColorPalette: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showBalanceAdjustSheet: Bool = false
     @State private var tempBalanceInput: String = ""
-    
-    private let presetColors = [
-        "#FF3B30", // Red
-        "#FF9500", // Orange
-        "#FFCC00", // Gold / Yellow
-        "#34C759", // Green
-        "#00C7BE", // Teal / Cyan
-        "#007AFF", // Blue
-        "#5856D6", // Purple
-        "#AF52DE", // Pink Violet
-        "#FFFFFF"  // White
-    ]
     
     private var isEditing: Bool {
         accountToEdit != nil
@@ -383,69 +370,16 @@ struct AddAccountSheet: View {
     
     private var colorSlidersCard: some View {
         VStack(spacing: 16) {
-            // Presets scroll row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    // Custom spectrum icon
-                    Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            showSliders.toggle()
-                        }
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
-                        Circle()
-                            .fill(
-                                AngularGradient(
-                                    gradient: Gradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red]),
-                                    center: .center
-                                )
-                            )
-                            .frame(width: 34, height: 34)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: showSliders ? 2.5 : 0)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    // Preset items
-                    ForEach(presetColors, id: \.self) { hex in
-                        Button(action: {
-                            selectedColorHex = hex
-                            syncSlidersFromHex(hex)
-                            HapticsManager.shared.trigger(.light)
-                        }) {
-                            Circle()
-                                .fill(Color(hex: hex))
-                                .frame(width: 34, height: 34)
-                                .overlay {
-                                    if selectedColorHex == hex {
-                                        Circle()
-                                            .stroke(SpendyColors.textPrimary, lineWidth: 2)
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
+            SpendyColorPresetSwatches(selectedHex: $selectedColorHex, hue: $sliderHue, brightness: $sliderBrightness)
+                .onChange(of: selectedColorHex) { _, newHex in
+                    syncSlidersFromHex(newHex)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-            }
-            
-            if showSliders {
-                VStack(spacing: 14) {
-                    HueSpectrumSlider(hue: $sliderHue)
-                        .onChange(of: sliderHue) { _, _ in
-                            updateHexFromHSB()
-                        }
-                    
-                    DarkBrightnessSlider(hue: sliderHue, brightness: $sliderBrightness)
-                        .onChange(of: sliderBrightness) { _, _ in
-                            updateHexFromHSB()
-                        }
+                .onChange(of: sliderHue) { _, _ in
+                    updateHexFromHSB()
                 }
-                .padding(.vertical, 4)
-            }
+                .onChange(of: sliderBrightness) { _, _ in
+                    updateHexFromHSB()
+                }
         }
         .padding(18)
         .background {
@@ -597,102 +531,4 @@ struct AddAccountSheet: View {
     }
 }
 
-// MARK: - Hue Spectrum Slider Component
-private struct HueSpectrumSlider: View {
-    @Binding var hue: Double
-    
-    var body: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let thumbX = CGFloat(hue) * width
-            
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(hue: 0.0, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 0.17, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 0.33, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 0.50, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 0.67, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 0.83, saturation: 1.0, brightness: 0.95),
-                                Color(hue: 1.0, saturation: 1.0, brightness: 0.95)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 38)
-                
-                Circle()
-                    .stroke(Color.white, lineWidth: 3.5)
-                    .background(Circle().fill(Color(hue: hue, saturation: 1.0, brightness: 0.95)))
-                    .frame(width: 32, height: 32)
-                    .shadow(color: Color.black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    .position(x: max(16, min(width - 16, thumbX)), y: 19)
-            }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let locationX = max(0, min(geometry.size.width, value.location.x))
-                        let newHue = Double(locationX / geometry.size.width)
-                        self.hue = newHue
-                    }
-            )
-        }
-        .frame(height: 38)
-    }
-}
 
-// MARK: - Dark-to-Medium Brightness Slider Component
-private struct DarkBrightnessSlider: View {
-    let hue: Double
-    @Binding var brightness: Double
-    
-    private let minB: Double = 0.12
-    private let maxB: Double = 0.95
-    
-    var body: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let normB = (brightness - minB) / (maxB - minB)
-            let thumbX = CGFloat(max(0, min(1, normB))) * width
-            
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.black,
-                                Color(hue: hue, saturation: 0.85, brightness: 0.50),
-                                Color(hue: hue, saturation: 0.85, brightness: maxB)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 38)
-                
-                Circle()
-                    .stroke(Color.white, lineWidth: 3.5)
-                    .background(Circle().fill(Color(hue: hue, saturation: 0.85, brightness: min(brightness, maxB))))
-                    .frame(width: 32, height: 32)
-                    .shadow(color: Color.black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    .position(x: max(16, min(width - 16, thumbX)), y: 19)
-            }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let locationX = max(0, min(geometry.size.width, value.location.x))
-                        let fraction = Double(locationX / geometry.size.width)
-                        let newB = minB + fraction * (maxB - minB)
-                        self.brightness = min(max(minB, newB), maxB)
-                    }
-            )
-        }
-        .frame(height: 38)
-    }
-}

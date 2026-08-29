@@ -164,7 +164,9 @@ struct AnalyticsView: View {
                 datePickerSheet
             }
             .sheet(isPresented: $showSubscriptionSheet) {
-                SubscriptionWidgetSheet()
+                NavigationStack {
+                    SubscriptionsView()
+                }
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: false) {

@@ -215,7 +215,72 @@ struct InsightsEngine {
         return "reflector"
     }
     
-    // MARK: - 3. Generators
+    static func generateVelocityInsights(facts: InsightFacts, currencySymbol: String) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        guard facts.elapsedDays >= 3 && facts.currentTotal > 0 else { return insights }
+        
+        let calendar = Calendar.current
+        let daysInMonth = calendar.range(of: .day, in: .month, for: facts.periodStart)?.count ?? 30
+        let dailyRate = facts.currentTotal / Double(facts.elapsedDays)
+        let projectedTotal = dailyRate * Double(daysInMonth)
+        
+        if facts.prevTotal > 0 && projectedTotal > facts.prevTotal * 1.2 {
+            insights.append(InsightItem(
+                id: "velocity_high", family: "behavior", scope: "global",
+                personaFit: ["guardian", "reflector", "optimizer"],
+                confidence: 0.85, severity: 0.7, eligibility: true,
+                title: "Spending Velocity",
+                value: "\(currencySymbol)\(projectedTotal.safeInt)",
+                desc: "On pace to spend \(Int(((projectedTotal / facts.prevTotal) - 1) * 100))% more than last month.",
+                icon: "gauge.open.with.lines.needle.67percent.and.arrowtriangle",
+                colorHex: "#FF9500"
+            ))
+        } else if facts.prevTotal > 0 && projectedTotal < facts.prevTotal * 0.8 {
+            insights.append(InsightItem(
+                id: "velocity_low", family: "behavior", scope: "global",
+                personaFit: ["optimizer", "reflector"],
+                confidence: 0.85, severity: 0.1, eligibility: true,
+                title: "Under Budget Pace",
+                value: "\(currencySymbol)\(projectedTotal.safeInt)",
+                desc: "Projected to spend \(Int((1 - projectedTotal / facts.prevTotal) * 100))% less this month.",
+                icon: "leaf.fill",
+                colorHex: "#30d158"
+            ))
+        }
+        
+        return insights
+    }
+    
+    static func generateRatioShiftInsights(facts: InsightFacts, categories: [Category], currencySymbol: String) -> [InsightItem] {
+        var insights: [InsightItem] = []
+        guard facts.currentTotal > 0 && facts.prevTotal > 0 else { return insights }
+        
+        for cat in categories.filter({ $0.type == .expense }) {
+            let currentAmount = facts.catTotals[cat.id] ?? 0
+            let prevAmount = facts.prevCatTotals[cat.id] ?? 0
+            
+            let currentRatio = currentAmount / facts.currentTotal
+            let prevRatio = prevAmount / facts.prevTotal
+            let ratioShift = currentRatio - prevRatio
+            
+            // Flag if a category's share shifted by 15+ percentage points
+            if ratioShift >= 0.15 && currentAmount > 0 {
+                insights.append(InsightItem(
+                    id: "ratio_shift_\(cat.id)", family: "category", scope: "category",
+                    personaFit: ["reflector", "optimizer"],
+                    confidence: 0.8, severity: 0.5, eligibility: true,
+                    title: "Share Shift",
+                    value: "\(Int(prevRatio * 100))% → \(Int(currentRatio * 100))%",
+                    desc: "\(cat.label) grew from \(Int(prevRatio * 100))% to \(Int(currentRatio * 100))% of total spend.",
+                    icon: cat.sfSymbol.isEmpty ? "chart.pie.fill" : cat.sfSymbol,
+                    colorHex: cat.colorHex.isEmpty ? "#BF5AF2" : cat.colorHex,
+                    categoryId: cat.id
+                ))
+            }
+        }
+        
+        return insights
+    }
     
     static func generateBudgetInsights(facts: InsightFacts, currencySymbol: String) -> [InsightItem] {
         var insights: [InsightItem] = []
@@ -306,6 +371,26 @@ struct InsightsEngine {
                 title: "Zero Spend Streak", value: "\(facts.maxStreak) days", desc: "Longest streak with zero spend.",
                 icon: "flame.fill", colorHex: "#30d158"
             ))
+        }
+        
+        // Zero-spend day celebration (weekly)
+        let calendar = Calendar.current
+        let now = Date()
+        if let weekStart = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) {
+            let weekTxDays = Set(facts.transactions.filter { $0.date >= weekStart }.map { calendar.startOfDay(for: $0.date) })
+            let zeroDaysThisWeek = 7 - weekTxDays.count
+            if zeroDaysThisWeek >= 3 {
+                insights.append(InsightItem(
+                    id: "zero_day_week", family: "behavior", scope: "global",
+                    personaFit: ["habit-focused", "reflector", "guardian"],
+                    confidence: 0.9, severity: 0.15, eligibility: true,
+                    title: "Zero-Spend Days",
+                    value: "\(zeroDaysThisWeek) this week",
+                    desc: "\(zeroDaysThisWeek) days with no spending — great discipline!",
+                    icon: "star.fill",
+                    colorHex: "#FFD60A"
+                ))
+            }
         }
         
         return insights
@@ -548,6 +633,8 @@ struct InsightsEngine {
         candidates.append(contentsOf: generateCategoryInsights(facts: facts, categories: categories, currencySymbol: currencySymbol, dataType: dataType))
         
         if dataType == .expense {
+            candidates.append(contentsOf: generateVelocityInsights(facts: facts, currencySymbol: currencySymbol))
+            candidates.append(contentsOf: generateRatioShiftInsights(facts: facts, categories: categories, currencySymbol: currencySymbol))
             candidates.append(contentsOf: generateBudgetInsights(facts: facts, currencySymbol: currencySymbol))
             candidates.append(contentsOf: generateBehaviorInsights(facts: facts, dataType: dataType))
             candidates.append(contentsOf: generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol))
@@ -585,6 +672,8 @@ struct InsightsEngine {
         
         var candidates: [InsightItem] = []
         candidates.append(contentsOf: generateCategoryInsights(facts: facts, categories: categories, currencySymbol: currencySymbol, dataType: .expense))
+        candidates.append(contentsOf: generateVelocityInsights(facts: facts, currencySymbol: currencySymbol))
+        candidates.append(contentsOf: generateRatioShiftInsights(facts: facts, categories: categories, currencySymbol: currencySymbol))
         candidates.append(contentsOf: generateBudgetInsights(facts: facts, currencySymbol: currencySymbol))
         candidates.append(contentsOf: generateBehaviorInsights(facts: facts, dataType: .expense))
         candidates.append(contentsOf: generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol))
