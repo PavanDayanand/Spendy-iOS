@@ -292,7 +292,7 @@ struct DashboardView: View {
                 InsightCardViewModel(
                     id: "set_budget",
                     title: "Budget Planner",
-                    icon: "target",
+                    icon: SFIcons.tabBudget,
                     color: SpendyColors.primaryBlue,
                     value: "Set Limit",
                     subtitle: "Plan your monthly limit & unlock safe daily allowance",
@@ -676,7 +676,7 @@ struct DashboardView: View {
                 
                 // Privacy Eye Toggle Button
                 GlassCircleButton(
-                    icon: hideBalance ? "eye.slash.fill" : "eye.fill",
+                    icon: hideBalance ? SFIcons.eyeSlash : SFIcons.eye,
                     size: 44,
                     iconSize: 16,
                     accessibilityLabel: hideBalance ? "Show balance" : "Hide balance",
@@ -909,7 +909,7 @@ struct DashboardView: View {
                                 .rotationEffect(.degrees(-90))
                                 .frame(width: 24, height: 24)
                         } else {
-                            Image(systemName: "target")
+                            Image(systemName: SFIcons.tabBudget)
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(SpendyColors.primaryBlue)
                         }

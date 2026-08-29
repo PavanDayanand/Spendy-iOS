@@ -120,7 +120,7 @@ struct UpcomingThisMonthCard: View {
                     Circle()
                         .fill(SpendyColors.cardBackgroundSecondary)
                         .frame(width: 32, height: 32)
-                    Image(systemName: "calendar.badge.clock")
+                    Image(systemName: SFIcons.subscriptions)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }

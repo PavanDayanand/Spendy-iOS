@@ -945,7 +945,7 @@ struct AnalyticsView: View {
             VStack(spacing: 16) {
                 HStack(spacing: 14) {
                     SpendyIconBadge(
-                        sfSymbol: "target",
+                        sfSymbol: SFIcons.tabBudget,
                         color: SpendyColors.primaryBlue,
                         size: .large,
                         style: .circle

@@ -17,10 +17,10 @@ enum AccountType: String, Codable, CaseIterable, Identifiable {
     
     var defaultSymbol: String {
         switch self {
-        case .cash: return "banknote.fill"
-        case .bank: return "building.columns.fill"
-        case .amazonPay: return "cart.fill"
-        case .savings: return "heart.fill"
+        case .cash: return SFIcons.cashAccount
+        case .bank: return SFIcons.bankAccount
+        case .amazonPay: return SFIcons.groceries
+        case .savings: return SFIcons.savingsAccount
         }
     }
 }
