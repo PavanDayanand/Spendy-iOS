@@ -101,7 +101,10 @@ struct AccountsView: View {
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
             AccountAnalyticsSheet(
                 account: acc,
-                topControlsNamespace: topControlsNamespace ?? accountsNamespace
+                topControlsNamespace: topControlsNamespace ?? accountsNamespace,
+                backButtonMorphID: topControlsNamespace == nil ? "backButton" : "topControl_left",
+                editButtonMorphID: topControlsNamespace == nil ? "addAccountButton" : "topControl_right",
+                periodControlMorphID: "currencyPill"
             )
         }
     }
@@ -209,41 +212,12 @@ struct AccountsView: View {
         VStack(alignment: .leading, spacing: 14) {
             // Horizontal Type Filter Pills
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(AccountFilter.allCases) { filter in
-                        let isSelected = selectedFilter == filter
-                        Button(action: {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
-                                selectedFilter = filter
-                            }
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? (Color(uiColor: .dynamic(light: .black, dark: .white))) : SpendyColors.textSecondary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background {
-                                    if isSelected {
-                                        Capsule()
-                                            .fill(SpendyColors.primaryBlue.opacity(0.25))
-                                            .overlay {
-                                                Capsule().stroke(SpendyColors.primaryBlue.opacity(0.4), lineWidth: 0.8)
-                                            }
-                                            .glassMorphID("activeFilterPill", in: accountsNamespace)
-                                    } else {
-                                        Capsule()
-                                            .fill(SpendyColors.cardBackground)
-                                            .overlay {
-                                                Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
-                                            }
-                                    }
-                                }
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                GlassSegmentedPicker(
+                    selection: $selectedFilter,
+                    items: AccountFilter.allCases,
+                    titleFor: { $0.rawValue },
+                    expandsToFillWidth: false
+                )
                 .padding(.horizontal, 2)
                 .padding(.vertical, 4)
             }

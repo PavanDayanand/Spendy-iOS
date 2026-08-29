@@ -133,46 +133,11 @@ struct EditBudgetSheet: View {
                 SpendyGlassEffectContainer(spacing: 12) {
                     HStack(spacing: 12) {
                         // Monthly / Weekly Toggle Capsule (44pt height)
-                        HStack(spacing: 2) {
-                            ForEach([BudgetPeriod.monthly, BudgetPeriod.weekly], id: \.self) { period in
-                                let isSelected = selectedPeriod == period
-                                
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                        selectedPeriod = period
-                                        selectedStartDay = period == .weekly ? 2 : 1
-                                    }
-                                    HapticsManager.shared.trigger(.selection)
-                                }) {
-                                    Text(period.title)
-                                        .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                        .foregroundStyle(isSelected ? Color.white : Color(hex: "#8E8E93"))
-                                        .padding(.horizontal, 14)
-                                        .frame(height: 36)
-                                        .background {
-                                            if isSelected {
-                                                if #available(iOS 26, *) {
-                                                    Capsule()
-                                                        .fill(Color(hex: "#242426"))
-                                                        .glassEffect(.regular.interactive(), in: .capsule)
-                                                        .glassEffectID("activePeriodPill", in: budgetSheetNamespace)
-                                                } else {
-                                                    Capsule()
-                                                        .fill(Color(hex: "#242426"))
-                                                        .overlay {
-                                                            Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8)
-                                                        }
-                                                        .matchedGeometryEffect(id: "activePeriodPill", in: budgetSheetNamespace)
-                                                }
-                                            }
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(4)
-                        .frame(height: 44)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
+                        GlassSegmentedPicker(
+                            selection: $selectedPeriod,
+                            items: [.monthly, .weekly],
+                            titleFor: { $0.title }
+                        )
                         .glassMorphID("periodCapsule", in: budgetSheetNamespace)
                         
                         Spacer()

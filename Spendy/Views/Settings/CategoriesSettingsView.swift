@@ -149,71 +149,13 @@ struct CategoriesSettingsView: View {
     
     // MARK: - Type Segmented Control (Expense / Income - Liquid Glass)
     private var typeSegmentedControl: some View {
-        HStack(spacing: 6) {
-            segmentButton(title: "Expense", type: .expense, icon: "arrow.up.right")
-            segmentButton(title: "Income", type: .income, icon: "arrow.down.left")
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background {
-            Capsule()
-                .fill(Color(hex: "#18181A"))
-                .overlay {
-                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                }
-        }
-    }
-    
-    @ViewBuilder
-    private func segmentButton(title: String, type: TransactionType, icon: String) -> some View {
-        let isSelected = selectedType == type
-        
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                selectedType = type
-            }
-            HapticsManager.shared.trigger(.selection)
-        }) {
-            HStack(spacing: 8) {
-                if isSelected {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.black)
-                    }
-                    
-                    Text(title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                    
-                    Text(title)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                }
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(Color(hex: "#2C2C2E"))
-                        .overlay {
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
-                        }
-                        .glassMorphID("categoriesTypePill", in: categoriesNamespace)
-                }
-            }
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
+        GlassSegmentedPicker(
+            selection: $selectedType,
+            items: [.expense, .income],
+            titleFor: { $0.title },
+            iconFor: { $0.sfSymbol }
+        )
+        .glassMorphID("categoriesTypePill", in: categoriesNamespace)
     }
     
     // MARK: - Folder Sections View

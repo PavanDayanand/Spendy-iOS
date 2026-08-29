@@ -226,77 +226,13 @@ struct AddTransactionView: View {
     
     // MARK: - Clean Capsule Type Switcher
     private var liquidGlassTypeSwitcher: some View {
-        HStack(spacing: 6) {
-            typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
-            typeTabButton(typeOption: .income, title: "Income", icon: "arrow.down.left")
-            typeTabButton(typeOption: .transfer, title: "Transfer", icon: "arrow.left.and.right")
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background {
-            Capsule()
-                .fill(Color(hex: "#18181A"))
-                .overlay {
-                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                }
-        }
-    }
-    
-    @ViewBuilder
-    private func typeTabButton(typeOption: TransactionType, title: String, icon: String) -> some View {
-        let isSelected = type == typeOption
-        
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                type = typeOption
-            }
-            HapticsManager.shared.trigger(.selection)
-        }) {
-            if isSelected {
-                HStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.black)
-                    }
-                    
-                    Text(title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 36)
-                .background {
-                    Capsule()
-                        .fill(Color(hex: "#2C2C2E"))
-                        .overlay {
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
-                        }
-                        .glassMorphID("activeTypePill", in: transactionNamespace)
-                }
-                .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
-            } else {
-                // Unselected Tab: Circular disc with icon only (36x36)
-                ZStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                }
-                .frame(width: 36, height: 36)
-                .background {
-                    Circle()
-                        .fill(Color(hex: "#101012"))
-                        .overlay {
-                            Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.8)
-                        }
-                }
-            }
-        }
-        .buttonStyle(.plain)
+        GlassSegmentedPicker(
+            selection: $type,
+            items: TransactionType.allCases,
+            titleFor: { $0.title },
+            iconFor: { $0.sfSymbol }
+        )
+        .glassMorphID("activeTypePill", in: transactionNamespace)
     }
     
     // MARK: - 2. Subheader Row (Account Pill on Left + Currency Flag Pill on Right)

@@ -25,6 +25,10 @@ struct AccountAnalyticsSheet: View {
     
     let account: Account
     var topControlsNamespace: Namespace.ID? = nil
+    var backButtonMorphID: String = "topControl_left"
+    var editButtonMorphID: String = "topControl_right"
+    var periodControlMorphID: String = "periodNavCapsule"
+    var calendarControlMorphID: String = "calendarMenu"
     var onDismiss: (() -> Void)? = nil
     
     @State private var selectedPeriod: ChartPeriod = .month
@@ -39,6 +43,14 @@ struct AccountAnalyticsSheet: View {
     // MARK: - Computed Properties
     private var themeColor: Color {
         account.color
+    }
+
+    private var sharedMorphNamespace: Namespace.ID {
+        topControlsNamespace ?? accountSheetNamespace
+    }
+
+    private func pageMorphID(shared: String, fallback: String) -> String {
+        topControlsNamespace == nil ? fallback : shared
     }
     
     private var allAccountTransactions: [Transaction] {
@@ -334,43 +346,43 @@ struct AccountAnalyticsSheet: View {
     
     // MARK: - 1. Floating Header Bar
     private var headerBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: .white,
-                accessibilityLabel: "Back",
-                morphID: "backButton",
-                namespace: accountSheetNamespace
-            ) {
-                HapticsManager.shared.trigger(.selection)
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
+        SpendyGlassEffectContainer(spacing: 12) {
+            HStack {
+                GlassCircleButton(
+                    icon: "chevron.left",
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .bold,
+                    foregroundColor: .white,
+                    accessibilityLabel: "Back",
+                    morphID: pageMorphID(shared: backButtonMorphID, fallback: "backButton"),
+                    namespace: sharedMorphNamespace
+                ) {
+                    HapticsManager.shared.trigger(.selection)
+                    if let onDismiss = onDismiss {
+                        onDismiss()
+                    } else {
+                        dismiss()
+                    }
+                }
+
+                Spacer()
+
+                // Top-Right Glass Edit Account Button
+                GlassCircleButton(
+                    icon: "pencil",
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .bold,
+                    foregroundColor: .white,
+                    accessibilityLabel: "Edit Account",
+                    morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
+                    namespace: sharedMorphNamespace
+                ) {
+                    HapticsManager.shared.trigger(.light)
+                    editingAccountToEdit = account
                 }
             }
-            .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
-            
-            Spacer()
-            
-            // Top-Right Glass Edit Account Button
-            GlassCircleButton(
-                icon: "pencil",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: .white,
-                accessibilityLabel: "Edit Account",
-                morphID: "editButton",
-                namespace: accountSheetNamespace
-            ) {
-                HapticsManager.shared.trigger(.light)
-                editingAccountToEdit = account
-            }
-            .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
         }
         .padding(.horizontal, 20)
     }
@@ -547,62 +559,38 @@ struct AccountAnalyticsSheet: View {
             }
             
             // Native Liquid Glass Index Selector Pill Strip + Date Picker Button
-            HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    ForEach(ChartPeriod.allCases) { period in
-                        let isSelected = selectedPeriod == period
-                        Button {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
-                                selectedPeriod = period
-                                rawSelectedDate = nil
-                            }
-                            HapticsManager.shared.trigger(.selection)
-                        } label: {
-                            Text(period.shortLabel)
-                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? Color.white : SpendyColors.textSecondary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background {
-                                    if isSelected {
-                                        if #available(iOS 26, *) {
-                                            Capsule()
-                                                .fill(Color.white.opacity(0.20))
-                                                .glassEffect(.regular.interactive(), in: .capsule)
-                                                .glassEffectID("activePeriodPill", in: accountSheetNamespace)
-                                        } else {
-                                            Capsule()
-                                                .fill(Color.white.opacity(0.20))
-                                                .matchedGeometryEffect(id: "activePeriodPill", in: accountSheetNamespace)
-                                        }
-                                    }
-                                }
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
+            SpendyGlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    GlassSegmentedPicker(
+                        selection: $selectedPeriod,
+                        items: ChartPeriod.allCases,
+                        titleFor: { $0.shortLabel },
+                        activeTint: Color.white.opacity(0.20),
+                        selectedForegroundColor: Color.white
+                    )
+                    .onChange(of: selectedPeriod) { _, _ in
+                        rawSelectedDate = nil
                     }
+                    .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
+
+                    // Calendar Date Picker Button
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        showDatePicker = true
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .frame(width: 44, height: 44)
+                            .background {
+                                Circle()
+                                    .fill(Color(hex: "#1C1C1E").opacity(0.75))
+                                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+                            }
+                            .glassMorphID(pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"), in: sharedMorphNamespace)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(4)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-                .glassMorphID("periodCapsule", in: accountSheetNamespace)
-                
-                // Calendar Date Picker Button
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    showDatePicker = true
-                } label: {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .frame(width: 44, height: 44)
-                        .background {
-                            Circle()
-                                .fill(Color(hex: "#1C1C1E").opacity(0.75))
-                                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
-                        }
-                        .glassMorphID("calendarButton", in: accountSheetNamespace)
-                }
-                .buttonStyle(.plain)
             }
             .padding(.top, 4)
         }

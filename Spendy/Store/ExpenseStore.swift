@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import Observation
 
 enum AppearanceMode: String, Codable, CaseIterable, Identifiable {
     case dark = "Dark"

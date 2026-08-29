@@ -144,8 +144,8 @@ struct AddSubscriptionSheet: View {
             // Close Button
             GlassCircleButton(
                 icon: "xmark",
-                size: 40,
-                iconSize: 13,
+                size: 44,
+                iconSize: 14,
                 foregroundColor: SpendyColors.textPrimary,
                 haptic: .selection,
                 accessibilityLabel: "Close",
@@ -167,8 +167,8 @@ struct AddSubscriptionSheet: View {
             if isEditing {
                 GlassCircleButton(
                     icon: "trash.fill",
-                    size: 40,
-                    iconSize: 13,
+                    size: 44,
+                    iconSize: 14,
                     foregroundColor: SpendyColors.expenseRed,
                     haptic: .warning,
                     accessibilityLabel: "Delete Subscription",
@@ -178,7 +178,7 @@ struct AddSubscriptionSheet: View {
                     showDeleteConfirmation = true
                 }
             } else {
-                Color.clear.frame(width: 40, height: 40)
+                Color.clear.frame(width: 44, height: 44)
             }
         }
     }

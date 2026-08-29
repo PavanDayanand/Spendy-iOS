@@ -146,7 +146,9 @@ struct AnalyticsView: View {
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
-                    topControlsNamespace: analyticsControlsNamespace
+                    topControlsNamespace: analyticsControlsNamespace,
+                    backButtonMorphID: "calendarMenu",
+                    editButtonMorphID: "settingsMenu"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                         selectedAccountForSheet = nil
@@ -156,7 +158,9 @@ struct AnalyticsView: View {
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
-                    topControlsNamespace: analyticsControlsNamespace
+                    topControlsNamespace: analyticsControlsNamespace,
+                    backButtonMorphID: "calendarMenu",
+                    editButtonMorphID: "settingsMenu"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                         selectedCategoryForSheet = nil

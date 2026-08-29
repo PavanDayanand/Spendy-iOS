@@ -176,7 +176,7 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
 
 // MARK: - Native Liquid Glass Morphing Modifiers
 
-struct GlassEffectIDModifier<ID: Hashable>: ViewModifier {
+struct GlassEffectIDModifier<ID: Hashable & Sendable>: ViewModifier {
     var id: ID
     var namespace: Namespace.ID
     
@@ -184,6 +184,7 @@ struct GlassEffectIDModifier<ID: Hashable>: ViewModifier {
         if #available(iOS 26, *) {
             content
                 .glassEffectID(id, in: namespace)
+                .glassEffectTransition(.matchedGeometry)
         } else {
             content
                 .matchedGeometryEffect(id: id, in: namespace)
@@ -195,14 +196,14 @@ struct GlassEffectTransitionModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
-                .glassEffectTransition(.identity)
+                .glassEffectTransition(.matchedGeometry)
         } else {
             content
         }
     }
 }
 
-struct GlassEffectUnionModifier<ID: Hashable>: ViewModifier {
+struct GlassEffectUnionModifier<ID: Hashable & Sendable>: ViewModifier {
     var id: ID?
     var namespace: Namespace.ID?
     
@@ -314,6 +315,8 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     var titleFor: (T) -> String
     var iconFor: ((T) -> String?)? = nil
     var activeTint: Color = SpendyColors.primaryBlue
+    var selectedForegroundColor: Color? = nil
+    var expandsToFillWidth: Bool = true
     
     @Namespace private var segmentNamespace
     
@@ -348,10 +351,10 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     }
                     .foregroundStyle(
                         isSelected
-                            ? (activeTint == SpendyColors.primaryBlue ? Color(uiColor: .dynamic(light: .white, dark: .black)) : Color.white)
+                            ? (selectedForegroundColor ?? (activeTint == SpendyColors.primaryBlue ? Color(uiColor: .dynamic(light: .white, dark: .black)) : Color.white))
                             : SpendyColors.textSecondary
                     )
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: expandsToFillWidth ? .infinity : nil)
                     .frame(height: 38)
                     .background {
                         if isSelected {
@@ -382,6 +385,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
             }
         }
         .padding(4)
+        .frame(height: 44)
         .background {
             if #available(iOS 26, *) {
                 Capsule(style: .continuous)
@@ -440,7 +444,7 @@ extension View {
         modifier(NativeLiquidGlassPillModifier(isSelected: isSelected, tintColor: tint))
     }
     
-    func glassMorphID<ID: Hashable>(_ id: ID, in namespace: Namespace.ID) -> some View {
+    func glassMorphID<ID: Hashable & Sendable>(_ id: ID, in namespace: Namespace.ID) -> some View {
         modifier(GlassEffectIDModifier(id: id, namespace: namespace))
     }
     
@@ -448,7 +452,7 @@ extension View {
         modifier(GlassEffectTransitionModifier())
     }
     
-    func glassMorphUnion<ID: Hashable>(id: ID? = nil, namespace: Namespace.ID? = nil) -> some View {
+    func glassMorphUnion<ID: Hashable & Sendable>(id: ID? = nil, namespace: Namespace.ID? = nil) -> some View {
         modifier(GlassEffectUnionModifier(id: id, namespace: namespace))
     }
 }
@@ -488,4 +492,3 @@ struct GlassButtonGroup<Content: View>: View {
         }
     }
 }
-

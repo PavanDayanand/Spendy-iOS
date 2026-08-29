@@ -231,6 +231,7 @@ struct ReceiptPrinterSheet: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color(hex: "#F5F5F0"))
         }
+        .environment(\.colorScheme, .light)
     }
     
     private var dashedLine: some View {

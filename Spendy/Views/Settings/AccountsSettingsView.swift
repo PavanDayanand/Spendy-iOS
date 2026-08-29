@@ -179,45 +179,12 @@ struct AccountsSettingsView: View {
     // MARK: - Account Filter Tabs Switcher
     private var filterTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            SpendyGlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    ForEach(AccountFilter.allCases) { filter in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.25)) {
-                                selectedFilter = filter
-                            }
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(selectedFilter == filter ? Color.black : SpendyColors.textPrimary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background {
-                                    if selectedFilter == filter {
-                                        if #available(iOS 26, *) {
-                                            Capsule()
-                                                .fill(Color.white)
-                                                .glassEffect(.regular.interactive(), in: .capsule)
-                                                .glassEffectID("activeFilterPill", in: accountsNamespace)
-                                        } else {
-                                            Capsule()
-                                                .fill(Color.white)
-                                                .matchedGeometryEffect(id: "activeFilterPill", in: accountsNamespace)
-                                        }
-                                    } else {
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.08))
-                                            .overlay {
-                                                Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                                            }
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+            GlassSegmentedPicker(
+                selection: $selectedFilter,
+                items: AccountFilter.allCases,
+                titleFor: { $0.rawValue },
+                expandsToFillWidth: false
+            )
             .padding(.horizontal, 4)
         }
     }

@@ -1,9 +1,8 @@
 {
-  "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
-  },
+  "fill" : "system-light",
   "groups" : [
     {
+      "hidden" : true,
       "layers" : [
         {
           "blend-mode" : "normal",
@@ -16,6 +15,30 @@
             "translation-in-points" : [
               0,
               0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "hidden" : false,
+          "image-name" : "ArtSpendy.png",
+          "name" : "DarkArtSpendy",
+          "position" : {
+            "scale" : 1.1,
+            "translation-in-points" : [
+              -32.02499999999998,
+              -18.899999999999977
             ]
           }
         }

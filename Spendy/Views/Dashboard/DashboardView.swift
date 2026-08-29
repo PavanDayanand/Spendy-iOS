@@ -463,7 +463,10 @@ struct DashboardView: View {
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
-                    topControlsNamespace: topControlsNamespace
+                    topControlsNamespace: topControlsNamespace,
+                    backButtonMorphID: "currencyConverterButton",
+                    editButtonMorphID: "receiptPrinterButton",
+                    periodControlMorphID: "accountDropdownCapsule"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                         selectedCategoryForSheet = nil
@@ -473,7 +476,10 @@ struct DashboardView: View {
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
-                    topControlsNamespace: topControlsNamespace
+                    topControlsNamespace: topControlsNamespace,
+                    backButtonMorphID: "currencyConverterButton",
+                    editButtonMorphID: "receiptPrinterButton",
+                    periodControlMorphID: "accountDropdownCapsule"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                         selectedAccountForSheet = nil

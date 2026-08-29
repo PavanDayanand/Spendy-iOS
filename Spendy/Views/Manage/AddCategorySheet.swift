@@ -205,81 +205,21 @@ struct AddCategorySheet: View {
     
     // MARK: - Type Toggle Capsule
     private var typeToggleCapsule: some View {
-        HStack(spacing: 6) {
-            typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
-            typeTabButton(typeOption: .income, title: "Income", icon: "arrow.down.left")
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background {
-            Capsule()
-                .fill(Color(hex: "#18181A"))
-                .overlay {
-                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                }
-        }
-    }
-    
-    @ViewBuilder
-    private func typeTabButton(typeOption: TransactionType, title: String, icon: String) -> some View {
-        let isSelected = type == typeOption
-        
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                type = typeOption
-                let folders = typeOption == .expense
-                    ? ["Everyday Spending", "Transport", "Living", "Personal & Wellness"] + store.customFolders.filter { $0.type == .expense }.map { $0.name } + ["Uncategorized"]
-                    : ["Salary & Career", "Investments & Other"] + store.customFolders.filter { $0.type == .income }.map { $0.name } + ["Uncategorized"]
-                if !folders.contains(selectedFolder) {
-                    selectedFolder = typeOption == .expense ? "Everyday Spending" : "Salary & Career"
-                }
-            }
-            HapticsManager.shared.trigger(.selection)
-        }) {
-            if isSelected {
-                HStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.black)
-                    }
-                    
-                    Text(title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 36)
-                .background {
-                    Capsule()
-                        .fill(Color(hex: "#2C2C2E"))
-                        .overlay {
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
-                        }
-                        .glassMorphID("categoryTypePill", in: headerNamespace)
-                }
-                .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
-            } else {
-                ZStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                }
-                .frame(width: 36, height: 36)
-                .background {
-                    Circle()
-                        .fill(Color(hex: "#101012"))
-                        .overlay {
-                            Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.8)
-                        }
-                }
+        GlassSegmentedPicker(
+            selection: $type,
+            items: [.expense, .income],
+            titleFor: { $0.title },
+            iconFor: { $0.sfSymbol }
+        )
+        .glassMorphID("categoryTypePill", in: headerNamespace)
+        .onChange(of: type) { _, typeOption in
+            let folders = typeOption == .expense
+                ? ["Everyday Spending", "Transport", "Living", "Personal & Wellness"] + store.customFolders.filter { $0.type == .expense }.map { $0.name } + ["Uncategorized"]
+                : ["Salary & Career", "Investments & Other"] + store.customFolders.filter { $0.type == .income }.map { $0.name } + ["Uncategorized"]
+            if !folders.contains(selectedFolder) {
+                selectedFolder = typeOption == .expense ? "Everyday Spending" : "Salary & Career"
             }
         }
-        .buttonStyle(.plain)
     }
     
     // MARK: - Avatar Hero Section

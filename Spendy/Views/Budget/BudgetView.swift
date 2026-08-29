@@ -65,7 +65,9 @@ struct BudgetView: View {
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
-                    topControlsNamespace: budgetControlsNamespace
+                    topControlsNamespace: budgetControlsNamespace,
+                    backButtonMorphID: "editButton",
+                    editButtonMorphID: "deleteButton"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                         selectedCategoryForSheet = nil
