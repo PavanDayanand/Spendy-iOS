@@ -113,26 +113,26 @@ final class ExpenseStore {
         didSet { saveToDisk() }
     }
     
-    var topGradientHue: Double = 0.65 {
+    var topGradientHue: Double = 0.60 {
         didSet {
             updateGradientHexFromHSB()
             saveToDisk()
         }
     }
     
-    var topGradientBrightness: Double = 0.45 {
+    var topGradientBrightness: Double = 0.85 {
         didSet {
             updateGradientHexFromHSB()
             saveToDisk()
         }
     }
     
-    var topGradientColorHex: String = "#4F46E5" {
+    var topGradientColorHex: String = "#007AFF" {
         didSet { saveToDisk() }
     }
     
     var topGradientColor: Color {
-        Color(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.95))
+        Color(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.98))
     }
     
     private func updateGradientHexFromHSB() {
@@ -202,10 +202,10 @@ final class ExpenseStore {
                 self.profileColorHex = payload.profileColorHex
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.appearanceMode = .dark
-                self.topGradientColorHex = payload.topGradientColorHex ?? "#4F46E5"
+                self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
-                self.topGradientHue = payload.topGradientHue ?? 0.65
-                self.topGradientBrightness = payload.topGradientBrightness ?? 0.45
+                self.topGradientHue = payload.topGradientHue ?? 0.60
+                self.topGradientBrightness = payload.topGradientBrightness ?? 0.85
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories
