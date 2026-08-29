@@ -428,9 +428,45 @@ extension View {
     }
 }
 
+// MARK: - Spendy Glass Button Styles (Blueprint §12 & §72)
+public struct SpendyGlassButtonStyle: ButtonStyle {
+    public var isProminent: Bool = false
+    public var tintColor: Color? = nil
+    
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.sm)
+            .background {
+                if isProminent {
+                    Capsule(style: .continuous)
+                        .fill(tintColor ?? SpendyColors.primaryBlue)
+                        .shadow(color: (tintColor ?? SpendyColors.primaryBlue).opacity(0.35), radius: 8, y: 2)
+                } else {
+                    Capsule(style: .continuous)
+                        .fill(SpendyColors.cardBackgroundSecondary)
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
+                        )
+                }
+            }
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(AppMotion.snappySpring, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == SpendyGlassButtonStyle {
+    public static var spendyGlass: SpendyGlassButtonStyle { SpendyGlassButtonStyle(isProminent: false) }
+    public static var spendyGlassProminent: SpendyGlassButtonStyle { SpendyGlassButtonStyle(isProminent: true) }
+    public static func spendyGlassProminent(tint: Color) -> SpendyGlassButtonStyle {
+        SpendyGlassButtonStyle(isProminent: true, tintColor: tint)
+    }
+}
+
 // MARK: - Spendy Glass Effect Container
 struct SpendyGlassEffectContainer<Content: View>: View {
-    var spacing: CGFloat = 10
+    var spacing: CGFloat = AppSpacing.md10
     @ViewBuilder var content: () -> Content
     
     var body: some View {
@@ -446,7 +482,7 @@ struct SpendyGlassEffectContainer<Content: View>: View {
 
 // MARK: - Glass Button Group (Fluid Liquid Cluster)
 struct GlassButtonGroup<Content: View>: View {
-    var spacing: CGFloat = 8
+    var spacing: CGFloat = AppSpacing.sm
     @ViewBuilder var content: () -> Content
     
     var body: some View {
@@ -475,3 +511,4 @@ extension View {
         }
     }
 }
+

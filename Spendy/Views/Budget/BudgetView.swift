@@ -69,13 +69,15 @@ struct BudgetView: View {
                     backButtonMorphID: "editButton",
                     editButtonMorphID: "deleteButton"
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    withAnimation(AppMotion.fluidSpring) {
                         selectedCategoryForSheet = nil
                     }
                 }
+                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: budgetControlsNamespace))
             }
         }
     }
+
     
     // MARK: - Title Header (Scrolls away)
     private var titleHeader: some View {

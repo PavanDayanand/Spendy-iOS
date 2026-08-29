@@ -558,6 +558,7 @@ struct DashboardView: View {
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView(topControlsNamespace: topControlsNamespace)
+                    .navigationTransition(.zoom(sourceID: AppTransitionIDs.subscriptionsButton, in: topControlsNamespace))
             }
             .sheet(item: $inspectingTransaction, onDismiss: {
                 if let pending = pendingEditTransaction {
@@ -579,10 +580,11 @@ struct DashboardView: View {
                     editButtonMorphID: "subscriptionsButton",
                     periodControlMorphID: "accountDropdownCapsule"
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    withAnimation(AppMotion.fluidSpring) {
                         selectedCategoryForSheet = nil
                     }
                 }
+                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: topControlsNamespace))
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
@@ -592,18 +594,21 @@ struct DashboardView: View {
                     editButtonMorphID: "subscriptionsButton",
                     periodControlMorphID: "accountDropdownCapsule"
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    withAnimation(AppMotion.fluidSpring) {
                         selectedAccountForSheet = nil
                     }
                 }
+                .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(account.id), in: topControlsNamespace))
             }
             .navigationDestination(isPresented: $showAccountsHub) {
                 AccountsView(topControlsNamespace: topControlsNamespace)
+                    .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountsButton, in: topControlsNamespace))
             }
             .navigationDestination(isPresented: $showSmartInsightsSheet) {
                 SmartInsightsSheet(topControlsNamespace: topControlsNamespace)
             }
         }
+
     }
     
     // MARK: - 1. Top Header Bar (Profile Button on Left, 3 Widget Buttons on Right)
@@ -701,10 +706,12 @@ struct DashboardView: View {
                     HapticsManager.shared.trigger(.selection)
                     showSubscriptionsHub = true
                 }
+                .matchedTransitionSource(id: AppTransitionIDs.subscriptionsButton, in: topControlsNamespace)
             }
             .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
         }
     }
+
     
     // MARK: - 2. Account Selector Dropdown Menu Chip & Time Filter
     private var accountDropdownSelector: some View {
@@ -1282,7 +1289,7 @@ struct DashboardView: View {
                 }
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: AppSpacing.md12) {
                         ForEach(allDashboardInsightCards) { insight in
                             SharedInsightCard(
                                 title: insight.title,
@@ -1311,9 +1318,10 @@ struct DashboardView: View {
                                 }
                             )
                             .frame(width: 175)
+                            .matchedTransitionSource(id: AppTransitionIDs.categoryCard(insight.categoryId ?? insight.id), in: topControlsNamespace)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, AppSpacing.xxs)
                 }
             }
         }
@@ -1337,25 +1345,25 @@ struct DashboardView: View {
     
     // MARK: - 5. Accounts Card Section
     private var compactAccountsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.md12) {
             Text("Accounts")
-                .font(.system(size: 20, weight: .semibold))
+                .font(AppTypography.sectionTitle)
                 .foregroundStyle(SpendyColors.textPrimary)
             
-            VStack(spacing: 14) {
+            VStack(spacing: AppSpacing.md14) {
                 // Top Header Inside Accounts Card: Total & Sparkline (Opens Accounts Hub)
                 Button(action: {
                     HapticsManager.shared.trigger(.selection)
                     showAccountsHub = true
                 }) {
                     HStack(alignment: .center) {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                             Text("Total Net Worth")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(AppTypography.footnoteMedium)
                                 .foregroundStyle(SpendyColors.textSecondary)
                             
                             Text(hideBalance ? "••••••" : totalNetWorthValue.formattedCurrency(symbol: store.currencySymbol))
-                                .font(.system(size: 24, weight: .bold))
+                                .font(AppTypography.title2)
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
                         
@@ -1367,12 +1375,13 @@ struct DashboardView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .matchedTransitionSource(id: AppTransitionIDs.accountsButton, in: topControlsNamespace)
                 
                 Divider()
                     .overlay(SpendyColors.separator)
                 
                 // Account Rows Inside Accounts Card
-                VStack(spacing: 12) {
+                VStack(spacing: AppSpacing.md12) {
                     ForEach(store.accounts) { acc in
                         let bal = store.balance(for: acc.id)
                         
@@ -1380,7 +1389,7 @@ struct DashboardView: View {
                             HapticsManager.shared.trigger(.selection)
                             selectedAccountForSheet = acc
                         }) {
-                            HStack(spacing: 14) {
+                            HStack(spacing: AppSpacing.md14) {
                                 SpendyIconBadge(
                                     sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
                                     color: acc.color,
@@ -1389,30 +1398,32 @@ struct DashboardView: View {
                                 )
                                 
                                 Text(acc.label)
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(AppTypography.itemTitle)
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Spacer()
                                 
                                 Text(hideBalance ? "••••" : bal.formattedCurrency(symbol: store.currencySymbol))
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(AppTypography.itemTitle)
                                     .foregroundStyle(SpendyColors.textPrimary)
                             }
                         }
                         .buttonStyle(.plain)
+                        .matchedTransitionSource(id: AppTransitionIDs.accountCard(acc.id), in: topControlsNamespace)
                     }
                 }
             }
-            .padding(18)
+            .padding(AppSpacing.lg18)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
                     }
             }
         }
+
     }
     
     // MARK: - 6. Recent Transactions Section (Matching Image 1 Bottom Section without Review Banner)

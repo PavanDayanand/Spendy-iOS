@@ -182,10 +182,11 @@ struct AnalyticsView: View {
                     backButtonMorphID: "calendarMenu",
                     editButtonMorphID: "settingsMenu"
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    withAnimation(AppMotion.fluidSpring) {
                         selectedAccountForSheet = nil
                     }
                 }
+                .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(account.id), in: analyticsControlsNamespace))
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
@@ -194,12 +195,14 @@ struct AnalyticsView: View {
                     backButtonMorphID: "calendarMenu",
                     editButtonMorphID: "settingsMenu"
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    withAnimation(AppMotion.fluidSpring) {
                         selectedCategoryForSheet = nil
                     }
                 }
+                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: analyticsControlsNamespace))
             }
             .onAppear {
+
                 chartProgress = 1.0
             }
             .onChange(of: selectedDate) { _, _ in
@@ -688,8 +691,12 @@ struct AnalyticsView: View {
                                 .font(.system(size: 15, weight: .heavy))
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, AppSpacing.xxs)
                         .contentShape(Rectangle())
+                        .matchedTransitionSource(
+                            id: groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
+                            in: analyticsControlsNamespace
+                        )
                         .onTapGesture {
                             HapticsManager.shared.trigger(.selection)
                             if groupingMode == .categories {
@@ -705,6 +712,7 @@ struct AnalyticsView: View {
                 }
             }
         }
+
         .padding(20)
         .background {
             RoundedRectangle(cornerRadius: 26, style: .continuous)

@@ -106,8 +106,10 @@ struct AccountsView: View {
                 editButtonMorphID: topControlsNamespace == nil ? "addAccountButton" : "topControl_right",
                 periodControlMorphID: "currencyPill"
             )
+            .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(acc.id), in: topControlsNamespace ?? accountsNamespace))
         }
     }
+
     
     // MARK: - Top Header Bar
     private var headerBar: some View {
@@ -258,7 +260,7 @@ struct AccountsView: View {
             HapticsManager.shared.trigger(.selection)
             selectedAccountForAnalytics = account
         }) {
-            HStack(spacing: 14) {
+            HStack(spacing: AppSpacing.md14) {
                 // Vibrant Account Icon Badge
                 SpendyIconBadge(
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
@@ -267,37 +269,39 @@ struct AccountsView: View {
                     style: .circle
                 )
                 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.label)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(AppTypography.rowTitle)
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("Tap for analytics & details")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AppTypography.captionMedium)
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 3) {
+                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
                     Text(bal.formattedCurrency(symbol: store.currencySymbol))
-                        .font(.system(size: 16, weight: .bold, design: .default).monospacedDigit())
+                        .font(Font.system(size: 16, weight: .bold, design: .default).monospacedDigit())
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.md14)
             .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.cardRow, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        RoundedRectangle(cornerRadius: AppRadius.cardRow, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
                     }
             }
         }
         .buttonStyle(.plain)
+        .matchedTransitionSource(id: AppTransitionIDs.accountCard(account.id), in: topControlsNamespace ?? accountsNamespace)
         .contextMenu {
+
             Button(action: {
                 editingAccount = account
             }) {
