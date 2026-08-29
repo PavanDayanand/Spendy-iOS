@@ -13,7 +13,6 @@ enum AppTab: String, CaseIterable, Identifiable {
     case home
     case analytics
     case budget
-    case manage
     case quickAdd
 
     var id: String { rawValue }
@@ -23,7 +22,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "Home"
         case .analytics: return "Stats"
         case .budget: return "Budget"
-        case .manage: return "Subs" 
         case .quickAdd: return "Add"
         }
     }
@@ -33,7 +31,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .analytics: return "chart.bar.fill"
         case .budget: return "dollarsign.circle.fill"
-        case .manage: return "repeat"
         case .quickAdd: return "plus"
         }
     }
@@ -169,7 +166,7 @@ struct GlassTabBar: View {
 private extension GlassTabBar {
 
     func tabBarContent(isGlass: Bool) -> some View {
-        let mainTabs: [AppTab] = [.home, .analytics, .budget, .manage]
+        let mainTabs: [AppTab] = [.home, .analytics, .budget]
         return GeometryReader { geometry in
             let totalWidth = geometry.size.width
             let count = CGFloat(mainTabs.count)

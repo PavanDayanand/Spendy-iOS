@@ -27,10 +27,6 @@ struct MainTabView: View {
                     BudgetView()
                 }
                 
-                Tab(AppTab.manage.label, systemImage: AppTab.manage.sfSymbol, value: AppTab.manage) {
-                    ManageView()
-                }
-                
                 Tab(value: AppTab.quickAdd, role: .search) {
                     Color.clear
                 } label: {
@@ -65,15 +61,13 @@ struct MainTabView: View {
                         AnalyticsView(selectedTab: $selectedTab)
                     case .budget:
                         BudgetView()
-                    case .manage:
-                        ManageView()
                     case .quickAdd:
                         DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
-                // Floating Liquid Glass Navigation Bar (4 Tabs + Quick Add Button)
+                // Floating Liquid Glass Navigation Bar (3 Tabs + Quick Add Button)
                 GlassTabBar(
                     selectedTab: $selectedTab,
                     onQuickAdd: {

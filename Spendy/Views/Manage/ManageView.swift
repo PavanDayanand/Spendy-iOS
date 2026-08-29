@@ -1,8 +1,9 @@
 //
-//  ManageView.swift
+//  SubscriptionsView.swift
 //  Spendy
 //
-//  Subscriptions Management Hub — Airy Hero Stats, Native Action Cards, Apple Quick-Pay Drawer
+//  Dedicated Full-Screen Subscriptions Management Hub — Pure Black Background,
+//  Hero Stats, Upcoming Due Highlights, Native Filter Chips, and Quick-Action Sheets.
 //
 
 import SwiftUI
@@ -16,17 +17,21 @@ enum SubscriptionFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-// MARK: - Manage View
+// MARK: - Subscriptions Full-Screen View
 
-struct ManageView: View {
+struct SubscriptionsView: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var onDismiss: (() -> Void)? = nil
+    var topControlsNamespace: Namespace.ID? = nil
 
     @State private var subFilter: SubscriptionFilter = .all
     @State private var showAddSubscription: Bool = false
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
-    @Namespace private var manageNamespace
+    @Namespace private var subsNamespace
 
     // MARK: - Computed Properties
 
@@ -87,13 +92,19 @@ struct ManageView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+        ZStack {
+            // Pure Black Background — No Mesh, No Grain
+            SpendyColors.appBackground
+                .ignoresSafeArea()
 
+            // Ambient Purple Header Glow
+            SpendyAmbientHeaderBackground(color: SpendyColors.vibrantPurple, height: 380, opacity: 0.25)
+
+            ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        titleHeader
+                        Spacer().frame(height: 56) // Clean top clearance for floating header
+                        
                         heroSpendSection
                         upcomingActionSection
                         filterBar
@@ -101,60 +112,89 @@ struct ManageView: View {
                         pastAndCancelled
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 120)
                 }
+
+                // Sticky Floating Header Bar
+                headerBar
+                    .padding(.top, 8)
+                    .zIndex(100)
             }
-            .overlay(alignment: .topTrailing) {
-                SpendyGlassEffectContainer {
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
+        .sheet(isPresented: $showAddSubscription) {
+            AddSubscriptionSheet()
+                .presentationBackground(SpendyColors.appBackground)
+        }
+        .sheet(item: $subscriptionToEdit) { sub in
+            AddSubscriptionSheet(subscriptionToEdit: sub)
+                .presentationBackground(SpendyColors.appBackground)
+        }
+        .sheet(item: $selectedSubscriptionForDetail) { sub in
+            SubscriptionQuickActionSheet(sub: sub) { subToEdit in
+                subscriptionToEdit = subToEdit
+            }
+        }
+    }
+
+    // MARK: - Header Bar
+
+    private var headerBar: some View {
+        SpendyGlassEffectContainer(spacing: 0) {
+            ZStack {
+                Text("Subscriptions")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
+
+                HStack {
+                    // Back / Return Button to Home
+                    GlassCircleButton(
+                        icon: "chevron.left",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Back",
+                        morphID: "backButton",
+                        namespace: subsNamespace
+                    ) {
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
+
+                    Spacer()
+
+                    // Add Subscription Button
                     GlassCircleButton(
                         icon: SFIcons.plus,
                         size: 44,
-                        iconSize: 18,
+                        iconSize: 16,
+                        iconWeight: .bold,
                         foregroundColor: SpendyColors.textPrimary,
                         haptic: .light,
                         accessibilityLabel: "Add Subscription",
                         morphID: "addSubscriptionButton",
-                        namespace: manageNamespace
+                        namespace: subsNamespace
                     ) {
                         showAddSubscription = true
                     }
-                }
-                .padding(.trailing, 20)
-                .padding(.top, 10)
-                .zIndex(100)
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showAddSubscription) {
-                AddSubscriptionSheet()
-            }
-            .sheet(item: $subscriptionToEdit) { sub in
-                AddSubscriptionSheet(subscriptionToEdit: sub)
-            }
-            .sheet(item: $selectedSubscriptionForDetail) { sub in
-                SubscriptionQuickActionSheet(sub: sub) { subToEdit in
-                    subscriptionToEdit = subToEdit
+                    .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
                 }
             }
         }
+        .padding(.horizontal, 20)
     }
 
-    // MARK: - Title Header
-
-    private var titleHeader: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Subscriptions")
-                    .font(.system(size: 32, weight: .heavy))
-                    .foregroundStyle(SpendyColors.textPrimary)
-
-                Text("\(activeCount) active • \(store.currencySymbol)\(String(format: "%.2f", totalMonthly))/mo")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-
-            Spacer()
-        }
-    }
+    // Typealias for backwards compatibility
+    typealias ManageView = SubscriptionsView
 
     // MARK: - Hero Spend Section
 
@@ -313,7 +353,7 @@ struct ManageView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
                     .nativeLiquidGlassCapsule(isInteractive: true)
-                    .glassMorphID("manageFilterCapsule", in: manageNamespace)
+                    .glassMorphID("manageFilterCapsule", in: subsNamespace)
                 }
                 .buttonStyle(.plain)
             }

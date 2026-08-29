@@ -257,7 +257,7 @@ struct DashboardView: View {
     @State private var showSettings: Bool = false
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showCurrencyConverter: Bool = false
-    @State private var showReceiptPrinter: Bool = false
+    @State private var showSubscriptionsHub: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var lastInspectedTransaction: Transaction? = nil
@@ -693,8 +693,8 @@ struct DashboardView: View {
             }) { tx in
                 AddTransactionView(transactionToEdit: tx)
             }
-            .sheet(isPresented: $showReceiptPrinter) {
-                ReceiptPrinterSheet()
+            .navigationDestination(isPresented: $showSubscriptionsHub) {
+                SubscriptionsView(topControlsNamespace: topControlsNamespace)
             }
             .sheet(item: $inspectingTransaction) { tx in
                 TransactionDetailSheet(transaction: tx) { txToEdit in
@@ -710,7 +710,7 @@ struct DashboardView: View {
                     category: category,
                     topControlsNamespace: topControlsNamespace,
                     backButtonMorphID: "currencyConverterButton",
-                    editButtonMorphID: "receiptPrinterButton",
+                    editButtonMorphID: "subscriptionsButton",
                     periodControlMorphID: "accountDropdownCapsule"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
@@ -723,7 +723,7 @@ struct DashboardView: View {
                     account: account,
                     topControlsNamespace: topControlsNamespace,
                     backButtonMorphID: "currencyConverterButton",
-                    editButtonMorphID: "receiptPrinterButton",
+                    editButtonMorphID: "subscriptionsButton",
                     periodControlMorphID: "accountDropdownCapsule"
                 ) {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
@@ -820,16 +820,17 @@ struct DashboardView: View {
                     }
                 }
                 
-                // Receipt Printer Button
+                // Subscriptions Hub Button
                 GlassCircleButton(
-                    icon: "printer.fill",
+                    icon: "repeat",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Monthly receipt printer",
-                    morphID: "receiptPrinterButton",
+                    accessibilityLabel: "Subscriptions",
+                    morphID: "subscriptionsButton",
                     namespace: topControlsNamespace
                 ) {
-                    showReceiptPrinter = true
+                    HapticsManager.shared.trigger(.selection)
+                    showSubscriptionsHub = true
                 }
             }
             .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
@@ -1204,9 +1205,8 @@ struct DashboardView: View {
                                             selectedTab.wrappedValue = .budget
                                         }
                                     } else if insight.family == "subscription" || insight.id == "upcoming_subs" || insight.id.hasPrefix("next_bill_") || insight.id == "track_subs" {
-                                        if let selectedTab = selectedTab {
-                                            selectedTab.wrappedValue = .manage
-                                        }
+                                        HapticsManager.shared.trigger(.selection)
+                                        showSubscriptionsHub = true
                                     } else if insight.family == "onboarding" || insight.id == "unlock_ai" {
                                         showAddTransaction = true
                                     } else if insight.family == "analytics" {

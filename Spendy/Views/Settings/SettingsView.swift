@@ -32,6 +32,7 @@ struct SettingsView: View {
     // Sheets & Dialogs
     @State private var showProfileEdit: Bool = false
     @State private var showCurrencyPicker: Bool = false
+    @State private var showReceiptPrinter: Bool = false
     @State private var showWhatsNewSheet: Bool = false
     @State private var showCoffeeSheet: Bool = false
     @Namespace private var settingsNamespace
@@ -102,6 +103,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCurrencyPicker) {
                 CurrencyPickerSheet()
+            }
+            .sheet(isPresented: $showReceiptPrinter) {
+                ReceiptPrinterSheet()
             }
             .sheet(isPresented: $showWhatsNewSheet) {
                 whatsNewSheet
@@ -289,6 +293,22 @@ struct SettingsView: View {
                         badgeText: "\(store.categories.count)"
                     )
                 }
+                
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                
+                // Monthly Receipt Generator Link
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    showReceiptPrinter = true
+                }) {
+                    rowItem(
+                        icon: "printer.fill",
+                        iconColor: Color(hex: "#BF5AF2"),
+                        title: "Monthly Receipt Generator",
+                        badgeText: nil
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
