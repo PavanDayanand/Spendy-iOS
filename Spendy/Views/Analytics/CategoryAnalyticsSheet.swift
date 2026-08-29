@@ -555,40 +555,49 @@ struct CategoryAnalyticsSheet: View {
     // MARK: - 1. Floating Sticky Header Bar
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 12) {
-            HStack {
-                GlassCircleButton(
-                    icon: "chevron.left",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: .white,
-                    accessibilityLabel: "Back",
-                    morphID: pageMorphID(shared: backButtonMorphID, fallback: "backButton"),
-                    namespace: sharedMorphNamespace
-                ) {
-                    HapticsManager.shared.trigger(.selection)
-                    if let onDismiss = onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
+            ZStack {
+                // Centered Category Name
+                Text(category.label)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
+                
+                HStack {
+                    GlassCircleButton(
+                        icon: "chevron.left",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        accessibilityLabel: "Back",
+                        morphID: pageMorphID(shared: backButtonMorphID, fallback: "backButton"),
+                        namespace: sharedMorphNamespace
+                    ) {
+                        HapticsManager.shared.trigger(.selection)
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            dismiss()
+                        }
                     }
-                }
 
-                Spacer()
+                    Spacer()
 
-                // Right-Side Edit Glass Button
-                GlassCircleButton(
-                    icon: "pencil",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: .white,
-                    accessibilityLabel: "Edit Category",
-                    morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
-                    namespace: sharedMorphNamespace
-                ) {
-                    HapticsManager.shared.trigger(.light)
-                    editingCategoryToEdit = category
+                    // Right-Side Edit Glass Button
+                    GlassCircleButton(
+                        icon: "pencil",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        accessibilityLabel: "Edit Category",
+                        morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
+                        namespace: sharedMorphNamespace
+                    ) {
+                        HapticsManager.shared.trigger(.light)
+                        editingCategoryToEdit = category
+                    }
                 }
             }
         }

@@ -113,53 +113,61 @@ struct TransactionDetailSheet: View {
     
     @ViewBuilder
     private var topActionBar: some View {
-        HStack {
-            // Close Button ✕ — matches home page size: 44
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: sheetNamespace
-            ) {
-                dismiss()
-            }
+        ZStack {
+            Text("Transaction Details")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .padding(.horizontal, 80)
             
-            Spacer()
-            
-            // Edit ✎ + Delete 🗑 — matches home page size: 44
-            GlassButtonGroup(spacing: 10) {
+            HStack {
+                // Close Button ✕ — matches home page size: 44
                 GlassCircleButton(
-                    icon: "pencil",
+                    icon: "xmark",
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
-                    haptic: .light,
-                    accessibilityLabel: "Edit Transaction",
-                    morphID: "editButton",
+                    haptic: .selection,
+                    accessibilityLabel: "Close",
+                    morphID: "closeButton",
                     namespace: sheetNamespace
                 ) {
-                    onEdit(transaction)
+                    dismiss()
                 }
                 
-                GlassCircleButton(
-                    icon: "trash.fill",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    tintColor: SpendyColors.expenseRed.opacity(0.18),
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Transaction",
-                    morphID: "deleteButton",
-                    namespace: sheetNamespace
-                ) {
-                    showDeleteConfirm = true
+                Spacer()
+                
+                // Edit ✎ + Delete 🗑 — matches home page size: 44
+                GlassButtonGroup(spacing: 10) {
+                    GlassCircleButton(
+                        icon: "pencil",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .light,
+                        accessibilityLabel: "Edit Transaction",
+                        morphID: "editButton",
+                        namespace: sheetNamespace
+                    ) {
+                        onEdit(transaction)
+                    }
+                    
+                    GlassCircleButton(
+                        icon: "trash.fill",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        tintColor: SpendyColors.expenseRed.opacity(0.18),
+                        foregroundColor: SpendyColors.expenseRed,
+                        haptic: .warning,
+                        accessibilityLabel: "Delete Transaction",
+                        morphID: "deleteButton",
+                        namespace: sheetNamespace
+                    ) {
+                        showDeleteConfirm = true
+                    }
                 }
             }
         }

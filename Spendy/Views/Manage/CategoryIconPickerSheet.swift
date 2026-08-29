@@ -167,8 +167,74 @@ struct CategoryIconPickerSheet: View {
         "y.circle.fill", "z.circle.fill"
     ]
     
+    enum IconDomain: String, CaseIterable, Identifiable {
+        case all = "All"
+        case food = "Food & Drink"
+        case finance = "Finance"
+        case transport = "Transport"
+        case home = "Home"
+        case shopping = "Shopping"
+        case health = "Health"
+        case media = "Media"
+        case tech = "Tech"
+        case nature = "Nature"
+        case work = "Work"
+        
+        var id: String { rawValue }
+        
+        var icon: String {
+            switch self {
+            case .all: return "sparkles"
+            case .food: return "fork.knife"
+            case .finance: return "creditcard.fill"
+            case .transport: return "car.fill"
+            case .home: return "house.fill"
+            case .shopping: return "bag.fill"
+            case .health: return "heart.fill"
+            case .media: return "tv.fill"
+            case .tech: return "laptopcomputer"
+            case .nature: return "leaf.fill"
+            case .work: return "briefcase.fill"
+            }
+        }
+    }
+    
+    @State private var selectedDomain: IconDomain = .all
+    
+    private var domainFilteredDefaultSymbols: [String] {
+        switch selectedDomain {
+        case .all:
+            return defaultSymbols
+        case .food:
+            return ["cart.fill", "fork.knife", "takeoutbag.and.cup.and.straw.fill", "cup.and.saucer.fill", "mug.fill", "wineglass.fill", "waterbottle.fill", "birthday.cake.fill", "frying.pan.fill", "soup.fill"]
+        case .finance:
+            return ["dollarsign.circle.fill", "indianrupeesign.circle.fill", "sterlingsign.circle.fill", "eurosign.circle.fill", "yensign.circle.fill", "creditcard.fill", "banknote.fill", "wallet.pass.fill", "chart.bar.fill", "chart.pie.fill", "chart.line.uptrend.xyaxis", "percent", "building.columns.fill"]
+        case .transport:
+            return ["car.fill", "car.side.fill", "bus.fill", "tram.fill", "ferry.fill", "bicycle", "scooter", "fuelpump.fill", "airplane", "airplane.departure", "airplane.arrival"]
+        case .home:
+            return ["house.fill", "bolt.fill", "drop.fill", "wifi", "lightbulb.fill", "lamp.desk.fill", "bed.double.fill", "sofa.fill", "bathtub.fill", "washer.fill", "refrigerator.fill", "fan.fill"]
+        case .shopping:
+            return ["bag.fill", "tag.fill", "gift.fill", "gift.circle.fill", "shippingbox.fill", "tshirt.fill", "scissors", "comb.fill", "key.fill", "lock.fill", "ticket.fill", "crown.fill", "trophy.fill", "medal.fill"]
+        case .health:
+            return ["heart.fill", "heart.circle.fill", "pills.fill", "cross.case.fill", "bandage.fill", "dumbbell.fill", "figure.run", "figure.walk", "figure.strengthtraining.traditional", "figure.yoga"]
+        case .media:
+            return ["tv.fill", "gamecontroller.fill", "music.note", "headphones", "play.rectangle.fill", "film.fill", "theatermasks.fill", "camera.fill", "photo.fill", "book.fill", "text.book.closed.fill"]
+        case .tech:
+            return ["desktopcomputer", "laptopcomputer", "iphone", "ipad", "printer.fill", "display", "externaldrive.fill", "cpu.fill"]
+        case .nature:
+            return ["leaf.fill", "tree.fill", "cloud.rain.fill", "sun.max.fill", "moon.fill", "snowflake", "flame.fill", "pawprint.fill"]
+        case .work:
+            return ["graduationcap.fill", "briefcase.fill", "briefcase.circle.fill", "hammer.fill", "wrench.and.screwdriver.fill", "gearshape.2.fill", "pencil", "paintbrush.fill"]
+        }
+    }
+    
     private var activeSymbols: [String] {
-        let list = selectedTab == .defaults ? defaultSymbols : brandSymbols
+        let list: [String]
+        if selectedTab == .defaults {
+            list = searchText.isEmpty ? domainFilteredDefaultSymbols : defaultSymbols
+        } else {
+            list = brandSymbols
+        }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if query.isEmpty {
             return list
@@ -177,91 +243,69 @@ struct CategoryIconPickerSheet: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color(hex: "#1C1C1E")
+        ZStack {
+            SpendyColors.appBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header: Close, Title
+                // 1. Header: Close & Centered Title
                 headerBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
                 
-                // Defaults / Brands pill-style segmented switcher
+                // 2. Top Search Bar (Liquid Glass)
+                searchCapsule
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                
+                // 3. Segmented Tab Switcher (Defaults / Brands)
                 segmentedTabControl
                     .padding(.horizontal, 20)
-                    .padding(.top, 18)
+                    .padding(.bottom, 12)
                 
-                // Grid Content Scroll
+                // 4. Horizontal Domain Category Filter Chips (when on Defaults & not searching)
+                if selectedTab == .defaults && searchText.isEmpty {
+                    domainFilterChips
+                        .padding(.bottom, 12)
+                }
+                
+                // 5. Grid Content Scroll
                 ScrollView(showsIndicators: false) {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 5), spacing: 14) {
                         if showPhotoOption && searchText.isEmpty {
-                            Menu {
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.selection)
-                                    onPhotoLibrarySelected?()
-                                }) {
-                                    Label("Choose from Library", systemImage: "photo.on.rectangle")
-                                }
-                                
-                                if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                                    Button(action: {
-                                        HapticsManager.shared.trigger(.selection)
-                                        onCameraSelected?()
-                                    }) {
-                                        Label("Take Photo", systemImage: "camera")
-                                    }
-                                }
-                                
-                                if isPhotoSet {
-                                    Button(role: .destructive, action: {
-                                        HapticsManager.shared.trigger(.warning)
-                                        onRemovePhotoSelected?()
-                                    }) {
-                                        Label("Remove Photo", systemImage: "trash")
-                                    }
-                                }
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: "#1C1C1E"))
-                                        .frame(width: 52, height: 52)
-                                        .overlay {
-                                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
-                                        }
-                                    
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                            .buttonStyle(.plain)
+                            photoOptionMenu
                         }
                         
                         ForEach(activeSymbols, id: \.self) { sym in
-                            Button(action: {
+                            let isSelected = selectedSymbol == sym
+                            
+                            Button {
                                 selectedSymbol = sym
                                 onIconSelected?(sym)
                                 HapticsManager.shared.trigger(.selection)
                                 dismiss()
-                            }) {
+                            } label: {
                                 ZStack {
                                     Circle()
-                                        .fill(selectedSymbol == sym ? SpendyColors.primaryBlue : Color(hex: "#1C1C1E"))
+                                        .fill(isSelected ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
                                         .frame(width: 52, height: 52)
                                         .overlay {
-                                            if selectedSymbol == sym {
+                                            if isSelected {
                                                 Circle()
                                                     .stroke(SpendyColors.textPrimary, lineWidth: 2)
+                                            } else {
+                                                Circle()
+                                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
                                             }
                                         }
                                     
                                     Image(systemName: cleanSymbolName(sym))
                                         .font(.system(size: 20, weight: .semibold))
                                         .foregroundStyle(
-                                            selectedSymbol == sym
+                                            isSelected
                                                 ? Color(uiColor: .dynamic(light: .white, dark: .black))
-                                                : .white
+                                                : SpendyColors.textPrimary
                                         )
                                 }
                             }
@@ -269,35 +313,27 @@ struct CategoryIconPickerSheet: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 120) // Clearance for search capsule
+                    .padding(.top, 6)
+                    .padding(.bottom, 36)
                 }
             }
-            
-            // Search Input capsule container (Full Width)
-            VStack(spacing: 0) {
-                searchCapsule
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .padding(.top, 16)
-            }
-            .background {
-                LinearGradient(
-                    colors: [Color.clear, Color(hex: "#1C1C1E").opacity(0.95), Color(hex: "#1C1C1E")],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea(edges: .bottom)
-            }
         }
-        .presentationBackground(Color(hex: "#1C1C1E"))
+        .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(32)
     }
     
     // MARK: - Header
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 0) {
             ZStack {
+                Text("Choose Icon")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
+                
                 HStack {
                     GlassCircleButton(
                         icon: "xmark",
@@ -311,84 +347,16 @@ struct CategoryIconPickerSheet: View {
                     ) {
                         dismiss()
                     }
+                    
                     Spacer()
                 }
-                
-                Text("Choose Icon")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
             }
         }
     }
     
-    // MARK: - Tab Switcher Pill (Liquid Glass)
-    private var segmentedTabControl: some View {
-        HStack(spacing: 6) {
-            tabButton(tabOption: .defaults, title: "Defaults", icon: "circle.grid.2x2.fill")
-            tabButton(tabOption: .brands, title: "Brands", icon: "applelogo")
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background {
-            Capsule()
-                .fill(Color(hex: "#18181A"))
-                .overlay {
-                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                }
-        }
-    }
-    
-    @ViewBuilder
-    private func tabButton(tabOption: IconTab, title: String, icon: String) -> some View {
-        let isSelected = selectedTab == tabOption
-        
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                selectedTab = tabOption
-            }
-            HapticsManager.shared.trigger(.selection)
-        }) {
-            HStack(spacing: 8) {
-                if isSelected {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: icon)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.black)
-                    }
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                }
-                
-                Text(title)
-                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.65))
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 36)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(Color(hex: "#2C2C2E"))
-                        .overlay {
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8)
-                        }
-                        .glassMorphID("activeTabPill", in: iconSheetNamespace)
-                }
-            }
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-    
-    // MARK: - Floating Search Bar (Liquid Glass)
+    // MARK: - Top Search Bar
     private var searchCapsule: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: SFIcons.search)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
@@ -396,6 +364,8 @@ struct CategoryIconPickerSheet: View {
             TextField("Search icons", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(SpendyColors.textPrimary)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
             
             if !searchText.isEmpty {
                 Button {
@@ -409,9 +379,105 @@ struct CategoryIconPickerSheet: View {
             }
         }
         .padding(.horizontal, 16)
-        .frame(height: 52)
+        .frame(height: 48)
         .nativeLiquidGlassCapsule(isInteractive: true)
-        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 3)
+    }
+    
+    // MARK: - Tab Switcher (Defaults / Brands)
+    private var segmentedTabControl: some View {
+        GlassSegmentedPicker(
+            selection: $selectedTab,
+            items: IconTab.allCases,
+            titleFor: { $0.rawValue },
+            iconFor: { tab in
+                tab == .defaults ? "circle.grid.2x2.fill" : "applelogo"
+            }
+        )
+    }
+    
+    // MARK: - Domain Filter Chips
+    private var domainFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(IconDomain.allCases) { domain in
+                    let isSelected = selectedDomain == domain
+                    
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedDomain = domain
+                        }
+                        HapticsManager.shared.trigger(.selection)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: domain.icon)
+                                .font(.system(size: 11, weight: .bold))
+                            
+                            Text(domain.rawValue)
+                                .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .foregroundStyle(isSelected ? (Color(uiColor: .dynamic(light: .white, dark: .black))) : SpendyColors.textSecondary)
+                        .background {
+                            Capsule()
+                                .fill(isSelected ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
+                                .overlay {
+                                    if !isSelected {
+                                        Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
+                                }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    // MARK: - Photo Option Menu
+    private var photoOptionMenu: some View {
+        Menu {
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                onPhotoLibrarySelected?()
+            }) {
+                Label("Choose from Library", systemImage: "photo.on.rectangle")
+            }
+            
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    onCameraSelected?()
+                }) {
+                    Label("Take Photo", systemImage: "camera")
+                }
+            }
+            
+            if isPhotoSet {
+                Button(role: .destructive, action: {
+                    HapticsManager.shared.trigger(.warning)
+                    onRemovePhotoSelected?()
+                }) {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+            }
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(SpendyColors.cardBackgroundSecondary)
+                    .frame(width: 52, height: 52)
+                    .overlay {
+                        Circle().stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
+                
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+        }
+        .buttonStyle(.plain)
     }
     
     // Helper to translate mock names to correct iOS System icons if needed

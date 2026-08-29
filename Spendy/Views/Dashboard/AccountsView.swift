@@ -111,38 +111,38 @@ struct AccountsView: View {
     
     // MARK: - Top Header Bar
     private var headerBar: some View {
-        HStack {
-            // Circular Glass Back Button
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: .white,
-                haptic: .selection,
-                accessibilityLabel: "Back",
-                morphID: "backButton",
-                namespace: accountsNamespace
-            ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
+        SpendyGlassEffectContainer(spacing: 0) {
+            ZStack {
+                Text("Accounts")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
+                
+                HStack {
+                    // Circular Glass Back Button
+                    GlassCircleButton(
+                        icon: "chevron.left",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Back",
+                        morphID: "backButton",
+                        namespace: accountsNamespace
+                    ) {
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
+                    
+                    Spacer()
                 }
             }
-            .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
-            
-            Spacer()
-            
-            Text("Accounts")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Placeholder to perfectly balance the title
-            Spacer()
-                .frame(width: 44)
         }
         .padding(.horizontal, 20)
     }

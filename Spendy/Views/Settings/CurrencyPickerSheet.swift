@@ -140,76 +140,46 @@ struct CurrencyPickerSheet: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color(hex: "#1C1C1E")
+        ZStack {
+            SpendyColors.appBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header: Close, Title
+                // 1. Header Bar: Close & Centered Title
                 headerBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
                 
-                // Scrollable Grid of Currencies
+                // 2. Top Search Bar (Liquid Glass)
+                searchCapsule
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 14)
+                
+                // 3. Scrollable List with Suggested Chips & Horizontal Rows
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        // Suggested section
-                        if !filteredSuggestedCurrencies.isEmpty {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Suggested")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .tracking(1.0)
-                                    .foregroundColor(SpendyColors.textSecondary)
-                                    .padding(.horizontal, 4)
-                                
-                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                                    ForEach(filteredSuggestedCurrencies) { currency in
-                                        currencyGridCell(currency: currency)
-                                    }
-                                }
-                            }
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Quick-Select Horizontal Scrolling Chips for Suggested Currencies
+                        if searchText.isEmpty && !suggestedCurrencies.isEmpty {
+                            suggestedChipsSection
                         }
                         
-                        // Alphabetical sections
-                        ForEach(groupedAllCurrencies, id: \.key) { group in
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(group.key)
-                                    .font(.system(size: 13, weight: .bold))
-                                    .tracking(1.0)
-                                    .foregroundColor(SpendyColors.textSecondary)
-                                    .padding(.horizontal, 4)
-                                
-                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                                    ForEach(group.value) { currency in
-                                        currencyGridCell(currency: currency)
-                                    }
-                                }
+                        // Grouped Currency Cards
+                        if groupedAllCurrencies.isEmpty {
+                            emptyStateView
+                        } else {
+                            ForEach(groupedAllCurrencies, id: \.key) { group in
+                                currencyGroupSection(key: group.key, currencies: group.value)
                             }
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                    .padding(.bottom, 120) // Clearance for search capsule
+                    .padding(.top, 6)
+                    .padding(.bottom, 36)
                 }
             }
-            
-            // Search Input capsule container (Full Width)
-            VStack(spacing: 0) {
-                searchCapsule
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .padding(.top, 16)
-            }
-            .background {
-                LinearGradient(
-                    colors: [Color.clear, Color(hex: "#1C1C1E").opacity(0.95), Color(hex: "#1C1C1E")],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea(edges: .bottom)
-            }
         }
-        .presentationBackground(Color(hex: "#1C1C1E"))
+        .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
@@ -219,6 +189,12 @@ struct CurrencyPickerSheet: View {
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 0) {
             ZStack {
+                Text("Select Currency")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
+                
                 HStack {
                     GlassCircleButton(
                         icon: "xmark",
@@ -232,26 +208,23 @@ struct CurrencyPickerSheet: View {
                     ) {
                         dismiss()
                     }
+                    
                     Spacer()
                 }
-                
-                Text("Select Currency")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(SpendyColors.textPrimary)
             }
         }
     }
     
-    // MARK: - Search Capsule
+    // MARK: - Top Search Bar
     private var searchCapsule: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: SFIcons.search)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(SpendyColors.textTertiary)
+                .foregroundStyle(SpendyColors.textTertiary)
             
-            TextField("Search currency", text: $searchText)
+            TextField("Search currency or country", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(SpendyColors.textPrimary)
+                .foregroundStyle(SpendyColors.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
             
@@ -261,51 +234,174 @@ struct CurrencyPickerSheet: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 15))
-                        .foregroundColor(SpendyColors.textTertiary)
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
-        .frame(height: 52)
+        .frame(height: 48)
         .nativeLiquidGlassCapsule(isInteractive: true)
-        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 3)
     }
     
-    // MARK: - Currency Grid Cell (styled like CategoryIconPickerSheet)
-    @ViewBuilder
-    private func currencyGridCell(currency: CurrencyInfo) -> some View {
-        let isSelected = activeSelectedCode == currency.code
-        
-        Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            selectCurrency(currency)
-        }) {
-            HStack(spacing: 8) {
-                Text(currency.flag)
-                    .font(.system(size: 20))
-                
-                Text(currency.code)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(isSelected ? Color.white : SpendyColors.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? SpendyColors.primaryBlue : Color(hex: "#1C1C1E"))
-                    .overlay {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(SpendyColors.textPrimary, lineWidth: 2)
-                        } else {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+    // MARK: - Suggested Horizontal Chips
+    private var suggestedChipsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Popular")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .padding(.horizontal, 4)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(suggestedCurrencies) { currency in
+                        let isSelected = activeSelectedCode == currency.code
+                        
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            selectCurrency(currency)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(currency.flag)
+                                    .font(.system(size: 16))
+                                
+                                Text(currency.code)
+                                    .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                                
+                                Text(currency.symbol)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(isSelected ? SpendyColors.textPrimary.opacity(0.8) : SpendyColors.textTertiary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
+                            .background {
+                                Capsule()
+                                    .fill(isSelected ? SpendyColors.cardBackgroundSecondary : Color.white.opacity(0.05))
+                                    .overlay {
+                                        Capsule()
+                                            .stroke(isSelected ? SpendyColors.primaryBlue : SpendyColors.separator, lineWidth: isSelected ? 1.5 : 0.8)
+                                    }
+                            }
                         }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+    
+    // MARK: - Group Section Card
+    private var currencyGroupSection: some View {
+        EmptyView()
+    }
+    
+    @ViewBuilder
+    private func currencyGroupSection(key: String, currencies: [CurrencyInfo]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(key)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                ForEach(Array(currencies.enumerated()), id: \.element.id) { index, currency in
+                    currencyRow(currency: currency)
+                    
+                    if index < currencies.count - 1 {
+                        Divider()
+                            .background(SpendyColors.separator)
+                            .padding(.leading, 56)
+                    }
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
+    }
+    
+    // MARK: - Horizontal Currency Row (NO SQUARED BOXES)
+    @ViewBuilder
+    private func currencyRow(currency: CurrencyInfo) -> some View {
+        let isSelected = activeSelectedCode == currency.code
+        
+        Button {
+            HapticsManager.shared.trigger(.selection)
+            selectCurrency(currency)
+        } label: {
+            HStack(spacing: 14) {
+                // Flag Badge
+                ZStack {
+                    Circle()
+                        .fill(SpendyColors.cardBackgroundSecondary)
+                        .frame(width: 38, height: 38)
+                        .overlay {
+                            Circle().stroke(SpendyColors.separator, lineWidth: 0.6)
+                        }
+                    
+                    Text(currency.flag)
+                        .font(.system(size: 20))
+                }
+                
+                // Code & Full Name
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(currency.code)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Text(currency.symbol)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    
+                    Text(currency.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                // Selection Checkmark
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(SpendyColors.primaryBlue)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
         .buttonStyle(.plain)
+    }
+    
+    // MARK: - Empty State
+    private var emptyStateView: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 28))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.top, 30)
+            
+            Text("No currency matching \"\(searchText)\"")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
     }
     
     private func selectCurrency(_ currency: CurrencyInfo) {

@@ -120,40 +120,49 @@ struct SubscriptionQuickActionSheet: View {
     
     // MARK: - Top Floating Action Bar (Shared Spendy Pattern from TransactionDetailSheet - Single Edit Button)
     private var topActionBar: some View {
-        HStack(alignment: .center) {
-            // Close ✕ Button (Top Left)
-            SpendyGlassEffectContainer {
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
-                    namespace: actionSheetNamespace
-                ) {
-                    dismiss()
+        ZStack {
+            // Centered Subscription Name
+            Text(liveSub.name)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .padding(.horizontal, 60)
+            
+            HStack(alignment: .center) {
+                // Close ✕ Button (Top Left)
+                SpendyGlassEffectContainer {
+                    GlassCircleButton(
+                        icon: "xmark",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Close",
+                        morphID: "closeButton",
+                        namespace: actionSheetNamespace
+                    ) {
+                        dismiss()
+                    }
                 }
-            }
-            
-            Spacer()
-            
-            // Edit ✎ Button (Top Right)
-            SpendyGlassEffectContainer {
-                GlassCircleButton(
-                    icon: "pencil",
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .light,
-                    accessibilityLabel: "Edit Subscription",
-                    morphID: "editButton",
-                    namespace: actionSheetNamespace
-                ) {
-                    showEditSheet = true
+                
+                Spacer()
+                
+                // Edit ✎ Button (Top Right)
+                SpendyGlassEffectContainer {
+                    GlassCircleButton(
+                        icon: "pencil",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .light,
+                        accessibilityLabel: "Edit Subscription",
+                        morphID: "editButton",
+                        namespace: actionSheetNamespace
+                    ) {
+                        showEditSheet = true
+                    }
                 }
             }
         }

@@ -126,7 +126,15 @@ struct FloatingSubscriptionsView: View {
                             .padding(.vertical, 20)
                         } else {
                             ForEach(Array(activeSubs.enumerated()), id: \.element.id) { index, sub in
-                                SubscriptionRowView(sub: sub, currencySymbol: store.currencySymbol)
+                                Button {
+                                    HapticsManager.shared.trigger(.light)
+                                    selectedSubscriptionForDetail = sub
+                                } label: {
+                                    SubscriptionRowView(sub: sub, currencySymbol: store.currencySymbol)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                
                                 if index < activeSubs.count - 1 {
                                     Divider()
                                         .overlay(SpendyColors.separator)
@@ -138,10 +146,10 @@ struct FloatingSubscriptionsView: View {
                 .frame(maxHeight: 180)
             }
             .padding(16)
-            .background(Color.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    .stroke(SpendyColors.separator, lineWidth: 0.8)
             }
             
             // Bottom "Manage Subscriptions" Button
@@ -167,8 +175,12 @@ struct FloatingSubscriptionsView: View {
         .sheet(isPresented: $showAddSubscription) {
             AddSubscriptionSheet()
         }
+        .sheet(item: $selectedSubscriptionForDetail) { sub in
+            SubscriptionQuickActionSheet(sub: sub)
+        }
     }
     
+    @State private var selectedSubscriptionForDetail: Subscription? = nil
     var onManageTap: (() -> Void)? = nil
 }
 

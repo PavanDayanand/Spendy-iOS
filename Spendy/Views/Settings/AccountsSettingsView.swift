@@ -46,36 +46,42 @@ struct AccountsSettingsView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Top Custom Header Bar (Sticky at top!)
-                headerBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 10)
-                    .background(SpendyColors.appBackground)
-                    .zIndex(10)
-                
+            // Dynamic Ambient Full-Width Blue Header Glow (Exact Match with AccountsView & Analytics)
+            SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 380, opacity: 0.28)
+            
+            ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Net Worth Hero Card with Currency Switcher
-                        heroNetWorthSection
+                    VStack(spacing: 20) {
+                        Spacer().frame(height: 56) // Clean top clearance for floating header
                         
-                        // Accounts List Section (with horizontal type filters)
+                        // 1. Net Worth Hero Card with Currency Switcher
+                        heroNetWorthSection
+                            .padding(.horizontal, 16)
+                        
+                        // 2. Accounts List Section (with horizontal type filters)
                         accountsListSection
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 100) // Clearance for bottom floating button
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom button
                 }
+                
+                // Floating Sticky Header Bar
+                headerBar
+                    .padding(.top, 8)
+                    .zIndex(100)
             }
             
             // Bottom Floating Action (Add +)
-            bottomFloatingBar
+            VStack {
+                Spacer()
+                bottomFloatingBar
+            }
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
@@ -96,34 +102,34 @@ struct AccountsSettingsView: View {
     // MARK: - Top Header Bar
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Circular Glass Back Button
-                GlassCircleButton(
-                    icon: "chevron.left",
-                    size: 44,
-                    iconSize: 15,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Back",
-                    morphID: "backButton",
-                    namespace: accountsNamespace
-                ) {
-                    dismiss()
-                }
-                
-                Spacer()
-                
+            ZStack {
                 Text("Accounts")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 60)
                 
-                Spacer()
-                
-                // Placeholder to align title
-                Spacer()
-                    .frame(width: 44)
+                HStack {
+                    // Circular Glass Back Button
+                    GlassCircleButton(
+                        icon: "chevron.left",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Back",
+                        morphID: "backButton",
+                        namespace: accountsNamespace
+                    ) {
+                        dismiss()
+                    }
+                    
+                    Spacer()
+                }
             }
         }
+        .padding(.horizontal, 20)
     }
     
     // MARK: - Net Worth Hero Section

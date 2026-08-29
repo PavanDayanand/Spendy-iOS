@@ -12,6 +12,7 @@ struct SubscriptionWidgetSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var showAddSubscription: Bool = false
+    @State private var selectedSubscriptionForDetail: Subscription? = nil
     
     var body: some View {
         NavigationStack {
@@ -74,6 +75,9 @@ struct SubscriptionWidgetSheet: View {
             .sheet(isPresented: $showAddSubscription) {
                 AddSubscriptionSheet()
             }
+            .sheet(item: $selectedSubscriptionForDetail) { sub in
+                SubscriptionQuickActionSheet(sub: sub)
+            }
         }
         .presentationDetents([.medium, .large])
     }
@@ -123,23 +127,31 @@ struct SubscriptionWidgetSheet: View {
         VStack(spacing: 14) {
             ForEach(Array(store.subscriptions.enumerated()), id: \.element.id) { index, sub in
                 HStack(spacing: 14) {
-                    SpendyIconBadge(
-                        sfSymbol: sub.sfSymbol,
-                        color: sub.color,
-                        size: .medium
-                    )
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(sub.name)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                        
-                        Text("\(sub.cycle.label) • \(sub.amount.formattedCurrency(symbol: store.currencySymbol))")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
+                    Button {
+                        HapticsManager.shared.trigger(.light)
+                        selectedSubscriptionForDetail = sub
+                    } label: {
+                        HStack(spacing: 14) {
+                            SpendyIconBadge(
+                                sfSymbol: sub.sfSymbol,
+                                color: sub.color,
+                                size: .medium
+                            )
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sub.name)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(sub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
+                                
+                                Text("\(sub.cycle.label) • \(sub.amount.formattedCurrency(symbol: store.currencySymbol))")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                            
+                            Spacer()
+                        }
                     }
-                    
-                    Spacer()
+                    .buttonStyle(.plain)
                     
                     Toggle("", isOn: Binding(
                         get: { !sub.isPaused },
