@@ -321,22 +321,12 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     @Namespace private var segmentNamespace
     
     var body: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: 4) {
-                pickerContent
-            }
-        } else {
-            pickerContent
-        }
-    }
-    
-    private var pickerContent: some View {
         HStack(spacing: 4) {
             ForEach(items) { item in
                 let isSelected = selection == item
                 
                 Button(action: {
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.76)) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
                         selection = item
                     }
                     HapticsManager.shared.trigger(.selection)
@@ -347,36 +337,23 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                                 .font(.system(size: 11, weight: .bold))
                         }
                         Text(titleFor(item))
-                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                            .lineLimit(1)
                     }
+                    .padding(.horizontal, expandsToFillWidth ? 8 : 16)
+                    .frame(maxWidth: expandsToFillWidth ? .infinity : nil)
+                    .frame(height: 36)
                     .foregroundStyle(
                         isSelected
-                            ? (selectedForegroundColor ?? (activeTint == SpendyColors.primaryBlue ? Color(uiColor: .dynamic(light: .white, dark: .black)) : Color.white))
+                            ? (selectedForegroundColor ?? (activeTint == SpendyColors.primaryBlue ? Color.white : Color(uiColor: .dynamic(light: .black, dark: .white))))
                             : SpendyColors.textSecondary
                     )
-                    .frame(maxWidth: expandsToFillWidth ? .infinity : nil)
-                    .frame(height: 38)
                     .background {
                         if isSelected {
-                            if #available(iOS 26, *) {
-                                Capsule(style: .continuous)
-                                    .fill(activeTint)
-                                    .glassEffect(.regular.tint(activeTint).interactive(), in: .capsule)
-                                    .shadow(color: activeTint.opacity(0.30), radius: 6, y: 1.5)
-                                    .glassEffectID("activeSegmentHighlight", in: segmentNamespace)
-                            } else {
-                                Capsule(style: .continuous)
-                                    .fill(activeTint)
-                                    .overlay {
-                                        Capsule(style: .continuous)
-                                            .stroke(
-                                                SpendyColors.separator.opacity(0.4),
-                                                lineWidth: 0.8
-                                            )
-                                    }
-                                    .shadow(color: activeTint.opacity(0.25), radius: 6, y: 1.5)
-                                    .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
-                            }
+                            Capsule(style: .continuous)
+                                .fill(activeTint)
+                                .shadow(color: Color.black.opacity(0.18), radius: 4, y: 1)
+                                .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
                         }
                     }
                     .contentShape(Capsule())
@@ -387,21 +364,15 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         .padding(4)
         .frame(height: 44)
         .background {
-            if #available(iOS 26, *) {
-                Capsule(style: .continuous)
-                    .fill(SpendyColors.cardBackgroundSecondary.opacity(0.4))
-                    .glassEffect(.clear.interactive(), in: .capsule)
-            } else {
-                Capsule(style: .continuous)
-                    .fill(SpendyColors.cardBackgroundSecondary)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .stroke(
-                                SpendyColors.separator,
-                                lineWidth: 0.8
-                            )
-                    }
-            }
+            Capsule(style: .continuous)
+                .fill(SpendyColors.cardBackgroundSecondary)
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(
+                            SpendyColors.separator,
+                            lineWidth: 0.8
+                        )
+                }
         }
     }
 }

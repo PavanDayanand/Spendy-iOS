@@ -85,7 +85,12 @@ struct AddTransactionView: View {
         }
     }
     
-    init(transactionToEdit: Transaction? = nil, defaultType: TransactionType = .expense) {
+    init(
+        transactionToEdit: Transaction? = nil,
+        defaultType: TransactionType = .expense,
+        defaultCategoryId: String? = nil,
+        defaultAccountId: String? = nil
+    ) {
         self.transactionToEdit = transactionToEdit
         if let t = transactionToEdit {
             _type = State(initialValue: t.type)
@@ -97,6 +102,12 @@ struct AddTransactionView: View {
             _date = State(initialValue: t.date)
         } else {
             _type = State(initialValue: defaultType)
+            if let catId = defaultCategoryId {
+                _selectedCategoryId = State(initialValue: catId)
+            }
+            if let accId = defaultAccountId {
+                _fromAccountId = State(initialValue: accId)
+            }
         }
     }
     

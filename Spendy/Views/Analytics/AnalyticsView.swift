@@ -74,6 +74,7 @@ struct AnalyticsView: View {
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
     @State private var showEditBudgetSheet: Bool = false
+    @State private var showAddTransaction: Bool = false
     
     // Collapsible List Expand States
     @State private var isSpendingListExpanded: Bool = false
@@ -103,21 +104,47 @@ struct AnalyticsView: View {
                         
                         // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
-                            VStack(spacing: 18) {
-                                // Card 1: Cashflow Overview Card
-                                cashflowOverviewCard
-                                
-                                // Card 2: Spending Breakdown Card & List
-                                spendingBreakdownCard
-                                
-                                // Card 3: Income Breakdown Card & List
-                                incomeBreakdownCard
-                                
-                                // Card 4: Budget Ring & Pacing Card
-                                budgetRingPacingCard
+                            if filteredTransactions.isEmpty || (totalSpending == 0 && totalIncome == 0) {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    Text("Insights")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                    
+                                    Text("Add more transactions to unlock personalised insights")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundStyle(SpendyColors.textSecondary)
+                                        .lineSpacing(4)
+                                }
+                                .padding(20)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .fill(SpendyColors.cardBackground)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                        }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 8)
+                                .padding(.bottom, 30)
+                            } else {
+                                VStack(spacing: 18) {
+                                    // Card 1: Cashflow Overview Card
+                                    cashflowOverviewCard
+                                    
+                                    // Card 2: Spending Breakdown Card & List
+                                    spendingBreakdownCard
+                                    
+                                    // Card 3: Income Breakdown Card & List
+                                    incomeBreakdownCard
+                                    
+                                    // Card 4: Budget Ring & Pacing Card
+                                    budgetRingPacingCard
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 30)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 30)
                         } header: {
                             // Sticky Toolbar floating on top
                             compactHeader
@@ -130,6 +157,9 @@ struct AnalyticsView: View {
                 }
             }
             .navigationBarHidden(true)
+            .sheet(isPresented: $showAddTransaction) {
+                AddTransactionView()
+            }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
             }

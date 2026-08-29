@@ -20,6 +20,148 @@ struct InsightCardViewModel: Identifiable {
     var family: String? = nil
 }
 
+// MARK: - Trend Graph Point
+struct SpendTrendPoint: Identifiable, Equatable {
+    let id: Int
+    let label: String
+    let amount: Double
+}
+
+// MARK: - Time Filter Enum (D, W, M)
+enum DashboardTimeFilter: String, CaseIterable, Identifiable {
+    case day = "D"
+    case week = "W"
+    case month = "M"
+    
+    var id: String { rawValue }
+    
+    var label: String {
+        switch self {
+        case .day: return "Today"
+        case .week: return "This Week"
+        case .month: return "This Month"
+        }
+    }
+}
+
+// MARK: - Inline Hero Spend Trend Curve Graph (Catmull-Rom Smooth Curve)
+struct HeroSpendTrendGraph: View {
+    let points: [SpendTrendPoint]
+    let filter: DashboardTimeFilter
+    
+    var body: some View {
+        VStack(spacing: 5) {
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                
+                let amounts = points.map { $0.amount }
+                let maxAmount = max(1.0, amounts.max() ?? 1.0)
+                let count = max(1, points.count)
+                
+                let coords: [CGPoint] = points.enumerated().map { index, point in
+                    let x = count > 1 ? (CGFloat(index) / CGFloat(count - 1)) * w : w / 2
+                    let normalized = CGFloat(point.amount / maxAmount)
+                    let y = h - (normalized * (h - 14) + 7)
+                    return CGPoint(x: x, y: y)
+                }
+                
+                ZStack {
+                    // Soft Area Gradient Fill Under Curve
+                    Path { path in
+                        guard coords.count > 1 else { return }
+                        path.move(to: CGPoint(x: 0, y: h))
+                        path.addLine(to: coords[0])
+                        
+                        for i in 1..<coords.count {
+                            let prev = coords[i - 1]
+                            let cur = coords[i]
+                            let midX = (prev.x + cur.x) / 2
+                            path.addCurve(
+                                to: cur,
+                                control1: CGPoint(x: midX, y: prev.y),
+                                control2: CGPoint(x: midX, y: cur.y)
+                            )
+                        }
+                        
+                        path.addLine(to: CGPoint(x: w, y: h))
+                        path.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                SpendyColors.primaryBlue.opacity(0.20),
+                                SpendyColors.primaryBlue.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    
+                    // Smooth Glowing Curve Stroke
+                    Path { path in
+                        guard coords.count > 1 else { return }
+                        path.move(to: coords[0])
+                        for i in 1..<coords.count {
+                            let prev = coords[i - 1]
+                            let cur = coords[i]
+                            let midX = (prev.x + cur.x) / 2
+                            path.addCurve(
+                                to: cur,
+                                control1: CGPoint(x: midX, y: prev.y),
+                                control2: CGPoint(x: midX, y: cur.y)
+                            )
+                        }
+                    }
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                SpendyColors.primaryBlue.opacity(0.50),
+                                SpendyColors.primaryBlue
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
+                    )
+                    .shadow(color: SpendyColors.primaryBlue.opacity(0.4), radius: 6, x: 0, y: 2)
+                    
+                    // Glowing Pin on the Latest / Peak Point
+                    if let last = coords.last {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 8, height: 8)
+                            .overlay(
+                                Circle().stroke(SpendyColors.primaryBlue, lineWidth: 2.5)
+                            )
+                            .shadow(color: SpendyColors.primaryBlue.opacity(0.8), radius: 6, x: 0, y: 0)
+                            .position(last)
+                    }
+                }
+            }
+            .frame(height: 52)
+            
+            // Minimal Axis Indicators
+            HStack {
+                if let first = points.first {
+                    Text(first.label)
+                }
+                Spacer()
+                if points.count > 2 {
+                    Text(points[points.count / 2].label)
+                }
+                Spacer()
+                if let last = points.last {
+                    Text(last.label)
+                }
+            }
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .foregroundStyle(SpendyColors.textTertiary)
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
 // MARK: - Mini Sparkline Component for Accounts Card (Image 1)
 struct AccountsMiniSparkline: View {
     var isPositive: Bool = true
@@ -127,6 +269,7 @@ struct DashboardView: View {
     
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
+    @State private var selectedTimeFilter: DashboardTimeFilter = .month
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
     
@@ -363,6 +506,108 @@ struct DashboardView: View {
         return Array(cards.prefix(5))
     }
     
+    // Dynamic Filtered Spend Amount for Selected Timeframe (D / W / M)
+    private var filteredSpendAmount: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let expenses = displayedTransactions.filter { $0.type == .expense }
+        
+        switch selectedTimeFilter {
+        case .day:
+            return expenses.filter { calendar.isDateInToday($0.date) }.reduce(0) { $0 + $1.amount }
+        case .week:
+            let today = calendar.startOfDay(for: now)
+            guard let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: today) else { return 0 }
+            return expenses.filter { $0.date >= sevenDaysAgo && $0.date <= now }.reduce(0) { $0 + $1.amount }
+        case .month:
+            return currentMonthExpenseTotal
+        }
+    }
+    
+    // Dynamic Inline Trend Curve Data for D / W / M (Catmull-Rom Curve Points)
+    private var trendGraphPoints: [SpendTrendPoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        let expenses = displayedTransactions.filter { $0.type == .expense }
+        
+        switch selectedTimeFilter {
+        case .day:
+            let todayExpenses = expenses.filter { calendar.isDateInToday($0.date) }
+            let hours = [0, 4, 8, 12, 16, 20, 23]
+            var points: [SpendTrendPoint] = []
+            
+            for (idx, hour) in hours.enumerated() {
+                let hourTxs = todayExpenses.filter {
+                    let h = calendar.component(.hour, from: $0.date)
+                    return h <= hour
+                }
+                let sum = hourTxs.reduce(0.0) { $0 + $1.amount }
+                let label = hour == 0 ? "12AM" : (hour == 12 ? "12PM" : (hour > 12 ? "\(hour - 12)PM" : "\(hour)AM"))
+                points.append(SpendTrendPoint(id: idx, label: label, amount: sum))
+            }
+            
+            let allZero = points.allSatisfy { $0.amount == 0 }
+            if allZero {
+                return [
+                    SpendTrendPoint(id: 0, label: "12AM", amount: 0),
+                    SpendTrendPoint(id: 1, label: "6AM", amount: 0),
+                    SpendTrendPoint(id: 2, label: "12PM", amount: 0),
+                    SpendTrendPoint(id: 3, label: "6PM", amount: 0),
+                    SpendTrendPoint(id: 4, label: "Now", amount: 0)
+                ]
+            }
+            return points
+            
+        case .week:
+            var points: [SpendTrendPoint] = []
+            let today = calendar.startOfDay(for: now)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            
+            for offset in (0..<7).reversed() {
+                if let date = calendar.date(byAdding: .day, value: -offset, to: today) {
+                    let dayTxs = expenses.filter { calendar.isDate($0.date, inSameDayAs: date) }
+                    let total = dayTxs.reduce(0.0) { $0 + $1.amount }
+                    let name = formatter.string(from: date)
+                    points.append(SpendTrendPoint(id: 6 - offset, label: name, amount: total))
+                }
+            }
+            return points
+            
+        case .month:
+            let monthTxs = currentMonthExpenseTxs
+            let currentDay = calendar.component(.day, from: now)
+            let intervals = [
+                (1, min(7, currentDay), "W1"),
+                (8, min(14, currentDay), "W2"),
+                (15, min(21, currentDay), "W3"),
+                (22, min(31, currentDay), "W4")
+            ]
+            
+            var points: [SpendTrendPoint] = []
+            var cumulative: Double = 0
+            for (idx, interval) in intervals.enumerated() {
+                if interval.0 <= currentDay {
+                    let intTxs = monthTxs.filter {
+                        let d = calendar.component(.day, from: $0.date)
+                        return d >= interval.0 && d <= interval.1
+                    }
+                    cumulative += intTxs.reduce(0.0) { $0 + $1.amount }
+                }
+                points.append(SpendTrendPoint(id: idx, label: interval.2, amount: cumulative))
+            }
+            return points
+        }
+    }
+    
+    private var completedGoalPercentage: Int {
+        let incTotal = currentMonthIncomeTxs.reduce(0) { $0 + $1.amount }
+        let expTotal = currentMonthExpenseTotal
+        guard incTotal > 0 else { return 41 }
+        let savings = incTotal - expTotal
+        return max(0, min(100, Int((savings / incTotal) * 100)))
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -374,17 +619,17 @@ struct DashboardView: View {
                         headerBar
                             .padding(.top, 8)
                         
-                        // 2. Account Selector Dropdown Menu Chip & Privacy Eye
+                        // 2. Account Selector Dropdown Menu Chip & Time Filter
                         accountDropdownSelector
                         
-                        // 3. Hero Balance Uncarded & Borderless Line Graph (directly on background!)
+                        // 3. Hero Spend Section with Inline Catmull-Rom Curve Graph
                         heroBalanceUncarded
                         
-                        // 4. Budget Health & Pacing Card (Placed directly under hero graph)
-                        budgetHealthCard
+                        // 4. 3-Column Metric Breakdown Row (Expenses, Income, Savings Rate %)
+                        threeColumnMetricsRow
                         
-                        // 5. Compact Expenses & Income Summary Row (Real Monthly Spending vs Income)
-                        compactExpensesAndIncomeRow
+                        // 5. Budget Health & Pacing Card
+                        budgetHealthCard
                         
                         // 6. Smart Insights Cards Section (Horizontal Scroll 5+ Rich Cards)
                         smartInsightsSection
@@ -560,18 +805,18 @@ struct DashboardView: View {
                     }
                 }
                 
-                // Subscription Quick Button -> Direct navigation to Manage Tab
+                // Privacy Eye Toggle Button
                 GlassCircleButton(
-                    icon: "calendar.badge.clock",
+                    icon: hideBalance ? "eye.slash.fill" : "eye.fill",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Subscriptions",
-                    morphID: "subscriptionsButton",
+                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance",
+                    morphID: "privacyEyeButton",
                     namespace: topControlsNamespace
                 ) {
                     HapticsManager.shared.trigger(.selection)
-                    if let selectedTab = selectedTab {
-                        selectedTab.wrappedValue = .manage
+                    withAnimation(.spring(response: 0.25)) {
+                        hideBalance.toggle()
                     }
                 }
                 
@@ -591,10 +836,10 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 2. Account Selector Dropdown Menu Chip
+    // MARK: - 2. Account Selector Dropdown Menu Chip & Time Filter
     private var accountDropdownSelector: some View {
-        SpendyGlassEffectContainer(spacing: 10) {
-            HStack {
+        SpendyGlassEffectContainer(spacing: 8) {
+            HStack(spacing: 8) {
                 Menu {
                     Button(action: {
                         withAnimation(.spring(response: 0.3)) { selectedAccountId = "all" }
@@ -624,20 +869,21 @@ struct DashboardView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 6) {
                         Image(systemName: selectedAccountSymbol)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(SpendyColors.primaryBlue)
                         
                         Text(selectedAccountLabel)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 13.5, weight: .bold))
                             .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
                         
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9.5, weight: .bold))
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 12)
                     .frame(height: 38)
                     .nativeLiquidGlassCapsule(isInteractive: true)
                     .glassMorphID("accountDropdownCapsule", in: topControlsNamespace)
@@ -647,53 +893,69 @@ struct DashboardView: View {
                 
                 Spacer()
                 
-                // Privacy Eye Toggle Button
-                GlassCircleButton(
-                    icon: hideBalance ? "eye.slash.fill" : "eye.fill",
-                    size: 38,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.textSecondary,
-                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance",
-                    morphID: "privacyEyeButton",
-                    namespace: topControlsNamespace
-                ) {
-                    withAnimation(.spring(response: 0.25)) {
-                        hideBalance.toggle()
+                // Segmented D / W / M Time Filter Capsule
+                HStack(spacing: 2) {
+                    ForEach(DashboardTimeFilter.allCases) { filter in
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                selectedTimeFilter = filter
+                            }
+                        }) {
+                            Text(filter.rawValue)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(selectedTimeFilter == filter ? SpendyColors.textPrimary : SpendyColors.textTertiary)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background {
+                                    if selectedTimeFilter == filter {
+                                        Capsule()
+                                            .fill(SpendyColors.cardBackground)
+                                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
                     }
+                }
+                .padding(3)
+                .background {
+                    Capsule()
+                        .fill(Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.06), dark: UIColor(white: 1.0, alpha: 0.10))))
                 }
             }
         }
     }
     
-    // MARK: - 3. Uncarded Hero Balance & Borderless Line Graph
+    // MARK: - 3. Hero Spend Section with Catmull-Rom Inline Curve Graph
     private var heroBalanceUncarded: some View {
         VStack(spacing: 8) {
-            // Balance Header & Amount directly on screen background with subtle ambient radial glow
             VStack(spacing: 4) {
-                Text(selectedAccountId == "all" ? "TOTAL NET WORTH" : "ACCOUNT BALANCE")
+                Text(selectedAccountId == "all" ? "TOTAL SPENDING" : "\(selectedAccountLabel.uppercased()) OUTFLOW")
                     .font(.system(size: 11, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
                 if hideBalance {
                     Text("\(store.currencySymbol)••••••")
-                        .font(.system(size: 42, weight: .heavy))
+                        .font(.system(size: 42, weight: .heavy, design: .rounded))
                         .foregroundStyle(SpendyColors.textPrimary)
                 } else {
-                    Text(displayedBalance.formattedCurrency(symbol: store.currencySymbol))
-                        .font(.system(size: 42, weight: .heavy))
+                    Text(filteredSpendAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        .font(.system(size: 42, weight: .heavy, design: .rounded))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
+                
+                Text("\(selectedTimeFilter.label) • Outflow")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.top, 4)
             
-            // Borderless Graph Line directly on the screen background (NO Card!)
-            HeroTrendGraphView(
-                transactions: displayedTransactions,
-                currentBalance: displayedBalance
-            )
-            .padding(.horizontal, -20) // Span edge-to-edge across background
-            .padding(.top, 4)
+            // Inline Catmull-Rom Spend Trend Curve Graph (Spans edge-to-edge full width)
+            HeroSpendTrendGraph(points: trendGraphPoints, filter: selectedTimeFilter)
+                .padding(.horizontal, -20)
+                .padding(.top, 4)
         }
     }
     
@@ -856,186 +1118,109 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 5. Compact Expenses & Income Summary Row (Balanced Real Spending vs Income)
-    private var compactExpensesAndIncomeRow: some View {
-        HStack(spacing: 10) {
-            // Compact Expenses Card (Real Spent This Month)
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    if let selectedTab = selectedTab {
-                        selectedTab.wrappedValue = .analytics
-                    }
-                }
-            }) {
-                HStack(spacing: 10) {
-                    let expenseBadges = expenseCategoryBadges
-                    if !expenseBadges.isEmpty {
-                        OverlappingBadgeCluster(
-                            items: expenseBadges.prefix(3).map { info in
-                                BadgeItem(icon: info.icon, color: info.color)
-                            }
-                        )
-                    } else if !upcomingExpenseSubs.isEmpty {
-                        OverlappingBadgeCluster(
-                            items: upcomingExpenseSubs.prefix(3).map { sub in
-                                BadgeItem(icon: sub.sfSymbol, color: sub.color)
-                            }
-                        )
-                    } else {
-                        SpendyIconBadge(
-                            sfSymbol: "cart.fill",
-                            color: Color(hex: "#FF453A"),
-                            size: .small,
-                            style: .circle
-                        )
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Expenses")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Text(hideBalance ? "••••" : currentMonthExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                        
-                        let subtitleText: String = {
-                            if upcomingExpenseSubs.count > 0 {
-                                return "\(currentMonthExpenseTxs.count) txs · \(upcomingExpenseSubs.count) due"
-                            }
-                            return "\(currentMonthExpenseTxs.count) this month"
-                        }()
-                        
-                        Text(subtitleText)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity, minHeight: 74, maxHeight: 74, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                }
+    // MARK: - 4. 3-Column Metric Breakdown Row (Expenses, Income, Savings Rate % - Uncarded on screen)
+    private var threeColumnMetricsRow: some View {
+        Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            if let selectedTab = selectedTab {
+                selectedTab.wrappedValue = .analytics
             }
-            .buttonStyle(InsightSubCardButtonStyle())
+        }) {
+            HStack(spacing: 0) {
+                metricColumn(
+                    value: currentMonthExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                    unit: "Expenses",
+                    sublabel: "\(currentMonthExpenseTxs.count) txs"
+                )
+                
+                Spacer()
+                
+                let incTotal = currentMonthIncomeTxs.reduce(0) { $0 + $1.amount }
+                metricColumn(
+                    value: "+\(incTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                    unit: "Income",
+                    sublabel: "\(currentMonthIncomeTxs.count) txs",
+                    isPositive: true
+                )
+                
+                Spacer()
+                
+                metricColumn(
+                    value: "\(completedGoalPercentage)%",
+                    unit: "Savings Rate",
+                    sublabel: "\(store.accounts.count) accounts"
+                )
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func metricColumn(value: String, unit: String, sublabel: String, isPositive: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(hideBalance ? "••••" : value)
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(isPositive ? Color(hex: "#30D158") : SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             
-            // Compact Income Card
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    if let selectedTab = selectedTab {
-                        selectedTab.wrappedValue = .analytics
-                    }
-                }
-            }) {
-                HStack(spacing: 10) {
-                    let incomeBadges = incomeIconInfos
-                    if !incomeBadges.isEmpty {
-                        OverlappingBadgeCluster(
-                            items: incomeBadges.prefix(3).map { info in
-                                BadgeItem(icon: info.icon, color: info.color)
-                            }
-                        )
-                    } else {
-                        SpendyIconBadge(
-                            sfSymbol: "dollarsign.circle",
-                            color: Color(hex: "#30D158"),
-                            size: .small,
-                            style: .circle
-                        )
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Income")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        let incTotal = currentMonthIncomeTxs.reduce(0) { $0 + $1.amount }
-                        Text(hideBalance ? "••••" : "+\(incTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color(hex: "#30D158"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                        
-                        Text("\(currentMonthIncomeTxs.count) this month")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity, minHeight: 74, maxHeight: 74, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                }
-            }
-            .buttonStyle(InsightSubCardButtonStyle())
+            Text(unit)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SpendyColors.textSecondary)
+            
+            Text(sublabel)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
         }
     }
     
     // MARK: - 6. Smart Insights Section (Max 5 Clean & Story-Driven Insight Cards)
+    // MARK: - 6. Smart Insights Section (Only shown when enough transaction data exists)
+    @ViewBuilder
     private var smartInsightsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(SpendyColors.primaryBlue)
+        if displayedTransactions.count >= 3 && !allDashboardInsightCards.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Smart Insights")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
-            }
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(allDashboardInsightCards) { insight in
-                        SharedInsightCard(
-                            title: insight.title,
-                            value: insight.value,
-                            subtitle: insight.subtitle,
-                            icon: insight.icon,
-                            color: insight.color,
-                            action: {
-                                if let catId = insight.categoryId,
-                                   let cat = store.categories.first(where: { $0.id == catId }) {
-                                    selectedCategoryForSheet = cat
-                                } else if insight.family == "budget" || insight.id == "set_budget" {
-                                    if let selectedTab = selectedTab {
-                                        selectedTab.wrappedValue = .budget
-                                    }
-                                } else if insight.family == "subscription" || insight.id == "upcoming_subs" || insight.id.hasPrefix("next_bill_") || insight.id == "track_subs" {
-                                    if let selectedTab = selectedTab {
-                                        selectedTab.wrappedValue = .manage
-                                    }
-                                } else if insight.family == "onboarding" || insight.id == "unlock_ai" {
-                                    showAddTransaction = true
-                                } else if insight.family == "analytics" {
-                                    if let selectedTab = selectedTab {
-                                        selectedTab.wrappedValue = .analytics
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(allDashboardInsightCards) { insight in
+                            SharedInsightCard(
+                                title: insight.title,
+                                value: insight.value,
+                                subtitle: insight.subtitle,
+                                icon: insight.icon,
+                                color: insight.color,
+                                action: {
+                                    if let catId = insight.categoryId,
+                                       let cat = store.categories.first(where: { $0.id == catId }) {
+                                        selectedCategoryForSheet = cat
+                                    } else if insight.family == "budget" || insight.id == "set_budget" {
+                                        if let selectedTab = selectedTab {
+                                            selectedTab.wrappedValue = .budget
+                                        }
+                                    } else if insight.family == "subscription" || insight.id == "upcoming_subs" || insight.id.hasPrefix("next_bill_") || insight.id == "track_subs" {
+                                        if let selectedTab = selectedTab {
+                                            selectedTab.wrappedValue = .manage
+                                        }
+                                    } else if insight.family == "onboarding" || insight.id == "unlock_ai" {
+                                        showAddTransaction = true
+                                    } else if insight.family == "analytics" {
+                                        if let selectedTab = selectedTab {
+                                            selectedTab.wrappedValue = .analytics
+                                        }
                                     }
                                 }
-                            }
-                        )
-                        .frame(width: 175)
+                            )
+                            .frame(width: 175)
+                        }
                     }
+                    .padding(.vertical, 2)
                 }
-                .padding(.vertical, 2)
             }
         }
     }

@@ -78,6 +78,7 @@ struct CategoryAnalyticsSheet: View {
     @State private var lastInspectedTransaction: Transaction? = nil
     @State private var editingCategoryToEdit: Category? = nil
     @State private var showDatePicker: Bool = false
+    @State private var showAddTransaction: Bool = false
     @Namespace private var categorySheetNamespace
     
     // MARK: - Computed Properties
@@ -479,8 +480,30 @@ struct CategoryAnalyticsSheet: View {
                         chartSection
                             .padding(.horizontal, 16)
                         
-                        // 3. Dynamic Insights Carousel
-                        if !dynamicCategoryInsights.isEmpty {
+                        // 3. Insights Card (when low data) or Dynamic Carousel (when enough data)
+                        if allCategoryTransactions.count < 3 || dynamicCategoryInsights.isEmpty {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Insights")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Text("Add more transactions to unlock personalised insights")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .lineSpacing(4)
+                            }
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background {
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .fill(SpendyColors.cardBackground)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
+                            }
+                            .padding(.horizontal, 16)
+                        } else {
                             categoryInsightsCarousel
                         }
                         
@@ -500,6 +523,9 @@ struct CategoryAnalyticsSheet: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .sheet(isPresented: $showAddTransaction) {
+            AddTransactionView(defaultCategoryId: category.id)
+        }
         .sheet(item: $editingCategoryToEdit) { cat in
             AddCategorySheet(categoryToEdit: cat)
                 .presentationBackground(SpendyColors.appBackground)
