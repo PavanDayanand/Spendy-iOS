@@ -767,20 +767,21 @@ struct DashboardView: View {
     private var heroBalanceUncarded: some View {
         VStack(spacing: 8) {
             VStack(spacing: 4) {
-                Text(selectedAccountId == "all" ? "TOTAL SPENDING" : "\(selectedAccountLabel.uppercased()) OUTFLOW")
+                Text(selectedAccountId == "all" ? "Total Spending" : "\(selectedAccountLabel) Outflow")
                     .font(.system(size: 11, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
-                if hideBalance {
-                    Text("\(store.currencySymbol)••••••")
-                        .font(.system(size: 42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                } else {
-                    Text(filteredSpendAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
+                SpendyAmountView(
+                    amount: filteredSpendAmount,
+                    currencySymbol: store.currencySymbol,
+                    mainSize: 44,
+                    weight: .heavy,
+                    tracking: -1.5,
+                    isHidden: hideBalance,
+                    showDecimals: true,
+                    color: SpendyColors.textPrimary
+                )
                 
                 Text("\(selectedTimeFilter.label) • Outflow")
                     .font(.system(size: 13, weight: .semibold))
