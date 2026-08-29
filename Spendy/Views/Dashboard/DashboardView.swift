@@ -47,36 +47,102 @@ enum DashboardTimeFilter: String, CaseIterable, Identifiable {
 // MARK: - Inline Hero Spend Trend Curve Graph (Catmull-Rom Smooth Curve)
 struct HeroSpendTrendGraph: View {
     let points: [SpendTrendPoint]
-    let filter: DashboardTimeFilter
     var currencySymbol: String = "$"
     
     var body: some View {
         VStack(spacing: 4) {
-            let floatPoints = points.map { CGFloat($0.amount) }
-            SparklineView(
-                points: floatPoints.isEmpty ? [0, 0] : floatPoints,
-                color: SpendyColors.primaryBlue,
-                style: .glow,
-                height: 52
-            )
-            
-            // Minimal Axis Indicators
-            HStack {
-                if let first = points.first {
-                    Text(first.label)
-                }
-                Spacer()
-                if points.count > 2 {
-                    Text(points[points.count / 2].label)
-                }
-                Spacer()
-                if let last = points.last {
-                    Text(last.label)
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                let floatPoints = points.map { CGFloat($0.amount) }
+                let count = floatPoints.count
+                
+                if count >= 3 {
+                    let maxVal = max(0.001, floatPoints.max() ?? 1.0)
+                    let coords: [CGPoint] = floatPoints.enumerated().map { index, val in
+                        let x = (CGFloat(index) / CGFloat(count - 1)) * w
+                        let norm = val / maxVal
+                        let y = h - (norm * (h - 16) + 8)
+                        return CGPoint(x: x, y: y)
+                    }
+                    
+                    let histCount = max(2, count - 2)
+                    let histCoords = Array(coords.prefix(histCount))
+                    let predCoords = Array(coords.suffix(from: histCount - 1))
+                    
+                    ZStack {
+                        // 1. White Area Gradient Shade Fill Underneath Full Curve
+                        Path { path in
+                            path.move(to: CGPoint(x: 0, y: h))
+                            path.addLine(to: coords[0])
+                            for i in 1..<coords.count {
+                                let prev = coords[i - 1]
+                                let cur = coords[i]
+                                let midX = (prev.x + cur.x) / 2
+                                path.addCurve(to: cur, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: cur.y))
+                            }
+                            path.addLine(to: CGPoint(x: coords.last!.x, y: h))
+                            path.closeSubpath()
+                        }
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.22), Color.white.opacity(0.0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        
+                        // 2. Solid Pure White Bezier Curve for Historical Points
+                        Path { path in
+                            path.move(to: histCoords[0])
+                            for i in 1..<histCoords.count {
+                                let prev = histCoords[i - 1]
+                                let cur = histCoords[i]
+                                let midX = (prev.x + cur.x) / 2
+                                path.addCurve(to: cur, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: cur.y))
+                            }
+                        }
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+                        .shadow(color: Color.white.opacity(0.4), radius: 4)
+                        
+                        // 3. Dotted / Dashed Prediction Line near the end (2-3 dots)
+                        Path { path in
+                            path.move(to: predCoords[0])
+                            for i in 1..<predCoords.count {
+                                let prev = predCoords[i - 1]
+                                let cur = predCoords[i]
+                                let midX = (prev.x + cur.x) / 2
+                                path.addCurve(to: cur, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: cur.y))
+                            }
+                        }
+                        .stroke(
+                            Color.white.opacity(0.9),
+                            style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [3, 5])
+                        )
+                        .shadow(color: Color.white.opacity(0.3), radius: 3)
+                        
+                        // 4. Dotted Prediction Node Circles (2-3 dots at predicted points)
+                        ForEach(Array(predCoords.suffix(from: 1).enumerated()), id: \.offset) { _, pt in
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 5, height: 5)
+                                .position(pt)
+                                .shadow(color: Color.white, radius: 3)
+                        }
+                        
+                        // 5. Final Prediction Tip Beacon Dot
+                        if let lastPt = coords.last {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 8, height: 8)
+                                .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 2))
+                                .position(lastPt)
+                                .shadow(color: Color.white, radius: 5)
+                        }
+                    }
                 }
             }
-            .font(.system(size: 10, weight: .bold, design: .rounded))
-            .foregroundStyle(SpendyColors.textTertiary)
-            .padding(.horizontal, 20)
+            .frame(height: 55)
         }
     }
 }
@@ -99,6 +165,7 @@ struct DashboardView: View {
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showAccountsHub: Bool = false
+    @State private var showSmartInsightsSheet: Bool = false
     
     @Namespace private var topControlsNamespace
     
@@ -359,80 +426,41 @@ struct DashboardView: View {
         }
     }
     
-    // Dynamic Inline Trend Curve Data for D / W / M (Catmull-Rom Curve Points)
-    private var trendGraphPoints: [SpendTrendPoint] {
-        let calendar = Calendar.current
-        let now = Date()
-        let expenses = displayedTransactions.filter { $0.type == .expense }
-        
-        switch selectedTimeFilter {
-        case .day:
-            let todayExpenses = expenses.filter { calendar.isDateInToday($0.date) }
-            let hours = [0, 4, 8, 12, 16, 20, 23]
-            var points: [SpendTrendPoint] = []
-            
-            for (idx, hour) in hours.enumerated() {
-                let hourTxs = todayExpenses.filter {
-                    let h = calendar.component(.hour, from: $0.date)
-                    return h <= hour
-                }
-                let sum = hourTxs.reduce(0.0) { $0 + $1.amount }
-                let label = hour == 0 ? "12AM" : (hour == 12 ? "12PM" : (hour > 12 ? "\(hour - 12)PM" : "\(hour)AM"))
-                points.append(SpendTrendPoint(id: idx, label: label, amount: sum))
-            }
-            
-            let allZero = points.allSatisfy { $0.amount == 0 }
-            if allZero {
-                return [
-                    SpendTrendPoint(id: 0, label: "12AM", amount: 0),
-                    SpendTrendPoint(id: 1, label: "6AM", amount: 0),
-                    SpendTrendPoint(id: 2, label: "12PM", amount: 0),
-                    SpendTrendPoint(id: 3, label: "6PM", amount: 0),
-                    SpendTrendPoint(id: 4, label: "Now", amount: 0)
-                ]
-            }
-            return points
-            
-        case .week:
-            var points: [SpendTrendPoint] = []
-            let today = calendar.startOfDay(for: now)
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEE"
-            
-            for offset in (0..<7).reversed() {
-                if let date = calendar.date(byAdding: .day, value: -offset, to: today) {
-                    let dayTxs = expenses.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                    let total = dayTxs.reduce(0.0) { $0 + $1.amount }
-                    let name = formatter.string(from: date)
-                    points.append(SpendTrendPoint(id: 6 - offset, label: name, amount: total))
-                }
-            }
-            return points
-            
-        case .month:
-            let monthTxs = currentMonthExpenseTxs
-            let currentDay = calendar.component(.day, from: now)
-            let intervals = [
-                (1, min(7, currentDay), "W1"),
-                (8, min(14, currentDay), "W2"),
-                (15, min(21, currentDay), "W3"),
-                (22, min(31, currentDay), "W4")
+    // Main overall trend curve points across all transactions with 2-3 engine prediction points at the end
+    private var allTimeTrendGraphPoints: [SpendTrendPoint] {
+        let txs = displayedTransactions.sorted(by: { $0.date < $1.date })
+        guard !txs.isEmpty else {
+            return [
+                SpendTrendPoint(id: 0, label: "Start", amount: 100),
+                SpendTrendPoint(id: 1, label: "P1", amount: 250),
+                SpendTrendPoint(id: 2, label: "P2", amount: 450),
+                SpendTrendPoint(id: 3, label: "P3", amount: 620),
+                SpendTrendPoint(id: 4, label: "Pred 1", amount: 710),
+                SpendTrendPoint(id: 5, label: "Pred 2", amount: 800)
             ]
-            
-            var points: [SpendTrendPoint] = []
-            var cumulative: Double = 0
-            for (idx, interval) in intervals.enumerated() {
-                if interval.0 <= currentDay {
-                    let intTxs = monthTxs.filter {
-                        let d = calendar.component(.day, from: $0.date)
-                        return d >= interval.0 && d <= interval.1
-                    }
-                    cumulative += intTxs.reduce(0.0) { $0 + $1.amount }
-                }
-                points.append(SpendTrendPoint(id: idx, label: interval.2, amount: cumulative))
-            }
-            return points
         }
+        
+        // Build smooth historical curve points across transaction history (5-6 historical points)
+        let totalCount = txs.count
+        let bucketSize = max(1, totalCount / 6)
+        var points: [SpendTrendPoint] = []
+        var runningSum: Double = 0
+        
+        for i in stride(from: 0, to: totalCount, by: bucketSize) {
+            let slice = txs[i..<min(i + bucketSize, totalCount)]
+            let sum = slice.reduce(0.0) { $0 + ($1.type == .expense ? $1.amount : -$1.amount) }
+            runningSum += max(0, sum)
+            points.append(SpendTrendPoint(id: points.count, label: "P\(points.count + 1)", amount: runningSum))
+        }
+        
+        // Engine prediction: 2 to 3 dotted prediction points near the end based on user burn rate / forecast
+        let forecastStep = projectedMonthEndTotal > 0 ? (projectedMonthEndTotal / 20.0) : (runningSum > 0 ? runningSum * 0.12 : 60)
+        let lastAmt = points.last?.amount ?? runningSum
+        
+        points.append(SpendTrendPoint(id: points.count, label: "Pred 1", amount: lastAmt + forecastStep * 2))
+        points.append(SpendTrendPoint(id: points.count, label: "Pred 2", amount: lastAmt + forecastStep * 5))
+        
+        return points
     }
     
     private var completedGoalPercentage: Int {
@@ -457,10 +485,13 @@ struct DashboardView: View {
                         // 2. Account Selector Dropdown Menu Chip & Time Filter
                         accountDropdownSelector
                         
-                        // 3. Hero Spend Section with Smooth Glow Sparkline Curve
+                        // 3. Hero Spend Section with Catmull-Rom Curve & Prediction Line
                         heroBalanceUncarded
                         
-                        // 4. Smart Insights Cards Section
+                        // 4. Redesigned Budget Card
+                        budgetHealthCard
+                        
+                        // 5. Smart Insights Cards Section
                         smartInsightsSection
                         
                         // 5. Ultra-Compact Accounts Card Section
@@ -568,6 +599,9 @@ struct DashboardView: View {
             }
             .navigationDestination(isPresented: $showAccountsHub) {
                 AccountsView(topControlsNamespace: topControlsNamespace)
+            }
+            .navigationDestination(isPresented: $showSmartInsightsSheet) {
+                SmartInsightsSheet(topControlsNamespace: topControlsNamespace)
             }
         }
     }
@@ -728,71 +762,44 @@ struct DashboardView: View {
                 .matchedGeometryEffect(id: "topControl_center", in: topControlsNamespace)
                 
                 Spacer()
-                
-                // Segmented D / W / M Time Filter Capsule
-                HStack(spacing: 2) {
-                    ForEach(DashboardTimeFilter.allCases) { filter in
-                        Button(action: {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                selectedTimeFilter = filter
-                            }
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(selectedTimeFilter == filter ? SpendyColors.textPrimary : SpendyColors.textTertiary)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 6)
-                                .background {
-                                    if selectedTimeFilter == filter {
-                                        Capsule()
-                                            .fill(SpendyColors.cardBackground)
-                                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(3)
-                .background {
-                    Capsule()
-                        .fill(Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.06), dark: UIColor(white: 1.0, alpha: 0.10))))
-                }
             }
         }
     }
     
-    // MARK: - 3. Hero Spend Section with Catmull-Rom Inline Curve Graph
+    // MARK: - 3. Hero Spend Section with Main Account Trend Curve & Engine Prediction Line
     private var heroBalanceUncarded: some View {
         VStack(spacing: 8) {
             VStack(spacing: 4) {
-                Text(selectedAccountId == "all" ? "Total Spending" : "\(selectedAccountLabel) Outflow")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.4)
+                Text(selectedAccountId == "all" ? "Total spent in May" : "\(selectedAccountLabel) Total Spent")
+                    .font(.system(size: 12, weight: .bold))
+                    .tracking(1.2)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
                 SpendyAmountView(
-                    amount: filteredSpendAmount,
+                    amount: currentMonthExpenseTotal,
                     currencySymbol: store.currencySymbol,
-                    mainSize: 44,
+                    mainSize: 42,
                     weight: .heavy,
-                    tracking: -1.5,
+                    tracking: -1.2,
                     isHidden: hideBalance,
                     showDecimals: true,
                     color: SpendyColors.textPrimary
                 )
                 
-                Text("\(selectedTimeFilter.label) • Outflow")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("\(store.currencySymbol)649,48 vs last period")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.top, 4)
             
-            // Inline Catmull-Rom Spend Trend Curve Graph (Crisp Pure White with Touch Scrubbing)
-            HeroSpendTrendGraph(points: trendGraphPoints, filter: selectedTimeFilter, currencySymbol: store.currencySymbol)
+            // Inline Main Account Graph with 2-3 Engine Prediction Dots near the end
+            HeroSpendTrendGraph(points: allTimeTrendGraphPoints, currencySymbol: store.currencySymbol)
                 .padding(.horizontal, -14)
-                .padding(.top, 2)
+                .padding(.top, 4)
         }
     }
     
@@ -1062,17 +1069,18 @@ struct DashboardView: View {
         let target = store.budgetTargetAmount(for: budget.period)
         let spent = store.budgetCycleExpenses
         let isConfigured = budget.isActive && target > 0
-        let percentSpent = isConfigured ? (spent / target) : 0.0
+        let percentSpent = isConfigured ? (spent / target) : 0.26
         let isExceeded = spent > target && isConfigured
         let remaining = max(0, target - spent)
-        let overAmount = max(0, spent - target)
         
         let statusColor: Color = {
-            if !isConfigured { return SpendyColors.primaryBlue }
+            if !isConfigured { return Color(hex: "#30D158") }
             if isExceeded { return Color(hex: "#FF453A") }
             if percentSpent >= 0.85 { return Color(hex: "#FF9F0A") }
             return Color(hex: "#30D158")
         }()
+        
+        let pctVal = Int(min(999, percentSpent * 100))
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
@@ -1080,102 +1088,55 @@ struct DashboardView: View {
                 selectedTab.wrappedValue = .budget
             }
         }) {
-            VStack(spacing: 12) {
-                HStack(spacing: 14) {
-                    // Circular Progress Gauge Ring
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.12), lineWidth: 4)
-                            .frame(width: 46, height: 46)
-                        
-                        if isConfigured {
-                            Circle()
-                                .trim(from: 0.0, to: min(1.0, CGFloat(percentSpent)))
-                                .stroke(
-                                    statusColor,
-                                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                                )
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: 46, height: 46)
-                                .shadow(color: statusColor.opacity(0.5), radius: 5)
-                            
-                            Text("\(Int(min(999, percentSpent * 100)))%")
-                                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                        } else {
-                            Image(systemName: "target")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(SpendyColors.primaryBlue)
-                        }
-                    }
+            HStack(spacing: 16) {
+                // Circular Progress Gauge Ring with Percentage inside (e.g. 26%)
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 4)
+                        .frame(width: 48, height: 48)
                     
-                    // Text Column: Status & Allowance
-                    VStack(alignment: .leading, spacing: 3) {
-                        if !isConfigured {
-                            Text("Set Monthly Budget")
-                                .font(.system(size: 15.5, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            
-                            Text("Track daily safe allowance and pacing")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        } else if isExceeded {
-                            Text("Budget exceeded by \(hideBalance ? "••••" : overAmount.formattedCurrency(symbol: store.currencySymbol))")
-                                .font(.system(size: 15.5, weight: .bold))
-                                .foregroundStyle(Color(hex: "#FF453A"))
-                            
-                            Text("Spent \(hideBalance ? "••••" : spent.formattedCurrency(symbol: store.currencySymbol)) of \(target.formattedCurrency(symbol: store.currencySymbol)) limit")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        } else {
-                            Text("\(hideBalance ? "••••" : remaining.formattedCurrency(symbol: store.currencySymbol)) remaining")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            
-                            let daysLeft = store.budgetDaysLeft
-                            let dailySafe = store.safeDailyAllowance
-                            HStack(spacing: 4) {
-                                Image(systemName: "shield.fill")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(statusColor)
-                                Text("Safe: \(hideBalance ? "••••" : dailySafe.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day · \(daysLeft)d left")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                            }
-                        }
-                    }
+                    Circle()
+                        .trim(from: 0.0, to: min(1.0, CGFloat(percentSpent)))
+                        .stroke(
+                            statusColor,
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 48, height: 48)
+                        .shadow(color: statusColor.opacity(0.5), radius: 4)
                     
-                    Spacer(minLength: 0)
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                    Text("\(pctVal)%")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
-                // Bottom Progress Track Bar
-                if isConfigured {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.10))
-                                .frame(height: 5)
-                            
-                            Capsule()
-                                .fill(statusColor)
-                                .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(min(1.0, percentSpent)))), height: 5)
-                                .shadow(color: statusColor.opacity(0.4), radius: 3)
-                        }
-                    }
-                    .frame(height: 5)
+                // Status Text Column
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isConfigured ? "\(hideBalance ? "••••" : remaining.formattedCurrency(symbol: store.currencySymbol)) left in budget" : "\(hideBalance ? "••••" : "$5 872,06")} left in budget")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                    
+                    Text(isConfigured ? (isExceeded ? "Budget limit exceeded this period." : "Almost finished and well under budget.") : "Almost finished and well under budget.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
+                    
+                    Text(isConfigured ? (isExceeded ? "Restrict spending." : "Strong control all the way through.") : "Strong control all the way through.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
                 }
+                
+                Spacer(minLength: 0)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(isExceeded ? Color(hex: "#FF453A").opacity(0.35) : SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -1298,9 +1259,27 @@ struct DashboardView: View {
     private var smartInsightsSection: some View {
         if displayedTransactions.count >= 3 && !allDashboardInsightCards.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Smart Insights")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                HStack {
+                    Text("Smart Insight")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        showSmartInsightsSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("View all")
+                                .font(.system(size: 14, weight: .semibold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
                 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {

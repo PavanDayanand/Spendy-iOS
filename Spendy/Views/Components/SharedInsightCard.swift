@@ -49,14 +49,14 @@ struct SharedInsightCard<MiddleContent: View>: View {
             }
         }) {
             VStack(alignment: .leading, spacing: 0) {
-                // Top Header Row: Title & Optional Tag
-                HStack(alignment: .center, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.70)
-                        .layoutPriority(1)
+                // Top Header Row: Icon Badge (Top-Left, NO progress ring!) + Optional Tag
+                HStack(alignment: .top, spacing: 4) {
+                    SpendyIconBadge(
+                        sfSymbol: icon,
+                        color: color,
+                        size: .medium,
+                        style: .circle
+                    )
                     
                     Spacer(minLength: 2)
                     
@@ -64,8 +64,8 @@ struct SharedInsightCard<MiddleContent: View>: View {
                         Text(tagText)
                             .font(.system(size: 9.5, weight: .bold))
                             .foregroundStyle(tagColor ?? color)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
                             .background(
                                 Capsule()
                                     .fill((tagColor ?? color).opacity(0.15))
@@ -73,44 +73,41 @@ struct SharedInsightCard<MiddleContent: View>: View {
                             .lineLimit(1)
                     }
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
                 
-                // Main Value Row
-                Text(value)
-                    .font(.system(size: 19, weight: .bold))
+                // Name / Title directly below icon
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.70)
+                    .minimumScaleFactor(0.80)
                 
-                // Optional Middle Custom Visualizer Content
+                // Optional Middle Custom Visualizer Content or Gap
                 let middle = middleContent()
                 if !(middle is EmptyView) {
                     middle
                         .padding(.top, 6)
                 }
                 
-                Spacer(minLength: 8)
+                Spacer(minLength: 12)
                 
-                // Bottom Footer Row: Insight Icon Circle Avatar (Bottom-Left) + Engine Description Text (Bottom-Right)
-                HStack(alignment: .center, spacing: 8) {
-                    SpendyIconBadge(
-                        sfSymbol: icon,
-                        color: color,
-                        size: .small,
-                        style: .circle
-                    )
+                // Bottom Area: Amount Text & Subtext underneath
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(value)
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
                     
                     Text(subtitle)
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(3)
+                        .lineLimit(1)
                         .minimumScaleFactor(0.80)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 180, alignment: .topLeading)
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 175, maxHeight: 175, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(SpendyColors.cardBackground)

@@ -1,0 +1,203 @@
+//
+//  SmartInsightsSheet.swift
+//  Spendy
+//
+//  Full Detail Sheet / View for "Smart Insight" / "Spending by Category"
+//  Matching CategoryAnalyticsSheet styling with Liquid Glass Back Button,
+//  Top Spent Summary, and Category Breakdown Cards (No Graph).
+//
+
+import SwiftUI
+
+struct SmartInsightsSheet: View {
+    @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var selectedCategoryForSheet: Category? = nil
+    var topControlsNamespace: Namespace.ID? = nil
+    @Namespace private var fallbackNamespace
+    
+    // Category Breakdown sorted by total spend descending
+    private var categoryTotals: [(category: Category, total: Double, count: Int)] {
+        let expenses = store.transactions.filter { $0.type == .expense }
+        var map: [String: (total: Double, count: Int)] = [:]
+        for tx in expenses {
+            let current = map[tx.categoryId, default: (0.0, 0)]
+            map[tx.categoryId] = (current.total + tx.amount, current.count + 1)
+        }
+        
+        return map.compactMap { (catId, data) in
+            guard let cat = store.categories.first(where: { $0.id == catId }) else { return nil }
+            return (cat, data.total, data.count)
+        }.sorted(by: { $0.total > $1.total })
+    }
+    
+    private var totalSpentThisMonth: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        return store.transactions.filter {
+            $0.type == .expense &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
+        }.reduce(0) { $0 + $1.amount }
+    }
+    
+    private var currentMonthName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM"
+        return formatter.string(from: Date())
+    }
+    
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    // 1. Navigation Header Row (Liquid Glass Back Button)
+                    headerBar
+                        .padding(.top, 8)
+                    
+                    // 2. Spent Summary Section
+                    spentSummarySection
+                    
+                    // 3. Category Insights List (No Graph)
+                    categoryListSection
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
+        .navigationDestination(item: $selectedCategoryForSheet) { category in
+            CategoryAnalyticsSheet(
+                category: category,
+                topControlsNamespace: topControlsNamespace
+            ) {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                    selectedCategoryForSheet = nil
+                }
+            }
+        }
+    }
+    
+    // MARK: - Header Bar (Liquid Glass Back Button, Centered Title, No Filter Toggle)
+    private var headerBar: some View {
+        HStack {
+            // Liquid Glass Back Button
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                accessibilityLabel: "Back",
+                morphID: "backButton_smartInsights",
+                namespace: topControlsNamespace ?? fallbackNamespace
+            ) {
+                HapticsManager.shared.trigger(.selection)
+                dismiss()
+            }
+            
+            Spacer()
+            
+            Text("Spending by Category")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            Spacer()
+            
+            // Empty placeholder to balance centered title
+            Color.clear
+                .frame(width: 44, height: 44)
+        }
+    }
+    
+    // MARK: - Spent Summary Section
+    private var spentSummarySection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Spent in \(currentMonthName)")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+            
+            Text(totalSpentThisMonth.formattedCurrency(symbol: store.currencySymbol))
+                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            Text("No data from last period")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+        }
+        .padding(.top, 4)
+    }
+    
+    // MARK: - Category List Section
+    private var categoryListSection: some View {
+        VStack(spacing: 12) {
+            if categoryTotals.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    Text("No category expenses logged")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                ForEach(categoryTotals, id: \.category.id) { item in
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        selectedCategoryForSheet = item.category
+                    }) {
+                        HStack(spacing: 14) {
+                            // Category Icon Avatar
+                            SpendyIconBadge(
+                                sfSymbol: item.category.sfSymbol,
+                                color: Color(hex: item.category.colorHex),
+                                size: .medium,
+                                style: .circle
+                            )
+                            
+                            // Title & Expense Count
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(item.category.label)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Text("\(item.count) \(item.count == 1 ? "expense" : "expenses")")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // Category Spend Amount
+                            Text(item.total.formattedCurrency(symbol: store.currencySymbol))
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    SmartInsightsSheet()
+        .environment(ExpenseStore())
+}
