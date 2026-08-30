@@ -41,45 +41,46 @@ struct TransactionRowView: View {
                 )
             }
         } titleContent: {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(transaction.title)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
+                    Image(systemName: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 14, height: 14)
+                        .background(account.color, in: Circle())
+                    
                     Text(account.label)
-                    Text("•")
-                    Text(transaction.date.formattedRelative)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.6))
                 }
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(.white.opacity(0.5))
             }
         } trailingContent: {
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(amountText)
-                    .font(.system(size: 17, weight: .medium).monospacedDigit())
+                    .spendyNumberFont(size: 16, weight: .bold, tracking: -0.4)
                     .foregroundStyle(amountColor)
                 
                 if let toId = transaction.toAccountId, transaction.type == .transfer {
                     let toAccount = store.account(for: toId)
                     Text("→ \(toAccount.label)")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(SpendyColors.transferBlue)
+                } else {
+                    Text(transaction.date.formattedRelative)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
             }
         }
     }
     
     private var amountText: String {
-        switch transaction.type {
-        case .expense:
-            return "-\(transaction.amount.formattedCurrency(symbol: store.currencySymbol))"
-        case .income:
-            return "+\(transaction.amount.formattedCurrency(symbol: store.currencySymbol))"
-        case .transfer:
-            return transaction.amount.formattedCurrency(symbol: store.currencySymbol)
-        }
+        transaction.amount.formattedCurrency(symbol: store.currencySymbol)
     }
     
     private var amountColor: Color {
@@ -93,3 +94,4 @@ struct TransactionRowView: View {
         }
     }
 }
+

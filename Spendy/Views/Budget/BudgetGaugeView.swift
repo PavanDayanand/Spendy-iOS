@@ -48,7 +48,7 @@ struct BudgetGaugeView: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                 
                 Text(spent.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                    .font(.system(size: 42, weight: .heavy, design: .default).monospacedDigit())
+                    .spendyNumberFont(size: 42, weight: .heavy, tracking: -1.2)
                     .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.textPrimary)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)

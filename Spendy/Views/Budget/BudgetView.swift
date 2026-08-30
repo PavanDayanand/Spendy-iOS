@@ -219,7 +219,7 @@ struct BudgetView: View {
             }) {
                 Text("Create budget")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
+                    .foregroundStyle(Color.white)
                     .padding(.horizontal, 28)
                     .padding(.vertical, 13)
                     .background(SpendyColors.primaryBlue, in: Capsule())
@@ -259,7 +259,7 @@ struct BudgetView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(store.leftToday.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy, design: .default).monospacedDigit())
+                        .spendyNumberFont(size: 24, weight: .heavy, tracking: -0.8)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -295,7 +295,7 @@ struct BudgetView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 24, weight: .heavy, design: .default).monospacedDigit())
+                        .spendyNumberFont(size: 24, weight: .heavy, tracking: -0.8)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -308,7 +308,7 @@ struct BudgetView: View {
                             .foregroundStyle(SpendyColors.textSecondary)
                         
                         Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 13, weight: .bold, design: .default).monospacedDigit())
+                            .spendyNumberFont(size: 13, weight: .bold, tracking: -0.3)
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                     }

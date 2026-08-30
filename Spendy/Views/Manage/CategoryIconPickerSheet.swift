@@ -304,7 +304,7 @@ struct CategoryIconPickerSheet: View {
                                         .font(.system(size: 20, weight: .semibold))
                                         .foregroundStyle(
                                             isSelected
-                                                ? Color(uiColor: .dynamic(light: .white, dark: .black))
+                                                ? Color.white
                                                 : SpendyColors.textPrimary
                                         )
                                 }
@@ -418,7 +418,7 @@ struct CategoryIconPickerSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .foregroundStyle(isSelected ? (Color(uiColor: .dynamic(light: .white, dark: .black))) : SpendyColors.textSecondary)
+                        .foregroundStyle(isSelected ? Color.white : SpendyColors.textSecondary)
                         .background {
                             Capsule()
                                 .fill(isSelected ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)

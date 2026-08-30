@@ -132,7 +132,7 @@ struct UpcomingThisMonthCard: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 Text(upcomingExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 22, weight: .heavy))
+                    .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.7)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -183,7 +183,7 @@ struct UpcomingThisMonthCard: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 Text("+\(incomeTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 22, weight: .heavy))
+                    .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.7)
                     .foregroundStyle(Color(hex: "#30D158"))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)

@@ -44,7 +44,7 @@ struct SpendyKeypad: View {
                         .foregroundStyle(.white)
                 } else {
                     Text(key)
-                        .font(.system(size: 24, weight: .medium))
+                        .spendyNumberFont(size: 24, weight: .semibold, tracking: -0.4)
                         .foregroundStyle(.white)
                 }
             }
@@ -64,7 +64,7 @@ struct SpendyKeypad: View {
     
     private func handleKeypress(_ key: String) {
         if key == "delete" || key == "backspace" {
-            HapticsManager.shared.trigger(.light)
+            HapticsManager.shared.trigger(.cardSnap)
             if amountString.count > 1 {
                 amountString.removeLast()
             } else {
@@ -82,7 +82,7 @@ struct SpendyKeypad: View {
         }
         
         // Digit (0-9)
-        HapticsManager.shared.trigger(.light)
+        HapticsManager.shared.trigger(.tick)
         if amountString == "0" {
             amountString = key
         } else {
@@ -97,6 +97,7 @@ struct SpendyKeypad: View {
             amountString += key
         }
     }
+
 }
 
 // MARK: - Keypad Button Tactile Press Style

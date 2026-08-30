@@ -2,8 +2,9 @@
 //  SubscriptionsView.swift
 //  Spendy
 //
-//  Dedicated Full-Screen Subscriptions Management Hub — Pure Black Background,
-//  Hero Stats, Upcoming Due Highlights, Native Filter Chips, and Quick-Action Sheets.
+//  Dedicated Full-Screen Subscriptions Management Hub — Matched with AccountsView Layout.
+//  Features: Pure Black Background, Ambient Header Glow, Hero Spend Card with Sparkline,
+//  GlassSegmentedPicker Filters, Polished Glass Cards, and Bottom Floating Add Button.
 //
 
 import SwiftUI
@@ -31,6 +32,8 @@ struct SubscriptionsView: View {
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
+    @State private var isSearching: Bool = false
+    @State private var searchQuery: String = ""
     @Namespace private var subsNamespace
 
     // MARK: - Computed Properties
@@ -79,13 +82,21 @@ struct SubscriptionsView: View {
     }
 
     private var filteredSubscriptions: [Subscription] {
-        activeAndTrialSubs.filter { sub in
+        let base = activeAndTrialSubs.filter { sub in
             switch subFilter {
             case .all:    return true
             case .paid:   return !sub.isTrial && !sub.isPaused
             case .trial:  return sub.isTrial
             case .paused: return sub.isPaused
             }
+        }
+        
+        if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return base
+        }
+        let q = searchQuery.lowercased()
+        return base.filter {
+            $0.name.lowercased().contains(q)
         }
     }
 
@@ -96,29 +107,49 @@ struct SubscriptionsView: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
 
-            SpendyAmbientHeaderBackground(color: SpendyColors.vibrantPurple, height: 420, opacity: 0.22)
+            // Ambient Glow Header
+            SpendyAmbientHeaderBackground(color: SpendyColors.vibrantPurple, height: 380, opacity: 0.28)
 
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        Spacer().frame(height: 64)
+                        Spacer().frame(height: 64) // Clean top clearance for floating header
 
-                        summaryHeader
-                        mainList
-                        pastAndCancelled
+                        // 1. Hero Spend Card (Matched with AccountsView Hero)
+                        heroSpendSection
+                            .padding(.horizontal, 16)
+
+                        // 2. Subscriptions List Section (with GlassSegmentedPicker)
+                        subscriptionsListSection
+                            .padding(.horizontal, 16)
+
+                        // 3. Past & Cancelled Section
+                        if !cancelledSubs.isEmpty {
+                            pastAndCancelledSection
+                                .padding(.horizontal, 16)
+                        }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 100) // Clearance for bottom floating button
                 }
+                .scrollDismissesKeyboard(.interactively)
 
                 // Sticky Floating Header Bar
                 headerBar
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                     .zIndex(100)
+            }
+
+            // Bottom Floating Action Button (Add +)
+            VStack {
+                Spacer()
+                bottomFloatingBar
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .task {
+            NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
+        }
         .sheet(isPresented: $showAddSubscription) {
             AddSubscriptionSheet()
                 .presentationBackground(SpendyColors.appBackground)
@@ -128,13 +159,11 @@ struct SubscriptionsView: View {
                 .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $selectedSubscriptionForDetail) { sub in
-            SubscriptionQuickActionSheet(sub: sub) { subToEdit in
-                subscriptionToEdit = subToEdit
-            }
+            SubscriptionQuickActionSheet(sub: sub)
         }
     }
 
-    // MARK: - Header Bar
+    // MARK: - Top Header Bar
 
     private var headerBar: some View {
         SpendyGlassEffectContainer(spacing: 0) {
@@ -167,22 +196,6 @@ struct SubscriptionsView: View {
                     .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
 
                     Spacer()
-
-                    // Add Subscription Button
-                    GlassCircleButton(
-                        icon: SFIcons.plus,
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .light,
-                        accessibilityLabel: "Add Subscription",
-                        morphID: "addSubscriptionButton",
-                        namespace: subsNamespace
-                    ) {
-                        showAddSubscription = true
-                    }
-                    .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
                 }
             }
         }
@@ -192,265 +205,172 @@ struct SubscriptionsView: View {
     // Typealias for backwards compatibility
     typealias ManageView = SubscriptionsView
 
-    // MARK: - Summary Header
+    // MARK: - Hero Spend Section (Matched with AccountsView Net Worth Hero)
 
-    private var summaryHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol))
-                    .font(.system(size: 34, weight: .heavy, design: .default).monospacedDigit())
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+    private var heroSpendSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Currency / Frequency Chip Pill
+            HStack(spacing: 4) {
+                Text("Monthly in \(store.currencyCode)")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(SpendyColors.textSecondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .nativeLiquidGlassCapsule(isInteractive: false)
 
-                HStack(spacing: 8) {
-                    Text("monthly spend")
-                    Text("•")
-                    Text("\(activeAndTrialSubs.count) subscriptions")
-                    if let nextSub = upcomingSubscriptions.first {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol))
+                        .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Text("\(activeCount) active")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
                         Text("•")
-                        Text("\(nextSub.name) \(relativeDueText(for: nextSub.nextBillingDate, isTrial: nextSub.isTrial).lowercased())")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        Text("\(totalAnnual.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/yr")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .lineLimit(2)
-            }
 
-            Spacer()
+                Spacer()
 
-            Menu {
-                Picker("Filter Subscriptions", selection: $subFilter) {
-                    ForEach(SubscriptionFilter.allCases) { filter in
-                        Label(filter.rawValue, systemImage: filterSystemImage(filter))
-                            .tag(filter)
-                    }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text(subFilter.rawValue)
-                        .font(.system(size: 13, weight: .bold))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                }
-                .foregroundStyle(SpendyColors.textPrimary)
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func filterSystemImage(_ filter: SubscriptionFilter) -> String {
-        switch filter {
-        case .all: return "square.grid.2x2"
-        case .paid: return "checkmark.circle"
-        case .trial: return "clock"
-        case .paused: return "pause.circle"
-        }
-    }
-
-    // MARK: - Main List
-
-    private var mainList: some View {
-        Group {
-            if filteredSubscriptions.isEmpty {
-                emptyState
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(filteredSubscriptions) { sub in
-                        SubscriptionRowCard(
-                            sub: sub,
-                            currencySymbol: store.currencySymbol,
-                            onTap: {
-                                HapticsManager.shared.trigger(.light)
-                                selectedSubscriptionForDetail = sub
-                            }
-                        )
-                        .contextMenu {
-                            Button {
-                                selectedSubscriptionForDetail = sub
-                            } label: {
-                                Label("Quick Settle", systemImage: "creditcard.fill")
-                            }
-
-                            Button {
-                                subscriptionToEdit = sub
-                            } label: {
-                                Label("Edit Full Details", systemImage: SFIcons.edit)
-                            }
-
-                            Button {
-                                store.toggleSubscriptionPause(id: sub.id)
-                            } label: {
-                                Label(
-                                    sub.isPaused ? "Resume Subscription" : "Pause Subscription",
-                                    systemImage: sub.isPaused ? "play.fill" : "pause.fill"
-                                )
-                            }
-
-                            Button {
-                                store.cancelSubscription(id: sub.id)
-                            } label: {
-                                Label("Cancel Subscription", systemImage: SFIcons.close)
-                            }
-
-                            Button(role: .destructive) {
-                                store.deleteSubscription(id: sub.id)
-                            } label: {
-                                Label("Delete", systemImage: SFIcons.delete)
-                            }
-                        }
-                    }
-                }
+                // Sparkline Visual Curve
+                trendSparkline
+                    .frame(width: 110, height: 44)
+                    .padding(.trailing, 4)
             }
         }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "repeat.circle")
-                .font(.system(size: 36, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-
-            VStack(spacing: 4) {
-                Text("No subscriptions found")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-
-                Text("Add your recurring bills and streaming services to track upcoming payments.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-            }
-
-            Button {
-                HapticsManager.shared.trigger(.medium)
-                showAddSubscription = true
-            } label: {
-                Text("Add Subscription")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(SpendyColors.primaryBlue, in: Capsule())
-            }
-            .padding(.top, 4)
-        }
-        .padding(.vertical, 36)
-        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 18)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(SpendyColors.cardBackground)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }
 
-    // MARK: - Past & Cancelled
+    // MARK: - Subscriptions List Section
 
-    @ViewBuilder
-    private var pastAndCancelled: some View {
-        if !cancelledSubs.isEmpty {
-            VStack(spacing: 10) {
-                Button(action: {
-                    withAnimation(.spring(response: 0.3)) {
-                        showCancelledSubs.toggle()
+    private var subscriptionsListSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Horizontal Type Filter Pills with GlassSegmentedPicker
+            ScrollView(.horizontal, showsIndicators: false) {
+                GlassSegmentedPicker(
+                    selection: $subFilter,
+                    items: SubscriptionFilter.allCases,
+                    titleFor: { $0.rawValue },
+                    expandsToFillWidth: false
+                )
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+            }
+
+            // Subheader: Title, Subtotal, and Search Toggle
+            HStack {
+                Text(subFilter == .all ? "Recurring Services" : "\(subFilter.rawValue) Services")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+
+                Spacer()
+
+                Button {
+                    withAnimation(AppMotion.snappySpring) {
+                        isSearching.toggle()
+                        if !isSearching {
+                            searchQuery = ""
+                        }
                     }
-                }) {
-                    HStack {
-                        Text("Past & Cancelled (\(cancelledSubs.count))")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        Spacer()
-                        Image(systemName: SFIcons.chevronDown)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .rotationEffect(.degrees(showCancelledSubs ? 180 : 0))
-                    }
-                    .padding(14)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(SpendyColors.cardBackgroundSecondary)
-                    }
+                    HapticsManager.shared.trigger(.selection)
+                } label: {
+                    Image(systemName: isSearching ? "xmark.circle.fill" : "magnifyingglass")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .padding(AppSpacing.xs)
                 }
                 .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
 
-                if showCancelledSubs {
-                    VStack(spacing: 10) {
-                        ForEach(cancelledSubs) { sub in
-                            HStack(spacing: 14) {
-                                SpendyIconBadge(
-                                    sfSymbol: sub.sfSymbol,
-                                    color: SpendyColors.separator,
-                                    size: .small
-                                )
+            // Prominent, Visible Search Bar Input Field
+            if isSearching {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(sub.name)
-                                        .font(.system(.body, weight: .semibold))
-                                        .foregroundStyle(SpendyColors.textSecondary)
-                                    Text("Cancelled")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
-                                }
+                    TextField("Search subscriptions, services, bills...", text: $searchQuery)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white)
+                        .submitLabel(.search)
 
-                                Spacer()
-
-                                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                                    .font(.system(.body, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                            .padding(14)
-                            .background {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(SpendyColors.cardBackgroundSecondary.opacity(0.6))
-                            }
-                            .contextMenu {
-                                Button {
-                                    var updated = sub
-                                    updated.status = "active"
-                                    store.updateSubscription(updated)
-                                } label: {
-                                    Label("Reactivate", systemImage: "arrow.clockwise")
-                                }
-                                Button(role: .destructive) {
-                                    store.deleteSubscription(id: sub.id)
-                                } label: {
-                                    Label("Delete", systemImage: SFIcons.delete)
-                                }
-                            }
+                    if !searchQuery.isEmpty {
+                        Button {
+                            searchQuery = ""
+                            HapticsManager.shared.trigger(.tick)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(SpendyColors.textTertiary)
                         }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(SpendyColors.cardBackgroundSecondary)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.9)
+                        }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            // List of Subscription Cards
+            if filteredSubscriptions.isEmpty {
+                emptyState
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(filteredSubscriptions) { sub in
+                        subscriptionRowCard(sub: sub)
                     }
                 }
             }
         }
     }
-}
 
-// MARK: - Subscription Row Card
+    // MARK: - Subscription Row Card (Matched with AccountsView Row Card Styling)
 
-struct SubscriptionRowCard: View {
-    let sub: Subscription
-    let currencySymbol: String
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
+    private func subscriptionRowCard(sub: Subscription) -> some View {
+        Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            selectedSubscriptionForDetail = sub
+        }) {
+            HStack(spacing: AppSpacing.md14) {
+                // Vibrant Subscription Icon Badge
                 SpendyIconBadge(
                     sfSymbol: sub.sfSymbol,
                     color: Color(hex: sub.colorHex),
-                    size: .medium
+                    size: .medium,
+                    style: .circle
                 )
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(sub.name)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(
                             sub.isPaused
                                 ? SpendyColors.textTertiary
@@ -460,29 +380,24 @@ struct SubscriptionRowCard: View {
 
                     HStack(spacing: 6) {
                         Text(sub.cycle.label)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(SpendyColors.textTertiary)
 
-                        Text("·")
-                            .font(.system(size: 10))
+                        Text("•")
+                            .font(.system(size: 8))
                             .foregroundStyle(SpendyColors.textTertiary)
 
                         Text(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(dueColor(for: sub.nextBillingDate))
                     }
-
-                    Text(statusLine(for: sub))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .lineLimit(1)
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(sub.amount.formattedCurrency(symbol: currencySymbol))
-                        .font(.system(size: 15, weight: .bold, design: .default).monospacedDigit())
+                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
+                    Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
+                        .spendyNumberFont(size: 16, weight: .bold, tracking: -0.4)
                         .foregroundStyle(
                             sub.isPaused
                                 ? SpendyColors.textTertiary
@@ -491,23 +406,53 @@ struct SubscriptionRowCard: View {
 
                     statusBadge(for: sub)
                 }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textTertiary.opacity(0.4))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(SpendyColors.cardBackgroundSecondary.opacity(0.72))
+                RoundedRectangle(cornerRadius: AppRadius.cardRow, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(SpendyColors.separator.opacity(0.9), lineWidth: 0.8)
+                        RoundedRectangle(cornerRadius: AppRadius.cardRow, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
                     }
             }
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                selectedSubscriptionForDetail = sub
+            } label: {
+                Label("View Details", systemImage: "info.circle")
+            }
+
+            Button {
+                subscriptionToEdit = sub
+            } label: {
+                Label("Edit Subscription", systemImage: "pencil")
+            }
+
+            Button {
+                store.toggleSubscriptionPause(id: sub.id)
+            } label: {
+                Label(
+                    sub.isPaused ? "Resume Subscription" : "Pause Subscription",
+                    systemImage: sub.isPaused ? "play.fill" : "pause.fill"
+                )
+            }
+
+            Button {
+                store.cancelSubscription(id: sub.id)
+            } label: {
+                Label("Cancel Subscription", systemImage: "xmark.circle")
+            }
+
+            Button(role: .destructive) {
+                store.deleteSubscription(id: sub.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     @ViewBuilder
@@ -536,23 +481,187 @@ struct SubscriptionRowCard: View {
         }
     }
 
-    private func pillTag(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.10), in: Capsule())
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "repeat.circle")
+                .font(.system(size: 36))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.top, 24)
+
+            Text("No subscriptions found")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+
+            Button("Add Subscription") {
+                showAddSubscription = true
+            }
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(SpendyColors.primaryBlue)
+            .padding(.top, 4)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
     }
 
-    private func statusLine(for sub: Subscription) -> String {
-        if sub.isPaused { return "Paused until you resume it" }
-        if sub.isTrial { return "Trial converts on the next billing date" }
-        return "Active recurring payment"
+    // MARK: - Past & Cancelled Section
+
+    @ViewBuilder
+    private var pastAndCancelledSection: some View {
+        VStack(spacing: 10) {
+            Button(action: {
+                withAnimation(.spring(response: 0.3)) {
+                    showCancelledSubs.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Past & Cancelled (\(cancelledSubs.count))")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Spacer()
+                    Image(systemName: SFIcons.chevronDown)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                        .rotationEffect(.degrees(showCancelledSubs ? 180 : 0))
+                }
+                .padding(14)
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(SpendyColors.cardBackgroundSecondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showCancelledSubs {
+                VStack(spacing: 10) {
+                    ForEach(cancelledSubs) { sub in
+                        HStack(spacing: 14) {
+                            SpendyIconBadge(
+                                sfSymbol: sub.sfSymbol,
+                                color: SpendyColors.separator,
+                                size: .small
+                            )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sub.name)
+                                    .font(.system(.body, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                Text("Cancelled")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
+                            }
+
+                            Spacer()
+
+                            Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
+                                .font(.system(.body, weight: .bold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                        .padding(14)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(SpendyColors.cardBackgroundSecondary.opacity(0.6))
+                        }
+                        .contextMenu {
+                            Button {
+                                var updated = sub
+                                updated.status = "active"
+                                store.updateSubscription(updated)
+                            } label: {
+                                Label("Reactivate", systemImage: "arrow.clockwise")
+                            }
+                            Button(role: .destructive) {
+                                store.deleteSubscription(id: sub.id)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Sparkline Curve
+
+    private var trendSparkline: some View {
+        let col = SpendyColors.vibrantPurple
+
+        return GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+
+            ZStack(alignment: .bottomTrailing) {
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: h * 0.8))
+                    path.addCurve(
+                        to: CGPoint(x: w, y: h * 0.15),
+                        control1: CGPoint(x: w * 0.5, y: h * 0.75),
+                        control2: CGPoint(x: w * 0.75, y: h * 0.25)
+                    )
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.addLine(to: CGPoint(x: 0, y: h))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [col.opacity(0.35), col.opacity(0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: h * 0.8))
+                    path.addCurve(
+                        to: CGPoint(x: w, y: h * 0.15),
+                        control1: CGPoint(x: w * 0.5, y: h * 0.75),
+                        control2: CGPoint(x: w * 0.75, y: h * 0.25)
+                    )
+                }
+                .stroke(col, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .shadow(color: col.opacity(0.3), radius: 4, y: 1)
+            }
+        }
+    }
+
+    // MARK: - Bottom Floating Action Bar (Add +)
+
+    private var bottomFloatingBar: some View {
+        HStack {
+            Spacer()
+
+            // Plus (+) Add Subscription Button
+            GlassCircleButton(
+                icon: SFIcons.plus,
+                size: 54,
+                iconSize: 20,
+                tintColor: SpendyColors.primaryBlue,
+                foregroundColor: Color.white,
+                haptic: .medium,
+                accessibilityLabel: "Add Subscription",
+                morphID: "addSubscriptionButton",
+                namespace: subsNamespace
+            ) {
+                showAddSubscription = true
+            }
+            .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
     }
 }
 
-// MARK: - Fileprivate Helpers
+// MARK: - Helper Functions
 
 fileprivate func relativeDueText(for date: Date, isTrial: Bool) -> String {
     let calendar = Calendar.current
@@ -580,3 +689,4 @@ fileprivate func dueColor(for date: Date) -> Color {
     if days <= 3   { return SpendyColors.warningOrange }
     return SpendyColors.textTertiary
 }
+

@@ -411,7 +411,7 @@ struct AddCategorySheet: View {
         }) {
             Text(isEditing ? "Save Changes" : "Create")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(SpendyColors.primaryBlue, in: Capsule())

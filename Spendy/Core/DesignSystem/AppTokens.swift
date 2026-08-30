@@ -68,11 +68,11 @@ public enum AppRadius {
 
 // MARK: - Typography Tokens (Blueprint §6 & §7)
 public enum AppTypography {
-    /// 42pt Heavy Rounded — Main Balance / Hero Amount
-    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .rounded)
+    /// 42pt Heavy Default — Main Balance / Hero Amount
+    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .default)
     
-    /// 38pt Heavy Rounded — Large Metric / Sheet Hero Amount
-    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .rounded)
+    /// 38pt Heavy Default — Large Metric / Sheet Hero Amount
+    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .default)
     
     /// 34pt Heavy Default — Section Totals & Sub-hero Amounts
     public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .default)
@@ -112,6 +112,41 @@ public enum AppTypography {
     
     /// 10pt Bold Tracked — Micro Badge Text
     public static let badgeMicro = Font.system(size: 10, weight: .bold)
+}
+
+// MARK: - Boxy Number Typography Modifier (Tall Condensed, Monospaced Digits, Tight Kerning)
+public struct SpendyNumberModifier: ViewModifier {
+    var size: CGFloat
+    var weight: Font.Weight
+    var tracking: CGFloat?
+    
+    public init(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil) {
+        self.size = size
+        self.weight = weight
+        self.tracking = tracking
+    }
+    
+    public func body(content: Content) -> some View {
+        let effectiveTracking: CGFloat = tracking ?? {
+            if size >= 36 { return -1.2 }
+            if size >= 24 { return -0.8 }
+            if size >= 18 { return -0.5 }
+            return -0.3
+        }()
+        
+        content
+            .font(.system(size: size, weight: weight, design: .default))
+            .fontWidth(.condensed)
+            .monospacedDigit()
+            .tracking(effectiveTracking)
+    }
+}
+
+public extension View {
+    /// Applies a tall, condensed, boxy (default design) numeric font with monospaced digits and tight kerning
+    func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil) -> some View {
+        modifier(SpendyNumberModifier(size: size, weight: weight, tracking: tracking))
+    }
 }
 
 // MARK: - Motion Tokens (Blueprint §6 & §20)

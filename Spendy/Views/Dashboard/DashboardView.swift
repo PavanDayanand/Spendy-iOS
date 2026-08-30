@@ -66,10 +66,6 @@ struct HeroSpendTrendGraph: View {
                         return CGPoint(x: x, y: y)
                     }
                     
-                    let histCount = max(2, count - 2)
-                    let histCoords = Array(coords.prefix(histCount))
-                    let predCoords = Array(coords.suffix(from: histCount - 1))
-                    
                     ZStack {
                         // 1. White Area Gradient Shade Fill Underneath Full Curve
                         Path { path in
@@ -92,12 +88,12 @@ struct HeroSpendTrendGraph: View {
                             )
                         )
                         
-                        // 2. Solid Pure White Bezier Curve for Historical Points
+                        // 2. Solid Pure White Bezier Curve
                         Path { path in
-                            path.move(to: histCoords[0])
-                            for i in 1..<histCoords.count {
-                                let prev = histCoords[i - 1]
-                                let cur = histCoords[i]
+                            path.move(to: coords[0])
+                            for i in 1..<coords.count {
+                                let prev = coords[i - 1]
+                                let cur = coords[i]
                                 let midX = (prev.x + cur.x) / 2
                                 path.addCurve(to: cur, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: cur.y))
                             }
@@ -105,32 +101,7 @@ struct HeroSpendTrendGraph: View {
                         .stroke(Color.white, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
                         .shadow(color: Color.white.opacity(0.4), radius: 4)
                         
-                        // 3. Dotted / Dashed Prediction Line near the end (2-3 dots)
-                        Path { path in
-                            path.move(to: predCoords[0])
-                            for i in 1..<predCoords.count {
-                                let prev = predCoords[i - 1]
-                                let cur = predCoords[i]
-                                let midX = (prev.x + cur.x) / 2
-                                path.addCurve(to: cur, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: cur.y))
-                            }
-                        }
-                        .stroke(
-                            Color.white.opacity(0.9),
-                            style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [3, 5])
-                        )
-                        .shadow(color: Color.white.opacity(0.3), radius: 3)
-                        
-                        // 4. Dotted Prediction Node Circles (2-3 dots at predicted points)
-                        ForEach(Array(predCoords.suffix(from: 1).enumerated()), id: \.offset) { _, pt in
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 5, height: 5)
-                                .position(pt)
-                                .shadow(color: Color.white, radius: 3)
-                        }
-                        
-                        // 5. Final Prediction Tip Beacon Dot
+                        // 3. Endpoint Anchor Beacon Dot
                         if let lastPt = coords.last {
                             Circle()
                                 .fill(Color.white)
@@ -174,6 +145,8 @@ struct DashboardView: View {
     @State private var selectedTimeFilter: DashboardTimeFilter = .month
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
+    @State private var isSearchingTransactions: Bool = false
+    @State private var transactionSearchQuery: String = ""
     
     // Dynamic Filtered Data
     private var displayedTransactions: [Transaction] {
@@ -181,12 +154,26 @@ struct DashboardView: View {
     }
     
     private var visibleTransactions: [Transaction] {
-        if showAllTransactions {
-            return displayedTransactions
+        var txs = displayedTransactions
+        if !transactionSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let q = transactionSearchQuery.lowercased()
+            txs = txs.filter { tx in
+                let cat = store.categories.first(where: { $0.id == tx.categoryId })
+                let acc = store.accounts.first(where: { $0.id == tx.accountId })
+                return tx.title.lowercased().contains(q) ||
+                       (tx.notes?.lowercased().contains(q) ?? false) ||
+                       (cat?.label.lowercased().contains(q) ?? false) ||
+                       (acc?.label.lowercased().contains(q) ?? false)
+            }
+        }
+        if showAllTransactions || !transactionSearchQuery.isEmpty {
+            return txs
         } else {
-            return Array(displayedTransactions.prefix(5))
+            return Array(txs.prefix(5))
         }
     }
+
+
     
     private var displayedBalance: Double {
         store.filteredBalance(for: selectedAccountId)
@@ -557,8 +544,7 @@ struct DashboardView: View {
                 AddTransactionView(transactionToEdit: tx)
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
-                SubscriptionsView(topControlsNamespace: topControlsNamespace)
-                    .navigationTransition(.zoom(sourceID: AppTransitionIDs.subscriptionsButton, in: topControlsNamespace))
+                SubscriptionsView()
             }
             .sheet(item: $inspectingTransaction, onDismiss: {
                 if let pending = pendingEditTransaction {
@@ -573,41 +559,19 @@ struct DashboardView: View {
                 }
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(
-                    category: category,
-                    topControlsNamespace: topControlsNamespace,
-                    backButtonMorphID: "currencyConverterButton",
-                    editButtonMorphID: "subscriptionsButton",
-                    periodControlMorphID: "accountDropdownCapsule"
-                ) {
-                    withAnimation(AppMotion.fluidSpring) {
-                        selectedCategoryForSheet = nil
-                    }
-                }
-                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: topControlsNamespace))
+                CategoryAnalyticsSheet(category: category)
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
-                AccountAnalyticsSheet(
-                    account: account,
-                    topControlsNamespace: topControlsNamespace,
-                    backButtonMorphID: "currencyConverterButton",
-                    editButtonMorphID: "subscriptionsButton",
-                    periodControlMorphID: "accountDropdownCapsule"
-                ) {
-                    withAnimation(AppMotion.fluidSpring) {
-                        selectedAccountForSheet = nil
-                    }
-                }
-                .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(account.id), in: topControlsNamespace))
+                AccountAnalyticsSheet(account: account)
             }
             .navigationDestination(isPresented: $showAccountsHub) {
-                AccountsView(topControlsNamespace: topControlsNamespace)
-                    .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountsButton, in: topControlsNamespace))
+                AccountsView()
             }
             .navigationDestination(isPresented: $showSmartInsightsSheet) {
-                SmartInsightsSheet(topControlsNamespace: topControlsNamespace)
+                SmartInsightsSheet()
             }
         }
+
 
     }
     
@@ -860,7 +824,7 @@ struct DashboardView: View {
             }
             
             Text(hideBalance ? "••••" : (forecast > 0 ? forecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0) : currentMonthExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0)))
-                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .spendyNumberFont(size: 20, weight: .heavy, tracking: -0.6)
                 .foregroundStyle(SpendyColors.textPrimary)
                 .lineLimit(1)
             
@@ -931,7 +895,7 @@ struct DashboardView: View {
                 }
                 
                 Text(isConfigured ? (hideBalance ? "••••" : "\(remaining.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) left") : "Set Budget")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .spendyNumberFont(size: 20, weight: .heavy, tracking: -0.6)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                 
@@ -980,7 +944,7 @@ struct DashboardView: View {
                 }
                 
                 Text(insight.value)
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .spendyNumberFont(size: 18, weight: .heavy, tracking: -0.5)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                 
@@ -1047,7 +1011,7 @@ struct DashboardView: View {
                 }
                 
                 Text(hideBalance ? "••••" : totalNetWorthValue.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .spendyNumberFont(size: 20, weight: .heavy, tracking: -0.6)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                 
@@ -1113,7 +1077,7 @@ struct DashboardView: View {
                         .shadow(color: statusColor.opacity(0.5), radius: 4)
                     
                     Text("\(pctVal)%")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .spendyNumberFont(size: 11, weight: .heavy, tracking: -0.3)
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
@@ -1245,7 +1209,7 @@ struct DashboardView: View {
     private func metricColumn(value: String, unit: String, sublabel: String, isPositive: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(hideBalance ? "••••" : value)
-                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .spendyNumberFont(size: 17, weight: .heavy, tracking: -0.5)
                 .foregroundStyle(isPositive ? Color(hex: "#30D158") : SpendyColors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -1427,15 +1391,72 @@ struct DashboardView: View {
     }
     
     // MARK: - 6. Recent Transactions Section (Matching Image 1 Bottom Section without Review Banner)
+    // MARK: - 6. Recent Transactions Section
     private var recentTransactionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recent transactions")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
+        VStack(alignment: .leading, spacing: AppSpacing.md12) {
+            HStack {
+                Text("Recent transactions")
+                    .font(AppTypography.sectionTitle)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                Button {
+                    withAnimation(AppMotion.snappySpring) {
+                        isSearchingTransactions.toggle()
+                        if !isSearchingTransactions {
+                            transactionSearchQuery = ""
+                        }
+                    }
+                    HapticsManager.shared.trigger(.selection)
+                } label: {
+                    Image(systemName: isSearchingTransactions ? "xmark.circle.fill" : "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .padding(AppSpacing.xs)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // Inline Search Bar
+            if isSearchingTransactions {
+                HStack(spacing: AppSpacing.sm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    
+                    TextField("Search notes, category, account...", text: $transactionSearchQuery)
+                        .font(AppTypography.footnoteMedium)
+                        .foregroundStyle(.white)
+                        .submitLabel(.search)
+                    
+                    if !transactionSearchQuery.isEmpty {
+                        Button {
+                            transactionSearchQuery = ""
+                            HapticsManager.shared.trigger(.tick)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, AppSpacing.md12)
+                .padding(.vertical, AppSpacing.sm)
+                .background {
+                    RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                        .fill(SpendyColors.cardBackgroundSecondary)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
+                        }
+                }
+            }
             
             // Unified Transactions Card
-            VStack(spacing: 14) {
-                if displayedTransactions.isEmpty {
+            VStack(spacing: AppSpacing.md14) {
+                if visibleTransactions.isEmpty {
                     emptyRecentActivityView
                 } else {
                     ForEach(Array(visibleTransactions.enumerated()), id: \.element.id) { index, tx in
@@ -1448,19 +1469,19 @@ struct DashboardView: View {
                     }
                     
                     // Show More / Show Less Toggle Button
-                    if displayedTransactions.count > 5 {
+                    if displayedTransactions.count > 5 && transactionSearchQuery.isEmpty {
                         Divider()
                             .overlay(SpendyColors.separator)
                         
                         Button(action: {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            withAnimation(AppMotion.standardSpring) {
                                 showAllTransactions.toggle()
                             }
                             HapticsManager.shared.trigger(.selection)
                         }) {
                             HStack {
-                                Text(showAllTransactions ? "Show less" : "All transactions")
-                                    .font(.system(size: 15, weight: .bold))
+                                Text(showAllTransactions ? "Show less" : "All transactions (\(displayedTransactions.count))")
+                                    .font(AppTypography.itemTitle)
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
                                 Spacer()
@@ -1469,19 +1490,19 @@ struct DashboardView: View {
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
-                            .padding(.top, 4)
+                            .padding(.top, AppSpacing.xs)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
-            .padding(18)
+            .padding(AppSpacing.lg18)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: AppGlass.strokeWidth)
                     }
             }
         }
@@ -1499,7 +1520,7 @@ struct DashboardView: View {
             HapticsManager.shared.trigger(.selection)
             inspectingTransaction = tx
         }) {
-            HStack(spacing: 14) {
+            HStack(spacing: AppSpacing.md14) {
                 // Circle Icon Avatar (Matching Category or Subscription Color)
                 SpendyIconBadge(
                     sfSymbol: iconSymbol,
@@ -1508,50 +1529,92 @@ struct DashboardView: View {
                     style: .circle
                 )
                 
-                // Title & Account Pill
-                VStack(alignment: .leading, spacing: 4) {
+                // Title & Account Pill with Bank Icon
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(AppTypography.itemTitle)
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     if let acc = acc {
-                        HStack(spacing: 4) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(acc.color)
-                                    .frame(width: 14, height: 14)
-                                Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
+                        HStack(spacing: 5) {
+                            Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 14, height: 14)
+                                .background(acc.color, in: Circle())
                             
                             Text(acc.label)
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.textSecondary)
+                                .font(AppTypography.captionMedium)
+                                .foregroundStyle(SpendyColors.textTertiary)
                         }
                     }
                 }
                 
                 Spacer()
                 
-                // Formatted Amount
-                Text(formattedRowAmount(tx))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                // Amount formatted cleanly without +/- & Date below amount
+                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
+                    Text(formattedRowAmount(tx))
+                        .spendyNumberFont(size: 16, weight: .bold, tracking: -0.4)
+                        .foregroundStyle(rowAmountColor(tx))
+                    
+                    if tx.type == .transfer, let toId = tx.toAccountId, let toAcc = store.accounts.first(where: { $0.id == toId }) {
+                        Text("→ \(toAcc.label)")
+                            .font(AppTypography.badgeMicro)
+                            .foregroundStyle(SpendyColors.primaryBlue)
+                    } else {
+                        Text(tx.date.formattedRelative)
+                            .font(AppTypography.captionMedium)
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                }
             }
-            .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                HapticsManager.shared.trigger(.warning)
+                withAnimation(AppMotion.snappySpring) {
+                    store.deleteTransaction(id: tx.id)
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            
+            Button {
+                HapticsManager.shared.trigger(.light)
+                let copy = Transaction(
+                    id: UUID(),
+                    title: tx.title,
+                    amount: tx.amount,
+                    type: tx.type,
+                    categoryId: tx.categoryId,
+                    accountId: tx.accountId,
+                    toAccountId: tx.toAccountId,
+                    date: Date(),
+                    notes: tx.notes,
+                    subscriptionId: tx.subscriptionId
+                )
+                store.addTransaction(copy)
+            } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    
+    private func rowAmountColor(_ tx: Transaction) -> Color {
+        switch tx.type {
+        case .expense: return SpendyColors.textPrimary
+        case .income: return SpendyColors.incomeGreen
+        case .transfer: return SpendyColors.primaryBlue
+        }
     }
     
     private func formattedRowAmount(_ tx: Transaction) -> String {
         if hideBalance { return "••••" }
         let sym = store.currencySymbol
-        switch tx.type {
-        case .expense: return "-\(tx.amount.formattedCurrency(symbol: sym))"
-        case .income: return "+\(tx.amount.formattedCurrency(symbol: sym))"
-        case .transfer: return "\(tx.amount.formattedCurrency(symbol: sym))"
-        }
+        return tx.amount.formattedCurrency(symbol: sym)
     }
     
     private var emptyRecentActivityView: some View {
@@ -1586,10 +1649,10 @@ struct DashboardView: View {
                     Text("Add Transaction")
                         .font(.system(size: 13, weight: .bold))
                 }
-                .foregroundStyle(Color.black)
+                .foregroundStyle(Color.white)
                 .padding(.horizontal, 18)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(Color.white))
+                .padding(.vertical, 10)
+                .background(Capsule().fill(SpendyColors.primaryBlue))
             }
             .buttonStyle(.plain)
             .padding(.top, 4)

@@ -37,6 +37,7 @@ struct NativeLiquidGlassModifier: ViewModifier {
                 .background {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(.ultraThinMaterial)
+                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                         .overlay {
                             if let tint = tintColor {
                                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -45,7 +46,7 @@ struct NativeLiquidGlassModifier: ViewModifier {
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
                         }
                 }
         }
@@ -76,12 +77,12 @@ struct NativeLiquidGlassPillModifier: ViewModifier {
                 .padding(.vertical, 8)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(isSelected ? (tintColor ?? SpendyColors.primaryBlue) : SpendyColors.cardBackgroundSecondary)
+                        .fill(isSelected ? (tintColor ?? Color.white.opacity(0.22)) : Color.white.opacity(0.06))
                         .background(.ultraThinMaterial, in: Capsule(style: .continuous))
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    SpendyColors.separator,
+                                    isSelected ? Color.white.opacity(0.35) : Color.white.opacity(0.16),
                                     lineWidth: 0.8
                                 )
                         }
@@ -119,6 +120,7 @@ struct NativeLiquidGlassCapsuleModifier: ViewModifier {
                 .background {
                     Capsule(style: .continuous)
                         .fill(.ultraThinMaterial)
+                        .background(Color.white.opacity(0.06), in: Capsule(style: .continuous))
                         .overlay {
                             if let tint = tintColor {
                                 Capsule(style: .continuous)
@@ -128,7 +130,7 @@ struct NativeLiquidGlassCapsuleModifier: ViewModifier {
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    SpendyColors.separator,
+                                    Color.white.opacity(0.16),
                                     lineWidth: 0.8
                                 )
                         }
@@ -156,6 +158,7 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
                 .background {
                     Circle()
                         .fill(.ultraThinMaterial)
+                        .background(Color.white.opacity(0.06), in: Circle())
                         .overlay {
                             if let tint = tintColor {
                                 Circle()
@@ -165,7 +168,7 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
                         .overlay {
                             Circle()
                                 .stroke(
-                                    SpendyColors.separator,
+                                    Color.white.opacity(0.16),
                                     lineWidth: 0.8
                                 )
                         }
@@ -173,6 +176,7 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
         }
     }
 }
+
 
 // MARK: - Native Liquid Glass Morphing Modifiers
 
@@ -223,8 +227,7 @@ struct GlassEffectUnionModifier<ID: Hashable & Sendable>: ViewModifier {
 
 // MARK: - Native Apple Liquid Glass Toggle Style
 struct GlassToggleStyle: ToggleStyle {
-    var tintColor: Color = SpendyColors.primaryBlue
-    @Namespace private var toggleNamespace
+    var tintColor: Color = SpendyColors.incomeGreen
     
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -238,64 +241,30 @@ struct GlassToggleStyle: ToggleStyle {
                 }
                 HapticsManager.shared.trigger(.selection)
             }) {
-                if #available(iOS 26, *) {
-                    GlassEffectContainer(spacing: 0) {
-                        ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                            // Glass Pill Track
+                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                    // Dark Mode Glass Pill Track
+                    Capsule(style: .continuous)
+                        .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
+                        .overlay {
                             Capsule(style: .continuous)
-                                .fill(configuration.isOn ? tintColor.opacity(0.85) : SpendyColors.cardBackgroundSecondary.opacity(0.6))
-                                .glassEffect(.regular.tint(configuration.isOn ? tintColor : nil).interactive(), in: .capsule)
-                                .frame(width: 50, height: 30)
-                                .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
-                                .glassEffectID("track", in: toggleNamespace)
-                            
-                            // Specular Liquid Thumb Knob
-                            Circle()
-                                .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
-                                .overlay {
-                                    Circle()
-                                        .stroke(SpendyColors.separator.opacity(0.6), lineWidth: 0.5)
-                                }
-                                .glassEffect(.regular.interactive(), in: .circle)
-                                .frame(width: 26, height: 26)
-                                .padding(.horizontal, 2)
-                                .shadow(color: Color.black.opacity(0.25), radius: 3, x: 0, y: 1.5)
-                                .glassEffectID("knob", in: toggleNamespace)
+                                .stroke(
+                                    configuration.isOn ? tintColor.opacity(0.4) : SpendyColors.separator,
+                                    lineWidth: 0.8
+                                )
                         }
                         .frame(width: 50, height: 30)
-                    }
-                } else {
-                    ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                        // Glass Pill Track
-                        Capsule(style: .continuous)
-                            .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
-                            .overlay {
-                                if !configuration.isOn {
-                                    Capsule(style: .continuous)
-                                        .fill(.ultraThinMaterial)
-                                }
-                            }
-                            .overlay {
-                                Capsule(style: .continuous)
-                                    .stroke(
-                                        SpendyColors.separator,
-                                        lineWidth: 0.8
-                                    )
-                            }
-                            .frame(width: 50, height: 30)
-                            .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.10), radius: 6, y: 2)
-                        
-                        // Specular Thumb Knob
-                        Circle()
-                            .fill(Color(uiColor: .dynamic(light: .white, dark: .white)))
-                            .overlay {
-                                Circle()
-                                    .stroke(SpendyColors.separator, lineWidth: 0.5)
-                            }
-                            .frame(width: 26, height: 26)
-                            .padding(.horizontal, 2)
-                            .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
-                    }
+                        .shadow(color: configuration.isOn ? tintColor.opacity(0.35) : Color.black.opacity(0.15), radius: 4, y: 1.5)
+                    
+                    // Smooth Dark Mode Thumb Knob
+                    Circle()
+                        .fill(Color.white)
+                        .overlay {
+                            Circle()
+                                .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
+                        }
+                        .frame(width: 26, height: 26)
+                        .padding(.horizontal, 2)
+                        .shadow(color: Color.black.opacity(0.30), radius: 3, x: 0, y: 1.5)
                 }
             }
             .buttonStyle(.plain)
@@ -314,7 +283,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     let items: [T]
     var titleFor: (T) -> String
     var iconFor: ((T) -> String?)? = nil
-    var activeTint: Color = SpendyColors.primaryBlue
+    var activeTint: Color? = nil
     var selectedForegroundColor: Color? = nil
     var expandsToFillWidth: Bool = true
     
@@ -337,22 +306,26 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                                 .font(.system(size: 11, weight: .bold))
                         }
                         Text(titleFor(item))
-                            .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, expandsToFillWidth ? 8 : 16)
+                    .padding(.horizontal, expandsToFillWidth ? 6 : 12)
                     .frame(maxWidth: expandsToFillWidth ? .infinity : nil)
                     .frame(height: 36)
                     .foregroundStyle(
                         isSelected
-                            ? (selectedForegroundColor ?? (activeTint == SpendyColors.primaryBlue ? Color.white : Color(uiColor: .dynamic(light: .black, dark: .white))))
-                            : SpendyColors.textSecondary
+                            ? Color.white
+                            : Color.white.opacity(0.55)
                     )
                     .background {
                         if isSelected {
                             Capsule(style: .continuous)
-                                .fill(activeTint)
-                                .shadow(color: Color.black.opacity(0.18), radius: 4, y: 1)
+                                .fill(activeSegmentFill)
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                                }
+                                .shadow(color: Color.black.opacity(0.25), radius: 4, y: 1)
                                 .matchedGeometryEffect(id: "activeSegmentHighlight", in: segmentNamespace)
                         }
                     }
@@ -363,19 +336,17 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         }
         .padding(4)
         .frame(height: 44)
-        .background {
-            Capsule(style: .continuous)
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .stroke(
-                            SpendyColors.separator,
-                            lineWidth: 0.8
-                        )
-                }
+        .nativeLiquidGlassCapsule(isInteractive: true)
+    }
+    
+    private var activeSegmentFill: Color {
+        if let tint = activeTint, tint != .white {
+            return tint
         }
+        return Color.white.opacity(0.18)
     }
 }
+
 
 // MARK: - View Extension Conveniences
 extension View {

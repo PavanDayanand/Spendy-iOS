@@ -122,7 +122,7 @@ struct SmartInsightsSheet: View {
                 .foregroundStyle(SpendyColors.textSecondary)
             
             Text(totalSpentThisMonth.formattedCurrency(symbol: store.currencySymbol))
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
                 .foregroundStyle(SpendyColors.textPrimary)
             
             Text("No data from last period")
@@ -176,7 +176,7 @@ struct SmartInsightsSheet: View {
                             
                             // Category Spend Amount
                             Text(item.total.formattedCurrency(symbol: store.currencySymbol))
-                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
                         .padding(.horizontal, 16)

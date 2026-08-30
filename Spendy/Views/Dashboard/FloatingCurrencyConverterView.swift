@@ -96,11 +96,14 @@ struct FloatingCurrencyConverterView: View {
                 
                 HStack(spacing: 4) {
                     Text(CurrencyInfo.symbol(for: fromCurrency))
-                        .font(.system(size: 20, weight: .bold))
+                        .spendyNumberFont(size: 20, weight: .bold, tracking: -0.6)
                         .foregroundColor(SpendyColors.textTertiary)
                     
                     TextField("100", text: $fromAmount)
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 24, weight: .bold, design: .default))
+                        .fontWidth(.condensed)
+                        .monospacedDigit()
+                        .tracking(-0.8)
                         .foregroundColor(SpendyColors.textPrimary)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
@@ -141,7 +144,7 @@ struct FloatingCurrencyConverterView: View {
                                     .font(.system(size: 9, weight: .medium))
                                     .foregroundColor(SpendyColors.textSecondary)
                                 Text("\(CurrencyInfo.symbol(for: toCurrency))\(String(format: "%.2f", exchangeRate))")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .spendyNumberFont(size: 10, weight: .bold, tracking: -0.3)
                                     .foregroundColor(SpendyColors.textPrimary)
                             }
                         }
@@ -156,7 +159,7 @@ struct FloatingCurrencyConverterView: View {
                 
                 Rectangle()
                     .fill(SpendyColors.separator)
-                    .frame(height: 1)
+                .frame(height: 1)
             }
             
             // To Currency Rounded Box
@@ -183,11 +186,11 @@ struct FloatingCurrencyConverterView: View {
                 
                 HStack(spacing: 4) {
                     Text(CurrencyInfo.symbol(for: toCurrency))
-                        .font(.system(size: 20, weight: .bold))
+                        .spendyNumberFont(size: 20, weight: .bold, tracking: -0.6)
                         .foregroundColor(SpendyColors.textTertiary)
                     
                     Text(String(format: "%.2f", convertedAmount))
-                        .font(.system(size: 24, weight: .bold))
+                        .spendyNumberFont(size: 24, weight: .bold, tracking: -0.8)
                         .foregroundColor(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)

@@ -112,9 +112,23 @@ struct AddTransactionView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
+        let themeColor: Color = {
+            switch type {
+            case .expense:
+                return selectedCategory?.color ?? SpendyColors.primaryBlue
+            case .income:
+                return SpendyColors.incomeGreen
+            case .transfer:
+                return SpendyColors.transferBlue
+            }
+        }()
+        
+        return ZStack(alignment: .bottom) {
             Color(hex: "#101012")
                 .ignoresSafeArea()
+            
+            // Dynamic Ambient Header Glow matching category/type
+            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.25)
             
             VStack(spacing: 0) {
                 // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
@@ -122,6 +136,7 @@ struct AddTransactionView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
+
                 
                 // MARK: - 2. Subheader Row (Account Pill + Currency Flag)
                 subHeaderRow
@@ -317,8 +332,7 @@ struct AddTransactionView: View {
                         .foregroundStyle(.white)
                     
                     Text("\(store.currencySymbol)\(String(format: "%.0f", accBalance))")
-                        .font(.system(size: 11, weight: .medium))
-                        .monospacedDigit()
+                        .spendyNumberFont(size: 11, weight: .medium, tracking: -0.3)
                         .foregroundStyle(Color(hex: "#8E8E93"))
                 }
                 .padding(.trailing, 16)
@@ -334,14 +348,17 @@ struct AddTransactionView: View {
         VStack(spacing: 4) {
             Spacer()
             
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(store.currencySymbol)
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.system(size: 48, weight: .bold, design: .default))
+                    .fontWidth(.condensed)
                     .foregroundStyle(Color(hex: "#505054"))
                 
                 Text(amountString)
-                    .font(.system(size: 72, weight: .heavy))
+                    .font(.system(size: 72, weight: .heavy, design: .default))
+                    .fontWidth(.condensed)
                     .monospacedDigit()
+                    .tracking(-1.8)
                     .foregroundStyle(Color(hex: "#D0D0D4"))
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
@@ -366,12 +383,12 @@ struct AddTransactionView: View {
                 
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(store.currencySymbol)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 20, weight: .bold, design: .default))
+                        .fontWidth(.condensed)
                         .foregroundStyle(Color(hex: "#505054"))
                     
                     Text(amountString)
-                        .font(.system(size: 28, weight: .heavy))
-                        .monospacedDigit()
+                        .spendyNumberFont(size: 28, weight: .heavy, tracking: -0.8)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -411,12 +428,12 @@ struct AddTransactionView: View {
                 
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(store.currencySymbol)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 20, weight: .bold, design: .default))
+                        .fontWidth(.condensed)
                         .foregroundStyle(Color(hex: "#505054"))
                     
                     Text(amountString)
-                        .font(.system(size: 28, weight: .heavy))
-                        .monospacedDigit()
+                        .spendyNumberFont(size: 28, weight: .heavy, tracking: -0.8)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -593,13 +610,13 @@ struct AddTransactionView: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color.white)
+                            .fill(SpendyColors.incomeGreen)
                             .frame(width: 40, height: 40)
-                            .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
+                            .shadow(color: SpendyColors.incomeGreen.opacity(0.35), radius: 6, y: 2)
                         
                         Image(systemName: "checkmark")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color.black)
+                            .foregroundStyle(Color.white)
                     }
                 }
                 .padding(14)
@@ -1162,18 +1179,18 @@ struct CustomCalendarDrawer: View {
                                     ZStack {
                                         if isSelected {
                                             Circle()
-                                                .fill(Color.white)
+                                                .fill(SpendyColors.primaryBlue)
                                                 .frame(width: 38, height: 38)
                                         }
                                         
                                         Text("\(dayNumber)")
                                             .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                                            .foregroundStyle(isSelected ? Color.black : .white)
+                                            .foregroundStyle(Color.white)
                                     }
                                     
                                     if isSelected {
                                         Circle()
-                                            .fill(Color.white)
+                                            .fill(SpendyColors.primaryBlue)
                                             .frame(width: 4, height: 4)
                                     }
                                 }

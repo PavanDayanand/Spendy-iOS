@@ -347,7 +347,7 @@ struct SettingsView: View {
                 
                 Divider().overlay(SpendyColors.separator).padding(.leading, 56)
                 
-                // Haptic Feedback Toggle (Replaces sound effects)
+                // Haptic Feedback Toggle
                 HStack(spacing: 14) {
                     Image(systemName: "iphone.radiowaves.left.and.right")
                         .font(.system(size: 16, weight: .bold))
@@ -362,10 +362,53 @@ struct SettingsView: View {
                     
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },
-                        set: { store.hapticsEnabled = $0 }
+                        set: {
+                            store.hapticsEnabled = $0
+                            HapticsManager.shared.trigger(.selection)
+                        }
                     ))
                     .labelsHidden()
-                    .toggleStyle(.liquidGlass(tint: SpendyColors.primaryBlue))
+                    .tint(SpendyColors.primaryBlue)
+                }
+                .padding(14)
+                
+                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                
+                // Notifications Toggle (Blueprint §56)
+                HStack(spacing: 14) {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color(hex: "#FF9500"))
+                        .frame(width: 28, height: 28)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Bill & Budget Reminders")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        Text("Alerts 1 day before subscriptions renew")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    
+                    Spacer()
+                    
+                    Toggle("", isOn: Binding(
+                        get: { store.notificationsEnabled },
+                        set: { newValue in
+                            store.notificationsEnabled = newValue
+                            HapticsManager.shared.trigger(.selection)
+                            if newValue {
+                                Task {
+                                    let granted = await NotificationManager.shared.requestAuthorization()
+                                    if granted {
+                                        NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
+                                    }
+                                }
+                            }
+                        }
+                    ))
+                    .labelsHidden()
+                    .tint(SpendyColors.warningOrange)
                 }
                 .padding(14)
             }
@@ -379,6 +422,7 @@ struct SettingsView: View {
             }
         }
     }
+
     
     // MARK: - 3. Data & Backup Section
     private var dataBackupSection: some View {

@@ -111,8 +111,7 @@ struct GlassTabBar: View {
 
                     // Quick Add Floating Button
                     Button {
-                        let impact = UIImpactFeedbackGenerator(style: .medium)
-                        impact.impactOccurred()
+                        HapticsManager.shared.trigger(.cardSnap)
                         onQuickAdd()
                     } label: {
                         Image(systemName: "plus")
@@ -141,10 +140,10 @@ struct GlassTabBar: View {
 
             // Quick Add Floating Button (Fallback)
             Button {
-                let impact = UIImpactFeedbackGenerator(style: .medium)
-                impact.impactOccurred()
+                HapticsManager.shared.trigger(.cardSnap)
                 onQuickAdd()
             } label: {
+
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color.primary)
@@ -260,13 +259,13 @@ private extension GlassTabBar {
 
     private func selectWithHaptic(_ tab: AppTab) {
         guard selectedTab != tab else { return }
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+        HapticsManager.shared.trigger(.selection)
+        withAnimation(AppMotion.snappySpring) {
             selectedTab = tab
         }
     }
 }
+
 
 // MARK: - Scale Animation Style
 

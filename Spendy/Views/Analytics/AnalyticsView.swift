@@ -176,31 +176,12 @@ struct AnalyticsView: View {
                 }
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
-                AccountAnalyticsSheet(
-                    account: account,
-                    topControlsNamespace: analyticsControlsNamespace,
-                    backButtonMorphID: "calendarMenu",
-                    editButtonMorphID: "settingsMenu"
-                ) {
-                    withAnimation(AppMotion.fluidSpring) {
-                        selectedAccountForSheet = nil
-                    }
-                }
-                .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(account.id), in: analyticsControlsNamespace))
+                AccountAnalyticsSheet(account: account)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(
-                    category: category,
-                    topControlsNamespace: analyticsControlsNamespace,
-                    backButtonMorphID: "calendarMenu",
-                    editButtonMorphID: "settingsMenu"
-                ) {
-                    withAnimation(AppMotion.fluidSpring) {
-                        selectedCategoryForSheet = nil
-                    }
-                }
-                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: analyticsControlsNamespace))
+                CategoryAnalyticsSheet(category: category)
             }
+
             .onAppear {
 
                 chartProgress = 1.0
@@ -348,7 +329,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text(net.formattedSignedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 34, weight: .heavy))
+                        .spendyNumberFont(size: 34, weight: .heavy, tracking: -1.0)
                         .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                 }
                 
@@ -362,7 +343,7 @@ struct AnalyticsView: View {
                         
                         let selNet = sel.incomeAmount - sel.spendingAmount
                         Text(selNet.formattedSignedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 15, weight: .heavy))
+                            .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                             .foregroundStyle(selNet >= 0 ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                     }
                     .padding(.horizontal, 10)
@@ -474,7 +455,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 14, weight: .heavy))
+                        .spendyNumberFont(size: 14, weight: .heavy, tracking: -0.4)
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
@@ -485,7 +466,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 14, weight: .heavy))
+                        .spendyNumberFont(size: 14, weight: .heavy, tracking: -0.4)
                         .foregroundStyle(Color(hex: "#30D158"))
                 }
             }
@@ -512,7 +493,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 34, weight: .heavy))
+                        .spendyNumberFont(size: 34, weight: .heavy, tracking: -1.0)
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
@@ -525,7 +506,7 @@ struct AnalyticsView: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                         
                         Text(sel.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 15, weight: .heavy))
+                            .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                     .padding(.horizontal, 10)
@@ -688,7 +669,7 @@ struct AnalyticsView: View {
                             Spacer()
                             
                             Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 15, weight: .heavy))
+                                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                                 .foregroundStyle(SpendyColors.textPrimary)
                         }
                         .padding(.vertical, AppSpacing.xxs)
@@ -736,7 +717,7 @@ struct AnalyticsView: View {
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 34, weight: .heavy))
+                        .spendyNumberFont(size: 34, weight: .heavy, tracking: -1.0)
                         .foregroundStyle(SpendyColors.incomeGreen)
                 }
                 
@@ -749,7 +730,7 @@ struct AnalyticsView: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                         
                         Text("+" + sel.incomeAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 15, weight: .heavy))
+                            .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                             .foregroundStyle(SpendyColors.incomeGreen)
                     }
                     .padding(.horizontal, 10)
@@ -911,7 +892,7 @@ struct AnalyticsView: View {
                             Spacer()
                             
                             Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                .font(.system(size: 15, weight: .heavy))
+                                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                                 .foregroundStyle(SpendyColors.incomeGreen)
                         }
                         .padding(.vertical, 2)
@@ -942,51 +923,45 @@ struct AnalyticsView: View {
     // MARK: - Card 4: Budget Ring & Pacing Card (Clean Alignment, Slate & Green)
     @ViewBuilder
     private var budgetRingPacingCard: some View {
-        let budgetLimit = store.budgetTargetAmount(for: .monthly)
-        let spent = totalSpending
-        let pct = budgetLimit > 0 ? (spent / budgetLimit) * 100 : 0.0
-        let isExceeded = pct > 100
-        let ringProgress = min(1.0, pct / 100.0) * chartProgress
+        let spent = store.budgetCycleExpenses
+        let budgetLimit = store.budgetTargetAmount(for: store.budget.period)
+        let isConfigured = store.budget.isActive && budgetLimit > 0
+        let pct = isConfigured ? min(2.0, spent / budgetLimit) : 0.0
+        let isExceeded = spent > budgetLimit && isConfigured
+        let ringProgress = min(1.0, CGFloat(pct) * chartProgress)
         
-        if budgetLimit <= 0 {
-            // Zero-Budget Empty State with Liquid Glass Action Button
-            VStack(spacing: 16) {
-                HStack(spacing: 14) {
-                    SpendyIconBadge(
-                        sfSymbol: SFIcons.tabBudget,
-                        color: SpendyColors.primaryBlue,
-                        size: .large,
-                        style: .circle
-                    )
+        if !isConfigured {
+            // Empty State Banner with Direct Onboarding Action
+            HStack(spacing: 16) {
+                SpendyIconBadge(
+                    sfSymbol: SFIcons.tabBudget,
+                    color: SpendyColors.primaryBlue,
+                    size: .medium,
+                    style: .circle
+                )
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("No active budget")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("No Monthly Budget Set")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Text("Set a monthly limit to monitor daily spending velocity and pace.")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .lineLimit(2)
-                    }
-                    
-                    Spacer()
+                    Text("Set a monthly limit to track health.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
                 
+                Spacer()
+                
                 Button(action: {
-                    HapticsManager.shared.trigger(.light)
+                    HapticsManager.shared.trigger(.selection)
                     showEditBudgetSheet = true
                 }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Set Monthly Budget")
-                            .font(.system(size: 14, weight: .heavy))
-                    }
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
+                    Text("Set Budget")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -1006,7 +981,7 @@ struct AnalyticsView: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                         
                         Text(spent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 34, weight: .heavy))
+                            .spendyNumberFont(size: 34, weight: .heavy, tracking: -1.0)
                             .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.textPrimary)
                         
                         Text("of \(budgetLimit.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) monthly limit")
@@ -1032,7 +1007,7 @@ struct AnalyticsView: View {
                             .frame(width: 58, height: 58)
                         
                         Text(String(format: "%.0f%%", pct * chartProgress))
-                            .font(.system(size: 13, weight: .heavy))
+                            .spendyNumberFont(size: 13, weight: .heavy, tracking: -0.4)
                             .foregroundStyle(SpendyColors.textPrimary)
                     }
                     .padding(.top, 4)
@@ -1131,7 +1106,7 @@ struct AnalyticsView: View {
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                                 .annotation(position: .top, alignment: .center) {
                                     Text(sel.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                        .font(.system(size: 11, weight: .bold))
+                                        .spendyNumberFont(size: 11, weight: .bold, tracking: -0.3)
                                         .foregroundStyle(SpendyColors.textPrimary)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)

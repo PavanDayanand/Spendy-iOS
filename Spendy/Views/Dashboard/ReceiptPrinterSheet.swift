@@ -12,9 +12,8 @@ struct ReceiptPrinterSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedMonthOffset: Int = 0
-    @State private var showShareSheet: Bool = false
-    @State private var renderedReceiptImage: UIImage? = nil
     @Namespace private var receiptNamespace
+
     
     private var targetDate: Date {
         Calendar.current.date(byAdding: .month, value: selectedMonthOffset, to: Date()) ?? Date()
@@ -82,18 +81,27 @@ struct ReceiptPrinterSheet: View {
                             
                             Spacer()
                             
-                            GlassCircleButton(
-                                icon: "square.and.arrow.up",
-                                size: 44,
-                                iconSize: 15,
-                                foregroundColor: .white,
-                                haptic: .light,
-                                accessibilityLabel: "Share Receipt",
-                                morphID: "shareButton",
-                                namespace: receiptNamespace
+                            ShareLink(
+                                item: renderedReceiptImage(),
+                                preview: SharePreview("Monthly Receipt - \(monthTitle)", image: renderedReceiptImage())
                             ) {
-                                exportReceipt()
+                                ZStack {
+                                    Circle()
+                                        .fill(SpendyColors.cardBackground)
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                                .frame(width: 44, height: 44)
+                                .overlay {
+                                    Circle()
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                }
                             }
+                            .buttonStyle(.plain)
+                            .simultaneousGesture(TapGesture().onEnded {
+                                HapticsManager.shared.trigger(.selection)
+                            })
                         }
                         .padding(.top, 10)
                         
@@ -146,14 +154,10 @@ struct ReceiptPrinterSheet: View {
                 }
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $showShareSheet) {
-                if let img = renderedReceiptImage {
-                    ShareActivityView(activityItems: [img])
-                }
-            }
         }
         .presentationDetents([.medium, .large])
     }
+
     
     // MARK: - Thermal Receipt Card
     private var receiptCardView: some View {
@@ -255,16 +259,17 @@ struct ReceiptPrinterSheet: View {
         }
     }
     
-    private func exportReceipt() {
+    @MainActor
+    private func renderedReceiptImage() -> Image {
         let renderer = ImageRenderer(content: receiptCardView.frame(width: 320))
         renderer.scale = 3.0
-        if let image = renderer.uiImage {
-            self.renderedReceiptImage = image
-            self.showShareSheet = true
-            HapticsManager.shared.trigger(.success)
+        if let uiImage = renderer.uiImage {
+            return Image(uiImage: uiImage)
         }
+        return Image(systemName: "doc.text.fill")
     }
 }
+
 
 private struct Line: Shape {
     func path(in rect: CGRect) -> Path {

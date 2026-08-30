@@ -48,7 +48,7 @@ struct WhatIfPlannerView: View {
                     
                     let projectedExp = store.customProjectedExpenses(dailySpend: customDailySpend)
                     Text(projectedExp.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 17, weight: .bold))
+                        .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 
@@ -61,7 +61,7 @@ struct WhatIfPlannerView: View {
                     
                     let endBalance = store.customProjectedEndBalance(dailySpend: customDailySpend)
                     Text(endBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 17, weight: .bold))
+                        .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                         .foregroundStyle(endBalance < 0 ? SpendyColors.expenseRed : SpendyColors.incomeGreen)
                 }
             }

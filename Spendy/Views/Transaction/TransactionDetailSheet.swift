@@ -55,7 +55,7 @@ struct TransactionDetailSheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         // Spacer to clear the floating topActionBar (44pt button + 20pt top inset + 12pt gap)
-                        Spacer().frame(height: 76)
+                        Spacer().frame(height: 68)
                         
                         // MARK: - 2. Hero Section
                         heroSection
@@ -64,13 +64,6 @@ struct TransactionDetailSheet: View {
                         
                         // MARK: - 3. Details Rows
                         detailsList
-                        
-                        Divider().overlay(SpendyColors.separator)
-                        
-                        // MARK: - 4. Monospaced TXID Footer
-                        Text("TXID • \(transaction.id.uuidString.prefix(8).uppercased())")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(SpendyColors.textTertiary)
                     }
                     .padding(.horizontal, 22)
                     .padding(.bottom, 22)
@@ -98,80 +91,74 @@ struct TransactionDetailSheet: View {
                 Text("Are you sure you want to delete this transaction? This cannot be undone.")
             }
         }
-        .presentationDetents([.height(525), .medium])
+        .presentationDetents([.height(480), .medium])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
         .presentationBackground {
             ZStack {
                 SpendyColors.cardBackground
-                SpendyAmbientHeaderBackground(color: themeColor, height: 260, opacity: 0.20)
+                SpendyAmbientHeaderBackground(color: themeColor, height: 280, opacity: 0.26)
             }
         }
     }
+
     
     // MARK: - Subviews
     
     @ViewBuilder
     private var topActionBar: some View {
-        ZStack {
-            Text("Transaction Details")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1)
-                .padding(.horizontal, 80)
+        HStack {
+            // Close Button ✕ — matches home page size: 44
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: sheetNamespace
+            ) {
+                dismiss()
+            }
             
-            HStack {
-                // Close Button ✕ — matches home page size: 44
+            Spacer()
+            
+            // Edit ✎ + Delete 🗑 — matches home page size: 44
+            GlassButtonGroup(spacing: 10) {
                 GlassCircleButton(
-                    icon: "xmark",
+                    icon: "pencil",
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
+                    haptic: .light,
+                    accessibilityLabel: "Edit Transaction",
+                    morphID: "editButton",
                     namespace: sheetNamespace
                 ) {
-                    dismiss()
+                    onEdit(transaction)
                 }
                 
-                Spacer()
-                
-                // Edit ✎ + Delete 🗑 — matches home page size: 44
-                GlassButtonGroup(spacing: 10) {
-                    GlassCircleButton(
-                        icon: "pencil",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .light,
-                        accessibilityLabel: "Edit Transaction",
-                        morphID: "editButton",
-                        namespace: sheetNamespace
-                    ) {
-                        onEdit(transaction)
-                    }
-                    
-                    GlassCircleButton(
-                        icon: "trash.fill",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        tintColor: SpendyColors.expenseRed.opacity(0.18),
-                        foregroundColor: SpendyColors.expenseRed,
-                        haptic: .warning,
-                        accessibilityLabel: "Delete Transaction",
-                        morphID: "deleteButton",
-                        namespace: sheetNamespace
-                    ) {
-                        showDeleteConfirm = true
-                    }
+                GlassCircleButton(
+                    icon: "trash.fill",
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .bold,
+                    tintColor: SpendyColors.expenseRed.opacity(0.18),
+                    foregroundColor: SpendyColors.expenseRed,
+                    haptic: .warning,
+                    accessibilityLabel: "Delete Transaction",
+                    morphID: "deleteButton",
+                    namespace: sheetNamespace
+                ) {
+                    showDeleteConfirm = true
                 }
             }
         }
     }
+
     
     @ViewBuilder
     private var heroSection: some View {
@@ -202,7 +189,7 @@ struct TransactionDetailSheet: View {
             // Hero Amount — subscription badge only (category pill removed, shown in details)
             VStack(spacing: 4) {
                 Text(formattedAmountText)
-                    .font(.system(size: 38, weight: .heavy))
+                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
                     .foregroundStyle(amountColor)
                 
                 if let sub = subscription {

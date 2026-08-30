@@ -120,7 +120,7 @@ struct EditBudgetSheet: View {
                         .foregroundStyle(Color(hex: "#8E8E93"))
                     
                     Text("\(store.currencySymbol)\(formattedAmountDisplay)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .spendyNumberFont(size: 44, weight: .heavy, tracking: -1.2)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -197,17 +197,22 @@ struct EditBudgetSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
                 
-                // Save Button (Uniform capsule styling)
+                // Save Button (Dark Mode Apple styling)
                 Button(action: handleSave) {
-                    Text("Save")
+                    Text("Save Budget")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle((Double(amountString) ?? 0) > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                        .foregroundStyle(Color.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
+                        .frame(height: 52)
                         .background {
-                            Capsule()
-                                .fill((Double(amountString) ?? 0) > 0 ? Color.white : Color(hex: "#444448"))
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill((Double(amountString) ?? 0) > 0 ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
+                                .overlay {
+                                    if (Double(amountString) ?? 0) <= 0 {
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
+                                }
                         }
                 }
                 .disabled((Double(amountString) ?? 0) <= 0)

@@ -50,13 +50,10 @@ struct AccountsSettingsView: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Dynamic Ambient Full-Width Blue Header Glow (Exact Match with AccountsView & Analytics)
-            SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 380, opacity: 0.28)
-            
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        Spacer().frame(height: 56) // Clean top clearance for floating header
+                        Spacer().frame(height: 64) // Clean top clearance for floating header
                         
                         // 1. Net Worth Hero Card with Currency Switcher
                         heroNetWorthSection
@@ -71,9 +68,10 @@ struct AccountsSettingsView: View {
                 
                 // Floating Sticky Header Bar
                 headerBar
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                     .zIndex(100)
             }
+
             
             // Bottom Floating Action (Add +)
             VStack {
@@ -157,7 +155,7 @@ struct AccountsSettingsView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(formatShortCurrency(store.totalBalance))
-                        .font(.system(size: 38, weight: .heavy, design: .default).monospacedDigit())
+                        .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
@@ -192,8 +190,10 @@ struct AccountsSettingsView: View {
                 expandsToFillWidth: false
             )
             .padding(.horizontal, 4)
+            .padding(.vertical, 4)
         }
     }
+
     
     // MARK: - Accounts List Section
     private var accountsListSection: some View {
@@ -212,7 +212,7 @@ struct AccountsSettingsView: View {
                 
                 let totalFiltered = filteredAccounts.map { store.balance(for: $0.id) }.reduce(0, +)
                 Text(totalFiltered.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 17, weight: .medium, design: .default).monospacedDigit())
+                    .spendyNumberFont(size: 17, weight: .medium, tracking: -0.4)
                     .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.horizontal, 4)
@@ -276,7 +276,7 @@ struct AccountsSettingsView: View {
                                 Spacer()
                                 
                                 Text(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 17, weight: .medium, design: .default).monospacedDigit())
+                                    .spendyNumberFont(size: 17, weight: .medium, tracking: -0.4)
                                     .foregroundStyle(SpendyColors.textPrimary)
                             }
                             .padding(16)
@@ -369,7 +369,7 @@ struct AccountsSettingsView: View {
                     size: 54,
                     iconSize: 20,
                     tintColor: SpendyColors.primaryBlue,
-                    foregroundColor: Color(uiColor: .dynamic(light: .white, dark: .black)),
+                    foregroundColor: Color.white,
                     haptic: .medium,
                     accessibilityLabel: "Add Account",
                     morphID: "addAccountButton",

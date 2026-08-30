@@ -290,7 +290,7 @@ struct InteractiveSparklineView: View {
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(Color.black.opacity(0.4))
                         Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 0))
-                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .spendyNumberFont(size: 11, weight: .heavy, tracking: -0.3)
                             .foregroundStyle(Color.black)
                     }
                     .padding(.horizontal, 10)

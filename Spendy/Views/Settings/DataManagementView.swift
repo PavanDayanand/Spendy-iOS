@@ -2,21 +2,40 @@
 //  DataManagementView.swift
 //  Spendy
 //
-//  Data Backup, Export, and JSON Import Management
+//  Data Backup, Export with Native ShareLink/Transferable, and JSON Import Management
 //
 
 import SwiftUI
 import UniformTypeIdentifiers
+
+// MARK: - Spendy Backup Transferable Document (Blueprint §53 & §54)
+struct SpendyBackupDocument: Transferable {
+    let data: Data
+    let filename: String
+    
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .json) { doc in
+            doc.data
+        }
+        .suggestedFileName { doc in
+            doc.filename
+        }
+    }
+}
 
 struct DataManagementView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
     @State private var showClearConfirm: Bool = false
-    @State private var showExportShareSheet: Bool = false
-    @State private var exportFileURL: URL? = nil
     @State private var showFileImporter: Bool = false
     @State private var importAlertMessage: String? = nil
+    
+    private var backupDocument: SpendyBackupDocument? {
+        guard let data = store.exportJSONData() else { return nil }
+        let dateStr = Date().formatted(.dateTime.year().month().day())
+        return SpendyBackupDocument(data: data, filename: "Spendy_Backup_\(dateStr).json")
+    }
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -56,97 +75,119 @@ struct DataManagementView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Backup & Export Section
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("BACKUP & EXPORT")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(1.0)
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .padding(.horizontal, 4)
-                        
-                        VStack(spacing: 0) {
-                            Button(action: { exportData() }) {
-                                rowItem(
-                                    icon: "square.and.arrow.up.fill",
-                                    iconColor: SpendyColors.primaryBlue,
-                                    title: "Export JSON Backup",
-                                    subtitle: "\(store.transactions.count) transactions, \(store.accounts.count) accounts"
-                                )
-                            }
-                            .buttonStyle(.plain)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("BACKUP & EXPORT")
+                                .font(.system(size: 11, weight: .bold))
+                                .tracking(1.0)
+                                .foregroundStyle(SpendyColors.textTertiary)
+                                .padding(.horizontal, 4)
                             
-                            Divider().overlay(SpendyColors.separator)
-                            
-                            Button(action: { showFileImporter = true }) {
-                                rowItem(
-                                    icon: "square.and.arrow.down.fill",
-                                    iconColor: SpendyColors.incomeGreen,
-                                    title: "Import JSON Backup",
-                                    subtitle: "Restore from a previous backup file"
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .background {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                    }
-                    
-                    // Danger Zone
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("DANGER ZONE")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(1.0)
-                            .foregroundStyle(SpendyColors.expenseRed.opacity(0.8))
-                            .padding(.horizontal, 4)
-                        
-                        Button(action: { showClearConfirm = true }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "trash.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.expenseRed)
-                                    .frame(width: 32, height: 32)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Erase All Data")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(SpendyColors.expenseRed)
-                                    Text("Permanently delete all local data")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textTertiary)
+                            VStack(spacing: 0) {
+                                // Native SwiftUI ShareLink (Blueprint §53 & §54)
+                                if let doc = backupDocument {
+                                    ShareLink(
+                                        item: doc,
+                                        preview: SharePreview("Spendy Backup JSON", image: Image(systemName: "arrow.down.doc.fill"))
+                                    ) {
+                                        rowItem(
+                                            icon: "square.and.arrow.up.fill",
+                                            iconColor: SpendyColors.primaryBlue,
+                                            title: "Export JSON Backup",
+                                            subtitle: "\(store.transactions.count) transactions, \(store.accounts.count) accounts"
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .simultaneousGesture(TapGesture().onEnded {
+                                        HapticsManager.shared.trigger(.selection)
+                                    })
+                                } else {
+                                    Button(action: {}) {
+                                        rowItem(
+                                            icon: "square.and.arrow.up.fill",
+                                            iconColor: SpendyColors.textTertiary,
+                                            title: "Export JSON Backup",
+                                            subtitle: "No data available to export"
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(true)
                                 }
                                 
-                                Spacer()
+                                Divider().overlay(SpendyColors.separator)
+                                
+                                Button(action: {
+                                    HapticsManager.shared.trigger(.selection)
+                                    showFileImporter = true
+                                }) {
+                                    rowItem(
+                                        icon: "square.and.arrow.down.fill",
+                                        iconColor: SpendyColors.incomeGreen,
+                                        title: "Import JSON Backup",
+                                        subtitle: "Restore from a previous backup file"
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .padding(16)
                             .background {
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .fill(SpendyColors.cardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .stroke(SpendyColors.expenseRed.opacity(0.25), lineWidth: 0.8)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                         }
-                        .buttonStyle(.plain)
-                    }
+                        
+                        // Danger Zone
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("DANGER ZONE")
+                                .font(.system(size: 11, weight: .bold))
+                                .tracking(1.0)
+                                .foregroundStyle(SpendyColors.expenseRed.opacity(0.8))
+                                .padding(.horizontal, 4)
+                            
+                            Button(action: {
+                                HapticsManager.shared.trigger(.warning)
+                                showClearConfirm = true
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundStyle(SpendyColors.expenseRed)
+                                        .frame(width: 32, height: 32)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Erase All Data")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.expenseRed)
+                                        Text("Permanently delete all local data")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .fill(SpendyColors.cardBackground)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .stroke(SpendyColors.expenseRed.opacity(0.25), lineWidth: 0.8)
+                                        }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 40)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationBarHidden(true)
-        .sheet(isPresented: $showExportShareSheet) {
-            if let url = exportFileURL {
-                ShareActivityView(activityItems: [url])
-            }
-        }
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.json],
@@ -160,17 +201,22 @@ struct DataManagementView: View {
                     if let data = try? Data(contentsOf: fileURL) {
                         let success = store.importJSONData(data: data)
                         importAlertMessage = success ? "Data imported successfully!" : "Failed to parse JSON backup."
+                        HapticsManager.shared.trigger(success ? .success : .error)
                     }
                 }
             case .failure(let error):
                 importAlertMessage = "Import failed: \(error.localizedDescription)"
+                HapticsManager.shared.trigger(.error)
             }
         }
         .alert("Backup Status", isPresented: Binding(
             get: { importAlertMessage != nil },
             set: { if !$0 { importAlertMessage = nil } }
         )) {
-            Button("OK") { importAlertMessage = nil }
+            Button("OK") {
+                HapticsManager.shared.trigger(.selection)
+                importAlertMessage = nil
+            }
         } message: {
             Text(importAlertMessage ?? "")
         }
@@ -216,31 +262,4 @@ struct DataManagementView: View {
         }
         .padding(16)
     }
-    
-    private func exportData() {
-        if let data = store.exportJSONData() {
-            let tempDir = FileManager.default.temporaryDirectory
-            let fileURL = tempDir.appendingPathComponent("Spendy_Backup_\(Date().formatted(.dateTime.year().month().day())).json")
-            do {
-                try data.write(to: fileURL)
-                self.exportFileURL = fileURL
-                self.showExportShareSheet = true
-                HapticsManager.shared.trigger(.success)
-            } catch {
-                print("Export error: \(error)")
-            }
-        }
-    }
-}
-
-// MARK: - Share Sheet Bridge
-struct ShareActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    let applicationActivities: [UIActivity]? = nil
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

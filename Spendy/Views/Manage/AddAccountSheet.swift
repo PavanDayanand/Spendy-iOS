@@ -25,8 +25,6 @@ struct AddAccountSheet: View {
     @State private var showIconPickerSheet: Bool = false
     @State private var showColorPalette: Bool = false
     @State private var showDeleteConfirm: Bool = false
-    @State private var showBalanceAdjustSheet: Bool = false
-    @State private var tempBalanceInput: String = ""
     
     private var isEditing: Bool {
         accountToEdit != nil
@@ -61,15 +59,11 @@ struct AddAccountSheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Top full-width ambient gradient glow based on selected color
-            let themeColor = Color(hex: selectedColorHex)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
-            
             VStack(spacing: 0) {
                 // Top Header Bar (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.top, 20)
                     .padding(.bottom, 12)
                     .zIndex(10)
                 
@@ -77,7 +71,7 @@ struct AddAccountSheet: View {
                     VStack(spacing: 24) {
                         // Hero Rounded Square Avatar
                         avatarHeroSection
-                            .padding(.top, 32)
+                            .padding(.top, 24)
                         
                         // Form list
                         formContentSection
@@ -85,6 +79,7 @@ struct AddAccountSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120) // Clearance for bottom button
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             
             // Bottom Action Button Container (Full Width)
@@ -104,15 +99,8 @@ struct AddAccountSheet: View {
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
         }
-        .sheet(isPresented: $showBalanceAdjustSheet) {
-            balanceAdjustmentSheet
-        }
-        .onChange(of: showBalanceAdjustSheet) { _, isPresented in
-            if isPresented {
-                tempBalanceInput = openingBalanceString
-            }
-        }
         .confirmationDialog(
+
             "Delete Account?",
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
@@ -332,41 +320,35 @@ struct AddAccountSheet: View {
             .padding(.vertical, 16)
             .background(Color.white.opacity(0.06), in: Capsule())
             
-            // Row 4: Interactive Balance
-            VStack(alignment: .leading, spacing: 8) {
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showBalanceAdjustSheet = true
-                }) {
-                    HStack {
-                        Text("Balance")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Spacer()
-                        
-                        let parsedVal = Double(openingBalanceString.replacingOccurrences(of: ",", with: "")) ?? 0.0
-                        Text(parsedVal.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white.opacity(0.06), in: Capsule())
+            // Row 4: Direct Inline Numeric Balance Input
+            HStack {
+                Text("Balance")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 
-                Text("Changing this will prompt you to record a correction transaction.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .padding(.horizontal, 16)
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Text(store.currencySymbol)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    
+                    TextField("0.00", text: $openingBalanceString)
+                        .font(Font.system(size: 15, weight: .bold, design: .default).monospacedDigit())
+                        .fontWidth(.condensed)
+                        .tracking(-0.4)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(minWidth: 90)
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.white.opacity(0.06), in: Capsule())
         }
     }
+
     
     private var colorSlidersCard: some View {
         VStack(spacing: 16) {
@@ -440,63 +422,8 @@ struct AddAccountSheet: View {
         .opacity((!isEditing && label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.5 : 1.0)
     }
     
-    private var balanceAdjustmentSheet: some View {
-        NavigationStack {
-            ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
-                
-                VStack(spacing: 24) {
-                    Text("Adjust Balance")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .padding(.top, 24)
-                    
-                    VStack(alignment: .center, spacing: 8) {
-                        let val = Double(tempBalanceInput) ?? 0.0
-                        Text(val.formattedCurrency(symbol: store.currencySymbol))
-                            .font(.system(size: 36, weight: .black))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text(store.currencySymbol)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        TextField("0.00", text: $tempBalanceInput)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .keyboardType(.decimalPad)
-                            .tint(SpendyColors.primaryBlue)
-                    }
-                    .padding(20)
-                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        openingBalanceString = tempBalanceInput
-                        showBalanceAdjustSheet = false
-                    }) {
-                        Text("Done")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color(uiColor: .dynamic(light: .white, dark: .black)))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(SpendyColors.primaryBlue, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-        .presentationBackground(SpendyColors.appBackground)
-    }
-    
     // MARK: - Color Methods
+
     
     private func syncSlidersFromHex(_ hex: String) {
         let uiColor = UIColor(Color(hex: hex))

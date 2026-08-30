@@ -26,6 +26,9 @@ struct CategoryAnalyticsSheet: View {
     var onDismiss: (() -> Void)? = nil
     
     @State private var selectedPeriod: ChartPeriod = .month
+    @State private var customDateRange: (start: Date, end: Date)? = nil
+    @State private var customStartDate: Date = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    @State private var customEndDate: Date = Date()
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var pendingEditTransaction: Transaction? = nil
@@ -49,7 +52,11 @@ struct CategoryAnalyticsSheet: View {
     }
     
     private var daysInSelectedPeriod: Int {
-        AnalyticsChartEngine.daysInPeriod(for: selectedPeriod)
+        if let custom = customDateRange {
+            let diff = Calendar.current.dateComponents([.day], from: custom.start, to: custom.end).day ?? 1
+            return max(1, diff + 1)
+        }
+        return AnalyticsChartEngine.daysInPeriod(for: selectedPeriod)
     }
     
     private var allCategoryTransactions: [Transaction] {
@@ -59,7 +66,10 @@ struct CategoryAnalyticsSheet: View {
     }
     
     private var periodBounds: (start: Date, end: Date) {
-        AnalyticsChartEngine.periodBounds(for: selectedPeriod)
+        if let custom = customDateRange {
+            return custom
+        }
+        return AnalyticsChartEngine.periodBounds(for: selectedPeriod)
     }
     
     private var filteredTransactions: [Transaction] {
@@ -108,22 +118,21 @@ struct CategoryAnalyticsSheet: View {
         }
     }
     
-    private var predictiveChartPoints: [CategoryChartPoint] {
-        AnalyticsChartEngine.predictiveChartPoints(from: chartPoints)
-    }
-    
     private var chartPoints: [CategoryChartPoint] {
-        let hasEnoughTxs = allCategoryTransactions.count >= 5
-        return AnalyticsChartEngine.generateChartPoints(
-            transactions: allCategoryTransactions, // pass all to let the engine filter by date bounds
+        AnalyticsChartEngine.generateChartPoints(
+            transactions: allCategoryTransactions,
             period: selectedPeriod,
-            hasEnoughTxs: hasEnoughTxs
-        )
+            hasEnoughTxs: false
+        ).filter { !$0.isPredicted }
     }
     
     private var periodHeaderLabel: String {
         let formatter = DateFormatter()
         let bounds = periodBounds
+        if customDateRange != nil {
+            formatter.dateFormat = "d MMM"
+            return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
+        }
         switch selectedPeriod {
         case .week:
             formatter.dateFormat = "MMM d"
@@ -140,6 +149,7 @@ struct CategoryAnalyticsSheet: View {
             return "Spent in \(formatter.string(from: bounds.start))"
         }
     }
+
     
     // MARK: - Insights Calculations
     private var averageSpentPerWeek: Double {
@@ -270,6 +280,7 @@ struct CategoryAnalyticsSheet: View {
     }
     
     private var dateGroupedTransactions: [(String, Double, [Transaction])] {
+
         AnalyticsChartEngine.dateGroupedTransactions(from: filteredTransactions)
     }
     
@@ -279,12 +290,12 @@ struct CategoryAnalyticsSheet: View {
             SpendyColors.appBackground.ignoresSafeArea()
             
             // Ambient Category Full-Width Header Glow
-            SpendyAmbientHeaderBackground(color: themeColor, height: 380, opacity: 0.34)
+            SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
             
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        Spacer().frame(height: 56)
+                        Spacer().frame(height: 64)
                         
                         // 1. Pure Hero Header
                         heroHeaderSection
@@ -331,12 +342,17 @@ struct CategoryAnalyticsSheet: View {
                 
                 // Floating Sticky Header Bar
                 headerBar
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                     .zIndex(100)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .sheet(isPresented: $showDatePicker) {
+            DateRangePickerSheet(startDate: $customStartDate, endDate: $customEndDate) { start, end in
+                customDateRange = (start, end)
+            }
+        }
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView(defaultCategoryId: category.id)
         }
@@ -430,7 +446,7 @@ struct CategoryAnalyticsSheet: View {
                     .foregroundStyle(SpendyColors.textTertiary)
                 
                 Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 38, weight: .heavy, design: .rounded).monospacedDigit())
+                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
@@ -469,7 +485,7 @@ struct CategoryAnalyticsSheet: View {
             } else {
                 Chart {
                     // 1. Actual Area Gradient below historical curve
-                    ForEach(chartPoints.filter { !$0.isPredicted }) { point in
+                    ForEach(chartPoints) { point in
                         AreaMark(
                             x: .value("Date", point.date),
                             y: .value("Amount", point.amount)
@@ -485,7 +501,7 @@ struct CategoryAnalyticsSheet: View {
                     }
                     
                     // 2. Actual Solid Line Curve
-                    ForEach(chartPoints.filter { !$0.isPredicted }) { point in
+                    ForEach(chartPoints) { point in
                         LineMark(
                             x: .value("Date", point.date),
                             y: .value("Amount", point.amount)
@@ -495,34 +511,8 @@ struct CategoryAnalyticsSheet: View {
                         .interpolationMethod(.monotone)
                     }
                     
-                    // 3. Predictive Continuous Dashed Forecast Curve & Glow Area
-                    if !predictiveChartPoints.isEmpty {
-                        ForEach(predictiveChartPoints) { point in
-                            AreaMark(
-                                x: .value("Date", point.date),
-                                y: .value("Amount", point.amount)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [themeColor.opacity(0.18), themeColor.opacity(0.0)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .interpolationMethod(.monotone)
-                            
-                            LineMark(
-                                x: .value("Date", point.date),
-                                y: .value("Amount", point.amount)
-                            )
-                            .foregroundStyle(themeColor.opacity(0.85))
-                            .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round, dash: [6, 4]))
-                            .interpolationMethod(.monotone)
-                        }
-                    }
-                    
-                    // 4. Luminous "Today" Anchor Beacon
-                    if let lastActual = chartPoints.filter({ !$0.isPredicted }).last {
+                    // 3. Luminous "Today" Anchor Beacon
+                    if let lastActual = chartPoints.last {
                         PointMark(
                             x: .value("Date", lastActual.date),
                             y: .value("Amount", lastActual.amount)
@@ -556,40 +546,6 @@ struct CategoryAnalyticsSheet: View {
                 }
                 .chartYAxis(.hidden)
                 .frame(height: 180)
-                
-                // Clean Legend Row
-                HStack(spacing: 16) {
-                    HStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(themeColor)
-                            .frame(width: 14, height: 2.5)
-                        Text("Actual")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                    
-                    if !predictiveChartPoints.isEmpty {
-                        HStack(spacing: 6) {
-                            HStack(spacing: 2) {
-                                RoundedRectangle(cornerRadius: 1)
-                                    .fill(themeColor.opacity(0.8))
-                                    .frame(width: 3, height: 2.5)
-                                RoundedRectangle(cornerRadius: 1)
-                                    .fill(themeColor.opacity(0.8))
-                                    .frame(width: 3, height: 2.5)
-                                RoundedRectangle(cornerRadius: 1)
-                                    .fill(themeColor.opacity(0.8))
-                                    .frame(width: 3, height: 2.5)
-                            }
-                            Text("Predicted")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 4)
             }
             
             // Native Liquid Glass Index Selector Pill Strip + Date Picker Button
@@ -599,33 +555,36 @@ struct CategoryAnalyticsSheet: View {
                         selection: $selectedPeriod,
                         items: ChartPeriod.allCases,
                         titleFor: { $0.shortLabel },
-                        activeTint: Color.white.opacity(0.20),
+                        activeTint: customDateRange != nil ? nil : Color.white.opacity(0.22),
                         selectedForegroundColor: Color.white
                     )
+                    .onChange(of: selectedPeriod) { _, _ in
+                        customDateRange = nil
+                    }
                     .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
 
-                    // Calendar Date Picker Button
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
+                    // Calendar Date Picker Button (Highlighted when custom date range is active)
+                    GlassCircleButton(
+                        icon: "calendar",
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        tintColor: customDateRange != nil ? themeColor.opacity(0.3) : nil,
+                        foregroundColor: customDateRange != nil ? themeColor : SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Select Date Range",
+                        morphID: pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"),
+                        namespace: sharedMorphNamespace
+                    ) {
                         showDatePicker = true
-                    } label: {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color.white)
-                            .frame(width: 44, height: 44)
-                            .background {
-                                Circle()
-                                    .fill(Color(hex: "#1C1C1E").opacity(0.75))
-                                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
-                            }
-                            .glassMorphID(pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"), in: sharedMorphNamespace)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.top, 4)
         }
     }
+
+
     
     // MARK: - Helper Formatters
     private func axisLabelDate(_ date: Date) -> String {
@@ -888,7 +847,7 @@ struct CategoryAnalyticsSheet: View {
             
             // Amount
             Text(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 15, weight: .heavy, design: .monospaced))
+                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
                 .foregroundStyle(.white)
         }
         .padding(.horizontal, 16)

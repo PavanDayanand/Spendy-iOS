@@ -67,6 +67,10 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var notificationsEnabled: Bool = true {
+        didSet { scheduleSave() }
+    }
+    
     var transactions: [Transaction] = [] {
         didSet { scheduleSave() }
     }
@@ -181,6 +185,7 @@ final class ExpenseStore {
         var profileIconSymbol: String?
         var profileColorHex: String?
         var soundEnabled: Bool?
+        var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
         var topGradientColorHex: String?
         var isGradientBackgroundEnabled: Bool?
@@ -213,6 +218,7 @@ final class ExpenseStore {
                 self.profileIconSymbol = payload.profileIconSymbol
                 self.profileColorHex = payload.profileColorHex
                 self.soundEnabled = payload.soundEnabled ?? true
+                self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = .dark
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
@@ -262,6 +268,7 @@ final class ExpenseStore {
                 profileIconSymbol: profileIconSymbol,
                 profileColorHex: profileColorHex,
                 soundEnabled: soundEnabled,
+                notificationsEnabled: notificationsEnabled,
                 appearanceMode: .dark,
                 topGradientColorHex: topGradientColorHex,
                 isGradientBackgroundEnabled: isGradientBackgroundEnabled,

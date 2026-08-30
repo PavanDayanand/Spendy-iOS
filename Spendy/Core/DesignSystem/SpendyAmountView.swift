@@ -43,29 +43,29 @@ struct SpendyAmountView: View {
     
     var body: some View {
         if isHidden {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
                 Text(currencySymbol)
-                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .rounded))
+                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .default))
                     .fontWidth(.condensed)
                     .foregroundStyle(color)
                 
                 Text("••••••")
-                    .font(.system(size: mainSize, weight: weight, design: .rounded))
+                    .font(.system(size: mainSize, weight: weight, design: .default))
                     .fontWidth(.condensed)
                     .tracking(tracking)
                     .foregroundStyle(color)
             }
         } else {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
                 // Currency Symbol (with optional minus sign)
                 Text("\(parts.sign)\(currencySymbol)")
-                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .rounded))
+                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .default))
                     .fontWidth(.condensed)
                     .foregroundStyle(color)
                 
                 // Main Integer Amount
                 Text(parts.integer)
-                    .font(.system(size: mainSize, weight: weight, design: .rounded))
+                    .font(.system(size: mainSize, weight: weight, design: .default))
                     .fontWidth(.condensed)
                     .tracking(tracking)
                     .monospacedDigit()
@@ -74,9 +74,9 @@ struct SpendyAmountView: View {
                 // Baseline-aligned Decimal Value
                 if showDecimals && !parts.decimal.isEmpty {
                     Text(parts.decimal)
-                        .font(.system(size: max(16, mainSize * 0.55), weight: .bold, design: .rounded))
+                        .font(.system(size: max(16, mainSize * 0.55), weight: .bold, design: .default))
                         .fontWidth(.condensed)
-                        .tracking(-0.5)
+                        .tracking(-0.6)
                         .monospacedDigit()
                         .foregroundStyle(secondaryColor ?? color.opacity(0.85))
                 }
