@@ -44,7 +44,7 @@ struct TransactionRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(transaction.title)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                 
                 HStack(spacing: 5) {
@@ -56,7 +56,7 @@ struct TransactionRowView: View {
                     
                     Text(account.label)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
             }
         } trailingContent: {
@@ -73,7 +73,7 @@ struct TransactionRowView: View {
                 } else {
                     Text(transaction.date.formattedRelative)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
         }
@@ -86,7 +86,7 @@ struct TransactionRowView: View {
     private var amountColor: Color {
         switch transaction.type {
         case .expense:
-            return .white
+            return SpendyColors.textPrimary
         case .income:
             return SpendyColors.incomeGreen
         case .transfer:
@@ -94,4 +94,3 @@ struct TransactionRowView: View {
         }
     }
 }
-

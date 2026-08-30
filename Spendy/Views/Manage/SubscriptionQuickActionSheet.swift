@@ -150,12 +150,6 @@ struct SubscriptionQuickActionSheet: View {
         .presentationDetents([.height(580), .large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
-        .presentationBackground {
-            ZStack {
-                SpendyColors.cardBackground
-                SpendyAmbientHeaderBackground(color: themeColor, height: 280, opacity: 0.26)
-            }
-        }
     }
     
     // MARK: - Floating Top Action Bar

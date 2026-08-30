@@ -101,9 +101,7 @@ struct FloatingCurrencyConverterView: View {
                     
                     TextField("100", text: $fromAmount)
                         .font(.system(size: 24, weight: .bold, design: .default))
-                        .fontWidth(.condensed)
                         .monospacedDigit()
-                        .tracking(-0.8)
                         .foregroundColor(SpendyColors.textPrimary)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)

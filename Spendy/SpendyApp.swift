@@ -15,7 +15,7 @@ struct SpendyApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(store.colorScheme)
         }
     }
 }

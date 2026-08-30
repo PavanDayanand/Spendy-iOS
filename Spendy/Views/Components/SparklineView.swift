@@ -88,7 +88,7 @@ struct SparklineView: View {
                     // Endpoint beacon dot
                     if showEndpoint, let last = coords.last {
                         Circle()
-                            .fill(Color.white)
+                            .fill(SpendyColors.cardBackground)
                             .frame(width: 8, height: 8)
                             .overlay(
                                 Circle().stroke(color, lineWidth: 2.5)
@@ -234,7 +234,7 @@ struct InteractiveSparklineView: View {
                 }
                 .fill(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.18), Color.white.opacity(0.0)],
+                        colors: [SpendyColors.monoGraphFill, SpendyColors.monoGraphFill.opacity(0.0)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -253,13 +253,13 @@ struct InteractiveSparklineView: View {
                 }
                 .stroke(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.50), Color.white],
+                        colors: [SpendyColors.monoGraphLine.opacity(0.50), SpendyColors.monoGraphLine],
                         startPoint: .leading,
                         endPoint: .trailing
                     ),
                     style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
                 )
-                .shadow(color: Color.white.opacity(0.35), radius: 4, x: 0, y: 1)
+                .shadow(color: SpendyColors.monoGraphLine.opacity(0.20), radius: 4, x: 0, y: 1)
                 
                 // 3. Active Scrubbing Indicator & Specular Floating Tooltip
                 if let idx = selectedIndex, idx < coords.count, idx < dataPoints.count {
@@ -271,39 +271,39 @@ struct InteractiveSparklineView: View {
                         p.move(to: CGPoint(x: point.x, y: 0))
                         p.addLine(to: CGPoint(x: point.x, y: h))
                     }
-                    .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .stroke(SpendyColors.textTertiary, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     
                     // Glowing White Scrubbing Circle
                     Circle()
-                        .fill(Color.white)
+                        .fill(SpendyColors.monoGraphLine)
                         .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.black, lineWidth: 2))
-                        .shadow(color: Color.white, radius: 6)
+                        .overlay(Circle().stroke(SpendyColors.appBackground, lineWidth: 2))
+                        .shadow(color: SpendyColors.monoGraphLine.opacity(0.28), radius: 6)
                         .position(point)
                     
                     // Floating Glass Tooltip Readout
                     HStack(spacing: 4) {
                         Text(item.label)
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.black.opacity(0.6))
+                            .foregroundStyle(SpendyColors.elevatedControlForeground.opacity(0.65))
                         Text("•")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.black.opacity(0.4))
+                            .foregroundStyle(SpendyColors.elevatedControlForeground.opacity(0.45))
                         Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 0))
                             .spendyNumberFont(size: 11, weight: .heavy, tracking: -0.3)
-                            .foregroundStyle(Color.black)
+                            .foregroundStyle(SpendyColors.elevatedControlForeground)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(Color.white).shadow(color: Color.black.opacity(0.3), radius: 6, y: 2))
+                    .background(Capsule().fill(SpendyColors.elevatedControlFill).shadow(color: Color.black.opacity(0.18), radius: 6, y: 2))
                     .position(x: min(max(70, point.x), w - 70), y: max(16, point.y - 24))
                 } else if let last = coords.last {
                     // Default End Point Specular Beacon
                     Circle()
-                        .fill(Color.white)
+                        .fill(SpendyColors.monoGraphLine)
                         .frame(width: 8, height: 8)
-                        .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 2))
-                        .shadow(color: Color.white.opacity(0.8), radius: 4)
+                        .overlay(Circle().stroke(SpendyColors.appBackground, lineWidth: 2))
+                        .shadow(color: SpendyColors.monoGraphLine.opacity(0.28), radius: 4)
                         .position(last)
                 }
             }
@@ -330,4 +330,3 @@ struct InteractiveSparklineView: View {
         .frame(height: height)
     }
 }
-

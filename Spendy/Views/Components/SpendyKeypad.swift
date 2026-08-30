@@ -41,21 +41,21 @@ struct SpendyKeypad: View {
                 if key == "delete" || key == "backspace" {
                     Image(systemName: "delete.left.fill")
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 } else {
                     Text(key)
                         .spendyNumberFont(size: 24, weight: .semibold, tracking: -0.4)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(hex: "#18181A"))
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }

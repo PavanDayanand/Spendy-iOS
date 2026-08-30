@@ -150,7 +150,7 @@ struct GlassTabBar: View {
                     .frame(width: quickAddSize, height: quickAddSize)
                     .background(.ultraThinMaterial, in: Circle())
                     .overlay(
-                        Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                        Circle().strokeBorder(SpendyColors.separator, lineWidth: 1)
                     )
                     .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
             }
@@ -194,18 +194,18 @@ private extension GlassTabBar {
                         .fill(.ultraThinMaterial)
                         .overlay(
                             Capsule(style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                                .strokeBorder(SpendyColors.separator, lineWidth: 1)
                         )
                 }
 
                 // Dynamic Gliding Pill Indicator (Expanded bubble when dragging/holding)
                 Capsule(style: .continuous)
-                    .fill(Color.blue)
+                    .fill(SpendyColors.elevatedControlFill)
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
+                            .strokeBorder(SpendyColors.separator, lineWidth: 1)
                     )
-                    .shadow(color: Color.blue.opacity(isDragging ? 0.40 : 0.25), radius: 8, y: 2)
+                    .shadow(color: Color.black.opacity(isDragging ? 0.18 : 0.10), radius: 8, y: 2)
                     .frame(width: pillWidth, height: pillHeight)
                     .offset(x: currentOffset)
                     .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selectedTab)
@@ -220,12 +220,12 @@ private extension GlassTabBar {
                         VStack(spacing: 3) {
                             Image(systemName: tab.sfSymbol)
                                 .font(.system(size: 19, weight: isSelected ? .bold : .regular))
-                                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.55))
+                                .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
                                 .scaleEffect(isSelected && isDragging ? 1.15 : 1.0)
 
                             Text(tab.label)
-                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.55))
+                                .font(.system(size: 10, weight: isSelected ? .bold : .medium, design: .default))
+                                .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())

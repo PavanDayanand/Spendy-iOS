@@ -17,7 +17,7 @@ struct AccountCardRow: View {
                 Text("ACCOUNTS")
                     .font(.system(size: 11, weight: .bold))
                     .tracking(1.0)
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(SpendyColors.textTertiary)
                 
                 Spacer()
             }
@@ -47,12 +47,12 @@ struct AccountCardRow: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(account.label)
                                         .font(.system(size: 12, weight: .medium))
-                                        .foregroundStyle(.white.opacity(0.65))
+                                        .foregroundStyle(SpendyColors.textSecondary)
                                         .lineLimit(1)
                                     
                                     Text(balance.formattedCurrency(symbol: store.currencySymbol))
                                         .font(.system(size: 16, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                 }
                             }
                             .frame(width: 145)
@@ -62,7 +62,7 @@ struct AccountCardRow: View {
                                     .fill(SpendyColors.cardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                         }

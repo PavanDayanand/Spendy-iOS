@@ -77,7 +77,7 @@ struct SharedInsightCard<MiddleContent: View>: View {
                 
                 // Name / Title directly below icon
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold, design: .default))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.80)
@@ -94,13 +94,13 @@ struct SharedInsightCard<MiddleContent: View>: View {
                 // Bottom Area: Amount Text & Subtext underneath
                 VStack(alignment: .leading, spacing: 2) {
                     Text(value)
-                        .spendyNumberFont(size: 19, weight: .bold, tracking: -0.5)
+                        .spendyNumberFont(size: 19, weight: .bold)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.70)
                     
                     Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 12, weight: .medium, design: .default))
                         .foregroundStyle(SpendyColors.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.80)

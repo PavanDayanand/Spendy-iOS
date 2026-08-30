@@ -122,7 +122,14 @@ final class ExpenseStore {
     }
     
     var colorScheme: ColorScheme? {
-        return .dark
+        switch appearanceMode {
+        case .dark:
+            return .dark
+        case .light:
+            return .light
+        case .system:
+            return nil
+        }
     }
     
     var isGradientBackgroundEnabled: Bool = true {

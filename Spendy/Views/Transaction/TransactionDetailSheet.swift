@@ -94,12 +94,6 @@ struct TransactionDetailSheet: View {
         .presentationDetents([.height(480), .medium])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
-        .presentationBackground {
-            ZStack {
-                SpendyColors.cardBackground
-                SpendyAmbientHeaderBackground(color: themeColor, height: 280, opacity: 0.26)
-            }
-        }
     }
 
     

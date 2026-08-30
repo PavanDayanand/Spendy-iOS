@@ -112,23 +112,11 @@ struct AddTransactionView: View {
     }
     
     var body: some View {
-        let themeColor: Color = {
-            switch type {
-            case .expense:
-                return selectedCategory?.color ?? SpendyColors.primaryBlue
-            case .income:
-                return SpendyColors.incomeGreen
-            case .transfer:
-                return SpendyColors.transferBlue
-            }
-        }()
-        
         return ZStack(alignment: .bottom) {
-            Color(hex: "#101012")
+            SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Dynamic Ambient Header Glow matching category/type
-            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.25)
+            LiquidMeshBackground(style: .sheet)
             
             VStack(spacing: 0) {
                 // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
@@ -165,7 +153,7 @@ struct AddTransactionView: View {
                 }
             }
         }
-        .presentationBackground(Color(hex: "#101012"))
+        .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
         .sheet(item: $activeSheet) { sheet in
@@ -196,7 +184,7 @@ struct AddTransactionView: View {
                 icon: "xmark",
                 size: 44,
                 iconSize: 15,
-                foregroundColor: .white,
+                foregroundColor: SpendyColors.textPrimary,
                 haptic: .selection,
                 accessibilityLabel: "Close",
                 morphID: "closeButton",
@@ -244,21 +232,68 @@ struct AddTransactionView: View {
                 ) {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
         }
     }
     
-    // MARK: - Clean Capsule Type Switcher
+    // MARK: - Clean Capsule Type Switcher (Restored Classic Toggle)
     private var liquidGlassTypeSwitcher: some View {
-        GlassSegmentedPicker(
-            selection: $type,
-            items: TransactionType.allCases,
-            titleFor: { $0.title },
-            iconFor: { $0.sfSymbol }
-        )
-        .glassMorphID("activeTypePill", in: transactionNamespace)
+        HStack(spacing: 4) {
+            typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
+            typeTabButton(typeOption: .income, title: "Income", icon: "arrow.down.left")
+            typeTabButton(typeOption: .transfer, title: "Transfer", icon: "arrow.left.and.right")
+        }
+        .padding(4)
+        .frame(height: 44)
+        .background {
+            Capsule()
+                .fill(SpendyColors.cardBackgroundSecondary)
+                .overlay {
+                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
+    }
+    
+    @ViewBuilder
+    private func typeTabButton(typeOption: TransactionType, title: String, icon: String) -> some View {
+        let isSelected = type == typeOption
+        
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                type = typeOption
+            }
+            HapticsManager.shared.trigger(.selection)
+        }) {
+            HStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary.opacity(0.25))
+                        .frame(width: 22, height: 22)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(isSelected ? SpendyColors.elevatedControlFill : SpendyColors.textSecondary)
+                }
+                
+                Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, isSelected ? 12 : 8)
+            .frame(height: 36)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(SpendyColors.elevatedControlFill)
+                        .glassMorphID("activeTypePill", in: transactionNamespace)
+                        .shadow(color: Color.black.opacity(0.18), radius: 4, y: 2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - 2. Subheader Row (Account Pill on Left + Currency Flag Pill on Right)
@@ -282,7 +317,7 @@ struct AddTransactionView: View {
             
             Text(store.currencySymbol)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(SpendyColors.textPrimary)
         }
         .padding(.horizontal, 14)
         .frame(height: 44)
@@ -317,7 +352,7 @@ struct AddTransactionView: View {
                 // Vibrant Account Avatar Circle (32x32)
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "#007AFF"))
+                        .fill(account?.color ?? SpendyColors.primaryBlue)
                         .frame(width: 32, height: 32)
                     
                     Text(initialLetter)
@@ -329,11 +364,11 @@ struct AddTransactionView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(account?.label ?? "SBI")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("\(store.currencySymbol)\(String(format: "%.0f", accBalance))")
                         .spendyNumberFont(size: 11, weight: .medium, tracking: -0.3)
-                        .foregroundStyle(Color(hex: "#8E8E93"))
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
                 .padding(.trailing, 16)
             }
@@ -351,15 +386,12 @@ struct AddTransactionView: View {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(store.currencySymbol)
                     .font(.system(size: 48, weight: .bold, design: .default))
-                    .fontWidth(.condensed)
-                    .foregroundStyle(Color(hex: "#505054"))
+                    .foregroundStyle(SpendyColors.textTertiary)
                 
                 Text(amountString)
                     .font(.system(size: 72, weight: .heavy, design: .default))
-                    .fontWidth(.condensed)
                     .monospacedDigit()
-                    .tracking(-1.8)
-                    .foregroundStyle(Color(hex: "#D0D0D4"))
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
             }
@@ -384,12 +416,11 @@ struct AddTransactionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(store.currencySymbol)
                         .font(.system(size: 20, weight: .bold, design: .default))
-                        .fontWidth(.condensed)
-                        .foregroundStyle(Color(hex: "#505054"))
+                        .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text(amountString)
-                        .spendyNumberFont(size: 28, weight: .heavy, tracking: -0.8)
-                        .foregroundStyle(.white)
+                        .spendyNumberFont(size: 28, weight: .heavy)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
@@ -398,25 +429,25 @@ struct AddTransactionView: View {
             .frame(height: 58)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(hex: "#141416"))
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
             
             // Down Arrow Divider Indicator
             ZStack {
                 Circle()
-                    .fill(Color(hex: "#202024"))
+                    .fill(SpendyColors.cardBackgroundSecondary)
                     .frame(width: 28, height: 28)
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.1), lineWidth: 0.8)
+                        Circle().stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
                 
                 Image(systemName: "arrow.down")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color(hex: "#8E8E93"))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
             .padding(.vertical, -4)
             
@@ -429,12 +460,11 @@ struct AddTransactionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(store.currencySymbol)
                         .font(.system(size: 20, weight: .bold, design: .default))
-                        .fontWidth(.condensed)
-                        .foregroundStyle(Color(hex: "#505054"))
+                        .foregroundStyle(SpendyColors.textTertiary)
                     
                     Text(amountString)
-                        .spendyNumberFont(size: 28, weight: .heavy, tracking: -0.8)
-                        .foregroundStyle(.white)
+                        .spendyNumberFont(size: 28, weight: .heavy)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
@@ -443,10 +473,10 @@ struct AddTransactionView: View {
             .frame(height: 58)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(hex: "#141416"))
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
             
@@ -474,7 +504,7 @@ struct AddTransactionView: View {
                             Text(formattedDateLabel)
                                 .font(.system(size: 14, weight: .semibold))
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .padding(.horizontal, 16)
                         .frame(height: 44)
                         .nativeLiquidGlassCapsule(isInteractive: true)
@@ -489,7 +519,7 @@ struct AddTransactionView: View {
                         icon: note.isEmpty ? "tag" : "tag.fill",
                         size: 44,
                         iconSize: 15,
-                        foregroundColor: note.isEmpty ? .white : SpendyColors.primaryBlue,
+                        foregroundColor: SpendyColors.textPrimary,
                         haptic: .light,
                         accessibilityLabel: "Add Note",
                         morphID: "noteButton",
@@ -526,7 +556,7 @@ struct AddTransactionView: View {
                                 
                                 Text(selectedCategory?.label ?? "Groceries")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                     .lineLimit(1)
                                     .padding(.trailing, 16)
                             }
@@ -544,13 +574,13 @@ struct AddTransactionView: View {
                         }) {
                             Text(isEditing ? "Save" : "Save")
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                                .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                                 .padding(.horizontal, 32)
                                 .frame(height: 44)
                                 .background {
                                     Capsule()
-                                        .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
-                                        .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                                        .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
+                                        .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
                                 }
                                 .glassMorphID("saveButton", in: transactionNamespace)
                         }
@@ -565,13 +595,13 @@ struct AddTransactionView: View {
                 }) {
                     Text(isEditing ? "Save Transfer" : "Save")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(currentAmountValue > 0 ? Color.black : Color(hex: "#A0A0A4"))
+                        .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
                         .background {
                             Capsule()
-                                .fill(currentAmountValue > 0 ? Color.white : Color(hex: "#444448"))
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                                .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
+                                .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
                         }
                 }
                 .buttonStyle(KeypadPressStyle())
@@ -589,7 +619,7 @@ struct AddTransactionView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("Add notes or tags starting with #", text: $note, axis: .vertical)
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(4...6)
                         .focused($isNoteFocused)
                         .padding(16)
@@ -616,7 +646,7 @@ struct AddTransactionView: View {
                         
                         Image(systemName: "checkmark")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(SpendyColors.elevatedControlForeground)
                     }
                 }
                 .padding(14)
@@ -759,9 +789,6 @@ struct CategoryPickerDrawer: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: "#121214")
-                .ignoresSafeArea()
-            
             VStack(spacing: 0) {
                 // Custom Header
                 HStack {
@@ -769,7 +796,7 @@ struct CategoryPickerDrawer: View {
                         icon: "xmark",
                         size: 44,
                         iconSize: 14,
-                        foregroundColor: .white,
+                        foregroundColor: SpendyColors.textPrimary,
                         haptic: .selection
                     ) {
                         dismiss()
@@ -779,7 +806,7 @@ struct CategoryPickerDrawer: View {
                     
                     Text("Select category")
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
@@ -822,14 +849,14 @@ struct CategoryPickerDrawer: View {
         }
         .presentationDetents([.fraction(0.88), .large])
         .presentationDragIndicator(.hidden)
-        .presentationBackground(.ultraThinMaterial)
+        .presentationCornerRadius(32)
     }
     
     private func categoryFolderBlock(title: String, items: [Category]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color(hex: "#8E8E93"))
+                .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
@@ -851,14 +878,14 @@ struct CategoryPickerDrawer: View {
                             
                             Text(cat.label)
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
                             
                             if isSelected {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                     .transition(.scale.combined(with: .opacity))
                             }
                         }
@@ -870,17 +897,17 @@ struct CategoryPickerDrawer: View {
                     
                     if cat.id != items.last?.id {
                         Divider()
-                            .background(Color.white.opacity(0.08))
+                            .background(SpendyColors.separator)
                             .padding(.leading, 68)
                     }
                 }
             }
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(hex: "#18181A"))
+                    .fill(SpendyColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -890,11 +917,11 @@ struct CategoryPickerDrawer: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color(hex: "#8E8E93"))
+                .foregroundStyle(SpendyColors.textTertiary)
             
             TextField("Search category", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(SpendyColors.textPrimary)
             
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
@@ -921,8 +948,6 @@ struct AccountPickerDrawer: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#121214").ignoresSafeArea()
-            
             VStack(spacing: 0) {
                 // Clean Custom Header
                 HStack {
@@ -930,7 +955,7 @@ struct AccountPickerDrawer: View {
                         icon: "xmark",
                         size: 44,
                         iconSize: 14,
-                        foregroundColor: .white,
+                        foregroundColor: SpendyColors.textPrimary,
                         haptic: .selection
                     ) {
                         dismiss()
@@ -940,7 +965,7 @@ struct AccountPickerDrawer: View {
                     
                     Text(title)
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
@@ -973,12 +998,12 @@ struct AccountPickerDrawer: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(acc.label)
                                                 .font(.system(size: 16, weight: .semibold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(SpendyColors.textPrimary)
                                             
                                             Text("\(store.currencySymbol)\(String(format: "%.0f", liveBalance))")
                                                 .font(.system(size: 13, weight: .medium))
                                                 .monospacedDigit()
-                                                .foregroundStyle(Color(hex: "#8E8E93"))
+                                                .foregroundStyle(SpendyColors.textSecondary)
                                         }
                                         
                                         Spacer()
@@ -986,7 +1011,7 @@ struct AccountPickerDrawer: View {
                                         if isSelected {
                                             Image(systemName: "checkmark")
                                                 .font(.system(size: 15, weight: .bold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(SpendyColors.textPrimary)
                                                 .transition(.scale.combined(with: .opacity))
                                         }
                                     }
@@ -998,17 +1023,17 @@ struct AccountPickerDrawer: View {
                                 
                                 if acc.id != accounts.last?.id {
                                     Divider()
-                                        .background(Color.white.opacity(0.08))
+                                        .background(SpendyColors.separator)
                                         .padding(.leading, 68)
                                 }
                             }
                         }
                         .background {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(Color(hex: "#18181A"))
+                                .fill(SpendyColors.cardBackground)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                     }
@@ -1018,7 +1043,7 @@ struct AccountPickerDrawer: View {
         }
         .presentationDetents([.fraction(0.55), .medium])
         .presentationDragIndicator(.hidden)
-        .presentationBackground(.ultraThinMaterial)
+        .presentationCornerRadius(32)
     }
 }
 
@@ -1057,8 +1082,6 @@ struct CustomCalendarDrawer: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#121214").ignoresSafeArea()
-            
             VStack(spacing: 20) {
                 // Clean Custom Header
                 HStack {
@@ -1066,7 +1089,7 @@ struct CustomCalendarDrawer: View {
                         icon: "xmark",
                         size: 44,
                         iconSize: 14,
-                        foregroundColor: .white,
+                        foregroundColor: SpendyColors.textPrimary,
                         haptic: .selection
                     ) {
                         dismiss()
@@ -1076,7 +1099,7 @@ struct CustomCalendarDrawer: View {
                     
                     Text(calendar.isDateInToday(selectedDate) ? "Today" : formattedDateTitle)
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
                     Spacer()
                     
@@ -1088,14 +1111,14 @@ struct CustomCalendarDrawer: View {
                     }) {
                         Text("Today")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.textPrimary)
                             .padding(.horizontal, 16)
                             .frame(height: 36)
                             .background {
                                 Capsule()
-                                    .fill(Color(hex: "#18181A"))
+                                    .fill(SpendyColors.cardBackground)
                                     .overlay {
-                                        Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                        Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                     }
@@ -1112,11 +1135,11 @@ struct CustomCalendarDrawer: View {
                         HStack(spacing: 6) {
                             Text(monthYearString)
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(Color(hex: "#8E8E93"))
+                                .foregroundStyle(SpendyColors.textTertiary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -1132,7 +1155,7 @@ struct CustomCalendarDrawer: View {
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                                 .frame(width: 32, height: 32)
                         }
                         
@@ -1144,7 +1167,7 @@ struct CustomCalendarDrawer: View {
                         }) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(SpendyColors.textPrimary)
                                 .frame(width: 32, height: 32)
                         }
                     }
@@ -1157,7 +1180,7 @@ struct CustomCalendarDrawer: View {
                     ForEach(weekdays, id: \.self) { day in
                         Text(day)
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color(hex: "#8E8E93"))
+                            .foregroundStyle(SpendyColors.textTertiary)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -1185,7 +1208,7 @@ struct CustomCalendarDrawer: View {
                                         
                                         Text("\(dayNumber)")
                                             .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                                            .foregroundStyle(Color.white)
+                                            .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                                     }
                                     
                                     if isSelected {
@@ -1209,7 +1232,7 @@ struct CustomCalendarDrawer: View {
         }
         .presentationDetents([.fraction(0.68)])
         .presentationDragIndicator(.hidden)
-        .presentationBackground(.ultraThinMaterial)
+        .presentationCornerRadius(32)
     }
     
     private var formattedDateTitle: String {

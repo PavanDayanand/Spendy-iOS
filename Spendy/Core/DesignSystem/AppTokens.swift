@@ -66,55 +66,63 @@ public enum AppRadius {
     public static let pill: CGFloat = 999
 }
 
-// MARK: - Typography Tokens (Blueprint §6 & §7)
+// MARK: - Typography Tokens (Default Apple System Typography)
 public enum AppTypography {
-    /// 42pt Heavy Default — Main Balance / Hero Amount
+    /// 42pt Heavy — Main Balance / Hero Amount
     public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .default)
     
-    /// 38pt Heavy Default — Large Metric / Sheet Hero Amount
+    /// 38pt Heavy — Large Metric / Sheet Hero Amount
     public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .default)
     
-    /// 34pt Heavy Default — Section Totals & Sub-hero Amounts
+    /// 34pt Heavy — Section Totals & Sub-hero Amounts
     public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .default)
     
-    /// 32pt Heavy Default — Primary Screen Large Title
-    public static let largeTitle = Font.system(size: 32, weight: .heavy)
+    /// 32pt Heavy — Primary Screen Large Title
+    public static let largeTitle = Font.system(size: 32, weight: .heavy, design: .default)
     
     /// 24pt Bold — Card Section Header Title
-    public static let title2 = Font.system(size: 24, weight: .bold)
+    public static let title2 = Font.system(size: 24, weight: .bold, design: .default)
     
     /// 20pt Semibold — Section Headers
-    public static let sectionTitle = Font.system(size: 20, weight: .semibold)
+    public static let sectionTitle = Font.system(size: 20, weight: .semibold, design: .default)
     
     /// 18pt Bold — Modal & Sheet Titles
-    public static let sheetTitle = Font.system(size: 18, weight: .bold)
+    public static let sheetTitle = Font.system(size: 18, weight: .bold, design: .default)
     
     /// 17pt Bold — Card Titles & Major Items
-    public static let bodyBold = Font.system(size: 17, weight: .bold)
+    public static let bodyBold = Font.system(size: 17, weight: .bold, design: .default)
     
     /// 16pt Bold — Account / Category Names
-    public static let rowTitle = Font.system(size: 16, weight: .bold)
+    public static let rowTitle = Font.system(size: 16, weight: .bold, design: .default)
     
     /// 15pt Bold — Transaction Row Titles
-    public static let itemTitle = Font.system(size: 15, weight: .bold)
+    public static let itemTitle = Font.system(size: 15, weight: .bold, design: .default)
     
     /// 14pt Semibold — Subtitle & Pill Controls
-    public static let subheadlineSemibold = Font.system(size: 14, weight: .semibold)
+    public static let subheadlineSemibold = Font.system(size: 14, weight: .semibold, design: .default)
     
     /// 13pt Medium — Description & Secondary Labels
-    public static let footnoteMedium = Font.system(size: 13, weight: .medium)
+    public static let footnoteMedium = Font.system(size: 13, weight: .medium, design: .default)
     
     /// 12pt Medium — Tertiary / Micro Metadata
-    public static let captionMedium = Font.system(size: 12, weight: .medium)
+    public static let captionMedium = Font.system(size: 12, weight: .medium, design: .default)
     
     /// 11pt Bold Tracked — Section Header Eyebrows (UPPERCASE)
-    public static let eyebrow = Font.system(size: 11, weight: .bold)
+    public static let eyebrow = Font.system(size: 11, weight: .bold, design: .default)
     
     /// 10pt Bold Tracked — Micro Badge Text
-    public static let badgeMicro = Font.system(size: 10, weight: .bold)
+    public static let badgeMicro = Font.system(size: 10, weight: .bold, design: .default)
 }
 
-// MARK: - Boxy Number Typography Modifier (Tall Condensed, Monospaced Digits, Tight Kerning)
+// MARK: - Typography Helpers
+public extension Font {
+    /// Apple default system font helper
+    static func spendyCompact(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        Font.system(size: size, weight: weight, design: .default)
+    }
+}
+
+// MARK: - Number Typography Modifier (Monospaced Digits)
 public struct SpendyNumberModifier: ViewModifier {
     var size: CGFloat
     var weight: Font.Weight
@@ -127,25 +135,21 @@ public struct SpendyNumberModifier: ViewModifier {
     }
     
     public func body(content: Content) -> some View {
-        let effectiveTracking: CGFloat = tracking ?? {
-            if size >= 36 { return -1.2 }
-            if size >= 24 { return -0.8 }
-            if size >= 18 { return -0.5 }
-            return -0.3
-        }()
-        
         content
             .font(.system(size: size, weight: weight, design: .default))
-            .fontWidth(.condensed)
             .monospacedDigit()
-            .tracking(effectiveTracking)
     }
 }
 
 public extension View {
-    /// Applies a tall, condensed, boxy (default design) numeric font with monospaced digits and tight kerning
+    /// Applies numeric font with monospaced digits
     func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil) -> some View {
         modifier(SpendyNumberModifier(size: size, weight: weight, tracking: tracking))
+    }
+    
+    /// Applies system font with specified size and weight
+    func spendyFont(size: CGFloat, weight: Font.Weight = .regular) -> some View {
+        self.font(.system(size: size, weight: weight, design: .default))
     }
 }
 

@@ -335,8 +335,6 @@ struct AddAccountSheet: View {
                     
                     TextField("0.00", text: $openingBalanceString)
                         .font(Font.system(size: 15, weight: .bold, design: .default).monospacedDigit())
-                        .fontWidth(.condensed)
-                        .tracking(-0.4)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
