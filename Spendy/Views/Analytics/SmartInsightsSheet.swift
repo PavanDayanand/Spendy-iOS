@@ -50,22 +50,29 @@ struct SmartInsightsSheet: View {
     
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            SpendyColors.appBackground.ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    // 1. Navigation Header Row (Liquid Glass Back Button)
-                    headerBar
-                        .padding(.top, 8)
-                    
-                    // 2. Spent Summary Section
-                    spentSummarySection
-                    
-                    // 3. Category Insights List (No Graph)
-                    categoryListSection
+            ZStack(alignment: .top) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Top spacing to clear the floating header bar
+                        Spacer().frame(height: 56)
+                        
+                        // 1. Spent Summary Section
+                        spentSummarySection
+                        
+                        // 2. Category Insights List (No Graph)
+                        categoryListSection
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 40)
+                
+                // Floating Sticky Header Bar on Top Layer
+                headerBar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .zIndex(100)
             }
         }
         .navigationBarBackButtonHidden(true)

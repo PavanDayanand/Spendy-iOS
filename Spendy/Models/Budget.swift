@@ -23,10 +23,10 @@ struct Budget: Codable, Hashable {
     var categoryBudgets: [String: Double]
     
     init(
-        amount: Double = 7800.0,
+        amount: Double = 0.0,
         period: BudgetPeriod = .monthly,
         startDay: Int = 1,
-        isActive: Bool = true,
+        isActive: Bool = false,
         categoryBudgets: [String: Double] = [:]
     ) {
         self.amount = amount

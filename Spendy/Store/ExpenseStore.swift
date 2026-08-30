@@ -673,6 +673,17 @@ final class ExpenseStore {
         HapticsManager.shared.trigger(.medium)
     }
     
+    /// Total monthly normalized committed amount for all active, non-trial subscriptions
+    var totalMonthlySubscriptionCommitted: Double {
+        subscriptions.filter { !$0.isPaused && !$0.isTrial }.reduce(0.0) { sum, sub in
+            switch sub.cycle {
+            case .monthly: return sum + sub.amount
+            case .yearly:  return sum + (sub.amount / 12.0)
+            case .weekly:  return sum + (sub.amount * 4.33)
+            }
+        }
+    }
+    
     // MARK: - Budget Calculations & Cycle Ranges
     
     /// Calculate the start of the budget cycle based on configured startDay and period

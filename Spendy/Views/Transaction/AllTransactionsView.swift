@@ -3,11 +3,9 @@
 //  Spendy
 //
 //  Clean Full-Screen Transactions View:
-//  - Top Bar: Working Circular Glass Back Button (Left) + "Transactions" Title (Center)
-//  - Horizontal Scrolling Liquid Glass Filter Toggles: [Categories] [Accounts] [Type]
-//  - Clean Solid Background (No weird grey boxes or gradient leaks)
-//  - Individual Transaction Cards with Category Avatar, Title, Mini Bank Badge & Formatted Amount
-//  - Lowered Floating Liquid Glass Search Bar + Liquid Glass Quick Add (+) Button
+//  - Top Sticky Layer: Liquid Glass Circular Back Button + "All Transactions" Title + 3 Liquid Glass Filter Toggles (Floating on Top Layer)
+//  - Individual Transaction Cards with SpendyIconBadge, Title, Mini Bank Indicator & Formatted Amount
+//  - Lowered Floating Liquid Glass Search Bar + Liquid Glass Quick Add (+) Button on Bottom Layer
 //
 
 import SwiftUI
@@ -129,65 +127,79 @@ struct AllTransactionsView: View {
     
     // MARK: - Body
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             // Clean Background
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 1. Top Navigation Bar (Back Button + Title)
-                topNavBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
-                    .padding(.bottom, 10)
-                
-                // 2. Horizontal Scrollable Filter Capsules
-                horizontalFilterBar
-                    .padding(.bottom, 12)
-                
-                // 3. Transactions List
-                if filteredTransactions.isEmpty {
-                    emptyStateView
-                } else {
-                    ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: 20) {
-                            ForEach(groupedTransactions, id: \.0) { groupTitle, groupNet, txs in
-                                VStack(alignment: .leading, spacing: 10) {
-                                    // Section Header: Date (Left) & Group Total (Right)
-                                    HStack {
-                                        Text(groupTitle)
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundStyle(SpendyColors.textSecondary)
+            // Content Layer with Floating Top & Bottom Bars
+            ZStack(alignment: .top) {
+                // Scrollable Content Layer
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        // Top Clearance for Floating Header Bar + 3 Liquid Glass Filter Toggles
+                        Spacer().frame(height: 106)
+                        
+                        // Grouped Transactions List
+                        if filteredTransactions.isEmpty {
+                            emptyStateView
+                        } else {
+                            LazyVStack(spacing: 20) {
+                                ForEach(groupedTransactions, id: \.0) { groupTitle, groupNet, txs in
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        // Section Header: Date (Left) & Group Total (Right)
+                                        HStack {
+                                            Text(groupTitle)
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundStyle(SpendyColors.textSecondary)
+                                            
+                                            Spacer()
+                                            
+                                            Text(formattedGroupNetTotal(groupNet))
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundStyle(SpendyColors.textTertiary)
+                                        }
+                                        .padding(.horizontal, 4)
                                         
-                                        Spacer()
-                                        
-                                        Text(formattedGroupNetTotal(groupNet))
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundStyle(SpendyColors.textTertiary)
-                                    }
-                                    .padding(.horizontal, 4)
-                                    
-                                    // Individual Transaction Cards
-                                    VStack(spacing: 10) {
-                                        ForEach(txs) { tx in
-                                            transactionCard(tx)
+                                        // Individual Transaction Cards (Matching Category Card Design)
+                                        VStack(spacing: 12) {
+                                            ForEach(txs) { tx in
+                                                transactionCard(tx)
+                                            }
                                         }
                                     }
                                 }
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 2)
+                            .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 2)
-                        .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                     }
                 }
+                
+                // Floating Sticky Header & Filter Bar on Top Layer
+                VStack(spacing: 10) {
+                    topNavBar
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    
+                    horizontalFilterBar
+                }
+                .padding(.bottom, 6)
+                .zIndex(100)
             }
             
-            // 4. Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button
-            floatingBottomBar
-                .padding(.horizontal, 16)
-                .padding(.bottom, 0)
+            // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
+            VStack {
+                Spacer()
+                floatingBottomBar
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+            }
+            .zIndex(100)
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView()
         }
@@ -218,39 +230,30 @@ struct AllTransactionsView: View {
         }
     }
     
-    // MARK: - 1. Top Navigation Bar (Reliable Back Button)
+    // MARK: - 1. Top Navigation Bar (Reliable Glass Back Button on Top Layer)
     private var topNavBar: some View {
         HStack(alignment: .center) {
             // Circular Glass Back Button
-            Button(action: {
-                HapticsManager.shared.trigger(.light)
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                accessibilityLabel: "Back"
+            ) {
+                HapticsManager.shared.trigger(.selection)
                 if let onDismiss = onDismiss {
                     onDismiss()
                 } else {
                     dismiss()
                 }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(SpendyColors.cardBackground)
-                        .frame(width: 44, height: 44)
-                        .overlay {
-                            Circle().stroke(SpendyColors.separator, lineWidth: 1)
-                        }
-                    
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-                .contentShape(Circle())
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
             
             Spacer()
             
             // Center Title
-            Text("Transactions")
+            Text("All Transactions")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
             
@@ -262,91 +265,107 @@ struct AllTransactionsView: View {
         }
     }
     
-    // MARK: - 2. Horizontal Scrollable Filter Capsules
+    // MARK: - 2. Horizontal Scrollable Liquid Glass Filter Capsules (On Top Layer)
     private var horizontalFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // [Categories] Menu
+                // 1. [Categories] Liquid Glass Menu
                 Menu {
                     Button("All Categories") {
-                        withAnimation { selectedCategoryId = nil }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedCategoryId = nil
+                        }
                     }
                     Divider()
                     ForEach(store.categories) { cat in
                         Button(cat.label) {
-                            withAnimation { selectedCategoryId = cat.id }
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                selectedCategoryId = cat.id
+                            }
                         }
                     }
                 } label: {
                     let isCatSelected = selectedCategoryId != nil
                     HStack(spacing: 6) {
-                        Image(systemName: "circle.grid.2x2")
+                        Image(systemName: isCatSelected ? (store.category(for: selectedCategoryId ?? "").sfSymbol) : "circle.grid.2x2")
                             .font(.system(size: 13, weight: .semibold))
                         Text(categoryButtonLabel)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 14, weight: .semibold))
                             .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(isCatSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isCatSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                    .padding(.horizontal, 16)
+                    .foregroundStyle(isCatSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .background {
-                        Capsule()
-                            .fill(SpendyColors.cardBackground)
-                            .overlay {
-                                Capsule()
-                                    .stroke(isCatSelected ? SpendyColors.textPrimary.opacity(0.85) : SpendyColors.separator, lineWidth: isCatSelected ? 1.4 : 0.8)
-                            }
-                    }
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.primaryBlue : nil)
                 }
                 .buttonStyle(.plain)
                 
-                // [Accounts] Menu
+                // 2. [Accounts] Liquid Glass Menu
                 Menu {
                     Button("All Accounts") {
-                        withAnimation { selectedAccountId = nil }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedAccountId = nil
+                        }
                     }
                     Divider()
                     ForEach(store.accounts) { acc in
                         Button(acc.label) {
-                            withAnimation { selectedAccountId = acc.id }
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                selectedAccountId = acc.id
+                            }
                         }
                     }
                 } label: {
                     let isAccSelected = selectedAccountId != nil
                     HStack(spacing: 6) {
-                        Image(systemName: "building.columns")
+                        Image(systemName: isAccSelected ? (store.account(for: selectedAccountId ?? "").sfSymbol.isEmpty ? "building.columns" : store.account(for: selectedAccountId ?? "").sfSymbol) : "building.columns")
                             .font(.system(size: 13, weight: .semibold))
                         Text(accountButtonLabel)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 14, weight: .semibold))
                             .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(isAccSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isAccSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                    .padding(.horizontal, 16)
+                    .foregroundStyle(isAccSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .background {
-                        Capsule()
-                            .fill(SpendyColors.cardBackground)
-                            .overlay {
-                                Capsule()
-                                    .stroke(isAccSelected ? SpendyColors.textPrimary.opacity(0.85) : SpendyColors.separator, lineWidth: isAccSelected ? 1.4 : 0.8)
-                            }
-                    }
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.primaryBlue : nil)
                 }
                 .buttonStyle(.plain)
                 
-                // [Type] Menu (Expenses, Income, Transfers)
+                // 3. [Type] Liquid Glass Menu (Expenses, Income, Transfers)
                 Menu {
                     Button("All Types") {
-                        withAnimation { selectedTransactionType = nil }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedTransactionType = nil
+                        }
                     }
                     Button("Expenses") {
-                        withAnimation { selectedTransactionType = .expense }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedTransactionType = .expense
+                        }
                     }
                     Button("Income") {
-                        withAnimation { selectedTransactionType = .income }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedTransactionType = .income
+                        }
                     }
                     Button("Transfers") {
-                        withAnimation { selectedTransactionType = .transfer }
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedTransactionType = .transfer
+                        }
                     }
                 } label: {
                     let isTypeSelected = selectedTransactionType != nil
@@ -354,19 +373,15 @@ struct AllTransactionsView: View {
                         Image(systemName: "arrow.up.arrow.down")
                             .font(.system(size: 12, weight: .semibold))
                         Text(typeButtonLabel)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(isTypeSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isTypeSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                    .padding(.horizontal, 16)
+                    .foregroundStyle(isTypeSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .background {
-                        Capsule()
-                            .fill(SpendyColors.cardBackground)
-                            .overlay {
-                                Capsule()
-                                    .stroke(isTypeSelected ? SpendyColors.textPrimary.opacity(0.85) : SpendyColors.separator, lineWidth: isTypeSelected ? 1.4 : 0.8)
-                            }
-                    }
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.primaryBlue : nil)
                 }
                 .buttonStyle(.plain)
             }
@@ -374,7 +389,7 @@ struct AllTransactionsView: View {
         }
     }
     
-    // MARK: - 3. Individual Transaction Card
+    // MARK: - 3. Individual Transaction Card (Matching Category Card Design)
     private func transactionCard(_ tx: Transaction) -> some View {
         let cat = store.categories.first(where: { $0.id == tx.categoryId })
         let acc = store.accounts.first(where: { $0.id == tx.accountId })
@@ -382,67 +397,75 @@ struct AllTransactionsView: View {
         
         let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
         let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#FF5924"))
-        let accountColor = acc?.color ?? Color(hex: "#007AFF")
-        let accountLetter = String((acc?.label ?? "A").prefix(1)).uppercased()
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
             inspectingTransaction = tx
         }) {
             HStack(spacing: 14) {
-                // Large Circular Category Icon
-                ZStack {
-                    Circle()
-                        .fill(iconColor)
-                        .frame(width: 48, height: 48)
-                    
-                    Image(systemName: iconSymbol)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
+                // Category / Subscription Icon Avatar Badge
+                SpendyIconBadge(
+                    sfSymbol: iconSymbol,
+                    color: iconColor,
+                    size: .medium,
+                    style: .circle
+                )
                 
-                // Title and Mini Bank Square Badge below
-                VStack(alignment: .leading, spacing: 4) {
+                // Title and Account Pill Indicator
+                VStack(alignment: .leading, spacing: 3) {
                     Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                     
-                    HStack(spacing: 6) {
-                        // Mini square bank avatar with letter
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                                .fill(accountColor)
-                                .frame(width: 16, height: 16)
-                            
-                            Text(accountLetter)
-                                .font(.system(size: 9.5, weight: .heavy))
+                    if let acc = acc {
+                        HStack(spacing: 5) {
+                            Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
+                                .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(.white)
+                                .frame(width: 14, height: 14)
+                                .background(acc.color, in: Circle())
+                            
+                            Text(acc.label)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .lineLimit(1)
                         }
-                        
-                        Text(acc?.label ?? "Main Account")
+                    } else {
+                        Text(tx.date.formattedRelative)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(SpendyColors.textSecondary)
-                            .lineLimit(1)
                     }
                 }
                 
                 Spacer()
                 
-                // Right aligned amount
-                Text(formattedRowAmountWithSign(tx))
-                    .spendyNumberFont(size: 18, weight: .heavy)
-                    .foregroundStyle(rowAmountColor(tx))
+                // Formatted Amount and Relative Date
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(formattedRowAmountWithSign(tx))
+                        .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
+                        .foregroundStyle(rowAmountColor(tx))
+                    
+                    if tx.type == .transfer, let toId = tx.toAccountId, let toAcc = store.accounts.first(where: { $0.id == toId }) {
+                        Text("→ \(toAcc.label)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.primaryBlue)
+                    } else {
+                        Text(tx.date.formattedRelative)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
-                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
             }
         }
         .buttonStyle(.plain)
@@ -480,14 +503,14 @@ struct AllTransactionsView: View {
     private func rowAmountColor(_ tx: Transaction) -> Color {
         switch tx.type {
         case .expense: return SpendyColors.textPrimary
-        case .income: return Color(hex: "#30D158")
+        case .income: return SpendyColors.incomeGreen
         case .transfer: return SpendyColors.primaryBlue
         }
     }
     
     private func formattedRowAmountWithSign(_ tx: Transaction) -> String {
         let sym = store.currencySymbol
-        let amtStr = tx.amount.formattedCurrency(symbol: sym, decimals: 0)
+        let amtStr = tx.amount.formattedCurrency(symbol: sym)
         switch tx.type {
         case .expense: return amtStr
         case .income: return "+\(amtStr)"
@@ -557,7 +580,7 @@ struct AllTransactionsView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 12) {
-            Spacer()
+            Spacer().frame(height: 40)
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 38))
                 .foregroundStyle(SpendyColors.textTertiary)
@@ -569,9 +592,14 @@ struct AllTransactionsView: View {
             Text("Try searching for a different keyword or filter")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(SpendyColors.textSecondary)
-            Spacer()
+            Spacer().frame(height: 40)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
     }
+}
+
+#Preview {
+    AllTransactionsView()
+        .environment(ExpenseStore())
 }

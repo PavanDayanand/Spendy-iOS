@@ -57,7 +57,7 @@
         {
           "blend-mode" : "normal",
           "fill" : "automatic",
-          "glass" : false,
+          "glass" : true,
           "hidden" : false,
           "image-name" : "DarkArtSpendy.png",
           "name" : "DarkArtSpendy",
