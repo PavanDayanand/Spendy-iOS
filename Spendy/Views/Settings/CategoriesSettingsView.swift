@@ -30,7 +30,7 @@ struct CategoriesSettingsView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: "#1C1C1E")
+            SpendyColors.settingsBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -39,7 +39,7 @@ struct CategoriesSettingsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 10)
-                    .background(Color(hex: "#1C1C1E"))
+                    .background(SpendyColors.settingsBackground)
                     .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {

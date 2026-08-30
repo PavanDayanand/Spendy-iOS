@@ -84,27 +84,27 @@ enum SpendyColors {
 
     static let cardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 0.075, green: 0.075, blue: 0.078, alpha: 1.0)
+        dark: UIColor(red: 0.16, green: 0.16, blue: 0.173, alpha: 1.0)
     ))
 
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.945, alpha: 1.0),
-        dark: UIColor(red: 0.14, green: 0.14, blue: 0.145, alpha: 1.0)
+        light: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1.0),
+        dark: UIColor(red: 0.20, green: 0.20, blue: 0.22, alpha: 1.0)
     ))
 
     static let sheetCardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 0.12, green: 0.12, blue: 0.125, alpha: 1.0)
+        dark: UIColor(red: 0.16, green: 0.16, blue: 0.173, alpha: 1.0)
     ))
 
     static let settingsBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 0.08, green: 0.08, blue: 0.085, alpha: 1.0)
+        light: UIColor(red: 0.949, green: 0.949, blue: 0.969, alpha: 1.0), // Apple systemGroupedBackground (#F2F2F7)
+        dark: UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)     // Sleek dark gray (#1C1C1E) in dark mode
     ))
 
     static let separator = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.0, alpha: 0.10),
-        dark: UIColor(white: 1.0, alpha: 0.10)
+        light: UIColor(white: 0.0, alpha: 0.08),
+        dark: UIColor(white: 1.0, alpha: 0.08)
     ))
 
     // Dynamic Text Hierarchies

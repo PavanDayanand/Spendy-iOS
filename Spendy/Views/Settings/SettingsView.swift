@@ -40,7 +40,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack(alignment: .top) {
-                Color(hex: "#1C1C1E")
+                SpendyColors.settingsBackground
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -49,7 +49,7 @@ struct SettingsView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
                         .padding(.bottom, 12)
-                        .background(Color(hex: "#1C1C1E"))
+                        .background(SpendyColors.settingsBackground)
                         .zIndex(10)
 
                     ScrollView(showsIndicators: false) {
@@ -63,7 +63,7 @@ struct SettingsView: View {
                             // 1. Manage Section (Accounts & Categories)
                             manageSection
 
-                            // 2. Preferences Section (Currency & Haptics)
+                            // 2. Preferences Section (Appearance, Currency, Haptics, Notifications)
                             preferencesSection
 
                             // 3. Data & Backup Section (Export, Import, Reset)
@@ -166,17 +166,17 @@ struct SettingsView: View {
                 GlassCircleIcon(
                     icon: "arrow.up.right",
                     size: 36,
-                    iconSize: 14,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary
+                    iconSize: 13,
+                    iconWeight: .semibold,
+                    foregroundColor: SpendyColors.textSecondary
                 )
             }
             .padding(14)
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -196,38 +196,38 @@ struct SettingsView: View {
                         Image(uiImage: uiImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 52, height: 52)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1.5))
-                            .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
+                            .overlay(Circle().stroke(SpendyColors.separator, lineWidth: 1.5))
+                            .shadow(color: Color.black.opacity(0.15), radius: 4, y: 2)
                     } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
                         Circle()
                             .fill(store.topGradientColor)
-                            .frame(width: 56, height: 56)
-                            .shadow(color: store.topGradientColor.opacity(0.35), radius: 6, y: 2)
+                            .frame(width: 52, height: 52)
+                            .shadow(color: store.topGradientColor.opacity(0.35), radius: 4, y: 2)
 
                         Image(systemName: symbol)
-                            .font(.system(size: 24, weight: .semibold))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(.white)
                     } else {
                         Circle()
                             .fill(
-                                LinearGradient(
-                                    colors: [store.topGradientColor, SpendyColors.accentCyan],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                            LinearGradient(
+                                colors: [store.topGradientColor, SpendyColors.accentCyan],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .frame(width: 56, height: 56)
-                            .shadow(color: store.topGradientColor.opacity(0.35), radius: 6, y: 2)
+                        )
+                        .frame(width: 52, height: 52)
+                        .shadow(color: store.topGradientColor.opacity(0.35), radius: 4, y: 2)
 
                         if !store.userName.isEmpty {
                             Text(String(store.userName.prefix(1)).uppercased())
-                                .font(.system(size: 24, weight: .heavy))
+                                .font(.system(size: 22, weight: .heavy))
                                 .foregroundStyle(.white)
                         } else {
                             Image(systemName: "person.fill")
-                                .font(.system(size: 22, weight: .semibold))
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(.white)
                         }
                     }
@@ -249,12 +249,12 @@ struct SettingsView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textTertiary)
             }
-            .padding(16)
+            .padding(14)
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -264,37 +264,35 @@ struct SettingsView: View {
 
     // MARK: - 1. Manage Section (Accounts & Categories)
     private var manageSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("MANAGE")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1.0)
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
                 .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
                 // Accounts Hub Link
                 NavigationLink(value: SettingsDestination.accounts) {
                     rowItem(
                         icon: "building.columns.fill",
-                        iconColor: SpendyColors.primaryBlue,
                         title: "Accounts & Wallets",
                         badgeText: "\(store.accounts.count)"
                     )
                 }
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 // Categories Link
                 NavigationLink(value: SettingsDestination.categories) {
                     rowItem(
                         icon: "square.grid.2x2.fill",
-                        iconColor: SpendyColors.incomeGreen,
                         title: "Categories",
                         badgeText: "\(store.categories.count)"
                     )
                 }
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 // Monthly Receipt Generator Link
                 Button(action: {
@@ -303,7 +301,6 @@ struct SettingsView: View {
                 }) {
                     rowItem(
                         icon: "printer.fill",
-                        iconColor: Color(hex: "#BF5AF2"),
                         title: "Monthly Receipt Generator",
                         badgeText: nil
                     )
@@ -311,10 +308,10 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -323,50 +320,58 @@ struct SettingsView: View {
 
     // MARK: - 2. Preferences Section
     private var preferencesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("PREFERENCES")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1.0)
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
                 .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
-                // Appearance Selector
-                VStack(alignment: .leading, spacing: 10) {
+                // Appearance Menu Picker Toggle (Native Apple Standard)
+                Menu {
+                    Picker("Appearance", selection: Binding(
+                        get: { store.appearanceMode },
+                        set: { newValue in
+                            store.appearanceMode = newValue
+                            HapticsManager.shared.trigger(.selection)
+                        }
+                    )) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Label(mode.rawValue, systemImage: mode.sfSymbol)
+                                .tag(mode)
+                        }
+                    }
+                } label: {
                     HStack(spacing: 14) {
                         Image(systemName: store.appearanceMode.sfSymbol)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.primaryBlue)
-                            .frame(width: 28, height: 28)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 26, height: 26)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Appearance")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            Text("Choose light, dark, or follow iPhone")
-                                .font(.system(size: 11, weight: .regular))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
+                        Text("Appearance")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
 
                         Spacer()
+
+                        HStack(spacing: 4) {
+                            Text(store.appearanceMode.rawValue)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
                     }
-
-                    GlassSegmentedPicker(
-                        selection: Binding(
-                            get: { store.appearanceMode },
-                            set: { newValue in
-                                store.appearanceMode = newValue
-                                HapticsManager.shared.trigger(.selection)
-                            }
-                        ),
-                        items: AppearanceMode.allCases,
-                        titleFor: { $0.rawValue },
-                        iconFor: { $0.sfSymbol }
-                    )
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 13)
+                    .contentShape(Rectangle())
                 }
-                .padding(14)
+                .buttonStyle(.plain)
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 // Currency Selector
                 Button(action: {
@@ -375,21 +380,20 @@ struct SettingsView: View {
                 }) {
                     rowItem(
                         icon: "globe",
-                        iconColor: SpendyColors.textPrimary,
                         title: "Currency",
                         badgeText: "\(CurrencyInfo.flag(for: store.currencyCode)) \(store.currencySymbol)"
                     )
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
-                // Haptic Feedback Toggle
+                // Haptic Feedback Toggle (Standard Apple Green)
                 HStack(spacing: 14) {
                     Image(systemName: "iphone.radiowaves.left.and.right")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.primaryBlue)
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 26, height: 26)
 
                     Text("Haptic Feedback")
                         .font(.system(size: 15, weight: .medium))
@@ -405,18 +409,19 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
-                    .tint(SpendyColors.primaryBlue)
+                    .tint(.green)
                 }
-                .padding(14)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
-                // Notifications Toggle (Blueprint §56)
+                // Notifications Toggle (Standard Apple Green)
                 HStack(spacing: 14) {
                     Image(systemName: "bell.badge.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color(hex: "#FF9500"))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 26, height: 26)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Bill & Budget Reminders")
@@ -445,46 +450,45 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
-                    .tint(SpendyColors.warningOrange)
+                    .tint(.green)
                 }
-                .padding(14)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
     }
 
-
     // MARK: - 3. Data & Backup Section
     private var dataBackupSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("DATA & BACKUP")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1.0)
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
                 .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsDestination.dataBackup) {
                     rowItem(
                         icon: "cylinder.split.1x2.fill",
-                        iconColor: SpendyColors.incomeGreen,
                         title: "Backup & Restore",
                         badgeText: "JSON"
                     )
                 }
             }
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -493,43 +497,43 @@ struct SettingsView: View {
 
     // MARK: - 4. About & Community Section
     private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("ABOUT")
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1.0)
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
                 .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
                 Button(action: { showWhatsNewSheet = true }) {
-                    rowItem(icon: "sparkles", iconColor: Color(hex: "#FFD60A"), title: "What's New in Spendy", badgeText: "v2.0.0")
+                    rowItem(icon: "sparkles", title: "What's New in Spendy", badgeText: "v2.0.0")
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 Button(action: { showCoffeeSheet = true }) {
-                    rowItem(icon: "cup.and.saucer.fill", iconColor: SpendyColors.warningOrange, title: "Buy Me a Coffee", badgeText: "Support")
+                    rowItem(icon: "cup.and.saucer.fill", title: "Buy Me a Coffee", badgeText: "Support")
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 Link(destination: URL(string: "https://www.instagram.com/pav6n?igsh=ZWg1aW1saW83NzZm&utm_source=qr")!) {
-                    rowExternalItem(icon: "camera.fill", iconColor: Color(hex: "#FF375F"), title: "Instagram", value: "@pav6n")
+                    rowExternalItem(icon: "camera.fill", title: "Instagram", value: "@pav6n")
                 }
 
-                Divider().overlay(SpendyColors.separator).padding(.leading, 56)
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
                 Link(destination: URL(string: "https://studiopavan.netlify.app")!) {
-                    rowExternalItem(icon: "globe", iconColor: SpendyColors.primaryBlue, title: "Developer Website", value: "studiopavan")
+                    rowExternalItem(icon: "globe", title: "Developer Website", value: "studiopavan")
                 }
             }
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(SpendyColors.sheetCardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
@@ -548,7 +552,7 @@ struct SettingsView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 8, y: 2)
+                .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
 
             VStack(spacing: 2) {
                 Text("Spendy")
@@ -564,13 +568,13 @@ struct SettingsView: View {
         .padding(.bottom, 20)
     }
 
-    // MARK: - Helper Row Items
-    private func rowItem(icon: String, iconColor: Color, title: String, badgeText: String?) -> some View {
+    // MARK: - Helper Row Items (Apple Minimal Monochrome)
+    private func rowItem(icon: String, title: String, badgeText: String?) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(iconColor)
-                .frame(width: 28, height: 28)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .frame(width: 26, height: 26)
 
             Text(title)
                 .font(.system(size: 15, weight: .medium))
@@ -588,15 +592,16 @@ struct SettingsView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
     }
 
-    private func rowExternalItem(icon: String, iconColor: Color, title: String, value: String) -> some View {
+    private func rowExternalItem(icon: String, title: String, value: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(iconColor)
-                .frame(width: 28, height: 28)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .frame(width: 26, height: 26)
 
             Text(title)
                 .font(.system(size: 15, weight: .medium))
@@ -612,7 +617,8 @@ struct SettingsView: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(SpendyColors.textTertiary)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
     }
 
     // MARK: - What's New Sheet

@@ -39,7 +39,7 @@ struct DataManagementView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            Color(hex: "#1C1C1E")
+            SpendyColors.settingsBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -69,18 +69,18 @@ struct DataManagementView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
-                .background(Color(hex: "#1C1C1E"))
+                .background(SpendyColors.settingsBackground)
                 .zIndex(10)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Backup & Export Section
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("BACKUP & EXPORT")
-                                .font(.system(size: 11, weight: .bold))
-                                .tracking(1.0)
+                                .font(.system(size: 12, weight: .semibold))
+                                .tracking(0.6)
                                 .foregroundStyle(SpendyColors.textTertiary)
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, 6)
                             
                             VStack(spacing: 0) {
                                 // Native SwiftUI ShareLink (Blueprint §53 & §54)
@@ -91,7 +91,6 @@ struct DataManagementView: View {
                                     ) {
                                         rowItem(
                                             icon: "square.and.arrow.up.fill",
-                                            iconColor: SpendyColors.primaryBlue,
                                             title: "Export JSON Backup",
                                             subtitle: "\(store.transactions.count) transactions, \(store.accounts.count) accounts"
                                         )
@@ -104,7 +103,6 @@ struct DataManagementView: View {
                                     Button(action: {}) {
                                         rowItem(
                                             icon: "square.and.arrow.up.fill",
-                                            iconColor: SpendyColors.textTertiary,
                                             title: "Export JSON Backup",
                                             subtitle: "No data available to export"
                                         )
@@ -113,7 +111,7 @@ struct DataManagementView: View {
                                     .disabled(true)
                                 }
                                 
-                                Divider().overlay(SpendyColors.separator)
+                                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
                                 
                                 Button(action: {
                                     HapticsManager.shared.trigger(.selection)
@@ -121,7 +119,6 @@ struct DataManagementView: View {
                                 }) {
                                     rowItem(
                                         icon: "square.and.arrow.down.fill",
-                                        iconColor: SpendyColors.incomeGreen,
                                         title: "Import JSON Backup",
                                         subtitle: "Restore from a previous backup file"
                                     )
@@ -129,10 +126,10 @@ struct DataManagementView: View {
                                 .buttonStyle(.plain)
                             }
                             .background {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     .fill(SpendyColors.cardBackground)
                                     .overlay {
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
@@ -234,20 +231,16 @@ struct DataManagementView: View {
         }
     }
     
-    private func rowItem(icon: String, iconColor: Color, title: String, subtitle: String) -> some View {
+    private func rowItem(icon: String, title: String, subtitle: String) -> some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.18))
-                    .frame(width: 36, height: 36)
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(iconColor)
-            }
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .frame(width: 26, height: 26)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(SpendyColors.textPrimary)
                 Text(subtitle)
                     .font(.system(size: 12, weight: .medium))
@@ -260,6 +253,7 @@ struct DataManagementView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
     }
 }
