@@ -107,6 +107,7 @@ struct EditProfileSheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .confirmationDialog(
@@ -413,11 +414,11 @@ struct EditProfileSheet: View {
         }) {
             Text("Save")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(SpendyColors.elevatedControlForeground)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white, in: Capsule())
-                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                .background(SpendyColors.elevatedControlFill, in: Capsule())
+                .shadow(color: Color.black.opacity(0.15), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
     }

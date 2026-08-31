@@ -9,6 +9,7 @@ import SwiftUI
 
 struct LiquidMeshBackground: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animateFlow: Bool = false
     
     enum Style {

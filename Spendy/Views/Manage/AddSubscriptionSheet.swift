@@ -281,7 +281,7 @@ struct AddSubscriptionSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
 
             // Hue & Brightness Custom sliders
             if showColorPalette {
@@ -301,7 +301,7 @@ struct AddSubscriptionSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
 
             // Detail Card (Grouped Settings Details)
             VStack(spacing: 0) {

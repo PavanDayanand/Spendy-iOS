@@ -58,7 +58,7 @@ struct BudgetView: View {
                         .zIndex(100)
                 }
             }
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: isEditingExisting)
             }

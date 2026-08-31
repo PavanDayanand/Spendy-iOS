@@ -67,6 +67,8 @@ struct CategoriesSettingsView: View {
             bottomFloatingBar
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddCategory) {
             AddCategorySheet(categoryToEdit: nil, defaultType: selectedType, defaultFolder: selectedFolderForAdd)
                 .presentationBackground(SpendyColors.appBackground)
@@ -239,6 +241,8 @@ struct CategoriesSettingsView: View {
                                         .font(.system(size: 12, weight: .bold))
                                 }
                                 .foregroundStyle(SpendyColors.primaryBlue)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -286,6 +290,8 @@ struct CategoriesSettingsView: View {
                             .padding(.vertical, 13)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(cat.label), \(cat.type.rawValue) category")
                         .draggable(cat.id) {
                             HStack(spacing: 10) {
                                 SpendyIconBadge(

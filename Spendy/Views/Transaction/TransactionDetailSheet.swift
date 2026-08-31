@@ -75,7 +75,7 @@ struct TransactionDetailSheet: View {
                     .padding(.top, 20)
             }
             .background(Color.clear)
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog(
                 "Delete Transaction?",
                 isPresented: $showDeleteConfirm,

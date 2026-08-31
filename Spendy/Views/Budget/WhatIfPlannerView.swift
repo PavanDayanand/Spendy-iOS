@@ -184,5 +184,20 @@ private struct CustomSpendSlider: View {
             }
         }
         .frame(height: 64)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Daily spend limit")
+        .accessibilityValue("\(Int(value)) \(currencySymbol)")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                value = min(maxRange, value + 50)
+                HapticsManager.shared.trigger(.selection)
+            case .decrement:
+                value = max(0, value - 50)
+                HapticsManager.shared.trigger(.selection)
+            @unknown default:
+                break
+            }
+        }
     }
 }

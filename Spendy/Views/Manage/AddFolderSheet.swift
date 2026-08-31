@@ -91,6 +91,7 @@ struct AddFolderSheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .confirmationDialog(
@@ -211,7 +212,7 @@ struct AddFolderSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.white.opacity(0.06), in: Capsule())
+        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
     }
     
     // MARK: - Bottom Action Button (Matching AddCategorySheet)
@@ -233,11 +234,11 @@ struct AddFolderSheet: View {
         }) {
             Text(isEditing ? "Save Changes" : "Create Folder")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(SpendyColors.elevatedControlForeground)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white, in: Capsule())
-                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 3)
+                .background(SpendyColors.elevatedControlFill, in: Capsule())
+                .shadow(color: Color.black.opacity(0.15), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

@@ -131,6 +131,7 @@ struct AddCategorySheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
@@ -355,7 +356,7 @@ struct AddCategorySheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.white.opacity(0.06), in: Capsule())
+        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
     }
     
     // MARK: - Custom Color Picker (Image 2 style)

@@ -185,6 +185,8 @@ struct DataManagementView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.json],

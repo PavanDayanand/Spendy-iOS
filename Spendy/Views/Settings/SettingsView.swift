@@ -81,7 +81,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
                 case .accounts:

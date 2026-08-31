@@ -17,6 +17,7 @@ import SwiftUI
 struct SubscriptionQuickActionSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     let sub: Subscription
     
@@ -214,7 +215,7 @@ struct SubscriptionQuickActionSheet: View {
                 }
             }
             .background(Color.clear)
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog(
                 "Delete Subscription?",
                 isPresented: $showDeleteConfirmation,
@@ -501,8 +502,10 @@ struct SubscriptionQuickActionSheet: View {
         
         let wasPaused = liveSub.isPaused
         
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-            heroPulseScale = 1.12
+        withAnimation(reduceMotion ? .none : .spring(response: 0.35, dampingFraction: 0.65)) {
+            if !reduceMotion {
+                heroPulseScale = 1.12
+            }
             store.toggleSubscriptionPause(id: liveSub.id)
             toastMessage = wasPaused ? "Subscription Resumed & Active!" : "Subscription Paused"
             toastIcon = wasPaused ? "checkmark.circle.fill" : "pause.circle.fill"
@@ -510,9 +513,11 @@ struct SubscriptionQuickActionSheet: View {
             showToast = true
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                heroPulseScale = 1.0
+        if !reduceMotion {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    heroPulseScale = 1.0
+                }
             }
         }
         

@@ -275,7 +275,7 @@ struct DashboardView: View {
                     .zIndex(10)
                 }
             }
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSettings, onDismiss: {
                 settingsInitialDestination = nil
             }) {
@@ -809,6 +809,8 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
         .contextMenu {
             Button(role: .destructive) {
                 HapticsManager.shared.trigger(.warning)
@@ -886,10 +888,12 @@ struct DashboardView: View {
                     Text("Add Transaction")
                         .font(.system(size: 13, weight: .bold, design: .default))
                 }
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
                 .background(Capsule().fill(SpendyColors.primaryBlue))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .padding(.top, 4)

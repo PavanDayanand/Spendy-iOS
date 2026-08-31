@@ -80,6 +80,7 @@ struct AccountsSettingsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
@@ -93,7 +94,13 @@ struct AccountsSettingsView: View {
             CurrencyPickerSheet()
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
-            AccountAnalyticsSheet(account: acc)
+            AccountAnalyticsSheet(
+                account: acc,
+                topControlsNamespace: accountsNamespace,
+                backButtonMorphID: "backButton",
+                editButtonMorphID: "addAccountButton",
+                periodControlMorphID: "currencyPill"
+            )
         }
     }
     
@@ -234,6 +241,8 @@ struct AccountsSettingsView: View {
                                     .font(.system(size: 12, weight: .bold))
                             }
                             .foregroundStyle(SpendyColors.primaryBlue)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -290,6 +299,8 @@ struct AccountsSettingsView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(account.label), \(account.type.rawValue), balance \(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
                     }
                 }
             }

@@ -53,6 +53,21 @@ public struct HueSpectrumSlider: View {
             )
         }
         .frame(height: 38)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Color Hue")
+        .accessibilityValue("\(Int(hue * 360)) degrees")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                hue = min(1.0, hue + 0.05)
+                HapticsManager.shared.trigger(.selection)
+            case .decrement:
+                hue = max(0.0, hue - 0.05)
+                HapticsManager.shared.trigger(.selection)
+            @unknown default:
+                break
+            }
+        }
     }
 }
 
@@ -106,6 +121,21 @@ public struct DarkBrightnessSlider: View {
             )
         }
         .frame(height: 38)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Color Brightness")
+        .accessibilityValue("\(Int(brightness * 100)) percent")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                brightness = min(maxB, brightness + 0.05)
+                HapticsManager.shared.trigger(.selection)
+            case .decrement:
+                brightness = max(minB, brightness - 0.05)
+                HapticsManager.shared.trigger(.selection)
+            @unknown default:
+                break
+            }
+        }
     }
 }
 

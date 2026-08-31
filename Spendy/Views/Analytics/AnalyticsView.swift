@@ -156,7 +156,7 @@ struct AnalyticsView: View {
                     .padding(.bottom, 140) // Full clearance for floating bottom GlassTabBar
                 }
             }
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showAddTransaction) {
                 AddTransactionView()
             }
@@ -243,11 +243,13 @@ struct AnalyticsView: View {
                 Spacer()
                 
                 // Center: Period Navigation  ◀  Aug 2026  ▶
-                HStack(spacing: 8) {
+                HStack(spacing: 2) {
                     Button(action: { stepPeriod(by: -1) }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 36, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     
@@ -259,6 +261,8 @@ struct AnalyticsView: View {
                             .font(.system(size: 15, weight: .heavy))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .contentTransition(.numericText())
+                            .frame(height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     
@@ -266,10 +270,12 @@ struct AnalyticsView: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 36, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 6)
                 .frame(height: 44)
                 .nativeLiquidGlassCapsule(isInteractive: true)
                 .glassMorphID("periodNavCapsule", in: analyticsControlsNamespace)
@@ -958,10 +964,10 @@ struct AnalyticsView: View {
                 }) {
                     Text("Set Budget")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(SpendyColors.elevatedControlForeground)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(Color.white, in: Capsule())
+                        .background(SpendyColors.elevatedControlFill, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -994,7 +1000,7 @@ struct AnalyticsView: View {
                     // Right: Circular Gauge Ring with Percentage
                     ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.12), lineWidth: 6)
+                            .stroke(SpendyColors.separator, lineWidth: 6)
                             .frame(width: 58, height: 58)
                         
                         Circle()

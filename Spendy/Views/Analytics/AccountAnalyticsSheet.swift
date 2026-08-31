@@ -214,6 +214,7 @@ struct AccountAnalyticsSheet: View {
         }
 
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showDatePicker) {
             DateRangePickerSheet(startDate: $customStartDate, endDate: $customEndDate) { start, end in

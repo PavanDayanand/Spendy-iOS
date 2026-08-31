@@ -292,7 +292,7 @@ struct AddAccountSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
             
             // Hue & Brightness Custom sliders
             if showColorPalette {
@@ -334,7 +334,7 @@ struct AddAccountSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
             
             // Row 3: Currency Lock
             HStack {
@@ -356,7 +356,7 @@ struct AddAccountSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
             
             // Row 4: Direct Inline Numeric Balance Input
             HStack {
@@ -381,7 +381,7 @@ struct AddAccountSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color.white.opacity(0.06), in: Capsule())
+            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
         }
     }
 
