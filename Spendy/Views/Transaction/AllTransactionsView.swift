@@ -150,13 +150,13 @@ struct AllTransactionsView: View {
                                         // Section Header: Date (Left) & Group Total (Right)
                                         HStack {
                                             Text(groupTitle)
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(AppTypography.subheadlineSemibold)
                                                 .foregroundStyle(SpendyColors.textSecondary)
                                             
                                             Spacer()
                                             
                                             Text(formattedGroupNetTotal(groupNet))
-                                                .font(.system(size: 14, weight: .medium))
+                                                .spendyNumberFont(size: 14, weight: .medium, tracking: -0.2)
                                                 .foregroundStyle(SpendyColors.textTertiary)
                                         }
                                         .padding(.horizontal, 4)
@@ -414,7 +414,7 @@ struct AllTransactionsView: View {
                 // Title and Account Pill Indicator
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(AppTypography.rowTitle)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                     
@@ -427,13 +427,13 @@ struct AllTransactionsView: View {
                                 .background(acc.color, in: Circle())
                             
                             Text(acc.label)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(AppTypography.footnoteMedium)
                                 .foregroundStyle(SpendyColors.textSecondary)
                                 .lineLimit(1)
                         }
                     } else {
                         Text(tx.date.formattedRelative)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppTypography.footnoteMedium)
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
@@ -448,11 +448,11 @@ struct AllTransactionsView: View {
                     
                     if tx.type == .transfer, let toId = tx.toAccountId, let toAcc = store.accounts.first(where: { $0.id == toId }) {
                         Text("→ \(toAcc.label)")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(AppTypography.captionMedium)
                             .foregroundStyle(SpendyColors.primaryBlue)
                     } else {
                         Text(tx.date.formattedRelative)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(AppTypography.captionMedium)
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }

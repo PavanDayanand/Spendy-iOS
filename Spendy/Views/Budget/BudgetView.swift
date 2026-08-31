@@ -84,7 +84,7 @@ struct BudgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Budget")
-                    .font(.system(size: 38, weight: .heavy))
+                    .font(AppTypography.largeTitle)
                     .foregroundStyle(SpendyColors.textPrimary)
                 
                 Spacer()

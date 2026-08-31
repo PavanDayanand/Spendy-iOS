@@ -489,15 +489,13 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Header Label: "Spent all time"
             Text("Spent all time")
-                .font(.system(size: 15, weight: .medium, design: .default))
+                .font(AppTypography.itemTitle)
                 .foregroundStyle(SpendyColors.textSecondary)
             
             // Large Amount Text (e.g. ₹258,406.00)
             Text(hideBalance ? "••••••" : totalSpentAllTime.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                .font(.system(size: 38, weight: .heavy, design: .default))
-                .tracking(-1.0)
+                .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
                 .foregroundStyle(SpendyColors.textPrimary)
-                .monospacedDigit()
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)

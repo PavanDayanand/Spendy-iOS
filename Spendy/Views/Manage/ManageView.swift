@@ -219,7 +219,7 @@ struct SubscriptionsView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text("Total Monthly")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(AppTypography.footnoteMedium)
                         .foregroundStyle(SpendyColors.textSecondary)
 
                     HStack(spacing: 4) {
@@ -227,7 +227,7 @@ struct SubscriptionsView: View {
                             .fill(SpendyColors.incomeGreen)
                             .frame(width: 5, height: 5)
                         Text("\(activeCount) active")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(AppTypography.eyebrow)
                             .foregroundStyle(SpendyColors.incomeGreen)
                     }
                     .padding(.horizontal, 7)
@@ -243,7 +243,7 @@ struct SubscriptionsView: View {
 
                 HStack(spacing: 6) {
                     Text("\(totalAnnual.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/yr")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AppTypography.captionMedium)
                         .foregroundStyle(SpendyColors.textTertiary)
 
                     if let next = nextDueSubscription {
@@ -252,7 +252,7 @@ struct SubscriptionsView: View {
                             .foregroundStyle(SpendyColors.textTertiary)
 
                         Text(relativeDueText(for: next.nextBillingDate, isTrial: next.isTrial))
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(AppTypography.captionMedium.weight(.semibold))
                             .foregroundStyle(dueColor(for: next.nextBillingDate))
                     }
                 }
@@ -368,7 +368,7 @@ struct SubscriptionsView: View {
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(sub.name)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(AppTypography.rowTitle)
                         .foregroundStyle(
                             sub.isPaused
                                 ? SpendyColors.textTertiary
@@ -378,7 +378,7 @@ struct SubscriptionsView: View {
 
                     HStack(spacing: 6) {
                         Text(sub.cycle.label)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppTypography.footnoteMedium)
                             .foregroundStyle(SpendyColors.textTertiary)
 
                         Text("•")
@@ -386,7 +386,7 @@ struct SubscriptionsView: View {
                             .foregroundStyle(SpendyColors.textTertiary)
 
                         Text(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(AppTypography.footnoteMedium.weight(.semibold))
                             .foregroundStyle(dueColor(for: sub.nextBillingDate))
                     }
                 }

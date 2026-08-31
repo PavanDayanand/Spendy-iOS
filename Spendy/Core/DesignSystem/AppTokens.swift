@@ -66,91 +66,111 @@ public enum AppRadius {
     public static let pill: CGFloat = 999
 }
 
-// MARK: - Typography Tokens (Default Apple System Typography)
+// MARK: - Typography Tokens (Apple HIG Dynamic Type & Scalable System Tokens)
 public enum AppTypography {
-    /// 42pt Heavy — Main Balance / Hero Amount
-    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .default)
+    /// Scalable 42pt Heavy — Main Balance / Hero Amount
+    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .rounded)
     
-    /// 38pt Heavy — Large Metric / Sheet Hero Amount
-    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .default)
+    /// Scalable 38pt Heavy — Large Metric / Sheet Hero Amount
+    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .rounded)
     
-    /// 34pt Heavy — Section Totals & Sub-hero Amounts
-    public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .default)
+    /// Scalable 34pt Heavy — Section Totals & Sub-hero Amounts
+    public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .rounded)
     
-    /// 32pt Heavy — Primary Screen Large Title
-    public static let largeTitle = Font.system(size: 32, weight: .heavy, design: .default)
+    /// Primary Screen Large Title (Scales with .largeTitle)
+    public static let largeTitle = Font.system(.largeTitle, design: .default, weight: .heavy)
     
-    /// 24pt Bold — Card Section Header Title
-    public static let title2 = Font.system(size: 24, weight: .bold, design: .default)
+    /// Card Section Header Title (Scales with .title2)
+    public static let title2 = Font.system(.title2, design: .default, weight: .bold)
     
-    /// 20pt Semibold — Section Headers
-    public static let sectionTitle = Font.system(size: 20, weight: .semibold, design: .default)
+    /// Section Headers (Scales with .title3)
+    public static let sectionTitle = Font.system(.title3, design: .default, weight: .semibold)
     
-    /// 18pt Bold — Modal & Sheet Titles
-    public static let sheetTitle = Font.system(size: 18, weight: .bold, design: .default)
+    /// Modal & Sheet Titles (Scales with .headline / title3)
+    public static let sheetTitle = Font.system(.headline, design: .default, weight: .bold)
     
-    /// 17pt Bold — Card Titles & Major Items
-    public static let bodyBold = Font.system(size: 17, weight: .bold, design: .default)
+    /// Card Titles & Major Items (Scales with .headline)
+    public static let bodyBold = Font.system(.headline, design: .default, weight: .bold)
     
-    /// 16pt Bold — Account / Category Names
-    public static let rowTitle = Font.system(size: 16, weight: .bold, design: .default)
+    /// Account / Category Names (Scales with .callout)
+    public static let rowTitle = Font.system(.callout, design: .default, weight: .bold)
     
-    /// 15pt Bold — Transaction Row Titles
-    public static let itemTitle = Font.system(size: 15, weight: .bold, design: .default)
+    /// Transaction Row Titles (Scales with .subheadline)
+    public static let itemTitle = Font.system(.subheadline, design: .default, weight: .bold)
     
-    /// 14pt Semibold — Subtitle & Pill Controls
-    public static let subheadlineSemibold = Font.system(size: 14, weight: .semibold, design: .default)
+    /// Subtitle & Pill Controls (Scales with .subheadline)
+    public static let subheadlineSemibold = Font.system(.subheadline, design: .default, weight: .semibold)
     
-    /// 13pt Medium — Description & Secondary Labels
-    public static let footnoteMedium = Font.system(size: 13, weight: .medium, design: .default)
+    /// Description & Secondary Labels (Scales with .footnote)
+    public static let footnoteMedium = Font.system(.footnote, design: .default, weight: .medium)
     
-    /// 12pt Medium — Tertiary / Micro Metadata
-    public static let captionMedium = Font.system(size: 12, weight: .medium, design: .default)
+    /// Tertiary / Micro Metadata (Scales with .caption)
+    public static let captionMedium = Font.system(.caption, design: .default, weight: .medium)
     
-    /// 11pt Bold Tracked — Section Header Eyebrows (UPPERCASE)
-    public static let eyebrow = Font.system(size: 11, weight: .bold, design: .default)
+    /// Section Header Eyebrows (UPPERCASE) (Scales with .caption2)
+    public static let eyebrow = Font.system(.caption2, design: .default, weight: .bold)
     
-    /// 10pt Bold Tracked — Micro Badge Text
-    public static let badgeMicro = Font.system(size: 10, weight: .bold, design: .default)
+    /// Micro Badge Text (Scales with .caption2)
+    public static let badgeMicro = Font.system(.caption2, design: .default, weight: .bold)
+    
+    // Financial numbers with .rounded design & monospaced digits
+    public static let numberHero = Font.system(size: 38, weight: .heavy, design: .rounded).monospacedDigit()
+    public static let numberLarge = Font.system(.title2, design: .rounded, weight: .bold).monospacedDigit()
+    public static let numberMedium = Font.system(.headline, design: .rounded, weight: .semibold).monospacedDigit()
+    public static let numberSmall = Font.system(.subheadline, design: .rounded, weight: .medium).monospacedDigit()
+    public static let numberCaption = Font.system(.caption, design: .rounded, weight: .bold).monospacedDigit()
 }
 
 // MARK: - Typography Helpers
 public extension Font {
-    /// Apple default system font helper
-    static func spendyCompact(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        Font.system(size: size, weight: weight, design: .default)
+    /// Apple system font helper with Dynamic Type scaling
+    static func spendyDynamic(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        Font.system(size: size, weight: weight, design: design)
+    }
+    
+    /// Financial number font helper with rounded design and monospaced digits
+    static func spendyNumber(size: CGFloat, weight: Font.Weight = .bold) -> Font {
+        Font.system(size: size, weight: weight, design: .rounded).monospacedDigit()
     }
 }
 
-// MARK: - Number Typography Modifier (Monospaced Digits)
+// MARK: - Number Typography Modifier (Monospaced Digits & Rounded Design)
 public struct SpendyNumberModifier: ViewModifier {
     var size: CGFloat
     var weight: Font.Weight
     var tracking: CGFloat?
+    var design: Font.Design
     
-    public init(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil) {
+    public init(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .rounded) {
         self.size = size
         self.weight = weight
         self.tracking = tracking
+        self.design = design
     }
     
     public func body(content: Content) -> some View {
-        content
-            .font(.system(size: size, weight: weight, design: .default))
+        let text = content
+            .font(.system(size: size, weight: weight, design: design))
             .monospacedDigit()
             .contentTransition(.numericText())
+        
+        if let tracking = tracking {
+            text.tracking(tracking)
+        } else {
+            text
+        }
     }
 }
 
 public extension View {
-    /// Applies numeric font with monospaced digits
-    func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil) -> some View {
-        modifier(SpendyNumberModifier(size: size, weight: weight, tracking: tracking))
+    /// Applies numeric font with monospaced digits and Apple rounded design
+    func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .rounded) -> some View {
+        modifier(SpendyNumberModifier(size: size, weight: weight, tracking: tracking, design: design))
     }
     
-    /// Applies system font with specified size and weight
-    func spendyFont(size: CGFloat, weight: Font.Weight = .regular) -> some View {
-        self.font(.system(size: size, weight: weight, design: .default))
+    /// Applies system font with specified size, weight, and design
+    func spendyFont(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        self.font(.system(size: size, weight: weight, design: design))
     }
 }
 

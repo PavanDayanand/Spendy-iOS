@@ -43,7 +43,7 @@ struct BudgetGaugeView: View {
             // 1. Title & Large Amount (Cleanly Centered Hero)
             VStack(spacing: 6) {
                 Text(periodTitle == "Weekly" ? "Spent this week" : "Spent this month")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(AppTypography.captionMedium.weight(.bold))
                     .tracking(0.5)
                     .foregroundStyle(SpendyColors.textTertiary)
                 
@@ -85,12 +85,12 @@ struct BudgetGaugeView: View {
                 // Centered text & Status Badge inside the arc
                 VStack(spacing: 4) {
                     Text("\(daysLeft)")
-                        .font(.system(size: 34, weight: .bold))
+                        .spendyNumberFont(size: 34, weight: .bold)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .contentTransition(.numericText())
                     
                     Text(daysLeft == 1 ? "day left" : "days left")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(AppTypography.eyebrow)
                         .foregroundStyle(SpendyColors.textTertiary)
                         .textCase(.uppercase)
                         .tracking(0.5)
