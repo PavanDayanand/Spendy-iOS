@@ -56,7 +56,7 @@ struct FloatingCurrencyConverterView: View {
                             Image(systemName: SFIcons.close)
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(SpendyColors.textPrimary)
-                                .frame(width: 40, height: 40)
+                                .frame(width: 44, height: 44)
                                 .nativeLiquidGlassCircle(isInteractive: true)
                                 .glassMorphID("closeButton", in: converterNamespace)
                         }

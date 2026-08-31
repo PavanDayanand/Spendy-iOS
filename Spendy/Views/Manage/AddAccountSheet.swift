@@ -25,9 +25,28 @@ struct AddAccountSheet: View {
     @State private var showIconPickerSheet: Bool = false
     @State private var showColorPalette: Bool = false
     @State private var showDeleteConfirm: Bool = false
+    @State private var showDiscardConfirm: Bool = false
     
     private var isEditing: Bool {
         accountToEdit != nil
+    }
+    
+    private var hasUnsavedChanges: Bool {
+        if let acc = accountToEdit {
+            let openingBalanceDouble = Double(openingBalanceString) ?? 0.0
+            return label != acc.label ||
+                   openingBalanceDouble != acc.openingBalance ||
+                   selectedSymbol != acc.sfSymbol ||
+                   selectedColorHex != acc.colorHex ||
+                   selectedType != acc.type
+        } else {
+            let openingBalanceDouble = Double(openingBalanceString) ?? 0.0
+            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                   openingBalanceDouble != 0.0 ||
+                   selectedSymbol != SFIcons.bankAccount ||
+                   selectedColorHex != "#007AFF" ||
+                   selectedType != .bank
+        }
     }
     
     private var avatarLetter: String {
@@ -95,9 +114,22 @@ struct AddAccountSheet: View {
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
+        }
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
         }
         .confirmationDialog(
 
@@ -143,7 +175,11 @@ struct AddAccountSheet: View {
                 morphID: "closeButton",
                 namespace: headerNamespace
             ) {
-                dismiss()
+                if hasUnsavedChanges {
+                    showDiscardConfirm = true
+                } else {
+                    dismiss()
+                }
             }
             
             Spacer()
@@ -208,6 +244,8 @@ struct AddAccountSheet: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .offset(x: 8, y: -8)

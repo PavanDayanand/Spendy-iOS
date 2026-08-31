@@ -140,6 +140,8 @@ public struct SpendyColorPresetSwatches: View {
                                         .stroke(Color.white, lineWidth: showSliders ? 3 : 0)
                                 )
                                 .shadow(color: Color.white.opacity(0.35), radius: showSliders ? 4 : 0)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -159,6 +161,8 @@ public struct SpendyColorPresetSwatches: View {
                                     }
                                 }
                                 .shadow(color: Color(hex: hex).opacity(0.3), radius: 3, x: 0, y: 2)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }

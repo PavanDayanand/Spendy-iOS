@@ -25,10 +25,22 @@ struct EditBudgetSheet: View {
     @State private var amountString: String = "0"
     @State private var selectedPeriod: BudgetPeriod = .monthly
     @State private var selectedStartDay: Int = 1
+    @State private var showDiscardConfirm: Bool = false
     @Namespace private var budgetSheetNamespace
     
     let isEditing: Bool
     var onSave: (() -> Void)? = nil
+    
+    private var hasUnsavedChanges: Bool {
+        let currentAmt = Double(amountString) ?? 0.0
+        if isEditing && store.budget.isActive {
+            return currentAmt != store.budget.amount ||
+                   selectedPeriod != store.budget.period ||
+                   selectedStartDay != store.budget.startDay
+        } else {
+            return currentAmt > 0
+        }
+    }
     
     private let weekdays = [
         WeekdayItem(id: 2, name: "Mon"),
@@ -94,7 +106,11 @@ struct EditBudgetSheet: View {
                             morphID: "closeButton",
                             namespace: budgetSheetNamespace
                         ) {
-                            dismiss()
+                            if hasUnsavedChanges {
+                                showDiscardConfirm = true
+                            } else {
+                                dismiss()
+                            }
                         }
                         
                         Spacer()
@@ -221,8 +237,21 @@ struct EditBudgetSheet: View {
             }
         }
         .presentationDetents([.fraction(0.85), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .presentationBackground(.ultraThinMaterial)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
+        }
         .onChange(of: selectedPeriod) { oldValue, newValue in
             if newValue == .weekly {
                 selectedStartDay = 2 // Default to Monday

@@ -92,7 +92,7 @@ struct TransactionDetailSheet: View {
             }
         }
         .presentationDetents([.height(480), .medium])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
 

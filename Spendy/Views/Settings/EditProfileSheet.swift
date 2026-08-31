@@ -31,7 +31,18 @@ struct EditProfileSheet: View {
     @State private var sliderBrightness: Double = 0.45
     
     @State private var showCurrencyPicker: Bool = false
+    @State private var showDiscardConfirm: Bool = false
     @Namespace private var profileNamespace
+    
+    private var hasUnsavedChanges: Bool {
+        let originalName = store.userName.isEmpty ? "Personal" : store.userName
+        let originalIcon = store.profileIconSymbol ?? "person.fill"
+        let originalColor = store.topGradientColorHex
+        return tempName != originalName ||
+               selectedImageData != store.profileImageData ||
+               selectedIconSymbol != originalIcon ||
+               selectedColorHex != originalColor
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -96,7 +107,20 @@ struct EditProfileSheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
+        }
         // MARK: - Modals & Pickers
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(
@@ -158,7 +182,11 @@ struct EditProfileSheet: View {
                     morphID: "closeButton",
                     namespace: profileNamespace
                 ) {
-                    dismiss()
+                    if hasUnsavedChanges {
+                        showDiscardConfirm = true
+                    } else {
+                        dismiss()
+                    }
                 }
                 
                 Spacer()
@@ -221,6 +249,8 @@ struct EditProfileSheet: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .offset(x: 2, y: -2)

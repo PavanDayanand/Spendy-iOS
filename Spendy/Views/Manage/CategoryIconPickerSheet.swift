@@ -320,7 +320,7 @@ struct CategoryIconPickerSheet: View {
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
     

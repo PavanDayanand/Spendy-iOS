@@ -17,9 +17,18 @@ struct AddFolderSheet: View {
     @State private var name: String = ""
     @State private var type: TransactionType = .expense
     @State private var showDeleteConfirm: Bool = false
+    @State private var showDiscardConfirm: Bool = false
     
     private var isEditing: Bool {
         folderToEdit != nil
+    }
+    
+    private var hasUnsavedChanges: Bool {
+        if let folder = folderToEdit {
+            return name != folder.name || type != folder.type
+        } else {
+            return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
     
     init(folderToEdit: Folder? = nil, defaultType: TransactionType = .expense) {
@@ -82,7 +91,20 @@ struct AddFolderSheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
+        }
         .confirmationDialog(
             "Delete Folder?",
             isPresented: $showDeleteConfirm,
@@ -117,7 +139,11 @@ struct AddFolderSheet: View {
                 morphID: "closeButton",
                 namespace: headerNamespace
             ) {
-                dismiss()
+                if hasUnsavedChanges {
+                    showDiscardConfirm = true
+                } else {
+                    dismiss()
+                }
             }
             
             Spacer()

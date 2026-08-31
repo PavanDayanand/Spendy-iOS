@@ -235,7 +235,7 @@ struct SubscriptionQuickActionSheet: View {
             }
         }
         .presentationDetents([.height(540), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
     

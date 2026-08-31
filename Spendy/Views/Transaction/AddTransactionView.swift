@@ -46,6 +46,7 @@ struct AddTransactionView: View {
     
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
+    @State private var showDiscardConfirmation: Bool = false
     
     private var isEditing: Bool {
         transactionToEdit != nil
@@ -53,6 +54,19 @@ struct AddTransactionView: View {
     
     private var currentAmountValue: Double {
         Double(amountString) ?? 0.0
+    }
+    
+    private var hasUnsavedChanges: Bool {
+        if let existing = transactionToEdit {
+            return currentAmountValue != existing.amount ||
+                   note != (existing.notes ?? "") ||
+                   selectedCategoryId != existing.categoryId ||
+                   fromAccountId != existing.accountId ||
+                   toAccountId != (existing.toAccountId ?? "") ||
+                   type != existing.type
+        } else {
+            return currentAmountValue > 0 || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
     
     private var selectedCategory: Category? {
@@ -155,7 +169,20 @@ struct AddTransactionView: View {
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .category:
@@ -190,7 +217,11 @@ struct AddTransactionView: View {
                 morphID: "closeButton",
                 namespace: transactionNamespace
             ) {
-                dismiss()
+                if hasUnsavedChanges {
+                    showDiscardConfirmation = true
+                } else {
+                    dismiss()
+                }
             }
             
             Spacer()
@@ -848,7 +879,7 @@ struct CategoryPickerDrawer: View {
                 .padding(.bottom, 16)
         }
         .presentationDetents([.fraction(0.88), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
     
@@ -1042,7 +1073,7 @@ struct AccountPickerDrawer: View {
             }
         }
         .presentationDetents([.fraction(0.55), .medium])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
 }
@@ -1156,8 +1187,10 @@ struct CustomCalendarDrawer: View {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(SpendyColors.textPrimary)
-                                .frame(width: 32, height: 32)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                         
                         Button(action: {
                             if let next = calendar.date(byAdding: .month, value: 1, to: displayedMonth) {
@@ -1168,8 +1201,10 @@ struct CustomCalendarDrawer: View {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(SpendyColors.textPrimary)
-                                .frame(width: 32, height: 32)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 22)
@@ -1187,7 +1222,7 @@ struct CustomCalendarDrawer: View {
                 .padding(.horizontal, 14)
                 
                 // Calendar Days Grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 14) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                     ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, dayDate in
                         if let day = dayDate {
                             let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
@@ -1210,6 +1245,7 @@ struct CustomCalendarDrawer: View {
                                             .font(.system(size: 16, weight: isSelected ? .bold : .medium))
                                             .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                                     }
+                                    .frame(width: 44, height: 44)
                                     
                                     if isSelected {
                                         Circle()
@@ -1217,11 +1253,12 @@ struct CustomCalendarDrawer: View {
                                             .frame(width: 4, height: 4)
                                     }
                                 }
+                                .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         } else {
                             Color.clear
-                                .frame(height: 38)
+                                .frame(width: 44, height: 44)
                         }
                     }
                 }
@@ -1231,7 +1268,7 @@ struct CustomCalendarDrawer: View {
             }
         }
         .presentationDetents([.fraction(0.68)])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
     }
     

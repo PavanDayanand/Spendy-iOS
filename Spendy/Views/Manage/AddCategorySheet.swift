@@ -25,6 +25,7 @@ struct AddCategorySheet: View {
     @State private var showIconPickerSheet: Bool = false
     @State private var showColorPalette: Bool = false
     @State private var showDeleteConfirm: Bool = false
+    @State private var showDiscardConfirm: Bool = false
     
     // Sliders state for Custom Color Picker (Image 2 style)
     @State private var sliderHue: Double = 0.65
@@ -41,6 +42,14 @@ struct AddCategorySheet: View {
     
     private var isEditing: Bool {
         categoryToEdit != nil
+    }
+    
+    private var hasUnsavedChanges: Bool {
+        if let cat = categoryToEdit {
+            return label != cat.label || type != cat.type || selectedFolder != (cat.folder.isEmpty ? "Uncategorized" : cat.folder) || selectedSymbol != cat.sfSymbol || selectedColorHex != cat.colorHex
+        } else {
+            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSymbol != "tag.fill" || selectedColorHex != "#FFFFFF"
+        }
     }
     
     init(categoryToEdit: Category? = nil, defaultType: TransactionType = .expense, defaultFolder: String? = nil) {
@@ -122,9 +131,22 @@ struct AddCategorySheet: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
+        }
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
         }
         .confirmationDialog(
             "Delete Category?",
@@ -160,7 +182,11 @@ struct AddCategorySheet: View {
                 morphID: "closeButton",
                 namespace: headerNamespace
             ) {
-                dismiss()
+                if hasUnsavedChanges {
+                    showDiscardConfirm = true
+                } else {
+                    dismiss()
+                }
             }
             
             Spacer()
@@ -288,6 +314,8 @@ struct AddCategorySheet: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .offset(x: 2, y: -2)

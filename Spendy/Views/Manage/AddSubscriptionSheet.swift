@@ -26,6 +26,7 @@ struct AddSubscriptionSheet: View {
     // UI states
     @State private var showIconPickerSheet: Bool = false
     @State private var showDeleteConfirmation: Bool = false
+    @State private var showDiscardConfirmation: Bool = false
     @State private var showColorPalette: Bool = false
     @State private var sliderHue: Double = 0.65
     @State private var sliderBrightness: Double = 0.45
@@ -33,6 +34,26 @@ struct AddSubscriptionSheet: View {
     @Namespace private var headerNamespace
 
     var isEditing: Bool { subscriptionToEdit != nil }
+
+    private var hasUnsavedChanges: Bool {
+        if let sub = subscriptionToEdit {
+            let amountDouble = Double(amountString) ?? 0.0
+            return name != sub.name ||
+                   amountDouble != sub.amount ||
+                   cycle != sub.cycle ||
+                   isTrial != sub.isTrial ||
+                   selectedAccountId != sub.accountId ||
+                   selectedSymbol != sub.sfSymbol ||
+                   selectedColorHex != sub.colorHex
+        } else {
+            let amountDouble = Double(amountString) ?? 0.0
+            return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                   amountDouble != 0.0 ||
+                   selectedSymbol != SFIcons.subscriptions ||
+                   selectedColorHex != "#5856D6" ||
+                   isTrial != false
+        }
+    }
 
     private var selectedAccount: Account? {
         store.accounts.first { $0.id == selectedAccountId }
@@ -107,10 +128,23 @@ struct AddSubscriptionSheet: View {
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
                 .presentationBackground(SpendyColors.appBackground)
+        }
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them?")
         }
         .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
@@ -138,7 +172,11 @@ struct AddSubscriptionSheet: View {
                 morphID: "closeButton",
                 namespace: headerNamespace
             ) {
-                dismiss()
+                if hasUnsavedChanges {
+                    showDiscardConfirmation = true
+                } else {
+                    dismiss()
+                }
             }
 
             Spacer()
@@ -202,6 +240,8 @@ struct AddSubscriptionSheet: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .offset(x: 2, y: -2)

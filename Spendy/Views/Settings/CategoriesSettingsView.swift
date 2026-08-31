@@ -273,6 +273,8 @@ struct CategoriesSettingsView: View {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.system(size: 20))
                                             .foregroundStyle(SpendyColors.expenseRed)
+                                            .frame(width: 44, height: 44)
+                                            .contentShape(Rectangle())
                                     }
                                 } else {
                                     Image(systemName: "chevron.right")

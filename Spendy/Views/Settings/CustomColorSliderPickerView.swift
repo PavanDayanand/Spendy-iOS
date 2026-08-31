@@ -36,6 +36,8 @@ struct CustomColorSliderPickerView: View {
                                     .stroke(Color.white, lineWidth: showSliders ? 3 : 0)
                             )
                             .shadow(color: Color.white.opacity(0.35), radius: showSliders ? 4 : 0)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     
@@ -49,6 +51,8 @@ struct CustomColorSliderPickerView: View {
                                 .fill(Color(hex: hex))
                                 .frame(width: 38, height: 38)
                                 .shadow(color: Color(hex: hex).opacity(0.3), radius: 3, x: 0, y: 2)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }

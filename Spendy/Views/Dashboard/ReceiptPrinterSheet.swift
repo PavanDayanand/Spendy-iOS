@@ -115,8 +115,8 @@ struct ReceiptPrinterSheet: View {
                                     Image(systemName: "chevron.left")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundStyle(.white)
-                                        .frame(width: 36, height: 36)
-                                        .contentShape(Circle())
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 
@@ -132,8 +132,8 @@ struct ReceiptPrinterSheet: View {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundStyle(.white)
-                                        .frame(width: 36, height: 36)
-                                        .contentShape(Circle())
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(selectedMonthOffset >= 0)
