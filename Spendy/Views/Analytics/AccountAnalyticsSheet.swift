@@ -223,6 +223,7 @@ struct AccountAnalyticsSheet: View {
         }
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView(defaultAccountId: account.id)
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingAccountToEdit) { acc in
             AddAccountSheet(accountToEdit: acc)
@@ -249,6 +250,7 @@ struct AccountAnalyticsSheet: View {
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
+                .presentationBackground(SpendyColors.appBackground)
         }
     }
 

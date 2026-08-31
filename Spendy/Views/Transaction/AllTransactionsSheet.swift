@@ -122,6 +122,7 @@ struct AllTransactionsSheet: View {
             }
             .sheet(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
+                    .presentationBackground(SpendyColors.appBackground)
             }
         }
     }

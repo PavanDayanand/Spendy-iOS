@@ -49,6 +49,7 @@ struct MainTabView: View {
             .sheet(isPresented: $showAddTransaction) {
                 AddTransactionView()
                     .matchedTransitionSource(id: "compose-tab", in: composeNamespace)
+                    .presentationBackground(SpendyColors.appBackground)
             }
         } else {
             ZStack(alignment: .bottom) {
@@ -79,6 +80,7 @@ struct MainTabView: View {
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .sheet(isPresented: $showAddTransaction) {
                 AddTransactionView()
+                    .presentationBackground(SpendyColors.appBackground)
             }
         }
     }

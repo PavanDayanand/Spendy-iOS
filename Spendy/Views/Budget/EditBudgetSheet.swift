@@ -148,13 +148,10 @@ struct EditBudgetSheet: View {
                 // Mode Selectors Row: [ Monthly / Weekly ] + [ Starts: 1st ⌄ ]
                 SpendyGlassEffectContainer(spacing: 12) {
                     HStack(spacing: 12) {
-                        // Monthly / Weekly Toggle Capsule (44pt height)
-                        GlassSegmentedPicker(
-                            selection: $selectedPeriod,
-                            items: [.monthly, .weekly],
-                            titleFor: { $0.title }
+                        // Monthly / Weekly Expanding Toggle Capsule (44pt height, M / W icons)
+                        SpendyBudgetPeriodToggle(
+                            selection: $selectedPeriod
                         )
-                        .glassMorphID("periodCapsule", in: budgetSheetNamespace)
                         
                         Spacer()
                         

@@ -66,13 +66,13 @@ struct Category: Identifiable, Codable, Hashable {
         Category(id: "coffee", label: "Coffee & Cafés", sfSymbol: SFIcons.coffee, colorHex: "#A2845E", type: .expense, folder: "Everyday Spending", order: 3),
         
         // Transport
-        Category(id: "public_transport", label: "Public Transport", sfSymbol: "tram.fill.tunnel", colorHex: "#007AFF", type: .expense, folder: "Transport", order: 4),
+        Category(id: "public_transport", label: "Public Transport", sfSymbol: SFIcons.publicTransport, colorHex: "#007AFF", type: .expense, folder: "Transport", order: 4),
         Category(id: "fuel", label: "Fuel", sfSymbol: SFIcons.fuel, colorHex: "#FF9500", type: .expense, folder: "Transport", order: 5),
         Category(id: "taxi", label: "Taxi & Ride-hailing", sfSymbol: SFIcons.transport, colorHex: "#FFCC00", type: .expense, folder: "Transport", order: 6),
-        Category(id: "car_maintenance", label: "Car Maintenance", sfSymbol: "gearshape.2.fill", colorHex: "#8E8E93", type: .expense, folder: "Transport", order: 7),
+        Category(id: "car_maintenance", label: "Car Maintenance", sfSymbol: SFIcons.carMaintenance, colorHex: "#8E8E93", type: .expense, folder: "Transport", order: 7),
         
         // Living
-        Category(id: "rent", label: "Rent", sfSymbol: SFIcons.housing, colorHex: "#FF3B30", type: .expense, folder: "Living", order: 8),
+        Category(id: "rent", label: "Rent", sfSymbol: SFIcons.rent, colorHex: "#FF3B30", type: .expense, folder: "Living", order: 8),
         Category(id: "utilities", label: "Utilities", sfSymbol: SFIcons.utilities, colorHex: "#FFD60A", type: .expense, folder: "Living", order: 9),
         Category(id: "subscriptions", label: "Subscriptions", sfSymbol: SFIcons.subscriptions, colorHex: "#AF52DE", type: .expense, folder: "Living", order: 10),
         Category(id: "insurance", label: "Insurance", sfSymbol: SFIcons.insurance, colorHex: "#0A84FF", type: .expense, folder: "Living", order: 11),
@@ -95,7 +95,7 @@ struct Category: Identifiable, Codable, Hashable {
         // Salary & Career
         Category(id: "paycheck", label: "Salary / Paycheck", sfSymbol: SFIcons.paycheck, colorHex: "#34C759", type: .income, folder: "Salary & Career", order: 0),
         Category(id: "freelance", label: "Freelance", sfSymbol: SFIcons.freelance, colorHex: "#007AFF", type: .income, folder: "Salary & Career", order: 1),
-        Category(id: "bonus", label: "Bonus", sfSymbol: SFIcons.gift, colorHex: "#FFD60A", type: .income, folder: "Salary & Career", order: 2),
+        Category(id: "bonus", label: "Bonus", sfSymbol: SFIcons.bonus, colorHex: "#FFD60A", type: .income, folder: "Salary & Career", order: 2),
         Category(id: "side_hustle", label: "Side Hustle", sfSymbol: SFIcons.sideHustle, colorHex: "#FF9500", type: .income, folder: "Salary & Career", order: 3),
         
         // Investments & Other

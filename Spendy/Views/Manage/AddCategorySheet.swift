@@ -113,6 +113,14 @@ struct AddCategorySheet: View {
             .onAppear {
                 syncSlidersFromHex(selectedColorHex)
             }
+            .onChange(of: type) { _, newType in
+                let folders = newType == .expense
+                    ? ["Everyday Spending", "Transport", "Living", "Personal & Wellness"] + store.customFolders.filter { $0.type == .expense }.map { $0.name } + ["Uncategorized"]
+                    : ["Salary & Career", "Investments & Other"] + store.customFolders.filter { $0.type == .income }.map { $0.name } + ["Uncategorized"]
+                if !folders.contains(selectedFolder) {
+                    selectedFolder = newType == .expense ? "Everyday Spending" : "Salary & Career"
+                }
+            }
             
             // Bottom Fixed Action Button Container (Full Width)
             VStack(spacing: 0) {
@@ -218,66 +226,12 @@ struct AddCategorySheet: View {
         }
     }
     
-    // MARK: - Type Toggle Capsule (Restored Classic Toggle)
+    // MARK: - Type Toggle Capsule (Expanding Reusable Segmented Control)
     private var typeToggleCapsule: some View {
-        HStack(spacing: 4) {
-            typeTabButton(typeOption: .expense, title: "Expense", icon: "arrow.up.right")
-            typeTabButton(typeOption: .income, title: "Income", icon: "arrow.down.left")
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background {
-            Capsule()
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay {
-                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
-    }
-    
-    @ViewBuilder
-    private func typeTabButton(typeOption: TransactionType, title: String, icon: String) -> some View {
-        let isSelected = type == typeOption
-        
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                type = typeOption
-                let folders = typeOption == .expense
-                    ? ["Everyday Spending", "Transport", "Living", "Personal & Wellness"] + store.customFolders.filter { $0.type == .expense }.map { $0.name } + ["Uncategorized"]
-                    : ["Salary & Career", "Investments & Other"] + store.customFolders.filter { $0.type == .income }.map { $0.name } + ["Uncategorized"]
-                if !folders.contains(selectedFolder) {
-                    selectedFolder = typeOption == .expense ? "Everyday Spending" : "Salary & Career"
-                }
-            }
-            HapticsManager.shared.trigger(.selection)
-        }) {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary.opacity(0.25))
-                        .frame(width: 22, height: 22)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(isSelected ? SpendyColors.elevatedControlFill : SpendyColors.textSecondary)
-                }
-                
-                Text(title)
-                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
-            }
-            .padding(.horizontal, isSelected ? 14 : 10)
-            .frame(height: 36)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(SpendyColors.elevatedControlFill)
-                        .glassMorphID("categoryTypePill", in: headerNamespace)
-                        .shadow(color: Color.black.opacity(0.18), radius: 4, y: 2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
+        SpendyTransactionTypeToggle(
+            selection: $type,
+            availableTypes: [.expense, .income]
+        )
     }
     
     // MARK: - Avatar Hero Section

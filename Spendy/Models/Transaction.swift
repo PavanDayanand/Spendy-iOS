@@ -43,6 +43,7 @@ struct Transaction: Identifiable, Codable, Hashable {
     var id: UUID
     var title: String
     var amount: Double
+    var toAmount: Double?
     var type: TransactionType
     var categoryId: String
     var accountId: String
@@ -55,6 +56,7 @@ struct Transaction: Identifiable, Codable, Hashable {
         id: UUID = UUID(),
         title: String,
         amount: Double,
+        toAmount: Double? = nil,
         type: TransactionType = .expense,
         categoryId: String,
         accountId: String,
@@ -66,6 +68,7 @@ struct Transaction: Identifiable, Codable, Hashable {
         self.id = id
         self.title = title
         self.amount = amount
+        self.toAmount = toAmount
         self.type = type
         self.categoryId = categoryId
         self.accountId = accountId

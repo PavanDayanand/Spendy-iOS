@@ -356,6 +356,7 @@ struct CategoryAnalyticsSheet: View {
         }
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView(defaultCategoryId: category.id)
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingCategoryToEdit) { cat in
             AddCategorySheet(categoryToEdit: cat)
@@ -383,6 +384,7 @@ struct CategoryAnalyticsSheet: View {
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
+                .presentationBackground(SpendyColors.appBackground)
         }
     }
     

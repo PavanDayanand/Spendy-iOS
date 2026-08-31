@@ -28,19 +28,19 @@ enum AppTab: String, CaseIterable, Identifiable {
 
     var sfSymbol: String {
         switch self {
-        case .home: return "house"
-        case .analytics: return "chart.bar"
-        case .budget: return "dollarsign.circle"
-        case .quickAdd: return "plus"
+        case .home: return SFIcons.tabDashboardOutline
+        case .analytics: return SFIcons.tabAnalyticsOutline
+        case .budget: return SFIcons.tabBudgetOutline
+        case .quickAdd: return SFIcons.quickAdd
         }
     }
 
     var activeSfSymbol: String {
         switch self {
-        case .home: return "house.fill"
-        case .analytics: return "chart.bar.fill"
-        case .budget: return "dollarsign.circle.fill"
-        case .quickAdd: return "plus"
+        case .home: return SFIcons.tabDashboard
+        case .analytics: return SFIcons.tabAnalytics
+        case .budget: return SFIcons.tabBudget
+        case .quickAdd: return SFIcons.quickAdd
         }
     }
 }

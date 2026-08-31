@@ -104,7 +104,7 @@ struct TransactionDetailSheet: View {
         HStack {
             // Close Button ✕ — matches home page size: 44
             GlassCircleButton(
-                icon: "xmark",
+                icon: SFIcons.close,
                 size: 44,
                 iconSize: 16,
                 iconWeight: .bold,
@@ -122,7 +122,7 @@ struct TransactionDetailSheet: View {
             // Edit ✎ + Delete 🗑 — matches home page size: 44
             GlassButtonGroup(spacing: 10) {
                 GlassCircleButton(
-                    icon: "pencil",
+                    icon: SFIcons.edit,
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
@@ -136,7 +136,7 @@ struct TransactionDetailSheet: View {
                 }
                 
                 GlassCircleButton(
-                    icon: "trash.fill",
+                    icon: SFIcons.delete,
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,

@@ -175,15 +175,12 @@ struct AddFolderSheet: View {
         }
     }
     
-    // MARK: - Type Toggle Capsule (Exact Match with AddCategorySheet)
+    // MARK: - Type Toggle Capsule (Expanding Reusable Segmented Control)
     private var typeToggleCapsule: some View {
-        GlassSegmentedPicker(
+        SpendyTransactionTypeToggle(
             selection: $type,
-            items: [.expense, .income],
-            titleFor: { $0.title },
-            iconFor: { $0.sfSymbol }
+            availableTypes: [.expense, .income]
         )
-        .glassMorphID("folderTypePill", in: headerNamespace)
     }
     
     // MARK: - Avatar Hero Section (Matching AddCategorySheet)

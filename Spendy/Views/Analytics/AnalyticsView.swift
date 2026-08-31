@@ -159,6 +159,7 @@ struct AnalyticsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showAddTransaction) {
                 AddTransactionView()
+                    .presentationBackground(SpendyColors.appBackground)
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet

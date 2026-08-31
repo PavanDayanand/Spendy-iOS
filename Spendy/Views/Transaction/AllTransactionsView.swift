@@ -202,6 +202,7 @@ struct AllTransactionsView: View {
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView()
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingTransaction, onDismiss: {
             if let last = lastInspectedTransaction {
@@ -215,6 +216,7 @@ struct AllTransactionsView: View {
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
+                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $inspectingTransaction, onDismiss: {
             if let pending = pendingEditTransaction {

@@ -6,6 +6,8 @@
     {
       "layers" : [
         {
+          "blend-mode" : "normal",
+          "fill" : "none",
           "glass-specializations" : [
             {
               "appearance" : "dark",
@@ -15,6 +17,7 @@
           "hidden" : false,
           "image-name" : "Group 10 3.png",
           "name" : "Group 10 3",
+          "opacity" : 1,
           "position" : {
             "scale" : 2.23,
             "translation-in-points" : [

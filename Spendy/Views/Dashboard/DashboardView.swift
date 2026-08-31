@@ -295,6 +295,7 @@ struct DashboardView: View {
                 }
             }) { tx in
                 AddTransactionView(transactionToEdit: tx)
+                    .presentationBackground(SpendyColors.appBackground)
             }
             .sheet(item: $inspectingTransaction, onDismiss: {
                 if let pending = pendingEditTransaction {
@@ -411,7 +412,7 @@ struct DashboardView: View {
                 
                 // 3. Subscriptions Hub Button
                 GlassCircleButton(
-                    icon: "repeat",
+                    icon: SFIcons.subscriptions,
                     size: 44,
                     iconSize: 16,
                     accessibilityLabel: "Subscriptions",

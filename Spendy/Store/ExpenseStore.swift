@@ -330,7 +330,7 @@ final class ExpenseStore {
             case .transfer:
                 balances[t.accountId, default: 0] -= t.amount
                 if let toId = t.toAccountId {
-                    balances[toId, default: 0] += t.amount
+                    balances[toId, default: 0] += (t.toAmount ?? t.amount)
                 }
             }
         }
