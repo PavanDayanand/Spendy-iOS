@@ -248,15 +248,18 @@ struct DashboardView: View {
                 }
                 
                 if showCurrencyConverter {
-                    Color.black.opacity(0.35)
-                        .ignoresSafeArea()
-                        .transition(.opacity)
-                        .onTapGesture {
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                                showCurrencyConverter = false
-                            }
+                    Color(uiColor: .dynamic(
+                        light: UIColor(white: 0.0, alpha: 0.25),
+                        dark: UIColor(white: 0.0, alpha: 0.55)
+                    ))
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+                            showCurrencyConverter = false
                         }
+                    }
                     
                     GeometryReader { geometry in
                         VStack {

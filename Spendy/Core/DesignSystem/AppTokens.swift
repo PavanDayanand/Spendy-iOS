@@ -97,9 +97,11 @@ public enum AppTypography {
     
     /// Transaction Row Titles (Scales with .subheadline)
     public static let itemTitle = Font.system(.subheadline, design: .default, weight: .bold)
+    public static let subheadlineBold = Font.system(.subheadline, design: .default, weight: .bold)
     
     /// Subtitle & Pill Controls (Scales with .subheadline)
     public static let subheadlineSemibold = Font.system(.subheadline, design: .default, weight: .semibold)
+    public static let subheadline = Font.system(.subheadline, design: .default, weight: .regular)
     
     /// Description & Secondary Labels (Scales with .footnote)
     public static let footnoteMedium = Font.system(.footnote, design: .default, weight: .medium)

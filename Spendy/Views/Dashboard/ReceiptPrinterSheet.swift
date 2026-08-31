@@ -64,7 +64,7 @@ struct ReceiptPrinterSheet: View {
                                 icon: "xmark",
                                 size: 44,
                                 iconSize: 14,
-                                foregroundColor: .white,
+                                foregroundColor: SpendyColors.textPrimary,
                                 haptic: .selection,
                                 accessibilityLabel: "Close",
                                 morphID: "closeButton",
@@ -76,8 +76,8 @@ struct ReceiptPrinterSheet: View {
                             Spacer()
                             
                             Text("Monthly Receipt")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.white)
+                                .font(AppTypography.bodyBold)
+                                .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
                             
@@ -90,7 +90,7 @@ struct ReceiptPrinterSheet: View {
                                         .fill(SpendyColors.cardBackground)
                                     Image(systemName: "square.and.arrow.up")
                                         .font(.system(size: 15, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                 }
                                 .frame(width: 44, height: 44)
                                 .overlay {
@@ -114,15 +114,15 @@ struct ReceiptPrinterSheet: View {
                                 }) {
                                     Image(systemName: "chevron.left")
                                         .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 
                                 Text(monthTitle)
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .font(AppTypography.subheadlineBold)
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                     .frame(minWidth: 140)
                                 
                                 Button(action: {
@@ -131,7 +131,7 @@ struct ReceiptPrinterSheet: View {
                                 }) {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }
@@ -147,7 +147,7 @@ struct ReceiptPrinterSheet: View {
                         
                         // Thermal Receipt Visual Card
                         receiptCardView
-                            .shadow(color: Color.black.opacity(0.35), radius: 16, y: 8)
+                            .shadow(color: Color.black.opacity(0.20), radius: 16, y: 8)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
@@ -156,6 +156,8 @@ struct ReceiptPrinterSheet: View {
             .navigationBarHidden(true)
         }
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(SpendyColors.appBackground)
     }
 
     
@@ -167,8 +169,8 @@ struct ReceiptPrinterSheet: View {
                 Image("SpendyLogo")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 42, height: 42)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 
                 Text("SPENDY EXPENSE REPORT")
                     .font(.system(size: 14, weight: .black, design: .monospaced))

@@ -543,29 +543,34 @@ struct SettingsView: View {
     // MARK: - 5. Footer App Branding
     private var footerSection: some View {
         VStack(spacing: 12) {
-            Text("made with ❤️ by Pavan")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-
             Image("SpendyLogo")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 1)
+                }
+                .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
 
             VStack(spacing: 2) {
                 Text("Spendy")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(AppTypography.bodyBold)
                     .foregroundStyle(SpendyColors.textPrimary)
 
                 Text("Version 2.0.0 • Liquid Glass")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppTypography.captionMedium)
                     .foregroundStyle(SpendyColors.textTertiary)
+                
+                Text("made with ❤️ by Pavan")
+                    .font(AppTypography.captionMedium)
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .padding(.top, 4)
             }
         }
-        .padding(.top, 12)
-        .padding(.bottom, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 24)
     }
 
     // MARK: - Helper Row Items (Apple Minimal Monochrome)

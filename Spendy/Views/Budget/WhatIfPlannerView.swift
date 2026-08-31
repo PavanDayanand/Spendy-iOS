@@ -22,11 +22,11 @@ struct WhatIfPlannerView: View {
             // Header
             HStack {
                 Text("Daily spend")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppTypography.subheadlineSemibold)
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
                 Text(customDailySpend.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 17, weight: .bold))
+                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                     .foregroundStyle(SpendyColors.textPrimary)
             }
             
@@ -43,7 +43,7 @@ struct WhatIfPlannerView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Projected expenses")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AppTypography.captionMedium)
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     let projectedExp = store.customProjectedExpenses(dailySpend: customDailySpend)
@@ -56,7 +56,7 @@ struct WhatIfPlannerView: View {
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Cycle-end balance")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AppTypography.captionMedium)
                         .foregroundStyle(SpendyColors.textTertiary)
                     
                     let endBalance = store.customProjectedEndBalance(dailySpend: customDailySpend)

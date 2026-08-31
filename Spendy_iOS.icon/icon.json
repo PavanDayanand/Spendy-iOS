@@ -6,6 +6,13 @@
     {
       "layers" : [
         {
+          "glass-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : false
+            }
+          ],
+          "hidden" : false,
           "image-name" : "Group 10 3.png",
           "name" : "Group 10 3",
           "position" : {

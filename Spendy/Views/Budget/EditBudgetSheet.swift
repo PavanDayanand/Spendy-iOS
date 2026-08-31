@@ -88,8 +88,8 @@ struct EditBudgetSheet: View {
     
     var body: some View {
         ZStack {
-            // Dark Base Background
-            Color.black
+            // Adaptive Base Background
+            SpendyColors.appBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -100,7 +100,7 @@ struct EditBudgetSheet: View {
                             icon: "xmark",
                             size: 44,
                             iconSize: 15,
-                            foregroundColor: .white,
+                            foregroundColor: SpendyColors.textPrimary,
                             haptic: .selection,
                             accessibilityLabel: "Close",
                             morphID: "closeButton",
@@ -116,8 +116,8 @@ struct EditBudgetSheet: View {
                         Spacer()
                         
                         Text("Edit Budget")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(AppTypography.bodyBold)
+                            .foregroundStyle(SpendyColors.textPrimary)
                         
                         Spacer()
                         
@@ -132,12 +132,12 @@ struct EditBudgetSheet: View {
                 // Amount Display Area
                 VStack(spacing: 6) {
                     Text("Budget Limit")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#8E8E93"))
+                        .font(AppTypography.subheadlineSemibold)
+                        .foregroundStyle(SpendyColors.textSecondary)
                     
                     Text("\(store.currencySymbol)\(formattedAmountDisplay)")
                         .spendyNumberFont(size: 44, weight: .heavy, tracking: -1.2)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }
@@ -197,7 +197,7 @@ struct EditBudgetSheet: View {
                                 Text("Starts: \(startDayLabel)")
                                     .font(.system(size: 13, weight: .bold))
                             }
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.textPrimary)
                             .padding(.horizontal, 16)
                             .frame(height: 44)
                             .nativeLiquidGlassCapsule(isInteractive: true)
@@ -213,11 +213,11 @@ struct EditBudgetSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
                 
-                // Save Button (Dark Mode Apple styling)
+                // Save Button (Adaptive Apple styling)
                 Button(action: handleSave) {
                     Text("Save Budget")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .font(AppTypography.bodyBold)
+                        .foregroundStyle(SpendyColors.inverseText)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background {
@@ -239,7 +239,7 @@ struct EditBudgetSheet: View {
         .presentationDetents([.fraction(0.85), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .presentationBackground(.ultraThinMaterial)
+        .presentationBackground(SpendyColors.appBackground)
         .confirmationDialog(
             "Discard Changes?",
             isPresented: $showDiscardConfirm,
