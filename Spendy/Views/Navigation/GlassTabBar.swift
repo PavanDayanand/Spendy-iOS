@@ -28,6 +28,15 @@ enum AppTab: String, CaseIterable, Identifiable {
 
     var sfSymbol: String {
         switch self {
+        case .home: return "house"
+        case .analytics: return "chart.bar"
+        case .budget: return "dollarsign.circle"
+        case .quickAdd: return "plus"
+        }
+    }
+
+    var activeSfSymbol: String {
+        switch self {
         case .home: return "house.fill"
         case .analytics: return "chart.bar.fill"
         case .budget: return "dollarsign.circle.fill"
@@ -124,7 +133,7 @@ struct GlassTabBar: View {
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
             }
         } else {
             fallbackContent
@@ -156,7 +165,7 @@ struct GlassTabBar: View {
             }
             .buttonStyle(LiquidScaleButtonStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
     }
 }
 
@@ -218,10 +227,12 @@ private extension GlassTabBar {
                         let isSelected = selectedTab == tab
 
                         VStack(spacing: 3) {
-                            Image(systemName: tab.sfSymbol)
+                            Image(systemName: isSelected ? tab.activeSfSymbol : tab.sfSymbol)
                                 .font(.system(size: 19, weight: isSelected ? .bold : .regular))
                                 .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
-                                .scaleEffect(isSelected && isDragging ? 1.15 : 1.0)
+                                .scaleEffect(isSelected && isDragging ? 1.15 : (isSelected ? 1.05 : 1.0))
+                                .contentTransition(.symbolEffect(.replace.downUp))
+                                .symbolEffect(.bounce.byLayer, value: isSelected)
 
                             Text(tab.label)
                                 .font(.system(size: 10, weight: isSelected ? .bold : .medium, design: .default))

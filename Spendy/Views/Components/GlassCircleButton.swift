@@ -29,6 +29,7 @@ struct GlassCircleDefaultIconView: View {
         Image(systemName: icon)
             .font(.system(size: iconSize, weight: iconWeight))
             .foregroundStyle(foregroundColor)
+            .contentTransition(.symbolEffect(.replace.downUp))
     }
 }
 

@@ -63,6 +63,7 @@ struct SpendyAmountView: View {
                 Text(parts.integer)
                     .font(.system(size: mainSize, weight: weight, design: .default))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                     .foregroundStyle(color)
                 
                 // Baseline-aligned Decimal Value
@@ -70,6 +71,7 @@ struct SpendyAmountView: View {
                     Text(parts.decimal)
                         .font(.system(size: max(16, mainSize * 0.55), weight: .bold, design: .default))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
                         .foregroundStyle(secondaryColor ?? color.opacity(0.85))
                 }
             }

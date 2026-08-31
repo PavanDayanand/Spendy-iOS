@@ -170,7 +170,7 @@ struct AllTransactionsView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 20)
                             .padding(.top, 2)
                             .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                         }
@@ -180,7 +180,7 @@ struct AllTransactionsView: View {
                 // Floating Sticky Header & Filter Bar on Top Layer
                 VStack(spacing: 10) {
                     topNavBar
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 20)
                         .padding(.top, 8)
                     
                     horizontalFilterBar
@@ -193,7 +193,7 @@ struct AllTransactionsView: View {
             VStack {
                 Spacer()
                 floatingBottomBar
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 12)
             }
             .zIndex(100)

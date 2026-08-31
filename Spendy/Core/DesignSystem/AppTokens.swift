@@ -138,6 +138,7 @@ public struct SpendyNumberModifier: ViewModifier {
         content
             .font(.system(size: size, weight: weight, design: .default))
             .monospacedDigit()
+            .contentTransition(.numericText())
     }
 }
 

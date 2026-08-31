@@ -45,7 +45,7 @@ struct BudgetView: View {
                             activeBudgetContent
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 140)
                 }
             }
@@ -53,7 +53,7 @@ struct BudgetView: View {
                 // Sticky Action Buttons (Stay fixed at top right)
                 if store.budget.isActive {
                     actionButtons
-                        .padding(.trailing, 16)
+                        .padding(.trailing, 20)
                         .padding(.top, 8)
                         .zIndex(100)
                 }
@@ -118,7 +118,7 @@ struct BudgetView: View {
                 showEditBudgetSheet = true
             }
             
-            // Delete Liquid Glass Button with Anchored Popover
+            // Delete Liquid Glass Button with Anchored Confirmation Dialog
             GlassCircleButton(
                 icon: SFIcons.trash,
                 size: 44,
@@ -131,58 +131,18 @@ struct BudgetView: View {
             ) {
                 showDeleteConfirmation = true
             }
-            .popover(isPresented: $showDeleteConfirmation, arrowEdge: .top) {
-                deleteConfirmationPopover
-                    .presentationCompactAdaptation(.popover)
-            }
-        }
-    }
-    
-    // MARK: - Delete Confirmation Popover (Anchored to Delete Button)
-    private var deleteConfirmationPopover: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 4) {
-                Text("Delete Budget?")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Text("This will remove your current budget limit.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            VStack(spacing: 8) {
-                Button(action: {
+            .confirmationDialog("Delete Budget?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+                Button("Delete Budget", role: .destructive) {
                     HapticsManager.shared.trigger(.medium)
-                    store.deleteBudget()
-                    showDeleteConfirmation = false
-                }) {
-                    Text("Delete Budget")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                        .background(SpendyColors.expenseRed, in: RoundedRectangle(cornerRadius: 12))
+                    withAnimation(AppMotion.fluidSpring) {
+                        store.deleteBudget()
+                    }
                 }
-                .buttonStyle(.plain)
-                
-                Button(action: {
-                    showDeleteConfirmation = false
-                }) {
-                    Text("Cancel")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                        .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will remove your current budget limit.")
             }
         }
-        .padding(16)
-        .frame(width: 240)
-        .background(SpendyColors.cardBackground)
     }
     
     // MARK: - Empty State View

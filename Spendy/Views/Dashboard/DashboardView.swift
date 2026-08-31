@@ -243,7 +243,7 @@ struct DashboardView: View {
                         recentTransactionsSection
                             .padding(.top, 6)
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 120) // Clearance for bottom floating tab bar
                 }
                 
@@ -261,7 +261,7 @@ struct DashboardView: View {
                     GeometryReader { geometry in
                         VStack {
                             FloatingCurrencyConverterView(isPresented: $showCurrencyConverter)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 20)
                                 .padding(.top, geometry.safeAreaInsets.top + 60)
                             Spacer()
                         }
@@ -497,6 +497,8 @@ struct DashboardView: View {
                 .font(.system(size: 38, weight: .heavy, design: .default))
                 .tracking(-1.0)
                 .foregroundStyle(SpendyColors.textPrimary)
+                .monospacedDigit()
+                .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .padding(.bottom, 6)

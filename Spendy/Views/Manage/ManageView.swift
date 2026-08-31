@@ -121,16 +121,16 @@ struct SubscriptionsView: View {
 
                         // 1. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
                         balancedHeroSpendCard
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 20)
 
                         // 2. Subscriptions List Section (with Filters & Cards)
                         subscriptionsListSection
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 20)
 
                         // 3. Past & Cancelled Section
                         if !cancelledSubs.isEmpty {
                             pastAndCancelledSection
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 20)
                         }
                     }
                     .padding(.bottom, 110) // Clearance for bottom floating plus button
@@ -205,7 +205,7 @@ struct SubscriptionsView: View {
             Color.clear
                 .frame(width: 44, height: 44)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
     }
 
     // Typealias for backwards compatibility
