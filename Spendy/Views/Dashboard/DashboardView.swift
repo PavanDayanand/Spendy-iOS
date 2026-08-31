@@ -29,7 +29,10 @@ struct SpendTrendPoint: Identifiable, Equatable {
 struct HeroSpendBarChart: View {
     let dataPoints: [MinimalBarPoint]
     var barColor: Color = SpendyColors.textPrimary
-    var gridColor: Color = SpendyColors.separator.opacity(0.4)
+    var gridColor: Color = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 0.12),
+        dark: UIColor(white: 1.0, alpha: 0.18)
+    ))
     
     private var maxAmount: Double {
         let maxVal = dataPoints.map(\.amount).max() ?? 0
@@ -71,8 +74,8 @@ struct HeroSpendBarChart: View {
                                 
                                 // Y-Axis Label
                                 Text(formatAxisNumber(level))
-                                    .font(.system(size: 11, weight: .medium, design: .default))
-                                    .foregroundStyle(SpendyColors.textTertiary)
+                                    .font(.system(size: 11, weight: .semibold, design: .default))
+                                    .foregroundStyle(SpendyColors.textSecondary)
                                     .frame(width: 50, alignment: .leading)
                             }
                             
@@ -113,7 +116,7 @@ struct HeroSpendBarChart: View {
                 ForEach(dataPoints) { point in
                     Text(point.label)
                         .font(.system(size: 12, weight: .semibold, design: .default))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                        .foregroundStyle(SpendyColors.textSecondary)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -216,11 +219,26 @@ struct DashboardView: View {
         }
     }
     
+    // Ambient Header Glow Color (Account accent if selected, else Profile accent)
+    private var ambientHeaderColor: Color {
+        if selectedAccountId != "all", let acc = store.accounts.first(where: { $0.id == selectedAccountId }) {
+            return acc.color
+        }
+        if let hex = store.profileColorHex, !hex.isEmpty {
+            return Color(hex: hex)
+        }
+        if !store.topGradientColorHex.isEmpty {
+            return Color(hex: store.topGradientColorHex)
+        }
+        return Color(hex: "#007AFF")
+    }
+    
     // MARK: - Body
     var body: some View {
         NavigationStack {
             ZStack {
-                LiquidMeshBackground()
+                LiquidMeshBackground(color: ambientHeaderColor)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedAccountId)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
@@ -337,6 +355,7 @@ struct DashboardView: View {
                 showSettings = true
             }) {
                 ZStack {
+                    let profColorHex = store.profileColorHex ?? store.topGradientColorHex
                     if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
                         Image(uiImage: uiImage)
                             .resizable()
@@ -347,9 +366,9 @@ struct DashboardView: View {
                             .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
                     } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
                         Circle()
-                            .fill(Color(hex: store.profileColorHex ?? "#007AFF"))
+                            .fill(Color(hex: profColorHex))
                             .frame(width: 44, height: 44)
-                            .shadow(color: Color(hex: store.profileColorHex ?? "#007AFF").opacity(0.35), radius: 4, y: 2)
+                            .shadow(color: Color(hex: profColorHex).opacity(0.35), radius: 4, y: 2)
                         
                         Image(systemName: symbol)
                             .font(.system(size: 18, weight: .semibold))
@@ -358,7 +377,7 @@ struct DashboardView: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color(hex: store.profileColorHex ?? "#007AFF"), SpendyColors.accentCyan],
+                                    colors: [Color(hex: profColorHex), SpendyColors.accentCyan],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )

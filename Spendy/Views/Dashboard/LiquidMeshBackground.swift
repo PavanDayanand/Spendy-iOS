@@ -2,34 +2,51 @@
 //  LiquidMeshBackground.swift
 //  Spendy
 //
-//  Adaptive monochrome field with subtle liquid depth.
+//  Adaptive edge-to-edge ambient header gradient background matching Category and Account sheets.
 //
 
 import SwiftUI
 
 struct LiquidMeshBackground: View {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var animateFlow: Bool = false
     
     enum Style {
         case screen
         case sheet
     }
     
+    var color: Color? = nil
     var style: Style = .screen
+    var height: CGFloat? = nil
+    var opacity: Double = 0.38
+    
+    private var effectiveHeight: CGFloat {
+        if let height = height { return height }
+        return style == .sheet ? 340 : 420
+    }
+    
+    private var ambientColor: Color {
+        if let color = color { return color }
+        if let hex = store.profileColorHex, !hex.isEmpty {
+            return Color(hex: hex)
+        }
+        if !store.topGradientColorHex.isEmpty {
+            return Color(hex: store.topGradientColorHex)
+        }
+        return Color(hex: "#007AFF")
+    }
     
     var body: some View {
-        GeometryReader { proxy in
-            let size = proxy.size
-            let maxDimension = max(size.width, size.height)
-            let primaryRadius = maxDimension * (style == .sheet ? 1.12 : 0.92)
+        ZStack {
+            SpendyColors.appBackground
+                .ignoresSafeArea()
             
-            ZStack {
-                SpendyColors.appBackground
-                    .ignoresSafeArea()
-            }
-            .ignoresSafeArea()
+            SpendyAmbientHeaderBackground(
+                color: ambientColor,
+                height: effectiveHeight,
+                opacity: opacity
+            )
         }
+        .ignoresSafeArea()
     }
 }

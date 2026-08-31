@@ -37,7 +37,7 @@ struct EditProfileSheet: View {
     private var hasUnsavedChanges: Bool {
         let originalName = store.userName.isEmpty ? "Personal" : store.userName
         let originalIcon = store.profileIconSymbol ?? "person.fill"
-        let originalColor = store.topGradientColorHex
+        let originalColor = store.profileColorHex ?? store.topGradientColorHex
         return tempName != originalName ||
                selectedImageData != store.profileImageData ||
                selectedIconSymbol != originalIcon ||
@@ -86,7 +86,7 @@ struct EditProfileSheet: View {
                 tempName = store.userName.isEmpty ? "Personal" : store.userName
                 selectedImageData = store.profileImageData
                 selectedIconSymbol = store.profileIconSymbol ?? "person.fill"
-                selectedColorHex = store.topGradientColorHex
+                selectedColorHex = store.profileColorHex ?? store.topGradientColorHex
                 syncSlidersFromHex(selectedColorHex)
             }
             
@@ -99,16 +99,18 @@ struct EditProfileSheet: View {
             }
             .background {
                 LinearGradient(
-                    colors: [Color.clear, SpendyColors.appBackground.opacity(0.95), SpendyColors.appBackground],
+                    stops: [
+                        .init(color: SpendyColors.appBackground.opacity(0), location: 0),
+                        .init(color: SpendyColors.appBackground.opacity(0.85), location: 0.25),
+                        .init(color: SpendyColors.appBackground, location: 0.6)
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea()
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .toolbar(.hidden, for: .navigationBar)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .confirmationDialog(
             "Discard Changes?",
@@ -122,7 +124,6 @@ struct EditProfileSheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        // MARK: - Modals & Pickers
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(
                 selectedSymbol: $selectedIconSymbol,
@@ -155,20 +156,11 @@ struct EditProfileSheet: View {
         .sheet(isPresented: $showCurrencyPicker) {
             CurrencyPickerSheet()
         }
-        .onChange(of: selectedPhotoItem) { _, newItem in
-            Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                    await MainActor.run {
-                        selectedImageData = data
-                        showIconPickerSheet = false
-                        HapticsManager.shared.trigger(.success)
-                    }
-                }
-            }
-        }
     }
     
-    // MARK: - Top Header Bar
+    // MARK: - Subviews
+    
+    // Top Header Bar
     private var topHeaderBar: some View {
         SpendyGlassEffectContainer(spacing: 0) {
             HStack {
