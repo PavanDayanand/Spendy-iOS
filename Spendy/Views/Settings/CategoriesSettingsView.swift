@@ -66,7 +66,7 @@ struct CategoriesSettingsView: View {
             // Bottom Floating Bar: Search Capsule + Plus Button
             bottomFloatingBar
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showAddCategory) {
             AddCategorySheet(categoryToEdit: nil, defaultType: selectedType, defaultFolder: selectedFolderForAdd)
                 .presentationBackground(SpendyColors.appBackground)

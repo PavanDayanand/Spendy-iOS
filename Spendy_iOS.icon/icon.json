@@ -9,7 +9,7 @@
           "glass-specializations" : [
             {
               "appearance" : "dark",
-              "value" : false
+              "value" : true
             }
           ],
           "hidden" : false,

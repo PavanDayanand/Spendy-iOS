@@ -184,7 +184,7 @@ struct DataManagementView: View {
                 .scrollDismissesKeyboard(.interactively)
             }
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.json],
