@@ -164,9 +164,6 @@ struct DashboardView: View {
     @State private var showSmartInsightsSheet: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
-    @State private var lastInspectedTransaction: Transaction? = nil
-    @State private var pendingEditTransaction: Transaction? = nil
-    @State private var pendingInspectTransaction: Transaction? = nil
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     
@@ -305,21 +302,16 @@ struct DashboardView: View {
                     .presentationBackground(SpendyColors.settingsBackground)
                     .presentationDragIndicator(.hidden)
             }
-            .fullScreenCover(item: $editingTransaction, onDismiss: {
-                if let last = lastInspectedTransaction {
-                    let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
-                    lastInspectedTransaction = nil
-                    pendingInspectTransaction = fresh
-                }
-                if let pending = pendingInspectTransaction {
-                    pendingInspectTransaction = nil
-                    inspectingTransaction = pending
-                }
-            }) { tx in
+            .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
             }
             .sheet(item: $inspectingTransaction) { tx in
-                TransactionDetailSheet(transaction: tx)
+                TransactionDetailSheet(transaction: tx) { txToEdit in
+                    inspectingTransaction = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        editingTransaction = txToEdit
+                    }
+                }
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView()
@@ -945,7 +937,6 @@ struct DashboardView: View {
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
-                lastInspectedTransaction = nil
                 editingTransaction = tx
             } label: {
                 Label("Edit", systemImage: "pencil")

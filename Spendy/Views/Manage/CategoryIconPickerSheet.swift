@@ -21,8 +21,9 @@ struct CategoryIconPickerSheet: View {
     @Environment(ExpenseStore.self) private var store
     
     @Binding var selectedSymbol: String
-    var showPhotoOption: Bool = true
+    var showPhotoOption: Bool = false
     var isPhotoSet: Bool = false
+    var onPhotoSelected: ((Data) -> Void)? = nil
     var onPhotoLibrarySelected: (() -> Void)? = nil
     var onCameraSelected: (() -> Void)? = nil
     var onRemovePhotoSelected: (() -> Void)? = nil
@@ -274,7 +275,7 @@ struct CategoryIconPickerSheet: View {
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
                     await MainActor.run {
-                        store.profileImageData = data
+                        onPhotoSelected?(data)
                         onPhotoLibrarySelected?()
                         HapticsManager.shared.trigger(.success)
                         dismiss()

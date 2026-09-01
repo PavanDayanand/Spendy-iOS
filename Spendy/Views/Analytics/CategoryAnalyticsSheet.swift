@@ -31,8 +31,6 @@ struct CategoryAnalyticsSheet: View {
     @State private var customEndDate: Date = Date()
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
-    @State private var pendingEditTransaction: Transaction? = nil
-    @State private var lastInspectedTransaction: Transaction? = nil
     @State private var editingCategoryToEdit: Category? = nil
     @State private var showDatePicker: Bool = false
     @State private var showAddTransaction: Bool = false
@@ -362,17 +360,14 @@ struct CategoryAnalyticsSheet: View {
                 .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $inspectingTransaction) { tx in
-            TransactionDetailSheet(transaction: tx)
-        }
-        .fullScreenCover(item: $editingTransaction, onDismiss: {
-            if let last = lastInspectedTransaction {
-                let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
-                lastInspectedTransaction = nil
-                pendingEditTransaction = fresh
-                // In iOS 17+, modifying state that triggers another sheet presentation in onDismiss works
-                inspectingTransaction = fresh
+            TransactionDetailSheet(transaction: tx) { txToEdit in
+                inspectingTransaction = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    editingTransaction = txToEdit
+                }
             }
-        }) { tx in
+        }
+        .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
         }
     }

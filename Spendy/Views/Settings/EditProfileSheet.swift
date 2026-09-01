@@ -20,9 +20,7 @@ struct EditProfileSheet: View {
     // Icon picker sheet & Photo dialog state
     @State private var showIconPickerSheet: Bool = false
     @State private var showPhotoDialog: Bool = false
-    @State private var showPhotoLibraryPicker: Bool = false
     @State private var showCameraPicker: Bool = false
-    @State private var selectedPhotoItem: PhotosPickerItem? = nil
     
     // Color Palette & Sliders state matching AddCategorySheet
     @State private var showColorPalette: Bool = false
@@ -129,8 +127,8 @@ struct EditProfileSheet: View {
                 selectedSymbol: $selectedIconSymbol,
                 showPhotoOption: true,
                 isPhotoSet: selectedImageData != nil,
-                onPhotoLibrarySelected: {
-                    showPhotoLibraryPicker = true
+                onPhotoSelected: { data in
+                    selectedImageData = data
                 },
                 onCameraSelected: {
                     showCameraPicker = true
@@ -143,7 +141,6 @@ struct EditProfileSheet: View {
                 }
             )
         }
-        .photosPicker(isPresented: $showPhotoLibraryPicker, selection: $selectedPhotoItem, matching: .images)
         .sheet(isPresented: $showCameraPicker) {
             CameraPickerView { capturedImage in
                 if let data = capturedImage.jpegData(compressionQuality: 0.8) {
@@ -402,6 +399,7 @@ struct EditProfileSheet: View {
             store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
             store.profileImageData = selectedImageData
             store.profileIconSymbol = selectedIconSymbol
+            store.profileColorHex = selectedColorHex
             store.setTopGradientColor(Color(hex: selectedColorHex))
             dismiss()
         }) {
