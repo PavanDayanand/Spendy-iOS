@@ -114,26 +114,32 @@ struct SubscriptionsView: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    // 1. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
-                    balancedHeroSpendCard
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-
-                    // 2. Subscriptions List Section (with Filters & Cards)
-                    subscriptionsListSection
-                        .padding(.horizontal, 20)
-
-                    // 3. Past & Cancelled Section
-                    if !cancelledSubs.isEmpty {
-                        pastAndCancelledSection
-                            .padding(.horizontal, 20)
-                    }
+            VStack(spacing: 0) {
+                if topControlsNamespace != nil {
+                    topHeaderBar
                 }
-                .padding(.bottom, 110) // Clearance for bottom floating plus button
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        // 1. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
+                        balancedHeroSpendCard
+                            .padding(.horizontal, 20)
+                            .padding(.top, topControlsNamespace != nil ? 4 : 12)
+
+                        // 2. Subscriptions List Section (with Filters & Cards)
+                        subscriptionsListSection
+                            .padding(.horizontal, 20)
+
+                        // 3. Past & Cancelled Section
+                        if !cancelledSubs.isEmpty {
+                            pastAndCancelledSection
+                                .padding(.horizontal, 20)
+                        }
+                    }
+                    .padding(.bottom, 110) // Clearance for bottom floating plus button
+                }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
 
             // Bottom Floating Action Button (Add +) on Top Layer
             VStack {
@@ -142,8 +148,9 @@ struct SubscriptionsView: View {
             }
             .zIndex(100)
         }
-        .navigationTitle("Subscriptions")
+        .navigationTitle(topControlsNamespace != nil ? "" : "Subscriptions")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .task {
             NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
@@ -159,6 +166,43 @@ struct SubscriptionsView: View {
         .sheet(item: $selectedSubscriptionForDetail) { sub in
             SubscriptionQuickActionSheet(sub: sub)
         }
+    }
+
+    // MARK: - Top Header Bar (When Pushed from Home with Liquid Glass Morph)
+    private var topHeaderBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back",
+                morphID: "topControl_left",
+                namespace: topControlsNamespace
+            ) {
+                if let onDismiss = onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
+            }
+
+            Spacer()
+
+            Text("Subscriptions")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+
+            Spacer()
+
+            // Balance placeholder to center title
+            Color.clear.frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
     }
 
     // Typealias for backwards compatibility

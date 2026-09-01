@@ -14,6 +14,7 @@ struct CategoriesSettingsView: View {
     @State private var selectedType: TransactionType = .expense
     @State private var searchQuery: String = ""
     @State private var isEditMode: Bool = false
+    @FocusState private var isSearchFocused: Bool
     
     // Sheets presentation states
     @State private var showAddCategory: Bool = false
@@ -117,7 +118,6 @@ struct CategoriesSettingsView: View {
             titleFor: { $0.title },
             iconFor: { $0.sfSymbol }
         )
-        .glassMorphID("categoriesTypePill", in: categoriesNamespace)
     }
     
     // MARK: - Folder Sections View
@@ -323,9 +323,10 @@ struct CategoriesSettingsView: View {
     
     // MARK: - Bottom Floating Bar (Search Capsule + Plus Button)
     private var bottomFloatingBar: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
+        let isSearchActive = isSearchFocused || !searchQuery.isEmpty
+        return SpendyGlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                // Search Bar Capsule
+                // Search Bar Capsule (Smoothly expands to full width when focused or containing text)
                 HStack(spacing: 8) {
                     Image(systemName: SFIcons.search)
                         .font(.system(size: 14, weight: .bold))
@@ -334,54 +335,72 @@ struct CategoriesSettingsView: View {
                     TextField("Search categories", text: $searchQuery)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(SpendyColors.textPrimary)
+                        .focused($isSearchFocused)
+                        .submitLabel(.search)
                     
-                    if !searchQuery.isEmpty {
+                    if isSearchActive {
                         Button {
                             HapticsManager.shared.trigger(.tick)
-                            searchQuery = ""
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                                searchQuery = ""
+                                isSearchFocused = false
+                            }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
+                                .font(.system(size: 16))
                                 .foregroundStyle(SpendyColors.textTertiary)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.leading, 16)
+                .padding(.trailing, isSearchActive ? 4 : 16)
                 .frame(height: 52)
+                .frame(maxWidth: .infinity)
                 .nativeLiquidGlassCapsule(isInteractive: true)
                 .glassMorphID("searchCapsule", in: categoriesNamespace)
                 
-                // Floating Plus (+) Button with context menu dropdown options
-                Menu {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        showAddFolder = true
-                    }) {
-                        Label("Create a Folder", systemImage: "folder.badge.plus")
+                if !isSearchActive {
+                    // Floating Plus (+) Button with context menu dropdown options
+                    Menu {
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            showAddFolder = true
+                        }) {
+                            Label("Create a Folder", systemImage: "folder.badge.plus")
+                        }
+                        
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            selectedFolderForAdd = nil
+                            showAddCategory = true
+                        }) {
+                            Label("Create a Category", systemImage: "plus.circle")
+                        }
+                    } label: {
+                        GlassCircleButton(
+                            icon: SFIcons.plus,
+                            size: 52,
+                            iconSize: 20,
+                            foregroundColor: SpendyColors.textPrimary,
+                            haptic: .medium,
+                            accessibilityLabel: "Add Options Menu",
+                            morphID: "addPlusButton",
+                            namespace: categoriesNamespace
+                        ) {
+                            // Tap action intercepted by Menu wrapper
+                        }
                     }
-                    
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        selectedFolderForAdd = nil
-                        showAddCategory = true
-                    }) {
-                        Label("Create a Category", systemImage: "plus.circle")
-                    }
-                } label: {
-                    GlassCircleButton(
-                        icon: SFIcons.plus,
-                        size: 52,
-                        iconSize: 20,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .medium,
-                        accessibilityLabel: "Add Options Menu",
-                        morphID: "addPlusButton",
-                        namespace: categoriesNamespace
-                    ) {
-                        // Tap action intercepted by Menu wrapper
-                    }
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                    ))
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: isSearchActive)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 8)

@@ -162,6 +162,10 @@ struct AddTransactionView: View {
                     subHeaderRow
                         .padding(.horizontal, 20)
                         .padding(.bottom, 4)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                            removal: .opacity.combined(with: .scale(scale: 0.96))
+                        ))
                 }
                 
                 if isEditingNote {
@@ -174,8 +178,16 @@ struct AddTransactionView: View {
                     if type == .transfer {
                         transferCardsSection
                             .padding(.bottom, 10)
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                                removal: .opacity.combined(with: .scale(scale: 0.98))
+                            ))
                     } else {
                         standardAmountSection
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                                removal: .opacity.combined(with: .scale(scale: 0.98))
+                            ))
                     }
                     
                     // MARK: - 5. Bottom Keypad & Actions
@@ -184,6 +196,7 @@ struct AddTransactionView: View {
                         .padding(.bottom, 10)
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
         }
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
@@ -350,11 +363,12 @@ struct AddTransactionView: View {
     }
     
     // Account Pill Button (Strict 44pt Height & iOS Liquid Glass Styling)
+    @ViewBuilder
     private func accountPillButton(account: Account?, isDestination: Bool) -> some View {
         let accBalance = store.balance(for: account?.id ?? "")
         let initialLetter = String((account?.label.prefix(1) ?? "A")).uppercased()
         
-        return Button(action: {
+        let button = Button(action: {
             activeSheet = .account(isDestination: isDestination)
             HapticsManager.shared.trigger(.selection)
         }) {
@@ -386,6 +400,12 @@ struct AddTransactionView: View {
             .nativeLiquidGlassCapsule(isInteractive: true)
         }
         .buttonStyle(.plain)
+        
+        if isDestination {
+            button
+        } else {
+            button.glassMorphID("sourceAccountPill", in: transactionNamespace)
+        }
     }
     
     // MARK: - 3. Standard Amount Section (Expense & Income Mode)
@@ -550,7 +570,6 @@ struct AddTransactionView: View {
                         .padding(.horizontal, 16)
                         .frame(height: 44)
                         .nativeLiquidGlassCapsule(isInteractive: true)
-                        .glassMorphID("datePill", in: transactionNamespace)
                     }
                     .buttonStyle(.plain)
                     
@@ -563,9 +582,7 @@ struct AddTransactionView: View {
                         iconSize: 15,
                         foregroundColor: SpendyColors.textPrimary,
                         haptic: .light,
-                        accessibilityLabel: "Add Note",
-                        morphID: "noteButton",
-                        namespace: transactionNamespace
+                        accessibilityLabel: "Add Note"
                     ) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             isEditingNote = true
@@ -625,7 +642,6 @@ struct AddTransactionView: View {
                             }
                             .frame(height: 44)
                             .nativeLiquidGlassCapsule(isInteractive: true)
-                            .glassMorphID("categoryPill", in: transactionNamespace)
                         }
                         .buttonStyle(.plain)
                         
@@ -645,7 +661,6 @@ struct AddTransactionView: View {
                                         .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
                                         .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
                                 }
-                                .glassMorphID("saveButton", in: transactionNamespace)
                         }
                         .buttonStyle(KeypadPressStyle())
                         .disabled(currentAmountValue <= 0)

@@ -174,10 +174,16 @@ struct AnalyticsView: View {
                 }
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
-                AccountAnalyticsSheet(account: account)
+                AccountAnalyticsSheet(
+                    account: account,
+                    topControlsNamespace: analyticsControlsNamespace
+                )
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+                CategoryAnalyticsSheet(
+                    category: category,
+                    topControlsNamespace: analyticsControlsNamespace
+                )
             }
 
             .onAppear {

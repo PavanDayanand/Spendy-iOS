@@ -315,10 +315,10 @@ struct DashboardView: View {
                 }
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
-                SubscriptionsView()
+                SubscriptionsView(topControlsNamespace: topControlsNamespace)
             }
             .navigationDestination(isPresented: $showAccounts) {
-                AccountsView()
+                AccountsView(topControlsNamespace: topControlsNamespace)
             }
             .navigationDestination(isPresented: $showSmartInsightsSheet) {
                 SmartInsightsSheet()
@@ -327,10 +327,20 @@ struct DashboardView: View {
                 AllTransactionsView()
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
+                CategoryAnalyticsSheet(
+                    category: category,
+                    topControlsNamespace: topControlsNamespace,
+                    backButtonMorphID: "topControl_left",
+                    periodControlMorphID: "accountDropdownCapsule"
+                )
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
-                AccountAnalyticsSheet(account: account)
+                AccountAnalyticsSheet(
+                    account: account,
+                    topControlsNamespace: topControlsNamespace,
+                    backButtonMorphID: "topControl_left",
+                    periodControlMorphID: "accountDropdownCapsule"
+                )
             }
         }
     }
@@ -383,7 +393,7 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Account and Settings")
-            .matchedGeometryEffect(id: "topControl_left", in: topControlsNamespace)
+            .glassMorphID("topControl_left", in: topControlsNamespace)
             
             Spacer()
             
@@ -394,9 +404,7 @@ struct DashboardView: View {
                     icon: "arrow.left.arrow.right",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Currency converter",
-                    morphID: "currencyConverterButton",
-                    namespace: topControlsNamespace
+                    accessibilityLabel: "Currency converter"
                 ) {
                     HapticsManager.shared.trigger(.selection)
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
@@ -409,9 +417,7 @@ struct DashboardView: View {
                     icon: hideBalance ? SFIcons.eyeSlash : SFIcons.eye,
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance",
-                    morphID: "privacyEyeButton",
-                    namespace: topControlsNamespace
+                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance"
                 ) {
                     HapticsManager.shared.trigger(.selection)
                     withAnimation(.spring(response: 0.25)) {
@@ -424,9 +430,7 @@ struct DashboardView: View {
                     icon: SFIcons.subscriptions,
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Subscriptions",
-                    morphID: "subscriptionsButton",
-                    namespace: topControlsNamespace
+                    accessibilityLabel: "Subscriptions"
                 ) {
                     HapticsManager.shared.trigger(.selection)
                     showSubscriptionsHub = true
@@ -498,7 +502,6 @@ struct DashboardView: View {
                     .glassMorphID("accountDropdownCapsule", in: topControlsNamespace)
                 }
                 .buttonStyle(.plain)
-                .matchedGeometryEffect(id: "topControl_center", in: topControlsNamespace)
                 
                 Spacer()
             }

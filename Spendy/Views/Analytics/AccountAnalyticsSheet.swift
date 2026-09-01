@@ -42,6 +42,10 @@ struct AccountAnalyticsSheet: View {
         account.color
     }
 
+    private var isHomeOrigin: Bool {
+        topControlsNamespace != nil && periodControlMorphID == "accountDropdownCapsule"
+    }
+
     private var sharedMorphNamespace: Namespace.ID {
         topControlsNamespace ?? accountSheetNamespace
     }
@@ -152,67 +156,76 @@ struct AccountAnalyticsSheet: View {
             // Dynamic Ambient Full-Width Header Glow
             SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // 1. Clean Hero Account Balance Header (Pure Content)
-                    heroHeaderSection
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                    
-                    // 2. Uncarded SwiftCharts Area Graph & Glass Index Strip
-                    chartSection
-                        .padding(.horizontal, 16)
-                    
-                    // 3. Consolidated 4-Metric Account Overview Card or Insights Card
-                    if allAccountTransactions.count < 3 {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Insights")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            
-                            Text("Add more transactions to unlock personalised insights")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .lineSpacing(4)
-                        }
-                        .padding(20)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                        .padding(.horizontal, 16)
-                    } else {
-                        accountOverviewCard
+            VStack(spacing: 0) {
+                if isHomeOrigin {
+                    topHeaderBar
+                }
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // 1. Clean Hero Account Balance Header (Pure Content)
+                        heroHeaderSection
                             .padding(.horizontal, 20)
+                            .padding(.top, isHomeOrigin ? 4 : 12)
+                        
+                        // 2. Uncarded SwiftCharts Area Graph & Glass Index Strip
+                        chartSection
+                            .padding(.horizontal, 16)
+                        
+                        // 3. Consolidated 4-Metric Account Overview Card or Insights Card
+                        if allAccountTransactions.count < 3 {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Insights")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Text("Add more transactions to unlock personalised insights")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .lineSpacing(4)
+                            }
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background {
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .fill(SpendyColors.cardBackground)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
+                            }
+                            .padding(.horizontal, 16)
+                        } else {
+                            accountOverviewCard
+                                .padding(.horizontal, 20)
+                                .padding(.top, 4)
+                        }
+                        
+                        // 4. Date-Grouped Account Activity List
+                        transactionsSection
+                            .padding(.horizontal, 16)
                             .padding(.top, 4)
+                            .padding(.bottom, 40)
                     }
-                    
-                    // 4. Date-Grouped Account Activity List
-                    transactionsSection
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
-                        .padding(.bottom, 40)
                 }
             }
         }
-        .navigationTitle(account.label)
+        .navigationTitle(isHomeOrigin ? "" : account.label)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(isHomeOrigin ? .hidden : .visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    HapticsManager.shared.trigger(.light)
-                    editingAccountToEdit = account
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+            if !isHomeOrigin {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        HapticsManager.shared.trigger(.light)
+                        editingAccountToEdit = account
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                    .accessibilityLabel("Edit Account")
                 }
-                .accessibilityLabel("Edit Account")
             }
         }
         .sheet(isPresented: $showDatePicker) {
@@ -238,6 +251,56 @@ struct AccountAnalyticsSheet: View {
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
         }
+    }
+    
+    // MARK: - 1. Top Header Bar (When Pushed from Home with Liquid Glass Morph)
+    private var topHeaderBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back",
+                morphID: backButtonMorphID,
+                namespace: topControlsNamespace
+            ) {
+                if let onDismiss = onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
+            }
+            
+            Spacer()
+            
+            Text(account.label)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            Spacer()
+            
+            // Trailing Edit button matching topControl_right
+            GlassCircleButton(
+                icon: "pencil",
+                size: 44,
+                iconSize: 15,
+                iconWeight: .semibold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Edit Account",
+                morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
+                namespace: sharedMorphNamespace
+            ) {
+                HapticsManager.shared.trigger(.light)
+                editingAccountToEdit = account
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
     }
     
     // MARK: - 2. Hero Header Section (Clean Apple Wallet Typography)

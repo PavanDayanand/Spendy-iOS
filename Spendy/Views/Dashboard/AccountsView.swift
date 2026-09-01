@@ -20,7 +20,6 @@ struct AccountsView: View {
     @State private var editingAccount: Account? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
     @State private var selectedFilter: AccountFilter = .all
-    @Namespace private var accountsNamespace
     
     enum AccountFilter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -57,17 +56,23 @@ struct AccountsView: View {
             // Dynamic Ambient Full-Width Blue Header Glow
             SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 380, opacity: 0.28)
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // 1. Net Worth Hero Card with Currency Switcher & Sparkline
-                    heroNetWorthSection
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                    
-                    // 2. Accounts List Section (with horizontal type filters)
-                    accountsListSection
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 100) // Clearance for bottom floating button
+            VStack(spacing: 0) {
+                if topControlsNamespace != nil {
+                    topHeaderBar
+                }
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // 1. Net Worth Hero Card with Currency Switcher & Sparkline
+                        heroNetWorthSection
+                            .padding(.horizontal, 16)
+                            .padding(.top, topControlsNamespace != nil ? 4 : 12)
+                        
+                        // 2. Accounts List Section (with horizontal type filters)
+                        accountsListSection
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 100) // Clearance for bottom floating button
+                    }
                 }
             }
             
@@ -79,6 +84,7 @@ struct AccountsView: View {
         }
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
@@ -94,6 +100,43 @@ struct AccountsView: View {
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
             AccountAnalyticsSheet(account: acc)
         }
+    }
+    
+    // MARK: - Top Header Bar (When Pushed from Home with Liquid Glass Morph)
+    private var topHeaderBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back",
+                morphID: "topControl_left",
+                namespace: topControlsNamespace
+            ) {
+                if let onDismiss = onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
+            }
+            
+            Spacer()
+            
+            Text("Accounts")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            Spacer()
+            
+            // Balance placeholder to center title
+            Color.clear.frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
     }
     
     // MARK: - Net Worth Hero Section
@@ -114,7 +157,7 @@ struct AccountsView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .nativeLiquidGlassCapsule(isInteractive: true)
-                .glassMorphID("currencyPill", in: accountsNamespace)
+                .modifier(OptionalGlassMorphModifier(id: topControlsNamespace != nil ? "accountDropdownCapsule" : nil, namespace: topControlsNamespace))
             }
             .buttonStyle(.plain)
             
@@ -369,9 +412,7 @@ struct AccountsView: View {
                 tintColor: SpendyColors.primaryBlue,
                 foregroundColor: Color.white,
                 haptic: .medium,
-                accessibilityLabel: "Add Account",
-                morphID: "addAccountButton",
-                namespace: accountsNamespace
+                accessibilityLabel: "Add Account"
             ) {
                 showAddAccount = true
             }
