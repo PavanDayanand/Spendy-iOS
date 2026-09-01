@@ -117,8 +117,6 @@ struct TransactionDetailSheet: View {
         }
         .presentationDetents([.height(500), .medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.appBackground)
         .fullScreenCover(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction)
         }

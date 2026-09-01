@@ -127,7 +127,5 @@ struct DateRangePickerSheet: View {
         }
         .presentationDetents([.height(230)])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationLiquidGlass(cornerRadius: 32)
     }
 }

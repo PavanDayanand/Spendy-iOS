@@ -895,8 +895,6 @@ struct CategoryPickerDrawer: View {
         }
         .presentationDetents([.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.appBackground)
     }
     
     private func categoryFolderBlock(title: String, items: [Category]) -> some View {
@@ -1087,8 +1085,6 @@ struct AccountPickerDrawer: View {
         }
         .presentationDetents([.fraction(0.55), .medium])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationLiquidGlass(cornerRadius: 32)
     }
 }
 
@@ -1245,19 +1241,19 @@ struct CustomCalendarDrawer: View {
                                     ZStack {
                                         if isSelected {
                                             Circle()
-                                                .fill(SpendyColors.primaryBlue)
+                                                .fill(Color.white)
                                                 .frame(width: 38, height: 38)
                                         }
                                         
                                         Text("\(dayNumber)")
                                             .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                                            .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
+                                            .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
                                     }
                                     .frame(width: 44, height: 44)
                                     
                                     if isSelected {
                                         Circle()
-                                            .fill(SpendyColors.primaryBlue)
+                                            .fill(Color.white)
                                             .frame(width: 4, height: 4)
                                     }
                                 }
@@ -1277,8 +1273,6 @@ struct CustomCalendarDrawer: View {
         }
         .presentationDetents([.fraction(0.68)])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationLiquidGlass(cornerRadius: 32)
     }
     
     private var formattedDateTitle: String {

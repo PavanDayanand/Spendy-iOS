@@ -157,7 +157,6 @@ struct ReceiptPrinterSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(SpendyColors.appBackground)
     }
 
     

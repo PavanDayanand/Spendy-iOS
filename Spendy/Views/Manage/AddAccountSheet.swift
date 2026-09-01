@@ -565,7 +565,5 @@ struct AccountBalanceInputSheet: View {
         }
         .presentationDetents([.height(470)])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationLiquidGlass(cornerRadius: 32)
     }
 }
