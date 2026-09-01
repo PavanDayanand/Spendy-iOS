@@ -153,7 +153,7 @@ struct AddFolderSheet: View {
                     icon: "trash.fill",
                     size: 44,
                     iconSize: 14,
-                    tintColor: SpendyColors.expenseRed,
+                    tintColor: SpendyColors.expenseRed.opacity(0.18),
                     foregroundColor: SpendyColors.expenseRed,
                     haptic: .warning,
                     accessibilityLabel: "Delete Folder",

@@ -172,7 +172,7 @@ struct BudgetView: View {
             }) {
                 Text("Create budget")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(SpendyColors.inverseText)
                     .padding(.horizontal, 28)
                     .padding(.vertical, 13)
                     .background(SpendyColors.primaryBlue, in: Capsule())

@@ -1046,7 +1046,7 @@ struct DashboardView: View {
                     Text("Add Transaction")
                         .font(.system(size: 13, weight: .bold, design: .default))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(SpendyColors.inverseText)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
                 .background(Capsule().fill(SpendyColors.primaryBlue))

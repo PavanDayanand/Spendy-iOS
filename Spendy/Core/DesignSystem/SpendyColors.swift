@@ -162,20 +162,9 @@ enum SpendyColors {
     // Tab Bar Accent follows the monochrome system.
     static let tabSelectedBlue = primaryBlue
 
-    static let accentCyan = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.20, alpha: 1.0),
-        dark: UIColor(white: 0.85, alpha: 1.0)
-    ))
-
-    static let vibrantPurple = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.30, alpha: 1.0),
-        dark: UIColor(white: 0.80, alpha: 1.0)
-    ))
-
-    static let vibrantIndigo = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.25, alpha: 1.0),
-        dark: UIColor(white: 0.85, alpha: 1.0)
-    ))
+    static let accentCyan = Color(uiColor: .systemCyan)
+    static let vibrantPurple = Color(uiColor: .systemPurple)
+    static let vibrantIndigo = Color(uiColor: .systemIndigo)
 
     // Status Beacons & Chips
     static let statusBeaconCoral = Color(hex: "#FF5959")
@@ -190,41 +179,14 @@ enum SpendyColors {
         dark: UIColor(white: 1.0, alpha: 0.12)
     ))
 
-    // Monochrome Status Colors
-    static let expenseRed = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.15, alpha: 1.0),
-        dark: UIColor(white: 0.95, alpha: 1.0)
-    ))
-
-    static let incomeGreen = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.0, alpha: 1.0),
-        dark: UIColor(white: 1.0, alpha: 1.0)
-    ))
-
-    static let transferBlue = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.40, alpha: 1.0),
-        dark: UIColor(white: 0.70, alpha: 1.0)
-    ))
-
-    static let warningOrange = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.30, alpha: 1.0),
-        dark: UIColor(white: 0.80, alpha: 1.0)
-    ))
-
-    static let goldYellow = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.35, alpha: 1.0),
-        dark: UIColor(white: 0.75, alpha: 1.0)
-    ))
-
-    static let pinkSubscription = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.20, alpha: 1.0),
-        dark: UIColor(white: 0.85, alpha: 1.0)
-    ))
-
-    static let tealSavings = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.25, alpha: 1.0),
-        dark: UIColor(white: 0.80, alpha: 1.0)
-    ))
+    // Semantic Status Colors
+    static let expenseRed = Color(uiColor: .systemRed)
+    static let incomeGreen = Color(uiColor: .systemGreen)
+    static let transferBlue = Color(uiColor: .systemBlue)
+    static let warningOrange = Color(uiColor: .systemOrange)
+    static let goldYellow = Color(uiColor: .systemYellow)
+    static let pinkSubscription = Color(uiColor: .systemPink)
+    static let tealSavings = Color(uiColor: .systemTeal)
 
     // Static Helpers
     static let monochromeBlack = Color(hex: "#000000")

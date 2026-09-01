@@ -227,15 +227,16 @@ struct AddSubscriptionSheet: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color(hex: "#1C1C1E"))
+                            .fill(SpendyColors.cardBackground)
                             .frame(width: 26, height: 26)
                             .overlay {
-                                Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
                             }
+                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
 
                         Image(systemName: "pencil")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.textPrimary)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -363,7 +364,7 @@ struct AddSubscriptionSheet: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
-                .tint(Color(hex: "#34C759"))
+                .tint(SpendyColors.incomeGreen)
                 .padding(.vertical, 8)
 
                 Divider().background(SpendyColors.separator)

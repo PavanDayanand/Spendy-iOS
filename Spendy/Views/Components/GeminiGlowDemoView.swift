@@ -280,7 +280,7 @@ public struct GeminiGlowDemoView: View {
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
-                .tint(.purple)
+                .tint(SpendyColors.incomeGreen)
                 
                 Divider()
                     .background(SpendyColors.separator)
@@ -295,7 +295,7 @@ public struct GeminiGlowDemoView: View {
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
-                .tint(.blue)
+                .tint(SpendyColors.incomeGreen)
                 
                 Divider()
                     .background(SpendyColors.separator)

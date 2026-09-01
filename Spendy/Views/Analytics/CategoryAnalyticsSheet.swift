@@ -557,9 +557,7 @@ struct CategoryAnalyticsSheet: View {
                     GlassSegmentedPicker(
                         selection: $selectedPeriod,
                         items: ChartPeriod.allCases,
-                        titleFor: { $0.shortLabel },
-                        activeTint: customDateRange != nil ? nil : Color.white.opacity(0.22),
-                        selectedForegroundColor: Color.white
+                        titleFor: { $0.shortLabel }
                     )
                     .onChange(of: selectedPeriod) { _, _ in
                         customDateRange = nil
@@ -786,7 +784,7 @@ struct CategoryAnalyticsSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tx.title)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                 
                 HStack(spacing: 6) {
@@ -809,8 +807,8 @@ struct CategoryAnalyticsSheet: View {
                         .padding(.vertical, 2)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.white.opacity(0.05))
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.08), lineWidth: 0.8))
+                                .fill(SpendyColors.chipBackground)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(SpendyColors.chipBorder, lineWidth: 0.8))
                         )
                     }
                     
@@ -825,7 +823,7 @@ struct CategoryAnalyticsSheet: View {
             // Amount
             Text(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                 .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
-                .foregroundStyle(.white)
+                .foregroundStyle(SpendyColors.textPrimary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

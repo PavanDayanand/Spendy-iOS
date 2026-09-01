@@ -367,12 +367,12 @@ struct AddTransactionView: View {
                 // Vibrant Account Avatar Circle (32x32)
                 ZStack {
                     Circle()
-                        .fill(account?.color ?? SpendyColors.primaryBlue)
+                        .fill(account?.color ?? SpendyColors.cardBackgroundSecondary)
                         .frame(width: 32, height: 32)
                     
                     Text(initialLetter)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(account != nil ? Color.white : SpendyColors.textPrimary)
                 }
                 .padding(.leading, 6)
                 
@@ -464,17 +464,17 @@ struct AddTransactionView: View {
             }) {
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "#1E1E22"))
+                        .fill(SpendyColors.cardBackground)
                         .frame(width: 34, height: 34)
                         .overlay {
-                            Circle().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                            Circle().stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     
                     Image(systemName: "arrow.down")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.75))
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
-                .shadow(color: Color.black.opacity(0.4), radius: 6, y: 2)
+                .shadow(color: Color.black.opacity(0.12), radius: 4, y: 1.5)
             }
             .buttonStyle(.plain)
             .padding(.trailing, 24)
@@ -506,12 +506,12 @@ struct AddTransactionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(store.currencySymbol)
                         .font(.system(size: 32, weight: .bold, design: .default))
-                        .foregroundStyle(isActive ? Color.white.opacity(0.4) : Color.white.opacity(0.2))
+                        .foregroundStyle(isActive ? SpendyColors.textTertiary : SpendyColors.textTertiary.opacity(0.5))
                     
                     Text(amount.isEmpty ? "0" : amount)
                         .font(.system(size: 48, weight: .heavy, design: .default))
                         .monospacedDigit()
-                        .foregroundStyle(isActive ? Color.white : Color.white.opacity(0.65))
+                        .foregroundStyle(isActive ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.4)
                 }

@@ -242,26 +242,26 @@ struct GlassToggleStyle: ToggleStyle {
             }) {
                 ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                     Capsule(style: .continuous)
-                        .fill(configuration.isOn ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
+                        .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    SpendyColors.separator,
+                                    configuration.isOn ? tintColor.opacity(0.3) : SpendyColors.separator,
                                     lineWidth: 0.8
                                 )
                         }
                         .frame(width: 50, height: 30)
-                        .shadow(color: Color.black.opacity(configuration.isOn ? 0.18 : 0.10), radius: 4, y: 1.5)
+                        .shadow(color: configuration.isOn ? tintColor.opacity(0.25) : Color.black.opacity(0.10), radius: 4, y: 1.5)
                     
                     Circle()
-                        .fill(configuration.isOn ? SpendyColors.elevatedControlForeground : SpendyColors.cardBackground)
+                        .fill(Color.white)
                         .overlay {
                             Circle()
-                                .stroke(SpendyColors.separator, lineWidth: 0.5)
+                                .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
                         }
                         .frame(width: 26, height: 26)
                         .padding(.horizontal, 2)
-                        .shadow(color: Color.black.opacity(0.30), radius: 3, x: 0, y: 1.5)
+                        .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
                 }
             }
             .buttonStyle(.plain)

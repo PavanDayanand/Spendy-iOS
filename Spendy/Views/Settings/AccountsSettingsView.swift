@@ -394,8 +394,7 @@ struct AccountsSettingsView: View {
                     icon: SFIcons.plus,
                     size: 54,
                     iconSize: 20,
-                    tintColor: SpendyColors.primaryBlue,
-                    foregroundColor: Color.white,
+                    foregroundColor: SpendyColors.textPrimary,
                     haptic: .medium,
                     accessibilityLabel: "Add Account",
                     morphID: "addAccountButton",
@@ -403,7 +402,7 @@ struct AccountsSettingsView: View {
                 ) {
                     showAddAccount = true
                 }
-                .shadow(color: Color.black.opacity(0.15), radius: 14, y: 6)
+                .shadow(color: Color.black.opacity(0.12), radius: 14, y: 6)
             }
         }
         .padding(.horizontal, 24)

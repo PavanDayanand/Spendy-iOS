@@ -204,7 +204,7 @@ struct AddCategorySheet: View {
                     icon: "trash.fill",
                     size: 44,
                     iconSize: 14,
-                    tintColor: SpendyColors.expenseRed,
+                    tintColor: SpendyColors.expenseRed.opacity(0.18),
                     foregroundColor: SpendyColors.expenseRed,
                     haptic: .warning,
                     accessibilityLabel: "Delete Category",
@@ -252,15 +252,16 @@ struct AddCategorySheet: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color(hex: "#1C1C1E"))
+                            .fill(SpendyColors.cardBackground)
                             .frame(width: 26, height: 26)
                             .overlay {
-                                Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
                             }
+                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
                         
                         Image(systemName: "pencil")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.textPrimary)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -430,7 +431,7 @@ struct AddCategorySheet: View {
         }) {
             Text(isEditing ? "Save Changes" : "Create")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(SpendyColors.inverseText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(SpendyColors.primaryBlue, in: Capsule())

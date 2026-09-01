@@ -424,9 +424,7 @@ struct AccountAnalyticsSheet: View {
                     GlassSegmentedPicker(
                         selection: $selectedPeriod,
                         items: ChartPeriod.allCases,
-                        titleFor: { $0.shortLabel },
-                        activeTint: customDateRange != nil ? nil : Color.white.opacity(0.22),
-                        selectedForegroundColor: Color.white
+                        titleFor: { $0.shortLabel }
                     )
                     .onChange(of: selectedPeriod) { _, _ in
                         customDateRange = nil
@@ -637,10 +635,10 @@ struct AccountAnalyticsSheet: View {
                             }
                             .background {
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Color(hex: "#141416"))
+                                    .fill(SpendyColors.cardBackground)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                                     }
                             }
                         }

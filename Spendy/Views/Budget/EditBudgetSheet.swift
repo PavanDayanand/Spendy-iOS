@@ -214,7 +214,7 @@ struct EditBudgetSheet: View {
                 Button(action: handleSave) {
                     Text("Save Budget")
                         .font(AppTypography.bodyBold)
-                        .foregroundStyle(SpendyColors.inverseText)
+                        .foregroundStyle((Double(amountString) ?? 0) > 0 ? SpendyColors.inverseText : SpendyColors.textTertiary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background {
