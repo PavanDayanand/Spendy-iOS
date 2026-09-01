@@ -157,9 +157,8 @@ struct AnalyticsView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showAddTransaction) {
+            .fullScreenCover(isPresented: $showAddTransaction) {
                 AddTransactionView()
-                    .presentationBackground(SpendyColors.appBackground)
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
@@ -1163,13 +1162,10 @@ struct AnalyticsView: View {
         }
     }
     
-    // MARK: - Date Picker Modal Sheet
+    // MARK: - Date Picker Modal Sheet (Pure Native Liquid Glass)
     private var datePickerSheet: some View {
         NavigationStack {
             ZStack {
-                Color.black
-                    .ignoresSafeArea()
-                
                 VStack(spacing: 20) {
                     DatePicker(
                         "Choose Date",
@@ -1177,12 +1173,9 @@ struct AnalyticsView: View {
                         displayedComponents: [.date]
                     )
                     .datePickerStyle(.graphical)
-                    .tint(SpendyColors.textPrimary)
+                    .tint(SpendyColors.primaryBlue)
                     .padding()
-                    .background {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(SpendyColors.cardBackground)
-                    }
+                    .nativeLiquidGlass(cornerRadius: 20, isInteractive: true)
                     .padding(.horizontal, 20)
                     
                     Spacer()
@@ -1197,11 +1190,14 @@ struct AnalyticsView: View {
                         showMonthPicker = false
                     }
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                    .foregroundStyle(SpendyColors.primaryBlue)
                 }
             }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
+        .presentationBackground(.ultraThinMaterial)
     }
     
     // MARK: - Computed Properties & Period Math

@@ -136,9 +136,16 @@ struct SpendyIconBadge: View {
                 }
             }
             
-            Image(systemName: SFIcons.symbol(named: sfSymbol))
-                .font(.system(size: size.iconSize, weight: .bold))
-                .foregroundStyle(symbolForeground)
+            if sfSymbol == "Aa" || sfSymbol.count <= 2 && !sfSymbol.contains(".") {
+                Text(sfSymbol)
+                    .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(symbolForeground)
+            } else {
+                Image(systemName: SFIcons.symbol(named: sfSymbol))
+                    .font(.system(size: size.iconSize, weight: .bold))
+                    .foregroundStyle(symbolForeground)
+                    .contentTransition(.symbolEffect(.replace.byLayer))
+            }
         }
         .frame(width: size.dimension, height: size.dimension)
     }

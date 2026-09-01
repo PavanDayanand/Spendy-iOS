@@ -153,8 +153,8 @@ struct AddTransactionView: View {
                 // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
 
                 
                 // MARK: - 2. Subheader Row (Account Pill + Currency Flag) - Hidden in Transfer Mode
@@ -173,23 +173,18 @@ struct AddTransactionView: View {
                     // MARK: - 3. Amount Display
                     if type == .transfer {
                         transferCardsSection
-                            .padding(.bottom, 14)
+                            .padding(.bottom, 10)
                     } else {
                         standardAmountSection
-                        Spacer(minLength: 8)
                     }
                     
                     // MARK: - 5. Bottom Keypad & Actions
                     keypadAndActionsSection
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 10)
                 }
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Discard Changes", role: .destructive) {
@@ -381,7 +376,7 @@ struct AddTransactionView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
-                    Text("\(store.currencySymbol)\(String(format: "%.0f", accBalance))")
+                    Text(accBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .spendyNumberFont(size: 11, weight: .medium, tracking: -0.3)
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
@@ -980,7 +975,7 @@ struct CategoryPickerDrawer: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
                     .overlay {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -1014,7 +1009,7 @@ struct CategoryPickerDrawer: View {
     }
 }
 
-// MARK: - Account Selection Drawer (Dead Copy of Screenshot 1 with Liquid Glass Styling)
+// MARK: - Account Selection Drawer (Pure Native Liquid Glass Styling)
 struct AccountPickerDrawer: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -1076,7 +1071,7 @@ struct AccountPickerDrawer: View {
                                                 .font(.system(size: 16, weight: .semibold))
                                                 .foregroundStyle(SpendyColors.textPrimary)
                                             
-                                            Text("\(store.currencySymbol)\(String(format: "%.0f", liveBalance))")
+                                            Text(liveBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                                 .font(.system(size: 13, weight: .medium))
                                                 .monospacedDigit()
                                                 .foregroundStyle(SpendyColors.textSecondary)
@@ -1104,13 +1099,10 @@ struct AccountPickerDrawer: View {
                                 }
                             }
                         }
-                        .background {
+                        .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
                     .padding(20)
@@ -1120,11 +1112,11 @@ struct AccountPickerDrawer: View {
         .presentationDetents([.fraction(0.55), .medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.appBackground)
+        .presentationLiquidGlass(cornerRadius: 32)
     }
 }
 
-// MARK: - Custom Month Calendar Drawer (Dead Copy of Screenshot 4 - Clean Custom Header)
+// MARK: - Custom Month Calendar Drawer (Pure Native Liquid Glass Styling)
 struct CustomCalendarDrawer: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedDate: Date
@@ -1191,13 +1183,7 @@ struct CustomCalendarDrawer: View {
                             .foregroundStyle(SpendyColors.textPrimary)
                             .padding(.horizontal, 16)
                             .frame(height: 36)
-                            .background {
-                                Capsule()
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
+                            .nativeLiquidGlassCapsule(isInteractive: true)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1316,7 +1302,7 @@ struct CustomCalendarDrawer: View {
         .presentationDetents([.fraction(0.68)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.appBackground)
+        .presentationLiquidGlass(cornerRadius: 32)
     }
     
     private var formattedDateTitle: String {

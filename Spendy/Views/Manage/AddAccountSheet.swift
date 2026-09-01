@@ -3,6 +3,11 @@
 //  Spendy
 //
 //  Modal Drawer Sheet for Adding & Editing Financial Accounts
+//  Features:
+//  - Dynamic ambient header gradient glow based on account color
+//  - Clean capsule rows (Account Name & Color, Type, Tappable Balance)
+//  - Dedicated Bottom Sheet Numeric Keypad Drawer for Balance Entry with live commas & currency icon
+//  - Apple HIG compliant 44pt+ touch targets and haptic feedback
 //
 
 import SwiftUI
@@ -19,11 +24,12 @@ struct AddAccountSheet: View {
     @State private var selectedColorHex: String = "#007AFF"
     @State private var selectedType: AccountType = .bank
     
-    // Color picker sliders
+    // Color picker sliders & sheets
     @State private var sliderHue: Double = 0.65
     @State private var sliderBrightness: Double = 0.45
     @State private var showIconPickerSheet: Bool = false
     @State private var showColorPalette: Bool = false
+    @State private var showBalanceKeypadSheet: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showDiscardConfirm: Bool = false
     
@@ -32,15 +38,16 @@ struct AddAccountSheet: View {
     }
     
     private var hasUnsavedChanges: Bool {
+        let cleanBalance = openingBalanceString.replacingOccurrences(of: ",", with: "")
+        let openingBalanceDouble = Double(cleanBalance) ?? 0.0
+        
         if let acc = accountToEdit {
-            let openingBalanceDouble = Double(openingBalanceString) ?? 0.0
             return label != acc.label ||
                    openingBalanceDouble != acc.openingBalance ||
                    selectedSymbol != acc.sfSymbol ||
                    selectedColorHex != acc.colorHex ||
                    selectedType != acc.type
         } else {
-            let openingBalanceDouble = Double(openingBalanceString) ?? 0.0
             return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                    openingBalanceDouble != 0.0 ||
                    selectedSymbol != SFIcons.bankAccount ||
@@ -49,9 +56,8 @@ struct AddAccountSheet: View {
         }
     }
     
-    private var avatarLetter: String {
-        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "A" : String(trimmed.prefix(1)).uppercased()
+    private var formattedBalanceDisplay: String {
+        openingBalanceString.formattedNumberStringWithCommas()
     }
     
     init(accountToEdit: Account? = nil) {
@@ -59,7 +65,8 @@ struct AddAccountSheet: View {
         
         if let acc = accountToEdit {
             _label = State(initialValue: acc.label)
-            _openingBalanceString = State(initialValue: String(format: acc.openingBalance.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", acc.openingBalance))
+            let formattedInit = acc.openingBalance.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", acc.openingBalance) : String(format: "%.2f", acc.openingBalance)
+            _openingBalanceString = State(initialValue: formattedInit)
             _selectedSymbol = State(initialValue: acc.sfSymbol)
             _selectedColorHex = State(initialValue: acc.colorHex)
             _selectedType = State(initialValue: acc.type)
@@ -70,13 +77,17 @@ struct AddAccountSheet: View {
             _selectedColorHex = State(initialValue: "#007AFF")
             _selectedType = State(initialValue: .bank)
         }
-        _showColorPalette = State(initialValue: false) // Always closed by default
+        _showColorPalette = State(initialValue: false)
     }
     
     var body: some View {
         ZStack(alignment: .bottom) {
             SpendyColors.appBackground
                 .ignoresSafeArea()
+            
+            // Dynamic Account Top Ambient Gradient Glow based on selected account color
+            let themeColor = Color(hex: selectedColorHex)
+            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
             
             VStack(spacing: 0) {
                 // Top Header Bar (Sticky at top!)
@@ -88,11 +99,11 @@ struct AddAccountSheet: View {
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        // Hero Rounded Square Avatar
+                        // Hero Circle Avatar
                         avatarHeroSection
                             .padding(.top, 24)
                         
-                        // Form list
+                        // Form Content
                         formContentSection
                     }
                     .padding(.horizontal, 20)
@@ -119,6 +130,12 @@ struct AddAccountSheet: View {
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
+        }
+        .sheet(isPresented: $showBalanceKeypadSheet) {
+            AccountBalanceInputSheet(
+                amountString: $openingBalanceString,
+                currencySymbol: store.currencySymbol
+            )
         }
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
@@ -252,7 +269,7 @@ struct AddAccountSheet: View {
     
     private var formContentSection: some View {
         VStack(spacing: 16) {
-            // Row 1: Unified Account Name & Color Circle Split Capsule (80/20 Split)
+            // Row 1: Unified Account Name & Color Swatch Capsule (80/20 Split)
             HStack {
                 if isEditing && accountToEdit?.id == "cash" {
                     Text("Cash")
@@ -329,55 +346,39 @@ struct AddAccountSheet: View {
             .padding(.vertical, 16)
             .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
             
-            // Row 3: Currency Lock
-            HStack {
-                Text("Currency")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                HStack(spacing: 6) {
-                    let flag = currencyFlag(for: store.currencyCode)
-                    Text("\(flag) \(store.currencyCode)")
+            // Row 3: Interactive Balance Field (Opens Numeric Keypad Drawer Sheet)
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                showBalanceKeypadSheet = true
+            }) {
+                HStack {
+                    Text("Balance")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-            
-            // Row 4: Direct Inline Numeric Balance Input
-            HStack {
-                Text("Balance")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                HStack(spacing: 4) {
-                    Text(store.currencySymbol)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
+                        .foregroundStyle(SpendyColors.textSecondary)
                     
-                    TextField("0.00", text: $openingBalanceString)
-                        .font(Font.system(size: 15, weight: .bold, design: .default).monospacedDigit())
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(minWidth: 90)
+                    Spacer()
+                    
+                    HStack(spacing: 6) {
+                        Text(store.currencySymbol)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        
+                        Text(formattedBalanceDisplay)
+                            .font(Font.system(size: 16, weight: .bold, design: .default).monospacedDigit())
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+            .buttonStyle(.plain)
         }
     }
-
     
     private var colorSlidersCard: some View {
         VStack(spacing: 16) {
@@ -407,7 +408,8 @@ struct AddAccountSheet: View {
         Button(action: {
             HapticsManager.shared.trigger(.success)
             let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-            let parsedBalance = Double(openingBalanceString.replacingOccurrences(of: ",", with: "")) ?? 0.0
+            let cleanBalance = openingBalanceString.replacingOccurrences(of: ",", with: "")
+            let parsedBalance = Double(cleanBalance) ?? 0.0
             
             if isEditing, let acc = accountToEdit {
                 var updated = acc
@@ -452,8 +454,6 @@ struct AddAccountSheet: View {
     }
     
     // MARK: - Color Methods
-
-    
     private func syncSlidersFromHex(_ hex: String) {
         let uiColor = UIColor(Color(hex: hex))
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -470,21 +470,102 @@ struct AddAccountSheet: View {
             selectedColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
         }
     }
-    
-    private func currencyFlag(for code: String) -> String {
-        switch code {
-        case "INR": return "🇮🇳"
-        case "USD": return "🇺🇸"
-        case "EUR": return "🇪🇺"
-        case "GBP": return "🇬🇧"
-        case "JPY": return "🇯🇵"
-        case "CAD": return "🇨🇦"
-        case "AUD": return "🇦🇺"
-        case "AED": return "🇦🇪"
-        case "SGD": return "🇸🇬"
-        default: return "🏳️"
-        }
-    }
 }
 
-
+// MARK: - Dedicated Account Balance Numeric Keypad Sheet Drawer
+struct AccountBalanceInputSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var amountString: String
+    var currencySymbol: String
+    
+    @Namespace private var balanceNamespace
+    
+    private var displayAmount: String {
+        amountString.formattedNumberStringWithCommas()
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                // Shared 44pt Liquid Glass Header Bar (Exact match to Currency & Icon pickers)
+                SpendyGlassEffectContainer(spacing: 0) {
+                    ZStack {
+                        Text("Account Balance")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 60)
+                        
+                        HStack {
+                            GlassCircleButton(
+                                icon: "xmark",
+                                size: 44,
+                                iconSize: 14,
+                                foregroundColor: SpendyColors.textPrimary,
+                                haptic: .selection,
+                                accessibilityLabel: "Close",
+                                morphID: "closeBalanceSheetButton",
+                                namespace: balanceNamespace
+                            ) {
+                                dismiss()
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+                
+                // Hero Display: Currency Symbol & Large Dynamic Amount with Commas
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(currencySymbol)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    
+                    Text(displayAmount)
+                        .font(.system(size: 40, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
+                }
+                .padding(.top, 6)
+                .padding(.bottom, 10)
+                
+                // Tactile 3x4 Keypad with Currency Converter Match Keys
+                SpendyKeypad(
+                    amountString: $amountString,
+                    maxDigits: 10,
+                    maxDecimals: 2,
+                    buttonBackgroundColor: SpendyColors.separator
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 14)
+                
+                // Done Button (Apple Primary Blue with crisp contrast)
+                Button(action: {
+                    HapticsManager.shared.trigger(.success)
+                    dismiss()
+                }) {
+                    Text("Done")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(SpendyColors.primaryBlue, in: Capsule())
+                        .shadow(color: SpendyColors.primaryBlue.opacity(0.25), radius: 8, y: 3)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+        }
+        .presentationDetents([.height(470)])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
+        .presentationLiquidGlass(cornerRadius: 32)
+    }
+}

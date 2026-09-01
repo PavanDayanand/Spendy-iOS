@@ -12,11 +12,21 @@ struct TransactionDetailSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
-    let transaction: Transaction
-    var onEdit: (Transaction) -> Void
+    let initialTransaction: Transaction
+    var onEdit: ((Transaction) -> Void)?
     
+    @State private var showEditSheet: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @Namespace private var sheetNamespace
+    
+    init(transaction: Transaction, onEdit: ((Transaction) -> Void)? = nil) {
+        self.initialTransaction = transaction
+        self.onEdit = onEdit
+    }
+    
+    private var transaction: Transaction {
+        store.transactions.first(where: { $0.id == initialTransaction.id }) ?? initialTransaction
+    }
     
     private var category: Category? {
         store.categories.first(where: { $0.id == transaction.categoryId })
@@ -112,6 +122,14 @@ struct TransactionDetailSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .presentationBackground(SpendyColors.appBackground)
+        .fullScreenCover(isPresented: $showEditSheet) {
+            AddTransactionView(transactionToEdit: transaction)
+        }
+        .onChange(of: store.transactions) { _, newTransactions in
+            if !newTransactions.contains(where: { $0.id == initialTransaction.id }) {
+                dismiss()
+            }
+        }
     }
 
     
@@ -139,7 +157,12 @@ struct TransactionDetailSheet: View {
             // More Options Menu ••• (Right)
             Menu {
                 Button {
-                    onEdit(transaction)
+                    HapticsManager.shared.trigger(.selection)
+                    if let onEdit = onEdit {
+                        onEdit(transaction)
+                    } else {
+                        showEditSheet = true
+                    }
                 } label: {
                     Label("Edit Transaction", systemImage: "pencil")
                 }
@@ -174,6 +197,7 @@ struct TransactionDetailSheet: View {
                 Divider()
                 
                 Button(role: .destructive) {
+                    HapticsManager.shared.trigger(.warning)
                     showDeleteConfirm = true
                 } label: {
                     Label("Delete Transaction", systemImage: "trash")

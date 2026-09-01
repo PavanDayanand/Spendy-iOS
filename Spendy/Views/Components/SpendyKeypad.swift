@@ -13,6 +13,8 @@ struct SpendyKeypad: View {
     @Binding var amountString: String
     var maxDigits: Int = 10
     var maxDecimals: Int = 2
+    var buttonBackgroundColor: Color = Color(uiColor: .secondarySystemGroupedBackground)
+    var useLiquidGlass: Bool = false
     
     private let rows = [
         ["7", "8", "9"],
@@ -50,14 +52,7 @@ struct SpendyKeypad: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+            .modifier(KeypadBackgroundModifier(useLiquidGlass: useLiquidGlass, buttonBackgroundColor: buttonBackgroundColor))
         }
         .buttonStyle(KeypadPressStyle())
     }
@@ -97,7 +92,29 @@ struct SpendyKeypad: View {
             amountString += key
         }
     }
+}
 
+// MARK: - Keypad Background Modifier (Pure Native Liquid Glass)
+private struct KeypadBackgroundModifier: ViewModifier {
+    var useLiquidGlass: Bool
+    var buttonBackgroundColor: Color
+    
+    func body(content: Content) -> some View {
+        if useLiquidGlass {
+            content
+                .nativeLiquidGlass(cornerRadius: 16, isInteractive: true)
+        } else {
+            content
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(buttonBackgroundColor)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
+        }
+    }
 }
 
 // MARK: - Keypad Button Tactile Press Style

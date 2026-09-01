@@ -240,6 +240,7 @@ struct EditBudgetSheet: View {
         .presentationBackground(SpendyColors.appBackground)
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
+                HapticsManager.shared.trigger(.warning)
                 dismiss()
             }
             Button("Keep Editing", role: .cancel) {}

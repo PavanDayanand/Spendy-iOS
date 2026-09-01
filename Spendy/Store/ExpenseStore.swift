@@ -117,6 +117,17 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var ratesLastUpdated: Date? = nil {
+        didSet { scheduleSave() }
+    }
+    
+    var ratesLastUpdatedFormatted: String {
+        guard let date = ratesLastUpdated else { return "5h ago" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+    
     var appearanceMode: AppearanceMode = .dark {
         didSet { scheduleSave() }
     }
@@ -207,6 +218,7 @@ final class ExpenseStore {
         var currencyCode: String
         var customFolders: [Folder]?
         var ratesToUSD: [String: Double]?
+        var ratesLastUpdated: Date?
     }
     
     private var storageURL: URL {
@@ -239,6 +251,7 @@ final class ExpenseStore {
                 self.currencySymbol = payload.currencySymbol
                 self.currencyCode = payload.currencyCode
                 self.customFolders = payload.customFolders ?? []
+                self.ratesLastUpdated = payload.ratesLastUpdated
                 self.ratesToUSD = payload.ratesToUSD ?? [
                     "USD": 1.0,
                     "INR": 86.85,
@@ -289,7 +302,8 @@ final class ExpenseStore {
                 currencySymbol: currencySymbol,
                 currencyCode: currencyCode,
                 customFolders: customFolders,
-                ratesToUSD: ratesToUSD
+                ratesToUSD: ratesToUSD,
+                ratesLastUpdated: ratesLastUpdated
             )
             let data = try JSONEncoder().encode(payload)
             try data.write(to: storageURL, options: .atomic)
@@ -985,6 +999,7 @@ final class ExpenseStore {
                             updatedRates[code] = rate
                         }
                         self.ratesToUSD = updatedRates
+                        self.ratesLastUpdated = Date()
                         self.scheduleSave()
                     }
                 }

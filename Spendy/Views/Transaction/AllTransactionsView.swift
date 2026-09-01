@@ -200,11 +200,10 @@ struct AllTransactionsView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
-        .sheet(isPresented: $showAddTransaction) {
+        .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
-                .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $editingTransaction, onDismiss: {
+        .fullScreenCover(item: $editingTransaction, onDismiss: {
             if let last = lastInspectedTransaction {
                 let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
                 lastInspectedTransaction = nil
@@ -216,19 +215,9 @@ struct AllTransactionsView: View {
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
-                .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $inspectingTransaction, onDismiss: {
-            if let pending = pendingEditTransaction {
-                pendingEditTransaction = nil
-                editingTransaction = pending
-            }
-        }) { tx in
-            TransactionDetailSheet(transaction: tx) { txToEdit in
-                lastInspectedTransaction = tx
-                pendingEditTransaction = txToEdit
-                inspectingTransaction = nil
-            }
+        .sheet(item: $inspectingTransaction) { tx in
+            TransactionDetailSheet(transaction: tx)
         }
     }
     

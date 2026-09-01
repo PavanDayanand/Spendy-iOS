@@ -30,46 +30,104 @@ struct DateRangePickerSheet: View {
     }
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    DatePicker(
-                        "Start Date",
-                        selection: $tempStartDate,
-                        in: ...tempEndDate,
-                        displayedComponents: .date
-                    )
-                    
-                    DatePicker(
-                        "End Date",
-                        selection: $tempEndDate,
-                        in: tempStartDate...Date(),
-                        displayedComponents: .date
-                    )
-                }
-            }
-            .navigationTitle("Select Date Range")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+        ZStack {
+            VStack(spacing: 0) {
+                // Header (Cancel | Select Date Range | Apply)
+                HStack {
+                    Button(action: {
+                        HapticsManager.shared.trigger(.light)
                         dismiss()
+                    }) {
+                        Text("Cancel")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(SpendyColors.separator, in: Capsule())
                     }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") {
-                        HapticsManager.shared.trigger(.selection)
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    Text("Select Date Range")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.success)
                         startDate = tempStartDate
                         endDate = tempEndDate
                         onApply?(tempStartDate, tempEndDate)
                         dismiss()
+                    }) {
+                        Text("Apply")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(SpendyColors.primaryBlue, in: Capsule())
                     }
-                    .fontWeight(.semibold)
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+                
+                // Date Pickers inside Currency Converter matching card
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Start Date")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        Spacer()
+                        DatePicker(
+                            "",
+                            selection: $tempStartDate,
+                            in: ...tempEndDate,
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .tint(SpendyColors.primaryBlue)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    
+                    Divider()
+                        .background(SpendyColors.separator)
+                        .padding(.leading, 16)
+                    
+                    HStack {
+                        Text("End Date")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        Spacer()
+                        DatePicker(
+                            "",
+                            selection: $tempEndDate,
+                            in: tempStartDate...Date(),
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .tint(SpendyColors.primaryBlue)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
             }
         }
-        .presentationDetents([.height(260), .medium])
+        .presentationDetents([.height(230)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
+        .presentationLiquidGlass(cornerRadius: 32)
     }
 }

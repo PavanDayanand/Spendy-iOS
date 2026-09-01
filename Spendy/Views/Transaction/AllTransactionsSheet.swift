@@ -115,14 +115,10 @@ struct AllTransactionsSheet: View {
                 }
             }
             .sheet(item: $inspectingTransaction) { tx in
-                TransactionDetailSheet(transaction: tx) { txToEdit in
-                    editingTransaction = txToEdit
-                    inspectingTransaction = nil
-                }
+                TransactionDetailSheet(transaction: tx)
             }
-            .sheet(item: $editingTransaction) { tx in
+            .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
-                    .presentationBackground(SpendyColors.appBackground)
             }
         }
     }

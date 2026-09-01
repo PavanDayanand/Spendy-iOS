@@ -379,6 +379,7 @@ struct CategoriesSettingsView: View {
                     
                     if !searchQuery.isEmpty {
                         Button {
+                            HapticsManager.shared.trigger(.tick)
                             searchQuery = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")

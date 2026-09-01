@@ -46,10 +46,9 @@ struct MainTabView: View {
                 }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            .sheet(isPresented: $showAddTransaction) {
+            .fullScreenCover(isPresented: $showAddTransaction) {
                 AddTransactionView()
                     .matchedTransitionSource(id: "compose-tab", in: composeNamespace)
-                    .presentationBackground(SpendyColors.appBackground)
             }
         } else {
             ZStack(alignment: .bottom) {
@@ -78,9 +77,8 @@ struct MainTabView: View {
                 .padding(.bottom, 4)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            .sheet(isPresented: $showAddTransaction) {
+            .fullScreenCover(isPresented: $showAddTransaction) {
                 AddTransactionView()
-                    .presentationBackground(SpendyColors.appBackground)
             }
         }
     }

@@ -221,27 +221,17 @@ struct AccountAnalyticsSheet: View {
                 customDateRange = (start, end)
             }
         }
-        .sheet(isPresented: $showAddTransaction) {
+        .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView(defaultAccountId: account.id)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingAccountToEdit) { acc in
             AddAccountSheet(accountToEdit: acc)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $inspectingTransaction, onDismiss: {
-            if let pending = pendingEditTransaction {
-                editingTransaction = pending
-                pendingEditTransaction = nil
-            }
-        }) { tx in
-            TransactionDetailSheet(transaction: tx) { txToEdit in
-                lastInspectedTransaction = tx
-                pendingEditTransaction = txToEdit
-                inspectingTransaction = nil
-            }
+        .sheet(item: $inspectingTransaction) { tx in
+            TransactionDetailSheet(transaction: tx)
         }
-        .sheet(item: $editingTransaction, onDismiss: {
+        .fullScreenCover(item: $editingTransaction, onDismiss: {
             if let last = lastInspectedTransaction {
                 let fresh = store.transactions.first(where: { $0.id == last.id }) ?? last
                 lastInspectedTransaction = nil
@@ -250,7 +240,6 @@ struct AccountAnalyticsSheet: View {
             }
         }) { tx in
             AddTransactionView(transactionToEdit: tx)
-                .presentationBackground(SpendyColors.appBackground)
         }
     }
 

@@ -141,7 +141,7 @@ struct FloatingCurrencyConverterView: View {
                                 Text("1 \(fromCurrency) =")
                                     .font(.system(size: 9, weight: .medium))
                                     .foregroundColor(SpendyColors.textSecondary)
-                                Text("\(CurrencyInfo.symbol(for: toCurrency))\(String(format: "%.2f", exchangeRate))")
+                                Text("\(CurrencyInfo.symbol(for: toCurrency))\(exchangeRate.formattedNumber(decimals: 2))")
                                     .spendyNumberFont(size: 10, weight: .bold, tracking: -0.3)
                                     .foregroundColor(SpendyColors.textPrimary)
                             }
@@ -187,7 +187,7 @@ struct FloatingCurrencyConverterView: View {
                         .spendyNumberFont(size: 20, weight: .bold, tracking: -0.6)
                         .foregroundColor(SpendyColors.textTertiary)
                     
-                    Text(String(format: "%.2f", convertedAmount))
+                    Text(convertedAmount.formattedNumber(decimals: 2))
                         .spendyNumberFont(size: 24, weight: .bold, tracking: -0.8)
                         .foregroundColor(SpendyColors.textPrimary)
                         .lineLimit(1)

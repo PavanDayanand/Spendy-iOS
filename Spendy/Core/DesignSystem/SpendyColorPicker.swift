@@ -48,6 +48,11 @@ public struct HueSpectrumSlider: View {
                     .onChanged { value in
                         let locationX = max(0, min(geometry.size.width, value.location.x))
                         let newHue = Double(locationX / geometry.size.width)
+                        let oldStep = Int(self.hue * 24)
+                        let newStep = Int(newHue * 24)
+                        if oldStep != newStep {
+                            HapticsManager.shared.trigger(.tick)
+                        }
                         self.hue = newHue
                     }
             )
@@ -116,7 +121,13 @@ public struct DarkBrightnessSlider: View {
                         let locationX = max(0, min(geometry.size.width, value.location.x))
                         let fraction = Double(locationX / geometry.size.width)
                         let newB = minB + fraction * (maxB - minB)
-                        self.brightness = min(max(minB, newB), maxB)
+                        let clampedB = min(max(minB, newB), maxB)
+                        let oldStep = Int(self.brightness * 20)
+                        let newStep = Int(clampedB * 20)
+                        if oldStep != newStep {
+                            HapticsManager.shared.trigger(.tick)
+                        }
+                        self.brightness = clampedB
                     }
             )
         }

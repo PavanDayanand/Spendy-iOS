@@ -47,6 +47,7 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                                     Image(systemName: iconKey)
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(SpendyColors.elevatedControlForeground)
+                                        .symbolEffect(.bounce.byLayer, value: isSelected)
                                 }
                             }
                             

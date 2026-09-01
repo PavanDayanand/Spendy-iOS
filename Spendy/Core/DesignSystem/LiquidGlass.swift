@@ -479,3 +479,31 @@ extension View {
         }
     }
 }
+
+// MARK: - Spendy Sheet Liquid Glass Presentation Background
+struct SpendySheetLiquidGlassBackground: View {
+    var cornerRadius: CGFloat = 32
+    
+    var body: some View {
+        if #available(iOS 26, *) {
+            Color.clear
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .background(SpendyColors.glassFallbackFill, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
+    }
+}
+
+extension View {
+    func presentationLiquidGlass(cornerRadius: CGFloat = 32) -> some View {
+        self.presentationBackground {
+            SpendySheetLiquidGlassBackground(cornerRadius: cornerRadius)
+        }
+    }
+}

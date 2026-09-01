@@ -29,6 +29,16 @@ extension Double {
         return "\(sign)\(symbol)\(formattedNumber)"
     }
     
+    /// Formats a double value as a number with standard thousand separator commas (e.g. "1,250.00" or "1,250")
+    func formattedNumber(decimals: Int = 2) -> String {
+        guard !self.isNaN && !self.isInfinite else { return "0" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = decimals
+        formatter.maximumFractionDigits = decimals
+        return formatter.string(from: NSNumber(value: self)) ?? String(format: "%.\(decimals)f", self)
+    }
+    
     /// Formats with a clear +/- sign (e.g. "+$500.00" or "-$45.50")
     func formattedSignedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
         guard !self.isNaN && !self.isInfinite else { return "\(symbol)0" }
@@ -55,6 +65,39 @@ extension Double {
             return String(format: "\(symbol)%.1fk", self / 1_000)
         } else {
             return formattedCurrency(symbol: symbol, decimals: 0)
+        }
+    }
+}
+
+extension String {
+    /// Formats an input number string with live thousand separator commas while preserving decimal places & trailing dots
+    func formattedNumberStringWithCommas() -> String {
+        let clean = self.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return "0" }
+        
+        if clean.contains(".") {
+            let parts = clean.components(separatedBy: ".")
+            let intPart = parts.first ?? "0"
+            let decPart = parts.count > 1 ? parts[1] : ""
+            
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 0
+            
+            let formattedInt = (Double(intPart).flatMap { formatter.string(from: NSNumber(value: $0)) }) ?? intPart
+            if clean.hasSuffix(".") {
+                return "\(formattedInt)."
+            } else {
+                return "\(formattedInt).\(decPart)"
+            }
+        } else {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 0
+            if let num = Double(clean) {
+                return formatter.string(from: NSNumber(value: num)) ?? clean
+            }
+            return clean
         }
     }
 }
