@@ -180,56 +180,53 @@ struct SubscriptionQuickActionSheet: View {
     // MARK: - Body
     
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .top) {
-                // MARK: - Ambient Subscription Gradient Header Glow
-                SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
-                
-                // MARK: - Scrollable Content
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        // Spacer to clear pinned floating top bar (44pt button + 20pt top inset + 8pt gap)
-                        Spacer().frame(height: 64)
-                        
-                        // MARK: - Hero Section
-                        heroSection
-                        
-                        // MARK: - Structured Details Card
-                        detailsCard
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 28)
+        ZStack(alignment: .top) {
+            // MARK: - Ambient Subscription Gradient Header Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+            
+            // MARK: - Scrollable Content
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    // Spacer to clear pinned floating top bar (44pt button + 20pt top inset + 8pt gap)
+                    Spacer().frame(height: 64)
+                    
+                    // MARK: - Hero Section
+                    heroSection
+                    
+                    // MARK: - Structured Details Card
+                    detailsCard
                 }
-                
-                // MARK: - Floating Top Bar (✕ on Left, ••• on Right)
-                topActionBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                
-                // MARK: - Floating Dynamic Toast Feedback Banner
-                if showToast, let toast = toastMessage {
-                    feedbackToastView(message: toast, icon: toastIcon, color: toastColor)
-                        .padding(.top, 74)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .zIndex(200)
-                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
             }
-            .background(Color.clear)
-            .toolbar(.hidden, for: .navigationBar)
-            .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
-                Button("Delete Subscription", role: .destructive) {
-                    HapticsManager.shared.trigger(.warning)
-                    store.deleteSubscription(id: liveSub.id)
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
+            
+            // MARK: - Floating Top Bar (✕ on Left, ••• on Right)
+            topActionBar
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+            
+            // MARK: - Floating Dynamic Toast Feedback Banner
+            if showToast, let toast = toastMessage {
+                feedbackToastView(message: toast, icon: toastIcon, color: toastColor)
+                    .padding(.top, 74)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(200)
             }
-            .sheet(isPresented: $showEditSheet) {
-                AddSubscriptionSheet(subscriptionToEdit: liveSub)
-                    .presentationBackground(SpendyColors.appBackground)
+        }
+        .background(Color.clear)
+        .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
+            Button("Delete Subscription", role: .destructive) {
+                HapticsManager.shared.trigger(.warning)
+                store.deleteSubscription(id: liveSub.id)
+                dismiss()
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
+        }
+        .sheet(isPresented: $showEditSheet) {
+            AddSubscriptionSheet(subscriptionToEdit: liveSub)
+                .presentationBackground(SpendyColors.appBackground)
         }
         .presentationDetents([.height(540), .large])
         .presentationDragIndicator(.visible)

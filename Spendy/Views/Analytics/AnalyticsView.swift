@@ -302,6 +302,15 @@ struct AnalyticsView: View {
                                 .tag(AnalyticsGroupingMode.accounts)
                         }
                     }
+                    
+                    Section("Management") {
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            showSubscriptionSheet = true
+                        }) {
+                            Label("Subscriptions", systemImage: SFIcons.subscriptions)
+                        }
+                    }
                 } label: {
                     GlassCircleIcon(
                         icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
@@ -678,10 +687,6 @@ struct AnalyticsView: View {
                         }
                         .padding(.vertical, AppSpacing.xxs)
                         .contentShape(Rectangle())
-                        .matchedTransitionSource(
-                            id: groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
-                            in: analyticsControlsNamespace
-                        )
                         .onTapGesture {
                             HapticsManager.shared.trigger(.selection)
                             if groupingMode == .categories {

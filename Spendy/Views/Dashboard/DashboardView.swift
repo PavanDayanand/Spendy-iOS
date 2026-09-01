@@ -156,12 +156,13 @@ struct DashboardView: View {
     @Binding var showAddTransaction: Bool
     var selectedTab: Binding<AppTab>? = nil
     
-    // Sheets State
+    // Sheets & Navigation State
     @State private var showSettings: Bool = false
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showCurrencyConverter: Bool = false
     @State private var showSubscriptionsHub: Bool = false
     @State private var showSmartInsightsSheet: Bool = false
+    @State private var showAccounts: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var selectedCategoryForSheet: Category? = nil
@@ -316,6 +317,9 @@ struct DashboardView: View {
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView()
             }
+            .navigationDestination(isPresented: $showAccounts) {
+                AccountsView()
+            }
             .navigationDestination(isPresented: $showSmartInsightsSheet) {
                 SmartInsightsSheet()
             }
@@ -427,7 +431,6 @@ struct DashboardView: View {
                     HapticsManager.shared.trigger(.selection)
                     showSubscriptionsHub = true
                 }
-                .matchedTransitionSource(id: AppTransitionIDs.subscriptionsButton, in: topControlsNamespace)
             }
             .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
         }
@@ -464,6 +467,15 @@ struct DashboardView: View {
                                 }
                             }
                         }
+                    }
+                    
+                    Divider()
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        showAccounts = true
+                    }) {
+                        Label("Manage Accounts...", systemImage: "creditcard")
                     }
                 } label: {
                     HStack(spacing: 6) {

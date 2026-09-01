@@ -15,8 +15,6 @@ struct BudgetView: View {
     @State private var showDeleteConfirmation: Bool = false
     @State private var selectedCategoryForSheet: Category? = nil
     
-    @Namespace private var budgetControlsNamespace
-    
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
         let end = store.budgetCycleEnd()
@@ -74,14 +72,7 @@ struct BudgetView: View {
                 Text("This will remove your current budget limit.")
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(
-                    category: category
-                ) {
-                    withAnimation(AppMotion.fluidSpring) {
-                        selectedCategoryForSheet = nil
-                    }
-                }
-                .navigationTransition(.zoom(sourceID: AppTransitionIDs.categoryCard(category.id), in: budgetControlsNamespace))
+                CategoryAnalyticsSheet(category: category)
             }
         }
     }
