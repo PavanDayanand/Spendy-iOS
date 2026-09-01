@@ -152,68 +152,69 @@ struct AccountAnalyticsSheet: View {
             // Dynamic Ambient Full-Width Header Glow
             SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
             
-            ZStack(alignment: .top) {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-
-                        Spacer().frame(height: 64)
-
-                        
-                        // 1. Clean Hero Account Balance Header (Pure Content)
-                        heroHeaderSection
-                            .padding(.horizontal, 20)
-                        
-                        // 2. Uncarded SwiftCharts Area Graph & Glass Index Strip
-                        chartSection
-                            .padding(.horizontal, 16)
-                        
-                        // 3. Consolidated 4-Metric Account Overview Card or Insights Card
-                        if allAccountTransactions.count < 3 {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text("Insights")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Text("Add more transactions to unlock personalised insights")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineSpacing(4)
-                            }
-                            .padding(20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
-                            .padding(.horizontal, 16)
-                        } else {
-                            accountOverviewCard
-                                .padding(.horizontal, 20)
-                                .padding(.top, 4)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // 1. Clean Hero Account Balance Header (Pure Content)
+                    heroHeaderSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                    
+                    // 2. Uncarded SwiftCharts Area Graph & Glass Index Strip
+                    chartSection
+                        .padding(.horizontal, 16)
+                    
+                    // 3. Consolidated 4-Metric Account Overview Card or Insights Card
+                    if allAccountTransactions.count < 3 {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Insights")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                            
+                            Text("Add more transactions to unlock personalised insights")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .lineSpacing(4)
                         }
-                        
-                        // 4. Date-Grouped Account Activity List
-                        transactionsSection
-                            .padding(.horizontal, 16)
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                }
+                        }
+                        .padding(.horizontal, 16)
+                    } else {
+                        accountOverviewCard
+                            .padding(.horizontal, 20)
                             .padding(.top, 4)
-                            .padding(.bottom, 40)
                     }
+                    
+                    // 4. Date-Grouped Account Activity List
+                    transactionsSection
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                        .padding(.bottom, 40)
                 }
-                
-                // Floating Sticky Header Bar
-                headerBar
-                    .padding(.top, 16)
-                    .zIndex(100)
             }
         }
-
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .navigationTitle(account.label)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    editingAccountToEdit = account
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+                .accessibilityLabel("Edit Account")
+            }
+        }
         .sheet(isPresented: $showDatePicker) {
             DateRangePickerSheet(startDate: $customStartDate, endDate: $customEndDate) { start, end in
                 customDateRange = (start, end)
@@ -237,59 +238,6 @@ struct AccountAnalyticsSheet: View {
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
         }
-    }
-
-    
-    // MARK: - 1. Floating Header Bar
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
-            ZStack {
-                // Centered Account Name
-                Text(account.label)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 60)
-                
-                HStack {
-                    GlassCircleButton(
-                        icon: "chevron.left",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        accessibilityLabel: "Back",
-                        morphID: pageMorphID(shared: backButtonMorphID, fallback: "backButton"),
-                        namespace: sharedMorphNamespace
-                    ) {
-                        HapticsManager.shared.trigger(.selection)
-                        if let onDismiss = onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
-                    }
-
-                    Spacer()
-
-                    // Top-Right Glass Edit Account Button
-                    GlassCircleButton(
-                        icon: "pencil",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        accessibilityLabel: "Edit Account",
-                        morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
-                        namespace: sharedMorphNamespace
-                    ) {
-                        HapticsManager.shared.trigger(.light)
-                        editingAccountToEdit = account
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20)
     }
     
     // MARK: - 2. Hero Header Section (Clean Apple Wallet Typography)

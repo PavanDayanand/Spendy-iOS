@@ -33,42 +33,45 @@ struct CategoriesSettingsView: View {
             SpendyColors.settingsBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Top Custom Header Bar (Sticky at top!)
-                headerBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 10)
-                    .background(SpendyColors.settingsBackground)
-                    .zIndex(10)
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
-                        // Expense / Income Segmented Glass Toggle
-                        typeSegmentedControl
-                            .padding(.top, 4)
-                        
-                        // Grouped Categories Content
-                        if filteredCategories.isEmpty {
-                            emptyStateView
-                        } else if searchQuery.isEmpty {
-                            folderSectionsView
-                        } else {
-                            searchResultsView
-                        }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    // Expense / Income Segmented Glass Toggle
+                    typeSegmentedControl
+                        .padding(.top, 12)
+                    
+                    // Grouped Categories Content
+                    if filteredCategories.isEmpty {
+                        emptyStateView
+                    } else if searchQuery.isEmpty {
+                        folderSectionsView
+                    } else {
+                        searchResultsView
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    .padding(.bottom, 120) // Clearance for bottom floating bar
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 6)
+                .padding(.bottom, 120) // Clearance for bottom floating bar
             }
             
             // Bottom Floating Bar: Search Capsule + Plus Button
             bottomFloatingBar
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .navigationTitle("Categories")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    withAnimation(.spring(response: 0.25)) {
+                        isEditMode.toggle()
+                    }
+                } label: {
+                    Image(systemName: isEditMode ? "checkmark" : "pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary)
+                }
+            }
+        }
         .sheet(isPresented: $showAddCategory) {
             AddCategorySheet(categoryToEdit: nil, defaultType: selectedType, defaultFolder: selectedFolderForAdd)
                 .presentationBackground(SpendyColors.appBackground)
@@ -103,51 +106,6 @@ struct CategoriesSettingsView: View {
             }
         } message: {
             Text("Past transactions assigned to this category will remain.")
-        }
-    }
-    
-    // MARK: - Top Header Bar
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Circular Glass Back Button
-                GlassCircleButton(
-                    icon: "chevron.left",
-                    size: 44,
-                    iconSize: 15,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Back",
-                    morphID: "backButton",
-                    namespace: categoriesNamespace
-                ) {
-                    dismiss()
-                }
-                
-                Spacer()
-                
-                Text("Categories")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
-                
-                // Right "Edit" Circle Toggle Button
-                GlassCircleButton(
-                    icon: isEditMode ? "checkmark" : "pencil",
-                    size: 44,
-                    iconSize: 15,
-                    foregroundColor: isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
-                    haptic: .light,
-                    accessibilityLabel: "Toggle Edit Mode",
-                    morphID: "editModeButton",
-                    namespace: categoriesNamespace
-                ) {
-                    withAnimation(.spring(response: 0.25)) {
-                        isEditMode.toggle()
-                    }
-                }
-            }
         }
     }
     

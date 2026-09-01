@@ -38,43 +38,13 @@ struct DataManagementView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             SpendyColors.settingsBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Header (Sticky at top!)
-                HStack {
-                    GlassCircleButton(
-                        icon: "chevron.left",
-                        size: 44,
-                        iconSize: 15,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .selection,
-                        accessibilityLabel: "Back"
-                    ) {
-                        dismiss()
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Data Management")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Color.clear.frame(width: 44, height: 44)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-                .background(SpendyColors.settingsBackground)
-                .zIndex(10)
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Backup & Export Section
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    // Backup & Export Section
                         VStack(alignment: .leading, spacing: 8) {
                             Text("BACKUP & EXPORT")
                                 .font(.system(size: 12, weight: .semibold))
@@ -183,10 +153,8 @@ struct DataManagementView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-        }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .navigationTitle("Data Management")
+        .navigationBarTitleDisplayMode(.inline)
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.json],

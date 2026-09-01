@@ -79,44 +79,41 @@ struct TransactionDetailSheet: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .top) {
-                // MARK: - Ambient Theme Gradient Glow (At top of sheet, fades smoothly to base)
-                SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
-                
-                // MARK: - Scrollable Content (offset below the floating top bar)
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
-                        // Spacer to clear the floating topActionBar (44pt button + 20pt top inset + 8pt gap)
-                        Spacer().frame(height: 64)
-                        
-                        // MARK: - 1. Hero Section
-                        heroSection
-                        
-                        // MARK: - 2. Structured Details Card
-                        detailsCard
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 28)
+        ZStack(alignment: .top) {
+            // MARK: - Ambient Theme Gradient Glow (At top of sheet, fades smoothly to base)
+            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+            
+            // MARK: - Scrollable Content (offset below the floating top bar)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    // Spacer to clear the floating topActionBar (44pt button + 20pt top inset + 8pt gap)
+                    Spacer().frame(height: 64)
+                    
+                    // MARK: - 1. Hero Section
+                    heroSection
+                    
+                    // MARK: - 2. Structured Details Card
+                    detailsCard
                 }
-                
-                // MARK: - Pinned Floating Top Bar (✕, ✎, 🗑)
-                topActionBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
             }
-            .background(Color.clear)
-            .toolbar(.hidden, for: .navigationBar)
-            .alert("Delete Transaction?", isPresented: $showDeleteConfirm) {
-                Button("Delete", role: .destructive) {
-                    HapticsManager.shared.trigger(.warning)
-                    store.deleteTransaction(id: transaction.id)
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Are you sure you want to delete this transaction? This cannot be undone.")
+            
+            // MARK: - Pinned Floating Top Bar (✕, ✎, 🗑)
+            topActionBar
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+        }
+        .background(Color.clear)
+        .alert("Delete Transaction?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                HapticsManager.shared.trigger(.warning)
+                store.deleteTransaction(id: transaction.id)
+                dismiss()
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete this transaction? This cannot be undone.")
         }
         .presentationDetents([.height(500), .medium, .large])
         .presentationDragIndicator(.visible)

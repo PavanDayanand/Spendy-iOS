@@ -57,29 +57,19 @@ struct AccountsView: View {
             // Dynamic Ambient Full-Width Blue Header Glow
             SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 380, opacity: 0.28)
             
-            ZStack(alignment: .top) {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        Spacer().frame(height: 64) // Clean top clearance for floating header
-
-                        
-                        // 1. Net Worth Hero Card with Currency Switcher & Sparkline
-                        heroNetWorthSection
-                            .padding(.horizontal, 16)
-                        
-                        // 2. Accounts List Section (with horizontal type filters)
-                        accountsListSection
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 100) // Clearance for bottom floating button
-                    }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // 1. Net Worth Hero Card with Currency Switcher & Sparkline
+                    heroNetWorthSection
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                    
+                    // 2. Accounts List Section (with horizontal type filters)
+                    accountsListSection
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 100) // Clearance for bottom floating button
                 }
-                
-                // Floating Sticky Header Bar
-                headerBar
-                    .padding(.top, 16)
-                    .zIndex(100)
             }
-
             
             // Bottom Floating Action Button (Add +)
             VStack {
@@ -87,7 +77,8 @@ struct AccountsView: View {
                 bottomFloatingBar
             }
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationTitle("Accounts")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
@@ -110,45 +101,6 @@ struct AccountsView: View {
             )
             .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(acc.id), in: topControlsNamespace ?? accountsNamespace))
         }
-    }
-
-    
-    // MARK: - Top Header Bar
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            ZStack {
-                Text("Accounts")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 60)
-                
-                HStack {
-                    // Circular Glass Back Button
-                    GlassCircleButton(
-                        icon: "chevron.left",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .selection,
-                        accessibilityLabel: "Back",
-                        morphID: "backButton",
-                        namespace: accountsNamespace
-                    ) {
-                        if let onDismiss = onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
-                    }
-                    .optionalMatchedGeometry(id: "topControl_left", in: topControlsNamespace)
-                    
-                    Spacer()
-                }
-            }
-        }
-        .padding(.horizontal, 20)
     }
     
     // MARK: - Net Worth Hero Section

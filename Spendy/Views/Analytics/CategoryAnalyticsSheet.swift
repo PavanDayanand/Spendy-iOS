@@ -290,63 +290,67 @@ struct CategoryAnalyticsSheet: View {
             // Ambient Category Full-Width Header Glow
             SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
             
-            ZStack(alignment: .top) {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        Spacer().frame(height: 64)
-                        
-                        // 1. Pure Hero Header
-                        heroHeaderSection
-                            .padding(.horizontal, 20)
-                        
-                        // 2. Uncarded SwiftCharts Area Graph & Glass Selector
-                        chartSection
-                            .padding(.horizontal, 16)
-                        
-                        // 3. Insights Card (when low data) or Dynamic Carousel (when enough data)
-                        if allCategoryTransactions.count < 3 || dynamicCategoryInsights.isEmpty {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text("Insights")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Text("Add more transactions to unlock personalised insights")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineSpacing(4)
-                            }
-                            .padding(20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
-                            .padding(.horizontal, 16)
-                        } else {
-                            categoryInsightsCarousel
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // 1. Pure Hero Header
+                    heroHeaderSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                    
+                    // 2. Uncarded SwiftCharts Area Graph & Glass Selector
+                    chartSection
+                        .padding(.horizontal, 16)
+                    
+                    // 3. Insights Card (when low data) or Dynamic Carousel (when enough data)
+                    if allCategoryTransactions.count < 3 || dynamicCategoryInsights.isEmpty {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Insights")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                            
+                            Text("Add more transactions to unlock personalised insights")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .lineSpacing(4)
                         }
-                        
-                        // 4. Date-Grouped Activity List
-                        transactionsSection
-                            .padding(.horizontal, 16)
-                            .padding(.top, 4)
-                            .padding(.bottom, 40)
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(SpendyColors.cardBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                }
+                        }
+                        .padding(.horizontal, 16)
+                    } else {
+                        categoryInsightsCarousel
                     }
+                    
+                    // 4. Date-Grouped Activity List
+                    transactionsSection
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                        .padding(.bottom, 40)
                 }
-                
-                // Floating Sticky Header Bar
-                headerBar
-                    .padding(.top, 16)
-                    .zIndex(100)
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .navigationTitle(category.label)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    editingCategoryToEdit = category
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+                .accessibilityLabel("Edit Category")
+            }
+        }
         .sheet(isPresented: $showDatePicker) {
             DateRangePickerSheet(startDate: $customStartDate, endDate: $customEndDate) { start, end in
                 customDateRange = (start, end)
@@ -370,58 +374,6 @@ struct CategoryAnalyticsSheet: View {
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
         }
-    }
-    
-    // MARK: - 1. Floating Sticky Header Bar
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
-            ZStack {
-                // Centered Category Name
-                Text(category.label)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 60)
-                
-                HStack {
-                    GlassCircleButton(
-                        icon: "chevron.left",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        accessibilityLabel: "Back",
-                        morphID: pageMorphID(shared: backButtonMorphID, fallback: "backButton"),
-                        namespace: sharedMorphNamespace
-                    ) {
-                        HapticsManager.shared.trigger(.selection)
-                        if let onDismiss = onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
-                    }
-
-                    Spacer()
-
-                    // Right-Side Edit Glass Button
-                    GlassCircleButton(
-                        icon: "pencil",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        accessibilityLabel: "Edit Category",
-                        morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
-                        namespace: sharedMorphNamespace
-                    ) {
-                        HapticsManager.shared.trigger(.light)
-                        editingCategoryToEdit = category
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20)
     }
     
     // MARK: - 2. Clean Hero Header Section

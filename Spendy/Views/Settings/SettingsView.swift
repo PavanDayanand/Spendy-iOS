@@ -40,53 +40,56 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack(alignment: .top) {
+            ZStack {
                 SpendyColors.settingsBackground
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Sticky Header Bar (Fixed at top of sheet!)
-                    headerBar
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 12)
-                        .background(SpendyColors.settingsBackground)
-                        .zIndex(10)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 22) {
+                        // Suggest a Feature Banner
+                        featureSuggestionBanner
 
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 22) {
-                            // Suggest a Feature Banner
-                            featureSuggestionBanner
+                        // User Profile Card
+                        userProfileCard
 
-                            // User Profile Card
-                            userProfileCard
+                        // 1. Manage Section (Accounts & Categories)
+                        manageSection
 
-                            // 1. Manage Section (Accounts & Categories)
-                            manageSection
+                        // 2. Preferences Section (Appearance, Currency, Haptics, Notifications)
+                        preferencesSection
 
-                            // 2. Preferences Section (Appearance, Currency, Haptics, Notifications)
-                            preferencesSection
+                        // 3. Data & Backup Section (Export, Import, Reset)
+                        dataBackupSection
 
-                            // 3. Data & Backup Section (Export, Import, Reset)
-                            dataBackupSection
+                        // 4. About & Community Section
+                        aboutSection
 
-                            // 4. About & Community Section
-                            aboutSection
-
-                            // 5. Footer App Branding
-                            footerSection
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                        .padding(.bottom, 40)
+                        // 5. Footer App Branding
+                        footerSection
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 40)
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                    .accessibilityLabel("Close")
+                }
+            }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
                 case .accounts:
-                    AccountsSettingsView()
+                    AccountsView()
                 case .categories:
                     CategoriesSettingsView()
                 case .dataBackup:
@@ -115,37 +118,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCoffeeSheet) {
                 coffeeSheet
-            }
-        }
-    }
-
-    // MARK: - Sticky Header Bar (Close ✕ Button)
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Close Button
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
-                    namespace: settingsNamespace
-                ) {
-                    dismiss()
-                }
-
-                Spacer()
-
-                Text("Settings")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-
-                Spacer()
-
-                Color.clear.frame(width: 44, height: 44)
             }
         }
     }

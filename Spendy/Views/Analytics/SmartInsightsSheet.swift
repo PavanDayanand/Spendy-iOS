@@ -54,35 +54,26 @@ struct SmartInsightsSheet: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            ZStack(alignment: .top) {
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // Top spacing to clear the floating header bar
-                        Spacer().frame(height: 52)
-                        
-                        // 1. Spent Summary Section
-                        spentSummarySection
-                        
-                        // 2. Spending by Category Widget Cards Carousel
-                        if !categoryTotals.isEmpty {
-                            categoryCardsCarouselSection
-                        }
-                        
-                        // 3. Classic Category List Section
-                        categoryListSection
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    // 1. Spent Summary Section
+                    spentSummarySection
+                        .padding(.top, 12)
+                    
+                    // 2. Spending by Category Widget Cards Carousel
+                    if !categoryTotals.isEmpty {
+                        categoryCardsCarouselSection
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 40)
+                    
+                    // 3. Classic Category List Section
+                    categoryListSection
                 }
-                
-                // Floating Sticky Header Bar on Top Layer
-                headerBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .zIndex(100)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
             }
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationTitle("Spending by Category")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .navigationDestination(item: $selectedCategoryForSheet) { category in
             CategoryAnalyticsSheet(
@@ -93,38 +84,6 @@ struct SmartInsightsSheet: View {
                     selectedCategoryForSheet = nil
                 }
             }
-        }
-    }
-    
-    // MARK: - Header Bar
-    private var headerBar: some View {
-        HStack {
-            // Liquid Glass Back Button
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                accessibilityLabel: "Back",
-                morphID: "backButton_smartInsights",
-                namespace: topControlsNamespace ?? fallbackNamespace
-            ) {
-                HapticsManager.shared.trigger(.selection)
-                dismiss()
-            }
-            
-            Spacer()
-            
-            Text("Spending by Category")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Empty placeholder to balance centered title
-            Color.clear
-                .frame(width: 44, height: 44)
         }
     }
     

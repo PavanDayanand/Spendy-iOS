@@ -130,14 +130,14 @@ struct AllTransactionsView: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Content Layer with Floating Top & Bottom Bars
-            ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                // Horizontal Scrollable Liquid Glass Filter Capsules
+                horizontalFilterBar
+                    .padding(.vertical, 8)
+                
                 // Scrollable Content Layer
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        // Top Clearance for Floating Header Bar + 3 Liquid Glass Filter Toggles
-                        Spacer().frame(height: 106)
-                        
                         // Grouped Transactions List
                         if filteredTransactions.isEmpty {
                             emptyStateView
@@ -174,17 +174,6 @@ struct AllTransactionsView: View {
                         }
                     }
                 }
-                
-                // Floating Sticky Header & Filter Bar on Top Layer
-                VStack(spacing: 10) {
-                    topNavBar
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                    
-                    horizontalFilterBar
-                }
-                .padding(.bottom, 6)
-                .zIndex(100)
             }
             
             // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
@@ -196,7 +185,8 @@ struct AllTransactionsView: View {
             }
             .zIndex(100)
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationTitle("All Transactions")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
@@ -211,41 +201,6 @@ struct AllTransactionsView: View {
                     editingTransaction = txToEdit
                 }
             }
-        }
-    }
-    
-    // MARK: - 1. Top Navigation Bar (Reliable Glass Back Button on Top Layer)
-    private var topNavBar: some View {
-        HStack(alignment: .center) {
-            // Circular Glass Back Button
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                accessibilityLabel: "Back"
-            ) {
-                HapticsManager.shared.trigger(.selection)
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-            
-            Spacer()
-            
-            // Center Title
-            Text("All Transactions")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Symmetrical Spacer
-            Color.clear
-                .frame(width: 44, height: 44)
         }
     }
     

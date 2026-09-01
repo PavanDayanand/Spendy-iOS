@@ -163,10 +163,8 @@ struct AnalyticsView: View {
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
             }
-            .sheet(isPresented: $showSubscriptionSheet) {
-                NavigationStack {
-                    SubscriptionsView()
-                }
+            .navigationDestination(isPresented: $showSubscriptionSheet) {
+                SubscriptionsView()
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: false) {
