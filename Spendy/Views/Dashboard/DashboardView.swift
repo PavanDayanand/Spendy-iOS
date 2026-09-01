@@ -243,11 +243,15 @@ struct DashboardView: View {
                         dailyBurnHorizontalCard
                             .padding(.top, 2)
                         
-                        // 5. Smart Insights Section (Above Recent Transactions)
+                        // 5. Smart Insights Section (Above Accounts & Transactions)
                         smartInsightsSection
                             .padding(.top, 6)
                         
-                        // 6. Classic Recent Transactions Section
+                        // 6. Accounts Section (Unified Grouped Card on Home)
+                        accountsUnifiedCardSection
+                            .padding(.top, 6)
+                        
+                        // 7. Classic Recent Transactions Section
                         recentTransactionsSection
                             .padding(.top, 6)
                     }
@@ -716,7 +720,108 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 6. Unified Grouped Recent Transactions Section
+    // MARK: - 6. Accounts Section (Unified Grouped Card on Home)
+    private var accountsUnifiedCardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                showAccounts = true
+            }) {
+                HStack {
+                    Text("Accounts")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 4) {
+                        Text("\(store.accounts.count)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            
+            VStack(spacing: 14) {
+                // Top: Total Net Worth / Balance & Sparkline
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    showAccounts = true
+                }) {
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Total Balance")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                            
+                            Text(hideBalance ? "••••••" : store.totalBalance.formattedCurrency(symbol: store.currencySymbol))
+                                .spendyNumberFont(size: 22, weight: .bold, tracking: -0.5)
+                                .foregroundStyle(SpendyColors.textPrimary)
+                        }
+                        
+                        Spacer()
+                        
+                        // Sparkline Trend Curve
+                        let isPositive = store.netWorthChangePercentage >= 0
+                        TrendSparkline(isPositive: isPositive)
+                            .frame(width: 80, height: 32)
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .overlay(SpendyColors.separator)
+                
+                // Account Rows
+                VStack(spacing: 12) {
+                    ForEach(store.accounts) { acc in
+                        let bal = store.balance(for: acc.id)
+                        
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            selectedAccountForSheet = acc
+                        }) {
+                            HStack(spacing: 14) {
+                                SpendyIconBadge(
+                                    sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
+                                    color: acc.color,
+                                    size: .medium,
+                                    style: .circle
+                                )
+                                
+                                Text(acc.label)
+                                    .font(.system(size: 15.5, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Spacer()
+                                
+                                Text(hideBalance ? "••••" : bal.formattedCurrency(symbol: store.currencySymbol))
+                                    .spendyNumberFont(size: 15.5, weight: .bold, tracking: -0.3)
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(18)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
+            }
+        }
+    }
+    
+    // MARK: - 7. Unified Grouped Recent Transactions Section
     private var recentTransactionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recent transactions")

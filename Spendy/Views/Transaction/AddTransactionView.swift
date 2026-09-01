@@ -144,24 +144,22 @@ struct AddTransactionView: View {
     
     var body: some View {
         return ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
+            Color.black
                 .ignoresSafeArea()
             
-            LiquidMeshBackground(style: .sheet)
-            
             VStack(spacing: 0) {
-                // MARK: - 1. Top Header Bar (Close ✕ | 44pt Type Switcher | More ...)
+                // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
                 topHeaderBar
                     .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    .padding(.bottom, 6)
+                    .padding(.top, 10)
+                    .padding(.bottom, 16)
 
                 
-                // MARK: - 2. Subheader Row (Account Pill + Currency Flag) - Hidden in Transfer Mode
+                // MARK: - 2. Subheader Row (Account Pill on Left) - Hidden in Transfer Mode
                 if type != .transfer {
                     subHeaderRow
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, 8)
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .scale(scale: 0.96)),
                             removal: .opacity.combined(with: .scale(scale: 0.96))
@@ -193,7 +191,7 @@ struct AddTransactionView: View {
                     // MARK: - 5. Bottom Keypad & Actions
                     keypadAndActionsSection
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 10)
+                        .padding(.bottom, 22)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
@@ -319,46 +317,13 @@ struct AddTransactionView: View {
         }
     }
     
-    // MARK: - 2. Subheader Row (Account Pill on Left + Currency Flag Pill on Right)
+    // MARK: - 2. Subheader Row (Account Pill on Left)
     private var subHeaderRow: some View {
         HStack {
             if type != .transfer {
                 accountPillButton(account: fromAccount, isDestination: false)
             }
-            
             Spacer()
-            
-            // Currency Flag Pill (🇮🇳 ₹)
-            currencyFlagPill
-        }
-    }
-    
-    private var currencyFlagPill: some View {
-        HStack(spacing: 6) {
-            Text(currencyFlag(for: store.currencyCode))
-                .font(.system(size: 14))
-            
-            Text(store.currencySymbol)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 44)
-        .nativeLiquidGlassCapsule(isInteractive: false)
-    }
-    
-    private func currencyFlag(for code: String) -> String {
-        switch code {
-        case "INR": return "🇮🇳"
-        case "USD": return "🇺🇸"
-        case "EUR": return "🇪🇺"
-        case "GBP": return "🇬🇧"
-        case "JPY": return "🇯🇵"
-        case "CAD": return "🇨🇦"
-        case "AUD": return "🇦🇺"
-        case "AED": return "🇦🇪"
-        case "SGD": return "🇸🇬"
-        default: return "🏳️"
         }
     }
     
@@ -408,22 +373,24 @@ struct AddTransactionView: View {
         }
     }
     
-    // MARK: - 3. Standard Amount Section (Expense & Income Mode)
+    // MARK: - 3. Standard Amount Section (Expense & Income Mode with Numeric Text Transitions)
     private var standardAmountSection: some View {
         VStack(spacing: 4) {
             Spacer()
             
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(store.currencySymbol)
-                    .font(.system(size: 48, weight: .bold, design: .default))
-                    .foregroundStyle(SpendyColors.textTertiary)
+                    .font(.system(size: 60, weight: .bold, design: .default))
+                    .foregroundStyle(Color(hex: "#8E8E93"))
                 
                 Text(amountString)
-                    .font(.system(size: 72, weight: .heavy, design: .default))
+                    .font(.system(size: 76, weight: .heavy, design: .default))
                     .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
+                    .foregroundStyle(Color.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
             }
             
             Spacer()
@@ -479,17 +446,17 @@ struct AddTransactionView: View {
             }) {
                 ZStack {
                     Circle()
-                        .fill(SpendyColors.cardBackground)
-                        .frame(width: 34, height: 34)
+                        .fill(Color(hex: "#242426"))
+                        .frame(width: 38, height: 38)
                         .overlay {
-                            Circle().stroke(SpendyColors.separator, lineWidth: 0.8)
+                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1.0)
                         }
                     
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.white)
                 }
-                .shadow(color: Color.black.opacity(0.12), radius: 4, y: 1.5)
+                .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
             .padding(.trailing, 24)
@@ -517,7 +484,7 @@ struct AddTransactionView: View {
                 
                 Spacer(minLength: 4)
                 
-                // Centered Large Amount Display ($0)
+                // Centered Large Amount Display ($0 with Numeric Transitions)
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(store.currencySymbol)
                         .font(.system(size: 32, weight: .bold, design: .default))
@@ -529,6 +496,8 @@ struct AddTransactionView: View {
                         .foregroundStyle(isActive ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.4)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amount)
                 }
                 .frame(maxWidth: .infinity)
                 
@@ -647,43 +616,35 @@ struct AddTransactionView: View {
                         
                         Spacer()
                         
-                        // Save Button (44pt height)
+                        // Save Button (44pt height with authentic Liquid Glass styling)
                         Button(action: {
                             saveTransaction()
                         }) {
                             Text(isEditing ? "Save" : "Save")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
+                                .font(.system(size: 15.5, weight: .bold))
+                                .foregroundStyle(currentAmountValue > 0 ? Color.white : SpendyColors.textTertiary)
                                 .padding(.horizontal, 32)
                                 .frame(height: 44)
-                                .background {
-                                    Capsule()
-                                        .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
-                                        .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
-                                }
+                                .nativeLiquidGlassCapsule(
+                                    isInteractive: currentAmountValue > 0,
+                                    tint: currentAmountValue > 0 ? Color.white.opacity(0.16) : nil
+                                )
                         }
                         .buttonStyle(KeypadPressStyle())
                         .disabled(currentAmountValue <= 0)
                     }
                 }
             } else {
-                // Transfer Mode Full-Width Save Button (Matching Reference Design)
-                Button(action: {
+                // Transfer Mode: iOS "Slide to Transfer" Liquid Glass Slider
+                SpendySlideToTransfer(
+                    title: "slide to transfer",
+                    sourceAccountName: fromAccount?.label ?? "Source",
+                    destinationAccountName: toAccount?.label ?? "Destination",
+                    isEnabled: currentAmountValue > 0
+                ) {
                     saveTransaction()
-                }) {
-                    Text(isEditing ? "Save Transfer" : "Save")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background {
-                            Capsule()
-                                .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
-                                .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
-                        }
                 }
-                .buttonStyle(KeypadPressStyle())
-                .disabled(currentAmountValue <= 0)
+                .padding(.top, 2)
             }
         }
     }
@@ -1324,5 +1285,164 @@ struct CustomCalendarDrawer: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMM"
         return formatter.string(from: selectedDate)
+    }
+}
+
+// MARK: - iOS-Native "Slide to Transfer" Slider Control (Pure Apple Liquid Glass)
+struct SpendySlideToTransfer: View {
+    var title: String = "slide to transfer"
+    var sourceAccountName: String? = nil
+    var destinationAccountName: String? = nil
+    var isEnabled: Bool = true
+    var onConfirm: () -> Void
+    
+    @State private var dragOffset: CGFloat = 0
+    @State private var isCompleted: Bool = false
+    @State private var shimmerPhase: CGFloat = -0.5
+    
+    private let trackHeight: CGFloat = 56
+    private let knobSize: CGFloat = 48
+    private let knobPadding: CGFloat = 4
+    
+    private var displayText: String {
+        if !isEnabled {
+            return "enter amount to transfer"
+        }
+        if let dst = destinationAccountName {
+            return "slide to transfer to \(dst)"
+        }
+        return title
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let maxDrag = max(0, totalWidth - knobSize - (knobPadding * 2))
+            let progress = maxDrag > 0 ? (dragOffset / maxDrag) : 0
+            
+            ZStack(alignment: .leading) {
+                // 1. Authentic Frosted Liquid Glass Track
+                Capsule()
+                    .fill(Color(hex: "#161618").opacity(0.92))
+                    .overlay {
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.22),
+                                        Color.white.opacity(0.05)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1.0
+                            )
+                    }
+                    .nativeLiquidGlassCapsule(isInteractive: false)
+                    .shadow(color: Color.black.opacity(0.3), radius: 8, y: 3)
+                
+                // 2. Shimmering "slide to transfer to [Destination]" Text
+                HStack {
+                    Spacer()
+                    
+                    Text(displayText)
+                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .foregroundStyle(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color(hex: "#636366"), location: max(0, shimmerPhase - 0.3)),
+                                    .init(color: Color.white, location: shimmerPhase),
+                                    .init(color: Color(hex: "#636366"), location: min(1, shimmerPhase + 0.3))
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .opacity(isEnabled ? max(0, 1.0 - (progress * 1.8)) : 0.4)
+                        .offset(x: 14) // Balanced text position
+                    
+                    Spacer()
+                }
+                
+                // 3. Circular Liquid Glass Knob
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: "#2C2C2E"),
+                                    Color(hex: "#1C1C1E")
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.45),
+                                            Color.white.opacity(0.12)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1.2
+                                )
+                        }
+                        .nativeLiquidGlassCircle(isInteractive: true, tint: isEnabled ? Color.white.opacity(0.16) : nil)
+                        .shadow(color: Color.black.opacity(0.4), radius: 6, y: 2)
+                    
+                    // Knob Icon
+                    Image(systemName: isCompleted ? "checkmark" : "arrow.right")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(isEnabled ? Color.white : Color(hex: "#636366"))
+                        .rotationEffect(.degrees(isCompleted ? 0 : (progress * 45)))
+                }
+                .frame(width: knobSize, height: knobSize)
+                .padding(.leading, knobPadding)
+                .offset(x: dragOffset)
+                .gesture(
+                    isEnabled ?
+                    DragGesture()
+                        .onChanged { value in
+                            let translation = value.translation.width
+                            dragOffset = min(max(0, translation), maxDrag)
+                        }
+                        .onEnded { value in
+                            if progress >= 0.82 {
+                                // Successful Slide Confirmation!
+                                HapticsManager.shared.trigger(.success)
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                    dragOffset = maxDrag
+                                    isCompleted = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                                    onConfirm()
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                        dragOffset = 0
+                                        isCompleted = false
+                                    }
+                                }
+                            } else {
+                                // Snap back with spring physics
+                                HapticsManager.shared.trigger(.selection)
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                    : nil
+                )
+            }
+            .frame(height: trackHeight)
+            .onAppear {
+                withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) {
+                    shimmerPhase = 1.5
+                }
+            }
+        }
+        .frame(height: trackHeight)
     }
 }

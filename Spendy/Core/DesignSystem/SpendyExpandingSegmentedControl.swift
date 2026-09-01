@@ -18,76 +18,77 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
     var onSelect: ((T) -> Void)? = nil
     
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(items) { item in
                 let isSelected = selection == item
                 let iconKey = iconFor(item)
                 let isLetterBadge = iconKey.count == 1
                 
                 Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
                         selection = item
                         onSelect?(item)
                     }
                     HapticsManager.shared.trigger(.selection)
                 }) {
                     if isSelected {
-                        // Selected Tab: Elevated capsule with circular badge containing symbol/letter + bold text
+                        // Selected Tab: Elevated dark capsule with pure white circular badge + bold title
                         HStack(spacing: 8) {
                             ZStack {
                                 Circle()
-                                    .fill(SpendyColors.elevatedControlFill)
+                                    .fill(Color.white)
                                     .frame(width: 24, height: 24)
                                 
                                 if isLetterBadge {
                                     Text(iconKey)
                                         .font(.system(size: 11, weight: .heavy))
-                                        .foregroundStyle(SpendyColors.elevatedControlForeground)
+                                        .foregroundStyle(Color.black)
                                 } else {
                                     Image(systemName: iconKey)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(SpendyColors.elevatedControlForeground)
+                                        .font(.system(size: 11.5, weight: .bold))
+                                        .foregroundStyle(Color.black)
                                         .symbolEffect(.bounce.byLayer, value: isSelected)
                                 }
                             }
                             
                             Text(titleFor(item))
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
+                                .font(.system(size: 14.5, weight: .semibold))
+                                .foregroundStyle(Color.white)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
                         }
-                        .padding(.horizontal, 12)
+                        .padding(.leading, 6)
+                        .padding(.trailing, 14)
                         .frame(height: 36)
                         .background {
                             Capsule()
-                                .fill(SpendyColors.cardBackground)
+                                .fill(Color(hex: "#242426"))
                                 .overlay {
-                                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
                                 }
                         }
-                        .shadow(color: Color.black.opacity(0.12), radius: 4, y: 1.5)
-                        .transition(.scale.combined(with: .opacity))
+                        .shadow(color: Color.black.opacity(0.25), radius: 4, y: 1.5)
                     } else {
-                        // Unselected Tab: Circular disc with icon or letter only (36x36)
+                        // Unselected Tab: Grey circular disc with dark icon (Matching Reference)
                         ZStack {
+                            Circle()
+                                .fill(Color(hex: "#636366"))
+                                .frame(width: 28, height: 28)
+                            
                             if isLetterBadge {
                                 Text(iconKey)
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(Color.black)
                             } else {
                                 Image(systemName: iconKey)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(Color.black)
                             }
                         }
                         .frame(width: 36, height: 36)
-                        .background {
-                            Circle()
-                                .fill(SpendyColors.cardBackgroundSecondary.opacity(0.6))
-                                .overlay {
-                                    Circle().stroke(SpendyColors.separator.opacity(0.5), lineWidth: 0.5)
-                                }
-                        }
-                        .transition(.scale.combined(with: .opacity))
+                        .contentShape(Circle())
                     }
                 }
                 .buttonStyle(.plain)
@@ -97,9 +98,9 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
         .frame(height: 44)
         .background {
             Capsule()
-                .fill(SpendyColors.cardBackgroundSecondary)
+                .fill(Color(hex: "#161618"))
                 .overlay {
-                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
+                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 }
         }
     }

@@ -13,7 +13,7 @@ struct SpendyKeypad: View {
     @Binding var amountString: String
     var maxDigits: Int = 10
     var maxDecimals: Int = 2
-    var buttonBackgroundColor: Color = Color(uiColor: .secondarySystemGroupedBackground)
+    var buttonBackgroundColor: Color = Color(hex: "#1C1C1E")
     var useLiquidGlass: Bool = false
     
     private let rows = [
@@ -43,15 +43,15 @@ struct SpendyKeypad: View {
                 if key == "delete" || key == "backspace" {
                     Image(systemName: "delete.left.fill")
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .foregroundStyle(Color.white)
                 } else {
                     Text(key)
-                        .spendyNumberFont(size: 24, weight: .semibold, tracking: -0.4)
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .font(.system(size: 24, weight: .medium, design: .default))
+                        .foregroundStyle(Color.white)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 54)
             .modifier(KeypadBackgroundModifier(useLiquidGlass: useLiquidGlass, buttonBackgroundColor: buttonBackgroundColor))
         }
         .buttonStyle(KeypadPressStyle())
@@ -102,15 +102,15 @@ private struct KeypadBackgroundModifier: ViewModifier {
     func body(content: Content) -> some View {
         if useLiquidGlass {
             content
-                .nativeLiquidGlass(cornerRadius: 16, isInteractive: true)
+                .nativeLiquidGlass(cornerRadius: 18, isInteractive: true)
         } else {
             content
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(buttonBackgroundColor)
                         .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
                         }
                 }
         }
