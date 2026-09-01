@@ -702,4 +702,269 @@ struct InsightsEngine {
         )
         return generateSubscriptionInsights(facts: facts, subscriptions: subscriptions, currencySymbol: currencySymbol)
     }
+    
+    // MARK: - Curated Dynamic Dashboard Insight Cards (Up to 5 Intelligent Cards)
+    static func getDashboardCuratedCards(
+        transactions: [Transaction],
+        budget: Budget,
+        categories: [Category],
+        subscriptions: [Subscription],
+        currencySymbol: String,
+        hideBalance: Bool
+    ) -> [InsightCardViewModel] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let currentMonthTxs = transactions.filter {
+            $0.type == .expense &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
+            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
+        }
+        
+        guard let prevMonthDate = calendar.date(byAdding: .month, value: -1, to: now) else {
+            return []
+        }
+        
+        let prevMonthTxs = transactions.filter {
+            $0.type == .expense &&
+            calendar.isDate($0.date, equalTo: prevMonthDate, toGranularity: .month) &&
+            calendar.isDate($0.date, equalTo: prevMonthDate, toGranularity: .year)
+        }
+        
+        let currentTotal = currentMonthTxs.reduce(0) { $0 + $1.amount }
+        let prevTotal = prevMonthTxs.reduce(0) { $0 + $1.amount }
+        
+        // Category Totals
+        var currentCatTotals: [String: (total: Double, count: Int)] = [:]
+        for tx in currentMonthTxs {
+            let cur = currentCatTotals[tx.categoryId, default: (0.0, 0)]
+            currentCatTotals[tx.categoryId] = (cur.total + tx.amount, cur.count + 1)
+        }
+        
+        var prevCatTotals: [String: Double] = [:]
+        for tx in prevMonthTxs {
+            prevCatTotals[tx.categoryId, default: 0] += tx.amount
+        }
+        
+        var candidateCards: [InsightCardViewModel] = []
+        
+        // 1. Savings Wins / Good Decreases ("based on the prev spend you have made good decrease and all")
+        for (catId, curData) in currentCatTotals {
+            guard let cat = categories.first(where: { $0.id == catId }) else { continue }
+            let prevCatTotal = prevCatTotals[catId] ?? 0
+            if prevCatTotal > 50 {
+                let diff = curData.total - prevCatTotal
+                let pctChange = (diff / prevCatTotal) * 100
+                if pctChange <= -15 {
+                    let saved = abs(diff)
+                    let formattedVal = hideBalance ? "••••" : curData.total.formattedCurrency(symbol: currencySymbol, decimals: 0)
+                    candidateCards.append(
+                        InsightCardViewModel(
+                            id: "savings_win_\(cat.id)",
+                            title: cat.label,
+                            icon: cat.sfSymbol,
+                            color: Color(hex: "#30D158"),
+                            value: formattedVal,
+                            subtitle: "Saved \(currencySymbol)\(Int(saved)) vs last month · Great progress!",
+                            tagText: "\(Int(pctChange))%",
+                            tagColor: Color(hex: "#30D158"),
+                            categoryId: cat.id,
+                            family: "savings"
+                        )
+                    )
+                } else if pctChange >= 25 && diff >= 100 {
+                    let formattedVal = hideBalance ? "••••" : curData.total.formattedCurrency(symbol: currencySymbol, decimals: 0)
+                    candidateCards.append(
+                        InsightCardViewModel(
+                            id: "surge_alert_\(cat.id)",
+                            title: cat.label,
+                            icon: cat.sfSymbol,
+                            color: Color(hex: cat.colorHex),
+                            value: formattedVal,
+                            subtitle: "+\(currencySymbol)\(Int(diff)) higher than last month",
+                            tagText: "+\(Int(pctChange))%",
+                            tagColor: Color(hex: "#FF9500"),
+                            categoryId: cat.id,
+                            family: "surge"
+                        )
+                    )
+                }
+            }
+        }
+        
+        // 2. Active Subscriptions Tracker
+        let activeSubs = subscriptions.filter { !$0.isPaused }
+        if !activeSubs.isEmpty {
+            let monthlySubTotal = activeSubs.reduce(0) { total, sub in
+                switch sub.cycle {
+                case .monthly: return total + sub.amount
+                case .yearly: return total + (sub.amount / 12.0)
+                case .weekly: return total + (sub.amount * 4.333)
+                }
+            }
+            candidateCards.append(
+                InsightCardViewModel(
+                    id: "subscriptions_track",
+                    title: "Subscriptions",
+                    icon: "repeat.circle.fill",
+                    color: Color(hex: "#BF5AF2"),
+                    value: hideBalance ? "••••" : monthlySubTotal.formattedCurrency(symbol: currencySymbol, decimals: 0),
+                    subtitle: "Monthly committed across \(activeSubs.count) services",
+                    tagText: "\(activeSubs.count) active",
+                    tagColor: Color(hex: "#BF5AF2"),
+                    family: "subscription"
+                )
+            )
+        }
+        
+        // 3. Peak Spending Day Spotlight Card
+        if currentMonthTxs.count >= 2 {
+            var weekdayTotals: [Int: Double] = [:]
+            for tx in currentMonthTxs {
+                let wd = calendar.component(.weekday, from: tx.date) - 1
+                weekdayTotals[wd, default: 0] += tx.amount
+            }
+            if let topDayEntry = weekdayTotals.max(by: { $0.value < $1.value }) {
+                let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                let topDayName = dayNames[max(0, min(6, topDayEntry.key))]
+                candidateCards.append(
+                    InsightCardViewModel(
+                        id: "peak_spending_day",
+                        title: "Peak Spend Day",
+                        icon: "calendar.badge.clock",
+                        color: Color(hex: "#BF5AF2"),
+                        value: topDayName,
+                        subtitle: "Highest average spending day of the week",
+                        tagText: "Peak",
+                        tagColor: Color(hex: "#BF5AF2"),
+                        family: "spotlight",
+                        isSpotlight: true,
+                        peakDayIndex: topDayEntry.key
+                    )
+                )
+            }
+        }
+        
+        // 4. Overall Monthly Spend Pace / Velocity
+        let dayOfMonth = calendar.component(.day, from: now)
+        let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
+        if dayOfMonth >= 3 && prevTotal > 100 && currentTotal > 0 {
+            let dailyRunRate = currentTotal / Double(dayOfMonth)
+            let projectedTotal = dailyRunRate * Double(daysInMonth)
+            
+            if projectedTotal < prevTotal * 0.85 {
+                let pctUnder = Int((1.0 - (projectedTotal / prevTotal)) * 100)
+                candidateCards.append(
+                    InsightCardViewModel(
+                        id: "velocity_under",
+                        title: "Monthly Pace",
+                        icon: "leaf.fill",
+                        color: Color(hex: "#30D158"),
+                        value: "Under Pace",
+                        subtitle: "Projected to spend \(pctUnder)% less than last month",
+                        tagText: "-\(pctUnder)%",
+                        tagColor: Color(hex: "#30D158"),
+                        family: "velocity"
+                    )
+                )
+            } else if projectedTotal > prevTotal * 1.25 {
+                let pctOver = Int(((projectedTotal / prevTotal) - 1.0) * 100)
+                candidateCards.append(
+                    InsightCardViewModel(
+                        id: "velocity_high",
+                        title: "Spending Velocity",
+                        icon: "flame.fill",
+                        color: Color(hex: "#FF9500"),
+                        value: "+\(pctOver)%",
+                        subtitle: "On pace to exceed last month's spend",
+                        tagText: "Pace Alert",
+                        tagColor: Color(hex: "#FF9500"),
+                        family: "velocity"
+                    )
+                )
+            }
+        }
+        
+        // 5. Zero-Spend Days / Discipline Habit
+        let daysPassed = Set(currentMonthTxs.map { calendar.startOfDay(for: $0.date) })
+        let zeroSpendDays = max(0, dayOfMonth - daysPassed.count)
+        if zeroSpendDays >= 2 && currentMonthTxs.count >= 3 {
+            candidateCards.append(
+                InsightCardViewModel(
+                    id: "zero_spend_habit",
+                    title: "No-Spend Days",
+                    icon: "star.fill",
+                    color: Color(hex: "#FFD60A"),
+                    value: "\(zeroSpendDays) Days",
+                    subtitle: "\(zeroSpendDays) days with zero expenses logged this month",
+                    tagText: "Discipline 🔥",
+                    tagColor: Color(hex: "#FFD60A"),
+                    family: "habit"
+                )
+            )
+        }
+        
+        // 6. Weekend Bias
+        var weekendSum = 0.0
+        for tx in currentMonthTxs {
+            let wd = calendar.component(.weekday, from: tx.date)
+            if wd == 1 || wd == 7 { weekendSum += tx.amount }
+        }
+        if currentTotal > 0 && (weekendSum / currentTotal) >= 0.55 && currentMonthTxs.count >= 4 {
+            let wPct = Int((weekendSum / currentTotal) * 100)
+            candidateCards.append(
+                InsightCardViewModel(
+                    id: "weekend_bias_card",
+                    title: "Weekend Rhythm",
+                    icon: "sun.max.fill",
+                    color: Color(hex: "#5856D6"),
+                    value: "\(wPct)% Spend",
+                    subtitle: "\(wPct)% of your spending occurs on weekends",
+                    tagText: "Sat & Sun",
+                    tagColor: Color(hex: "#5856D6"),
+                    family: "habit"
+                )
+            )
+        }
+        
+        // 7. Top Spending Category Cards (Sorted by spend descending)
+        let sortedCats = currentCatTotals.compactMap { (catId, data) -> (Category, Double, Int)? in
+            guard let cat = categories.first(where: { $0.id == catId }) else { return nil }
+            return (cat, data.total, data.count)
+        }.sorted(by: { $0.1 > $1.1 })
+        
+        for (index, item) in sortedCats.enumerated() {
+            let catPct = currentTotal > 0 ? Int((item.1 / currentTotal) * 100) : 0
+            let isTop1 = index == 0
+            candidateCards.append(
+                InsightCardViewModel(
+                    id: "top_cat_\(item.0.id)",
+                    title: item.0.label,
+                    icon: item.0.sfSymbol,
+                    color: Color(hex: item.0.colorHex),
+                    value: hideBalance ? "••••" : item.1.formattedCurrency(symbol: currencySymbol, decimals: 0),
+                    subtitle: "\(item.2) \(item.2 == 1 ? "expense" : "expenses") · \(catPct)% of spend",
+                    tagText: isTop1 ? "Top Spend" : "\(catPct)%",
+                    tagColor: Color(hex: item.0.colorHex),
+                    categoryId: item.0.id,
+                    family: "category"
+                )
+            )
+        }
+        
+        // Final Curated Curation & Deduplication:
+        var result: [InsightCardViewModel] = []
+        var seenKeys = Set<String>()
+        
+        for card in candidateCards {
+            let key = card.categoryId != nil ? "cat_\(card.categoryId!)" : card.id
+            if !seenKeys.contains(key) {
+                seenKeys.insert(key)
+                result.append(card)
+            }
+            if result.count >= 5 { break }
+        }
+        
+        return result
+    }
 }

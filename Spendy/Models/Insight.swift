@@ -28,3 +28,19 @@ struct Insight: Identifiable, Hashable {
         Color(hex: colorHex)
     }
 }
+
+// MARK: - Insight Card View Model (Unified 175x188pt Card Data)
+struct InsightCardViewModel: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let icon: String
+    let color: Color
+    let value: String
+    let subtitle: String
+    var tagText: String? = nil
+    var tagColor: Color? = nil
+    var categoryId: String? = nil
+    var family: String = "general"
+    var isSpotlight: Bool = false
+    var peakDayIndex: Int? = nil
+}

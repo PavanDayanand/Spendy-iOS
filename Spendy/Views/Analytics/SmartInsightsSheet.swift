@@ -125,7 +125,7 @@ struct SmartInsightsSheet: View {
                             HapticsManager.shared.trigger(.selection)
                             selectedCategoryForSheet = item.category
                         }
-                        .frame(width: 154)
+                        .frame(width: 175)
                     }
                 }
                 .padding(.vertical, 2)

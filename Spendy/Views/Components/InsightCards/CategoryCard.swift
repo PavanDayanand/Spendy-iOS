@@ -2,13 +2,13 @@
 //  CategoryCard.swift
 //  Spendy
 //
-//  Dedicated Category Widget Card (Compact & Focused)
+//  Dedicated Category Widget Card (Unified Curated Design)
 //  Features:
-//  - Compact 156pt height with squircle corners (22pt radius)
+//  - Standard 188pt height with InsightCardShell (24pt squircle radius)
 //  - Top: 42×42pt solid vibrant circular icon badge with soft glow
 //  - Just below icon: Category Name (Semibold)
 //  - Open middle spacing
-//  - Bottom: Formatted spend amount + 2-line wrapped subtitle (moved one step up)
+//  - Bottom: Formatted spend amount + 2-line wrapped subtitle
 //
 
 import SwiftUI
@@ -19,44 +19,58 @@ struct CategoryCard: View {
     let subtitle: String
     let icon: String
     let color: Color
+    var tagText: String? = nil
+    var tagColor: Color? = nil
     var action: (() -> Void)? = nil
     
-    @State private var isPressed: Bool = false
-    
     var body: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            action?()
-        }) {
+        InsightCardShell(action: action, accessibilityLabel: "\(title), \(tagText != nil ? "\(tagText!), " : "")\(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Top: Circular Icon Badge with Subtle Glow
-                Circle()
-                    .fill(color)
-                    .frame(width: 42, height: 42)
-                    .overlay {
-                        Image(systemName: icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
+                // 1. Top: Circular Icon Badge with Subtle Glow + Optional Tag Pill
+                HStack(alignment: .top) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 42, height: 42)
+                        .overlay {
+                            Image(systemName: icon)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .shadow(color: color.opacity(0.35), radius: 5, x: 0, y: 2.5)
+                    
+                    Spacer(minLength: 4)
+                    
+                    if let tag = tagText, !tag.isEmpty {
+                        Text(tag)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(tagColor ?? color)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3.5)
+                            .background(
+                                Capsule()
+                                    .fill((tagColor ?? color).opacity(0.15))
+                            )
+                            .lineLimit(1)
                     }
-                    .shadow(color: color.opacity(0.35), radius: 5, x: 0, y: 2.5)
+                }
                 
                 Spacer().frame(height: 10)
                 
                 // 2. Just below icon: Category Name
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15.5, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                 
                 // 3. Middle: Open Space
-                Spacer(minLength: 10)
+                Spacer(minLength: 12)
                 
-                // 4. Bottom: Spend Amount + 2-Line Subtitle (Moved one step up)
-                VStack(alignment: .leading, spacing: 2) {
+                // 4. Bottom: Spend Amount + 2-Line Subtitle
+                VStack(alignment: .leading, spacing: 2.5) {
                     if !value.isEmpty {
                         Text(value)
-                            .spendyNumberFont(size: 19, weight: .bold, tracking: -0.4)
+                            .spendyNumberFont(size: 20, weight: .bold, tracking: -0.4)
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
@@ -71,25 +85,7 @@ struct CategoryCard: View {
                 }
                 .padding(.bottom, 2)
             }
-            .padding(14)
-            .frame(minHeight: 156, maxHeight: 156, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isPressed)
         }
-        .buttonStyle(.plain)
-        ._onButtonGesture { pressing in
-            isPressed = pressing
-        } perform: {}
-        .accessibilityLabel("\(title), \(value), \(subtitle)")
     }
 }
 
@@ -118,3 +114,4 @@ struct CategoryCard: View {
     }
     .preferredColorScheme(.dark)
 }
+
