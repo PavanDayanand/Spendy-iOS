@@ -4,26 +4,18 @@
     {
       "layers" : [
         {
-          "fill" : "automatic",
-          "glass" : true,
-          "image-name" : "LogoPng.png",
-          "name" : "LogoPng",
+          "glass" : false,
+          "image-name" : "Logo.png",
+          "name" : "Logo",
           "position" : {
-            "scale" : 1.2,
+            "scale" : 2.1,
             "translation-in-points" : [
-              21.875,
-              -5
+              0,
+              0
             ]
           }
         }
       ],
-      "position" : {
-        "scale" : 1.7,
-        "translation-in-points" : [
-          0,
-          0
-        ]
-      },
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5

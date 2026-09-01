@@ -2,9 +2,11 @@
 //  SmartInsightsSheet.swift
 //  Spendy
 //
-//  Full Detail Sheet / View for "Smart Insight" / "Spending by Category"
-//  Matching CategoryAnalyticsSheet styling with Liquid Glass Back Button,
-//  Top Spent Summary, and Category Breakdown Cards (No Graph).
+//  Full Detail View for Spending by Category
+//  Features:
+//  - Top Spent Summary
+//  - "Spending by Category" Widget Cards Carousel (Compact CategoryCards)
+//  - Classic Category Breakdown List Rows (with Chevron & Tap to Detail)
 //
 
 import SwiftUI
@@ -54,14 +56,19 @@ struct SmartInsightsSheet: View {
             
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 24) {
                         // Top spacing to clear the floating header bar
-                        Spacer().frame(height: 56)
+                        Spacer().frame(height: 52)
                         
                         // 1. Spent Summary Section
                         spentSummarySection
                         
-                        // 2. Category Insights List (No Graph)
+                        // 2. Spending by Category Widget Cards Carousel
+                        if !categoryTotals.isEmpty {
+                            categoryCardsCarouselSection
+                        }
+                        
+                        // 3. Classic Category List Section
                         categoryListSection
                     }
                     .padding(.horizontal, 16)
@@ -89,7 +96,7 @@ struct SmartInsightsSheet: View {
         }
     }
     
-    // MARK: - Header Bar (Liquid Glass Back Button, Centered Title, No Filter Toggle)
+    // MARK: - Header Bar
     private var headerBar: some View {
         HStack {
             // Liquid Glass Back Button
@@ -121,7 +128,7 @@ struct SmartInsightsSheet: View {
         }
     }
     
-    // MARK: - Spent Summary Section
+    // MARK: - 1. Spent Summary Section
     private var spentSummarySection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Spent in \(currentMonthName)")
@@ -139,9 +146,41 @@ struct SmartInsightsSheet: View {
         .padding(.top, 4)
     }
     
-    // MARK: - Category List Section
+    // MARK: - 2. Spending by Category Widget Cards Carousel
+    private var categoryCardsCarouselSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Top Categories")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(categoryTotals, id: \.category.id) { item in
+                        CategoryCard(
+                            title: item.category.label,
+                            value: item.total.formattedCurrency(symbol: store.currencySymbol),
+                            subtitle: "\(item.count) \(item.count == 1 ? "expense" : "expenses")",
+                            icon: item.category.sfSymbol,
+                            color: Color(hex: item.category.colorHex)
+                        ) {
+                            HapticsManager.shared.trigger(.selection)
+                            selectedCategoryForSheet = item.category
+                        }
+                        .frame(width: 154)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+    
+    // MARK: - 3. Classic Category List Section
     private var categoryListSection: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("All Categories")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
             if categoryTotals.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "tray.fill")
@@ -154,50 +193,56 @@ struct SmartInsightsSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                ForEach(categoryTotals, id: \.category.id) { item in
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        selectedCategoryForSheet = item.category
-                    }) {
-                        HStack(spacing: 14) {
-                            // Category Icon Avatar
-                            SpendyIconBadge(
-                                sfSymbol: item.category.sfSymbol,
-                                color: Color(hex: item.category.colorHex),
-                                size: .medium,
-                                style: .circle
-                            )
-                            
-                            // Title & Expense Count
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.category.label)
-                                    .font(.system(size: 16, weight: .semibold))
+                VStack(spacing: 10) {
+                    ForEach(categoryTotals, id: \.category.id) { item in
+                        Button(action: {
+                            HapticsManager.shared.trigger(.selection)
+                            selectedCategoryForSheet = item.category
+                        }) {
+                            HStack(spacing: 14) {
+                                // Category Icon Avatar
+                                SpendyIconBadge(
+                                    sfSymbol: item.category.sfSymbol,
+                                    color: Color(hex: item.category.colorHex),
+                                    size: .medium,
+                                    style: .circle
+                                )
+                                
+                                // Title & Expense Count
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(item.category.label)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                    
+                                    Text("\(item.count) \(item.count == 1 ? "expense" : "expenses")")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textSecondary)
+                                }
+                                
+                                Spacer()
+                                
+                                // Category Spend Amount
+                                Text(item.total.formattedCurrency(symbol: store.currencySymbol))
+                                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                                     .foregroundStyle(SpendyColors.textPrimary)
                                 
-                                Text("\(item.count) \(item.count == 1 ? "expense" : "expenses")")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textSecondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textTertiary)
                             }
-                            
-                            Spacer()
-                            
-                            // Category Spend Amount
-                            Text(item.total.formattedCurrency(symbol: store.currencySymbol))
-                                .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
-                                .foregroundStyle(SpendyColors.textPrimary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(SpendyColors.cardBackground)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                                    }
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(SpendyColors.cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }

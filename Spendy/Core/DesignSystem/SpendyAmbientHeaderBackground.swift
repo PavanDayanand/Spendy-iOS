@@ -9,13 +9,25 @@
 
 import SwiftUI
 
-struct SpendyAmbientHeaderBackground: View {
-    var color: Color
-    var height: CGFloat = 360
-    var opacity: Double = 0.32
-    var blurRadius: CGFloat = 0
+public struct SpendyAmbientHeaderBackground: View {
+    public var color: Color
+    public var height: CGFloat = 360
+    public var opacity: Double = 0.32
+    public var blurRadius: CGFloat = 0
     
-    var body: some View {
+    public init(
+        color: Color,
+        height: CGFloat = 360,
+        opacity: Double = 0.32,
+        blurRadius: CGFloat = 0
+    ) {
+        self.color = color
+        self.height = height
+        self.opacity = opacity
+        self.blurRadius = blurRadius
+    }
+    
+    public var body: some View {
         VStack(spacing: 0) {
             LinearGradient(
                 stops: [
@@ -40,9 +52,12 @@ struct SpendyAmbientHeaderBackground: View {
     }
 }
 
-#Preview {
-    ZStack {
-        SpendyColors.appBackground.ignoresSafeArea()
-        SpendyAmbientHeaderBackground(color: .indigo, height: 380, opacity: 0.35)
+// MARK: - Previews
+struct SpendyAmbientHeaderBackground_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            SpendyColors.appBackground.ignoresSafeArea()
+            SpendyAmbientHeaderBackground(color: .indigo, height: 380, opacity: 0.35)
+        }
     }
 }

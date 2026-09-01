@@ -257,7 +257,11 @@ struct DashboardView: View {
                         smartInsightsSection
                             .padding(.top, 6)
                         
-                        // 5. Classic Recent Transactions Section
+                        // 5. Top Categories Widget Cards Carousel Section
+                        topCategoriesSection
+                            .padding(.top, 6)
+                        
+                        // 6. Classic Recent Transactions Section
                         recentTransactionsSection
                             .padding(.top, 6)
                     }
@@ -680,30 +684,7 @@ struct DashboardView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(allDashboardInsightCards) { insight in
-                            SharedInsightCard(
-                                title: insight.title,
-                                value: insight.value,
-                                subtitle: insight.subtitle,
-                                icon: insight.icon,
-                                color: insight.color,
-                                action: {
-                                    if let catId = insight.categoryId,
-                                       let cat = store.categories.first(where: { $0.id == catId }) {
-                                        selectedCategoryForSheet = cat
-                                    } else if insight.family == "budget" || insight.id == "set_budget" {
-                                        if let selectedTab = selectedTab {
-                                            selectedTab.wrappedValue = .budget
-                                        }
-                                    } else if insight.family == "subscription" || insight.id == "subscriptions_track" {
-                                        showSubscriptionsHub = true
-                                    } else if insight.family == "analytics" {
-                                        if let selectedTab = selectedTab {
-                                            selectedTab.wrappedValue = .analytics
-                                        }
-                                    }
-                                }
-                            )
-                            .frame(width: 175)
+                            renderDashboardInsightCard(insight)
                         }
                     }
                     .padding(.vertical, 2)
@@ -712,7 +693,147 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 5. Classic Recent Transactions Section
+    private var peakWeekdayIndex: Int {
+        let calendar = Calendar.current
+        var weekdayTotals: [Int: Double] = [:]
+        for tx in currentMonthExpenseTxs {
+            let wd = calendar.component(.weekday, from: tx.date) - 1
+            weekdayTotals[wd, default: 0] += tx.amount
+        }
+        return weekdayTotals.max(by: { $0.value < $1.value })?.key ?? 2
+    }
+    
+    // MARK: - Polymorphic Insight Card Renderer
+    @ViewBuilder
+    private func renderDashboardInsightCard(_ insight: InsightCardViewModel) -> some View {
+        let cardAction: () -> Void = {
+            if let catId = insight.categoryId,
+               let cat = store.categories.first(where: { $0.id == catId }) {
+                selectedCategoryForSheet = cat
+            } else if insight.family == "budget" || insight.id == "set_budget" {
+                if let selectedTab = selectedTab {
+                    selectedTab.wrappedValue = .budget
+                }
+            } else if insight.family == "subscription" || insight.id == "subscriptions_track" {
+                showSubscriptionsHub = true
+            } else if insight.family == "analytics" {
+                if let selectedTab = selectedTab {
+                    selectedTab.wrappedValue = .analytics
+                }
+            }
+        }
+        
+        if insight.id == "peak_spending_day" {
+            SpotlightBarCard(
+                title: "Top Day",
+                peakDayName: insight.value,
+                peakDayIndex: peakWeekdayIndex,
+                action: cardAction
+            )
+            .frame(width: 175)
+        } else if insight.id == "safe_daily" {
+            let budgetTarget = store.budgetTargetAmount(for: store.budget.period)
+            let spent = store.budgetCycleExpenses
+            let progress = budgetTarget > 0 ? min(1.0, spent / budgetTarget) : 0.5
+            let delta = store.safeDailyAllowance
+            let deltaStr = "+\(store.currencySymbol)\(Int(delta))"
+            
+            PacingPinBarCard(
+                title: "Daily Burn",
+                value: insight.value,
+                deltaText: deltaStr,
+                subtitle: insight.subtitle,
+                progress: progress,
+                icon: "gauge.with.dots.needle.bottom.50percent",
+                color: insight.color,
+                action: cardAction
+            )
+            .frame(width: 175)
+        } else if insight.family == "category" {
+            CategoryCard(
+                title: insight.title,
+                value: insight.value,
+                subtitle: insight.subtitle,
+                icon: insight.icon,
+                color: insight.color,
+                action: cardAction
+            )
+            .frame(width: 160)
+        } else {
+            MinimalCategoryCard(
+                title: insight.title,
+                value: insight.value,
+                subtitle: insight.subtitle,
+                icon: insight.icon,
+                color: insight.color,
+                action: cardAction
+            )
+            .frame(width: 175)
+        }
+    }
+    
+    // MARK: - 5. Top Categories Section (Spending by Category Cards)
+    private var topCategoriesData: [(category: Category, total: Double, count: Int)] {
+        let expTxs = currentMonthExpenseTxs
+        var map: [String: (total: Double, count: Int)] = [:]
+        for tx in expTxs {
+            let current = map[tx.categoryId, default: (0.0, 0)]
+            map[tx.categoryId] = (current.total + tx.amount, current.count + 1)
+        }
+        return map.compactMap { (catId, data) in
+            guard let cat = store.categories.first(where: { $0.id == catId }) else { return nil }
+            return (cat, data.total, data.count)
+        }.sorted(by: { $0.total > $1.total })
+    }
+    
+    @ViewBuilder
+    private var topCategoriesSection: some View {
+        if !topCategoriesData.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Top categories")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        showSmartInsightsSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("View all")
+                                .font(.system(size: 14, weight: .semibold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(topCategoriesData, id: \.category.id) { item in
+                            CategoryCard(
+                                title: item.category.label,
+                                value: hideBalance ? "••••" : item.total.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                                subtitle: "\(item.count) \(item.count == 1 ? "expense" : "expenses")",
+                                icon: item.category.sfSymbol,
+                                color: Color(hex: item.category.colorHex)
+                            ) {
+                                selectedCategoryForSheet = item.category
+                            }
+                            .frame(width: 154)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+    
+    // MARK: - 6. Classic Recent Transactions Section
     private var recentTransactionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

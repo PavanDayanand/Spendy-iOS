@@ -11,6 +11,7 @@ enum SettingsDestination: Hashable {
     case accounts
     case categories
     case dataBackup
+    case insightCardsGallery
 }
 
 struct SettingsView: View {
@@ -90,6 +91,8 @@ struct SettingsView: View {
                     CategoriesSettingsView()
                 case .dataBackup:
                     DataManagementView()
+                case .insightCardsGallery:
+                    InsightCardsGalleryView()
                 }
             }
             .onAppear {
@@ -456,6 +459,18 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
+
+                // Insight Cards Studio (New Polymorphic Cards Preview)
+                NavigationLink(value: SettingsDestination.insightCardsGallery) {
+                    rowItem(
+                        icon: "sparkles.rectangle.stack.fill",
+                        title: "Insight Cards Studio",
+                        badgeText: "5 Archetypes"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)

@@ -630,7 +630,7 @@ struct CategoryAnalyticsSheet: View {
                 HStack(spacing: 14) {
                     // Engine generated specific insights for this category
                     ForEach(catInsights) { insight in
-                        SharedInsightCard(
+                        MinimalCategoryCard(
                             title: insight.title,
                             value: insight.value,
                             subtitle: insight.desc,
@@ -640,16 +640,16 @@ struct CategoryAnalyticsSheet: View {
                         .frame(width: 180)
                     }
                     
-                    // Card 1: Avg Spent
+                    // Card 1: Avg Spent (Gradient Trend Card)
                     avgSpentCard
                     
-                    // Card 2: Top Day
+                    // Card 2: Top Day (Spotlight Bar Card)
                     topDayCard
                     
-                    // Card 3: Month Forecast
+                    // Card 3: Month Forecast (Pacing Pin Bar Card)
                     monthForecastCard
                     
-                    // Card 4: Activity / Transactions Count
+                    // Card 4: Activity / Transactions Count (Dot Matrix Card)
                     activityCard
                 }
                 .padding(.horizontal, 20)
@@ -658,80 +658,54 @@ struct CategoryAnalyticsSheet: View {
         }
     }
     
-    // Bento Card 1: Avg Spent (with 14 progress pills)
+    // Bento Card 1: Avg Spent (Gradient Trend Card)
     private var avgSpentCard: some View {
-        SharedInsightCard(
-            title: "Avg Spent",
+        GradientTrendCard(
+            title: "Avg spent",
             value: averageSpentPerWeek.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-            subtitle: "Average spend per week",
-            icon: "chart.bar.fill",
-            color: themeColor
-        ) {
-            HStack(spacing: 3) {
-                let ratio = (totalSpent / max(1.0, averageSpentPerWeek * 4)) * 14
-                let filledCount = min(14, max(1, ratio.safeInt))
-                ForEach(0..<14, id: \.self) { idx in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(idx < filledCount ? themeColor : Color.white.opacity(0.12))
-                        .frame(height: 5)
-                }
-            }
-        }
+            subtitle: "Per week",
+            lineColor: themeColor
+        )
         .frame(width: 180)
     }
     
-    // Bento Card 2: Top Day (with 7 S M T W T F S weekday bars)
+    // Bento Card 2: Top Day (Spotlight Bar Card)
     private var topDayCard: some View {
         let topDayInfo = topSpendingWeekday
-        let days = ["S", "M", "T", "W", "T", "F", "S"]
-        
-        return SharedInsightCard(
-            title: "Top Day",
-            value: topDayInfo.name,
-            subtitle: "Highest spending day",
-            icon: "calendar",
-            color: themeColor
-        ) {
-            HStack(alignment: .bottom, spacing: 4) {
-                ForEach(0..<7, id: \.self) { idx in
-                    let isTop = idx == topDayInfo.dayIndex
-                    VStack(spacing: 3) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(isTop ? themeColor : Color.white.opacity(0.18))
-                            .frame(height: isTop ? 18 : 8)
-                        
-                        Text(days[idx])
-                            .font(.system(size: 8, weight: isTop ? .bold : .medium))
-                            .foregroundStyle(isTop ? themeColor : SpendyColors.textTertiary)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
+        return SpotlightBarCard(
+            title: "Top day",
+            peakDayName: topDayInfo.name,
+            peakDayIndex: topDayInfo.dayIndex,
+            accentColor: themeColor
+        )
         .frame(width: 180)
     }
     
-    // Bento Card 3: Month Forecast
+    // Bento Card 3: Month Forecast (Pacing Pin Bar Card)
     private var monthForecastCard: some View {
-        SharedInsightCard(
+        let ratio = min(1.0, max(0.1, totalSpent / max(1.0, monthForecast)))
+        return PacingPinBarCard(
             title: "Month Forecast",
             value: monthForecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+            deltaText: "\(store.currencySymbol)\(Int(monthForecast))",
             subtitle: "Projected spent by month-end",
+            progress: ratio,
             icon: "sparkles",
             color: themeColor
         )
         .frame(width: 180)
     }
     
-    // Bento Card 4: Activity / Transactions Count
+    // Bento Card 4: Activity (Dot Matrix Habit Card)
     private var activityCard: some View {
-        SharedInsightCard(
+        DotMatrixCard(
             title: "Activity",
-            value: "\(filteredTransactions.count)",
-            subtitle: "\(filteredTransactions.count == 1 ? "transaction" : "transactions") in this period",
+            streakCount: filteredTransactions.count,
+            streakUnit: filteredTransactions.count == 1 ? "expense in period" : "expenses in period",
             icon: "square.stack.3d.up.fill",
-            color: themeColor
+            color: themeColor,
+            totalDays: 30,
+            activeDays: min(30, filteredTransactions.count)
         )
         .frame(width: 180)
     }
