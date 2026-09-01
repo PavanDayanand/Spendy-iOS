@@ -50,9 +50,9 @@ struct TransactionRowView: View {
                 HStack(spacing: 5) {
                     Image(systemName: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol)
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.inverseText : .white)
                         .frame(width: 14, height: 14)
-                        .background(account.color, in: Circle())
+                        .background(SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color, in: Circle())
                     
                     Text(account.label)
                         .font(.system(size: 13, weight: .medium))

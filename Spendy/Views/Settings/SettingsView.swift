@@ -350,6 +350,39 @@ struct SettingsView: View {
 
                 Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
+                // Mono Icons Toggle
+                HStack(spacing: 14) {
+                    Image(systemName: "circle.lefthalf.filled")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 26, height: 26)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Mono Icons")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        Text("Black & white category icons")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: Binding(
+                        get: { store.isMonoIconMode },
+                        set: {
+                            store.isMonoIconMode = $0
+                            HapticsManager.shared.trigger(.selection)
+                        }
+                    ))
+                    .labelsHidden()
+                    .tint(.green)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
+
                 // Currency Selector
                 Button(action: {
                     HapticsManager.shared.trigger(.light)

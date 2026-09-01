@@ -141,23 +141,41 @@ struct BudgetGaugeView: View {
         let badgeText: String
         let badgeColor: Color
         
-        switch pacingState {
-        case .onTrack:
-            iconName = "checkmark.circle.fill"
-            badgeText = "On track"
-            badgeColor = Color(hex: "#30D158")
-        case .overPace(let pctDiff):
-            iconName = "arrow.up.forward.circle.fill"
-            badgeText = "↑ \(pctDiff)% high"
-            badgeColor = SpendyColors.warningOrange
-        case .underPace(let pctDiff):
-            iconName = "arrow.down.forward.circle.fill"
-            badgeText = "↓ \(pctDiff)% less"
-            badgeColor = Color(hex: "#30D158")
-        case .exceeded:
-            iconName = "exclamationmark.triangle.fill"
-            badgeText = "Exceeded"
-            badgeColor = SpendyColors.warningOrange
+        if SpendyColors.isMonoMode {
+            badgeColor = SpendyColors.textPrimary
+            switch pacingState {
+            case .onTrack:
+                iconName = "checkmark.circle.fill"
+                badgeText = "On track"
+            case .overPace(let pctDiff):
+                iconName = "arrow.up.forward.circle.fill"
+                badgeText = "↑ \(pctDiff)% high"
+            case .underPace(let pctDiff):
+                iconName = "arrow.down.forward.circle.fill"
+                badgeText = "↓ \(pctDiff)% less"
+            case .exceeded:
+                iconName = "exclamationmark.triangle.fill"
+                badgeText = "Exceeded"
+            }
+        } else {
+            switch pacingState {
+            case .onTrack:
+                iconName = "checkmark.circle.fill"
+                badgeText = "On track"
+                badgeColor = Color(hex: "#30D158")
+            case .overPace(let pctDiff):
+                iconName = "arrow.up.forward.circle.fill"
+                badgeText = "↑ \(pctDiff)% high"
+                badgeColor = SpendyColors.warningOrange
+            case .underPace(let pctDiff):
+                iconName = "arrow.down.forward.circle.fill"
+                badgeText = "↓ \(pctDiff)% less"
+                badgeColor = Color(hex: "#30D158")
+            case .exceeded:
+                iconName = "exclamationmark.triangle.fill"
+                badgeText = "Exceeded"
+                badgeColor = SpendyColors.warningOrange
+            }
         }
         
         return HStack(spacing: 4) {
@@ -193,6 +211,9 @@ struct BudgetGaugeView: View {
     
     // MARK: - Segment Color Generation
     private func segmentColor(for index: Int) -> Color {
+        if SpendyColors.isMonoMode {
+            return SpendyColors.textPrimary
+        }
         let fraction = Double(index) / Double(totalSegments - 1)
         
         let c1 = Color(hex: "#FFA07A") // Light Peach/Pink

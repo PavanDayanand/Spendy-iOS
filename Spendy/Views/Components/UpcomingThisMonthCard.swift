@@ -184,7 +184,7 @@ struct UpcomingThisMonthCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("+\(incomeTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
                     .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.7)
-                    .foregroundStyle(Color(hex: "#30D158"))
+                    .foregroundStyle(SpendyColors.incomeGreen)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 

@@ -226,12 +226,9 @@ struct SubscriptionQuickActionSheet: View {
         }
         .sheet(isPresented: $showEditSheet) {
             AddSubscriptionSheet(subscriptionToEdit: liveSub)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .presentationDetents([.height(540), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.appBackground)
     }
     
     // MARK: - Top Action Bar (✕ on Left, ••• Menu on Right)

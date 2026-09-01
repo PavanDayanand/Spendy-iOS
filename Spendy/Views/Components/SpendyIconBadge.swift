@@ -7,6 +7,18 @@
 
 import SwiftUI
 
+// MARK: - Mono Icon Mode Environment Key
+private struct MonoIconModeKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var isMonoIconMode: Bool {
+        get { self[MonoIconModeKey.self] }
+        set { self[MonoIconModeKey.self] = newValue }
+    }
+}
+
 struct SpendyIconBadge: View {
     enum Style {
         case circle
@@ -63,6 +75,9 @@ struct SpendyIconBadge: View {
     var isGradient: Bool = false
     var showCutoutBorder: Bool = true
     
+    @Environment(\.isMonoIconMode) private var isMonoMode
+    @Environment(\.colorScheme) private var colorScheme
+    
     private var isLightColor: Bool {
         let uiColor = UIColor(color)
         var white: CGFloat = 0
@@ -78,18 +93,43 @@ struct SpendyIconBadge: View {
         return false
     }
     
+    // Mono mode: fill is textPrimary (black in light, white in dark)
+    private var effectiveFillColor: Color {
+        if isMonoMode {
+            return SpendyColors.textPrimary
+        }
+        return color
+    }
+    
+    // Mono mode: symbol is always the inverse of the fill
     private var symbolForeground: Color {
+        if isMonoMode {
+            return SpendyColors.inverseText
+        }
         if isGradient {
             return color
         }
         return isLightColor ? Color.black : Color.white
     }
     
+    // Mono mode: no colored shadow
+    private var effectiveShadowColor: Color {
+        if isMonoMode {
+            return Color.clear
+        }
+        return color.opacity(0.35)
+    }
+    
+    // Mono mode gradient: use textPrimary instead of entity color
+    private var monoGradientColor: Color {
+        SpendyColors.textPrimary
+    }
+    
     var body: some View {
         ZStack {
             switch style {
             case .circle:
-                if isGradient {
+                if isGradient && !isMonoMode {
                     Circle()
                         .fill(
                             LinearGradient(
@@ -100,19 +140,30 @@ struct SpendyIconBadge: View {
                         )
                         .overlay(Circle().stroke(color.opacity(0.35), lineWidth: 1))
                         .shadow(color: color.opacity(0.25), radius: 6, y: 2)
+                } else if isGradient && isMonoMode {
+                    // Mono gradient mode: subtle monochrome gradient
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [monoGradientColor.opacity(0.35), monoGradientColor.opacity(0.18)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(Circle().stroke(monoGradientColor.opacity(0.35), lineWidth: 1))
                 } else {
                     Circle()
-                        .fill(color)
+                        .fill(effectiveFillColor)
                         .overlay {
                             if showCutoutBorder {
                                 Circle()
                                     .stroke(Color.black.opacity(0.65), lineWidth: size.strokeWidth)
                             }
                         }
-                        .shadow(color: color.opacity(0.35), radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
+                        .shadow(color: effectiveShadowColor, radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
                 }
             case .rounded(let radius):
-                if isGradient {
+                if isGradient && !isMonoMode {
                     RoundedRectangle(cornerRadius: radius, style: .continuous)
                         .fill(
                             LinearGradient(
@@ -123,16 +174,26 @@ struct SpendyIconBadge: View {
                         )
                         .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(color.opacity(0.35), lineWidth: 1))
                         .shadow(color: color.opacity(0.25), radius: 6, y: 2)
+                } else if isGradient && isMonoMode {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [monoGradientColor.opacity(0.35), monoGradientColor.opacity(0.18)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(monoGradientColor.opacity(0.35), lineWidth: 1))
                 } else {
                     RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(color)
+                        .fill(effectiveFillColor)
                         .overlay {
                             if showCutoutBorder {
                                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                                     .stroke(Color.black.opacity(0.65), lineWidth: size.strokeWidth)
                             }
                         }
-                        .shadow(color: color.opacity(0.35), radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
+                        .shadow(color: effectiveShadowColor, radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
                 }
             }
             

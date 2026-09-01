@@ -60,22 +60,24 @@ struct RadialArcCard: View {
                     
                     Text("\(progressPercentageText) of budget limit")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(color)
+                        .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.textSecondary : color)
                         .lineLimit(1)
                 }
                 
                 Spacer(minLength: 12)
                 
                 // 3. Bottom: Sleek Progress Bar Track & Remaining Text
+                let activeColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
+                let trackColor = SpendyColors.isMonoMode ? SpendyColors.cardBackgroundSecondary : color.opacity(0.18)
                 VStack(alignment: .leading, spacing: 6) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
-                                .fill(color.opacity(0.18))
+                                .fill(trackColor)
                                 .frame(height: 5)
                             
                             Capsule()
-                                .fill(color)
+                                .fill(activeColor)
                                 .frame(width: max(5, geo.size.width * CGFloat(min(1.0, max(0.0, progress)))), height: 5)
                         }
                     }

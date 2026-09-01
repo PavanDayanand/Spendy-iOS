@@ -76,6 +76,11 @@ extension UIColor {
 
 // MARK: - Spendy Adaptive Monochrome Color System
 enum SpendyColors {
+    // MARK: - Global Mono Mode Flag
+    // Set by ExpenseStore when isMonoIconMode changes. Allows static semantic colors
+    // to resolve to monochrome without changing any call sites across the app.
+    static var isMonoMode: Bool = false
+    
     // Dynamic Base Backgrounds
     static let appBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),
@@ -167,9 +172,9 @@ enum SpendyColors {
     static let vibrantIndigo = Color(uiColor: .systemIndigo)
 
     // Status Beacons & Chips
-    static let statusBeaconCoral = Color(hex: "#FF5959")
-    static let statusBeaconGreen = Color(hex: "#30D158")
-    static let statusBeaconAmber = Color(hex: "#FF9F0A")
+    static var statusBeaconCoral: Color { isMonoMode ? textPrimary : Color(hex: "#FF5959") }
+    static var statusBeaconGreen: Color { isMonoMode ? textPrimary : Color(hex: "#30D158") }
+    static var statusBeaconAmber: Color { isMonoMode ? textPrimary : Color(hex: "#FF9F0A") }
     static let chipBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.05),
         dark: UIColor(white: 1.0, alpha: 0.08)
@@ -179,14 +184,14 @@ enum SpendyColors {
         dark: UIColor(white: 1.0, alpha: 0.12)
     ))
 
-    // Semantic Status Colors
-    static let expenseRed = Color(uiColor: .systemRed)
-    static let incomeGreen = Color(uiColor: .systemGreen)
-    static let transferBlue = Color(uiColor: .systemBlue)
-    static let warningOrange = Color(uiColor: .systemOrange)
-    static let goldYellow = Color(uiColor: .systemYellow)
-    static let pinkSubscription = Color(uiColor: .systemPink)
-    static let tealSavings = Color(uiColor: .systemTeal)
+    // Semantic Status Colors — Mono-aware: resolve to textPrimary when Mono Mode is on
+    static var expenseRed: Color { isMonoMode ? textPrimary : Color(uiColor: .systemRed) }
+    static var incomeGreen: Color { isMonoMode ? textPrimary : Color(uiColor: .systemGreen) }
+    static var transferBlue: Color { isMonoMode ? textPrimary : Color(uiColor: .systemBlue) }
+    static var warningOrange: Color { isMonoMode ? textPrimary : Color(uiColor: .systemOrange) }
+    static var goldYellow: Color { isMonoMode ? textPrimary : Color(uiColor: .systemYellow) }
+    static var pinkSubscription: Color { isMonoMode ? textPrimary : Color(uiColor: .systemPink) }
+    static var tealSavings: Color { isMonoMode ? textPrimary : Color(uiColor: .systemTeal) }
 
     // Static Helpers
     static let monochromeBlack = Color(hex: "#000000")

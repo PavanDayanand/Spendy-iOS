@@ -132,6 +132,13 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var isMonoIconMode: Bool = false {
+        didSet {
+            SpendyColors.isMonoMode = isMonoIconMode
+            scheduleSave()
+        }
+    }
+    
     var colorScheme: ColorScheme? {
         switch appearanceMode {
         case .dark:
@@ -189,6 +196,46 @@ final class ExpenseStore {
         }
     }
     
+    // MARK: - JSON Coders with Multi-Format Date Support
+    static var jsonDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        let isoFormatterWithFrac = ISO8601DateFormatter()
+        isoFormatterWithFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        let yyyyMMddFormatter = DateFormatter()
+        yyyyMMddFormatter.dateFormat = "yyyy-MM-dd"
+        yyyyMMddFormatter.locale = Locale(identifier: "en_US_POSIX")
+        yyyyMMddFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            if let dateStr = try? container.decode(String.self) {
+                if let d = isoFormatterWithFrac.date(from: dateStr) { return d }
+                if let d = isoFormatter.date(from: dateStr) { return d }
+                if let d = yyyyMMddFormatter.date(from: dateStr) { return d }
+                let df = ISO8601DateFormatter()
+                if let d = df.date(from: dateStr) { return d }
+            }
+            if let ms = try? container.decode(Double.self) {
+                if ms > 10_000_000_000 { // Millisecond timestamp
+                    return Date(timeIntervalSince1970: ms / 1000.0)
+                } else {
+                    return Date(timeIntervalSince1970: ms)
+                }
+            }
+            return Date()
+        }
+        return decoder
+    }
+    
+    static var jsonEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+    
     // MARK: - Initializer & Persistence
     init() {
         loadFromDisk()
@@ -205,6 +252,7 @@ final class ExpenseStore {
         var soundEnabled: Bool?
         var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
+        var isMonoIconMode: Bool?
         var topGradientColorHex: String?
         var isGradientBackgroundEnabled: Bool?
         var topGradientHue: Double?
@@ -230,7 +278,7 @@ final class ExpenseStore {
         if FileManager.default.fileExists(atPath: storageURL.path) {
             do {
                 let data = try Data(contentsOf: storageURL)
-                let payload = try JSONDecoder().decode(StoragePayload.self, from: data)
+                let payload = try ExpenseStore.jsonDecoder.decode(StoragePayload.self, from: data)
                 self.userName = payload.userName ?? ""
                 self.hapticsEnabled = payload.hapticsEnabled ?? true
                 self.profileImageData = payload.profileImageData
@@ -239,6 +287,8 @@ final class ExpenseStore {
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = .dark
+                self.isMonoIconMode = payload.isMonoIconMode ?? false
+                SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
                 self.topGradientHue = payload.topGradientHue ?? 0.60
@@ -275,7 +325,7 @@ final class ExpenseStore {
             }
         }
         
-        // Seed default initial state for first run
+        // Seed initial default user state for first run
         seedInitialData()
     }
     
@@ -290,6 +340,7 @@ final class ExpenseStore {
                 soundEnabled: soundEnabled,
                 notificationsEnabled: notificationsEnabled,
                 appearanceMode: .dark,
+                isMonoIconMode: isMonoIconMode,
                 topGradientColorHex: topGradientColorHex,
                 isGradientBackgroundEnabled: isGradientBackgroundEnabled,
                 topGradientHue: topGradientHue,
@@ -305,7 +356,7 @@ final class ExpenseStore {
                 ratesToUSD: ratesToUSD,
                 ratesLastUpdated: ratesLastUpdated
             )
-            let data = try JSONEncoder().encode(payload)
+            let data = try ExpenseStore.jsonEncoder.encode(payload)
             try data.write(to: storageURL, options: .atomic)
         } catch {
             print("Failed to save local store: \(error.localizedDescription)")
@@ -313,16 +364,22 @@ final class ExpenseStore {
     }
     
     private func seedInitialData() {
-        self.userName = ""
+        self.userName = SpendyDefaultData.userName
         self.soundEnabled = true
-        self.appearanceMode = .dark
-        self.accounts = Account.defaultAccounts
-        self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
-        self.subscriptions = []
-        self.transactions = []
-        self.budget = Budget()
-        self.currencySymbol = "₹"
-        self.currencyCode = "INR"
+        self.hapticsEnabled = true
+        self.appearanceMode = SpendyDefaultData.appearanceMode
+        self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
+        self.topGradientHue = SpendyDefaultData.topGradientHue
+        self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
+        self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
+        self.accounts = SpendyDefaultData.accounts
+        self.customFolders = SpendyDefaultData.customFolders
+        self.categories = SpendyDefaultData.categories
+        self.subscriptions = SpendyDefaultData.subscriptions
+        self.transactions = SpendyDefaultData.transactions
+        self.budget = SpendyDefaultData.budget
+        self.currencySymbol = SpendyDefaultData.currencySymbol
+        self.currencyCode = SpendyDefaultData.currencyCode
         scheduleSave()
     }
     
@@ -1031,24 +1088,43 @@ final class ExpenseStore {
     func exportJSONData() -> Data? {
         let payload = StoragePayload(
             userName: userName,
+            hapticsEnabled: hapticsEnabled,
+            profileImageData: profileImageData,
+            profileIconSymbol: profileIconSymbol,
+            profileColorHex: profileColorHex,
             soundEnabled: soundEnabled,
+            notificationsEnabled: notificationsEnabled,
+            appearanceMode: appearanceMode,
+            isMonoIconMode: isMonoIconMode,
+            topGradientColorHex: topGradientColorHex,
+            isGradientBackgroundEnabled: isGradientBackgroundEnabled,
+            topGradientHue: topGradientHue,
+            topGradientBrightness: topGradientBrightness,
             transactions: transactions,
             accounts: accounts,
             categories: categories,
             subscriptions: subscriptions,
             budget: budget,
             currencySymbol: currencySymbol,
-            currencyCode: currencyCode
+            currencyCode: currencyCode,
+            customFolders: customFolders,
+            ratesToUSD: ratesToUSD,
+            ratesLastUpdated: ratesLastUpdated
         )
-        return try? JSONEncoder().encode(payload)
+        return try? ExpenseStore.jsonEncoder.encode(payload)
     }
     
     func importJSONData(data: Data) -> Bool {
         do {
-            let payload = try JSONDecoder().decode(StoragePayload.self, from: data)
+            let payload = try ExpenseStore.jsonDecoder.decode(StoragePayload.self, from: data)
             withAnimation(.spring(response: 0.35)) {
                 self.userName = payload.userName ?? self.userName
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
+                self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
+                self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex
+                self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? self.isGradientBackgroundEnabled
+                self.topGradientHue = payload.topGradientHue ?? self.topGradientHue
+                self.topGradientBrightness = payload.topGradientBrightness ?? self.topGradientBrightness
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories
@@ -1056,7 +1132,21 @@ final class ExpenseStore {
                 self.budget = payload.budget
                 self.currencySymbol = payload.currencySymbol
                 self.currencyCode = payload.currencyCode
+                
+                var folders = payload.customFolders ?? []
+                if folders.isEmpty {
+                    let defaultFolders = Set(["Everyday Spending", "Transport", "Living", "Personal & Wellness", "Salary & Career", "Investments & Other", "Uncategorized"])
+                    for cat in payload.categories {
+                        if !cat.folder.isEmpty && !defaultFolders.contains(cat.folder) {
+                            if !folders.contains(where: { $0.name == cat.folder && $0.type == cat.type }) {
+                                folders.append(Folder(name: cat.folder, type: cat.type))
+                            }
+                        }
+                    }
+                }
+                self.customFolders = folders
             }
+            scheduleSave()
             HapticsManager.shared.trigger(.success)
             return true
         } catch {
@@ -1079,9 +1169,20 @@ final class ExpenseStore {
         let isoFormatterNoFrac = ISO8601DateFormatter()
         isoFormatterNoFrac.formatOptions = [.withInternetDateTime]
         
-        func parseDate(_ str: String) -> Date {
-            if let d = isoFormatter.date(from: str) { return d }
-            if let d = isoFormatterNoFrac.date(from: str) { return d }
+        func parseDate(_ val: Any?) -> Date {
+            if let dStr = val as? String {
+                if let d = isoFormatter.date(from: dStr) { return d }
+                if let d = isoFormatterNoFrac.date(from: dStr) { return d }
+                let df = ISO8601DateFormatter()
+                if let d = df.date(from: dStr) { return d }
+            } else if let num = val as? NSNumber {
+                let ms = num.doubleValue
+                if ms > 10_000_000_000 {
+                    return Date(timeIntervalSince1970: ms / 1000.0)
+                } else {
+                    return Date(timeIntervalSince1970: ms)
+                }
+            }
             return Date()
         }
         
@@ -1118,11 +1219,13 @@ final class ExpenseStore {
                 }()
                 let defaultColor: String = {
                     if id.lowercased().contains("cash") { return "#30D158" }
-                    if id.lowercased() == "bank" { return "#18181B" }
+                    if id.lowercased() == "bank2" { return "#FF9500" }
+                    if id.lowercased() == "bank" { return "#007AFF" }
                     return "#007AFF"
                 }()
+                let accType: AccountType = id.lowercased().contains("cash") ? .cash : .bank
                 let opBal = (dict["openingBalance"] as? NSNumber)?.doubleValue ?? 0.0
-                newAccounts.append(Account(id: id, label: label, sfSymbol: symbol, colorHex: defaultColor, openingBalance: opBal, order: idx))
+                newAccounts.append(Account(id: id, label: label, sfSymbol: symbol, colorHex: defaultColor, openingBalance: opBal, order: idx, type: accType))
             }
         }
         
@@ -1146,6 +1249,9 @@ final class ExpenseStore {
                 "glasses": "eyeglasses",
                 "brush": "pencil.and.ruler.fill",
                 "atm": SFIcons.creditCard,
+                "card_ri": "creditcard.fill",
+                "medical": "cross.case.fill",
+                "car_ri": "tram.fill",
                 "money": SFIcons.paycheck,
                 "work": SFIcons.freelance,
                 "gift": SFIcons.gifts,
@@ -1156,11 +1262,11 @@ final class ExpenseStore {
             func parseCatList(_ list: [[String: Any]], _ type: TransactionType) {
                 for (idx, dict) in list.enumerated() {
                     guard let id = dict["id"] as? String, let label = dict["label"] as? String else { continue }
-                    let color = dict["color"] as? String ?? "#3478f6"
+                    let color = dict["color"] as? String ?? (type == .income ? "#30D158" : "#3478F6")
                     let iconName = dict["iconName"] as? String ?? ""
-                    let symbol = sfMap[iconName] ?? "tag.fill"
+                    let symbol = sfMap[iconName] ?? (type == .income ? "banknote.fill" : "tag.fill")
                     let hidden = dict["hidden"] as? Bool ?? false
-                    let folder = dict["folder"] as? String ?? "Uncategorized"
+                    let folder = dict["folder"] as? String ?? (type == .income ? "Salary & Career" : "Everyday Spending")
                     newCategories.append(Category(id: id, label: label, sfSymbol: symbol, colorHex: color, type: type, folder: folder, isHidden: hidden, order: idx))
                 }
             }
@@ -1179,13 +1285,23 @@ final class ExpenseStore {
                 guard let idStr = dict["id"] as? String,
                       let name = dict["name"] as? String,
                       let amtNum = dict["amount"] as? NSNumber else { continue }
-                let cycleStr = dict["cycle"] as? String ?? "monthly"
+                let cycleStr = dict["cycle"] as? String ?? dict["billingCycle"] as? String ?? "monthly"
                 let cycle = BillingCycle(rawValue: cycleStr) ?? .monthly
-                let dateStr = (dict["nextBilling"] as? String) ?? (dict["originalDate"] as? String) ?? ""
-                let date = parseDate(dateStr)
+                let dateVal = dict["nextBillingDate"] ?? dict["nextBilling"] ?? dict["startDate"] ?? dict["originalDate"]
+                let date = parseDate(dateVal)
                 let accountId = dict["accountId"] as? String ?? "bank"
                 let isTrial = dict["isTrial"] as? Bool ?? false
+                let isPaused = dict["isPaused"] as? Bool ?? false
                 let status = dict["status"] as? String ?? "active"
+                
+                let sfSym: String = {
+                    if name.localizedCaseInsensitiveContains("apple") { return "apple.logo" }
+                    if name.localizedCaseInsensitiveContains("weather") { return "cloud.sun.fill" }
+                    if name.localizedCaseInsensitiveContains("instagram") { return "camera.fill" }
+                    if name.localizedCaseInsensitiveContains("whatsapp") { return "bubble.left.and.bubble.right.fill" }
+                    if name.localizedCaseInsensitiveContains("gemini") { return "sparkles" }
+                    return SFIcons.subscriptions
+                }()
                 
                 newSubscriptions.append(Subscription(
                     id: parseUUID(idStr),
@@ -1196,9 +1312,12 @@ final class ExpenseStore {
                     categoryId: "subscriptions",
                     accountId: accountId,
                     autoDeduct: false,
-                    isPaused: status == "paused",
+                    isPaused: isPaused || status == "paused",
                     isTrial: isTrial,
-                    status: status
+                    status: status,
+                    sfSymbol: sfSym,
+                    colorHex: "#5856D6",
+                    isDarkBadge: true
                 ))
             }
         }
@@ -1211,11 +1330,10 @@ final class ExpenseStore {
                       let amtNum = dict["amount"] as? NSNumber,
                       let typeStr = dict["type"] as? String,
                       let catId = (dict["category"] as? String) ?? (dict["categoryId"] as? String),
-                      let accId = dict["accountId"] as? String,
-                      let dateStr = dict["date"] as? String else { continue }
+                      let accId = dict["accountId"] as? String else { continue }
                 
                 let txType = TransactionType(rawValue: typeStr) ?? .expense
-                let txDate = parseDate(dateStr)
+                let txDate = parseDate(dict["date"])
                 let subId = dict["subscriptionId"] as? String
                 let notes = dict["notes"] as? String
                 
@@ -1234,6 +1352,16 @@ final class ExpenseStore {
             }
         }
         
+        var derivedFolders: [Folder] = []
+        let defaultFolders = Set(["Everyday Spending", "Transport", "Living", "Personal & Wellness", "Salary & Career", "Investments & Other", "Uncategorized"])
+        for cat in newCategories {
+            if !cat.folder.isEmpty && !defaultFolders.contains(cat.folder) {
+                if !derivedFolders.contains(where: { $0.name == cat.folder && $0.type == cat.type }) {
+                    derivedFolders.append(Folder(name: cat.folder, type: cat.type))
+                }
+            }
+        }
+        
         withAnimation(.spring(response: 0.35)) {
             if let userName = importedUserName, !userName.isEmpty {
                 self.userName = userName
@@ -1246,9 +1374,11 @@ final class ExpenseStore {
             if !newAccounts.isEmpty { self.accounts = newAccounts }
             if !newCategories.isEmpty { self.categories = newCategories }
             if !newSubscriptions.isEmpty { self.subscriptions = newSubscriptions }
+            if !derivedFolders.isEmpty { self.customFolders = derivedFolders }
             self.transactions = newTransactions
         }
         
+        scheduleSave()
         HapticsManager.shared.trigger(.success)
         return true
     }

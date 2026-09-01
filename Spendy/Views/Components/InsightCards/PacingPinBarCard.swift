@@ -27,6 +27,7 @@ struct PacingPinBarCard: View {
         InsightCardShell(action: action, accessibilityLabel: "\(title), \(value), \(deltaText), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
                 // 1. Header: Clean label + minimal top-right glyph
+                let effectiveColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
                 HStack {
                     Text(title)
                         .font(.system(size: 14, weight: .medium))
@@ -37,7 +38,7 @@ struct PacingPinBarCard: View {
                     if let icon = icon {
                         Image(systemName: icon)
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(color)
+                            .foregroundStyle(effectiveColor)
                     }
                 }
                 
@@ -46,7 +47,7 @@ struct PacingPinBarCard: View {
                 // 2. Primary Value (Moved up close to header)
                 Text(value)
                     .spendyNumberFont(size: 28, weight: .bold, tracking: -0.5)
-                    .foregroundStyle(color)
+                    .foregroundStyle(effectiveColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 
@@ -77,13 +78,13 @@ struct PacingPinBarCard: View {
                                 Text(deltaText)
                                     .font(.system(size: 10, weight: .bold, design: .rounded))
                                     .monospacedDigit()
-                                    .foregroundStyle(Color.black)
+                                    .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.inverseText : Color.black)
                             }
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3.5)
                             .background(
                                 Capsule()
-                                    .fill(color)
+                                    .fill(effectiveColor)
                             )
                         }
                     }

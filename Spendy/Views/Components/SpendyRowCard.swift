@@ -44,6 +44,10 @@ struct SpendyRowCard<LeadingIcon: View, ContentTitle: View, TrailingContent: Vie
         }
     }
     
+    private var effectiveAccent: Color? {
+        SpendyColors.isMonoMode ? nil : accentColor
+    }
+    
     private var cardLayout: some View {
         HStack(spacing: 12) {
             leadingIcon()
@@ -65,11 +69,11 @@ struct SpendyRowCard<LeadingIcon: View, ContentTitle: View, TrailingContent: Vie
         .background {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(
-                    accentColor != nil ? AnyShapeStyle(
+                    effectiveAccent != nil ? AnyShapeStyle(
                         LinearGradient(
                             colors: [
-                                accentColor!.opacity(0.12),
-                                accentColor!.opacity(0.02)
+                                effectiveAccent!.opacity(0.12),
+                                effectiveAccent!.opacity(0.02)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -79,7 +83,7 @@ struct SpendyRowCard<LeadingIcon: View, ContentTitle: View, TrailingContent: Vie
                 .background(SpendyColors.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
-                    let strokeColor = accentColor != nil ? accentColor!.opacity(0.18) : SpendyColors.separator
+                    let strokeColor = effectiveAccent != nil ? effectiveAccent!.opacity(0.18) : SpendyColors.separator
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(strokeColor, lineWidth: 0.8)
                 }

@@ -39,6 +39,10 @@ struct SparklineView: View {
     /// Whether to show a glowing endpoint dot
     var showEndpoint: Bool = true
     
+    private var effectiveColor: Color {
+        SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : color
+    }
+    
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
@@ -54,8 +58,8 @@ struct SparklineView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        color.opacity(style == .glow ? 0.25 : 0.20),
-                                        color.opacity(0.0)
+                                        effectiveColor.opacity(style == .glow ? 0.25 : 0.20),
+                                        effectiveColor.opacity(0.0)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -68,19 +72,19 @@ struct SparklineView: View {
                         .stroke(
                             style == .glow
                                 ? LinearGradient(
-                                    colors: [color.opacity(0.50), color],
+                                    colors: [effectiveColor.opacity(0.50), effectiveColor],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                   )
                                 : LinearGradient(
-                                    colors: [color, color],
+                                    colors: [effectiveColor, effectiveColor],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                   ),
                             style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
                         )
                         .shadow(
-                            color: style == .glow ? color.opacity(0.4) : .clear,
+                            color: style == .glow ? effectiveColor.opacity(0.4) : .clear,
                             radius: style == .glow ? 6 : 0,
                             x: 0, y: 2
                         )
@@ -91,9 +95,9 @@ struct SparklineView: View {
                             .fill(SpendyColors.cardBackground)
                             .frame(width: 8, height: 8)
                             .overlay(
-                                Circle().stroke(color, lineWidth: 2.5)
+                                Circle().stroke(effectiveColor, lineWidth: 2.5)
                             )
-                            .shadow(color: color.opacity(0.8), radius: 6, x: 0, y: 0)
+                            .shadow(color: effectiveColor.opacity(0.8), radius: 6, x: 0, y: 0)
                             .position(last)
                     }
                 }
@@ -169,8 +173,9 @@ struct TrendSparkline: View {
     var height: CGFloat = 36
     
     private var effectiveColor: Color {
+        if SpendyColors.isMonoMode { return SpendyColors.monoGraphLine }
         if let color = color { return color }
-        return isPositive ? Color(hex: "#30D158") : Color(hex: "#FF3B30")
+        return isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed
     }
     
     private var mockPoints: [CGFloat] {

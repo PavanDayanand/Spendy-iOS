@@ -61,14 +61,15 @@ struct SharedInsightCard<MiddleContent: View>: View {
                     Spacer(minLength: 2)
                     
                     if let tagText = tagText {
+                        let effectiveTagColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (tagColor ?? color)
                         Text(tagText)
                             .font(.system(size: 9.5, weight: .bold))
-                            .foregroundStyle(tagColor ?? color)
+                            .foregroundStyle(effectiveTagColor)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(
                                 Capsule()
-                                    .fill((tagColor ?? color).opacity(0.15))
+                                    .fill(effectiveTagColor.opacity(SpendyColors.isMonoMode ? 0.12 : 0.15))
                             )
                             .lineLimit(1)
                     }

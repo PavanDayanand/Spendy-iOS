@@ -15,6 +15,7 @@ struct SpendyApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .environment(\.isMonoIconMode, store.isMonoIconMode)
                 .preferredColorScheme(store.colorScheme)
         }
     }

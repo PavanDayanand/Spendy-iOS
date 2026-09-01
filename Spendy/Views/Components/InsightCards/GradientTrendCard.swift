@@ -54,11 +54,12 @@ struct GradientTrendCard: View {
                         .frame(height: 38)
                     
                     // Accent Top-Line
+                    let effectiveLineColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : lineColor
                     Path { path in
                         path.move(to: CGPoint(x: 4, y: 0))
                         path.addLine(to: CGPoint(x: 200, y: 0))
                     }
-                    .stroke(lineColor, lineWidth: 2)
+                    .stroke(effectiveLineColor, lineWidth: 2)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .frame(height: 38)

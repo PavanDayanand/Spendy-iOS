@@ -341,7 +341,7 @@ struct AccountsView: View {
     // MARK: - Net Worth Sparkline
     private var trendSparkline: some View {
         let isPositive = store.netWorthChangePercentage >= 0
-        let col = isPositive ? Color(hex: "#30D158") : Color(hex: "#FF3B30")
+        let col = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (isPositive ? Color(hex: "#30D158") : Color(hex: "#FF3B30"))
         
         return GeometryReader { proxy in
             let w = proxy.size.width

@@ -28,27 +28,25 @@ struct CategoryCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 // 1. Top: Circular Icon Badge with Subtle Glow + Optional Tag Pill
                 HStack(alignment: .top) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 42, height: 42)
-                        .overlay {
-                            Image(systemName: icon)
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .shadow(color: color.opacity(0.35), radius: 5, x: 0, y: 2.5)
+                    SpendyIconBadge(
+                        sfSymbol: icon,
+                        color: color,
+                        size: .medium,
+                        style: .circle
+                    )
                     
                     Spacer(minLength: 4)
                     
                     if let tag = tagText, !tag.isEmpty {
+                        let effectiveTagColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (tagColor ?? color)
                         Text(tag)
                             .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(tagColor ?? color)
+                            .foregroundStyle(effectiveTagColor)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3.5)
                             .background(
                                 Capsule()
-                                    .fill((tagColor ?? color).opacity(0.15))
+                                    .fill(effectiveTagColor.opacity(SpendyColors.isMonoMode ? 0.12 : 0.15))
                             )
                             .lineLimit(1)
                     }

@@ -50,7 +50,7 @@ struct DotMatrixCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(streakCount)")
                         .spendyNumberFont(size: 34, weight: .heavy, tracking: -0.5)
-                        .foregroundStyle(color)
+                        .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.textPrimary : color)
                         .lineLimit(1)
                     
                     Text(streakUnit)
@@ -63,13 +63,15 @@ struct DotMatrixCard: View {
                 Spacer(minLength: 12)
                 
                 // 3. Dot Matrix Grid (3 rows x 10 dots = 30 days)
+                let activeColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
+                let inactiveColor = SpendyColors.isMonoMode ? SpendyColors.cardBackgroundSecondary : color.opacity(0.18)
                 VStack(spacing: 5) {
                     ForEach(0..<3, id: \.self) { row in
                         HStack(spacing: 5) {
                             ForEach(0..<10, id: \.self) { col in
                                 let index = row * 10 + col
                                 Circle()
-                                    .fill(index < activeDays ? color : color.opacity(0.18))
+                                    .fill(index < activeDays ? activeColor : inactiveColor)
                                     .frame(maxWidth: .infinity)
                                     .aspectRatio(1, contentMode: .fit)
                             }

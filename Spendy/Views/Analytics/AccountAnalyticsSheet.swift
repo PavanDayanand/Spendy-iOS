@@ -42,6 +42,10 @@ struct AccountAnalyticsSheet: View {
         account.color
     }
 
+    private var chartThemeColor: Color {
+        SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : account.color
+    }
+
     private var isHomeOrigin: Bool {
         topControlsNamespace != nil && periodControlMorphID == "accountDropdownCapsule"
     }
@@ -358,7 +362,7 @@ struct AccountAnalyticsSheet: View {
                         )
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [themeColor.opacity(0.35), themeColor.opacity(0.0)],
+                                colors: [chartThemeColor.opacity(0.35), chartThemeColor.opacity(0.0)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -372,7 +376,7 @@ struct AccountAnalyticsSheet: View {
                             x: .value("Date", point.date),
                             y: .value("Amount", point.amount)
                         )
-                        .foregroundStyle(themeColor)
+                        .foregroundStyle(chartThemeColor)
                         .lineStyle(StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
                         .interpolationMethod(.monotone)
                     }
@@ -386,10 +390,10 @@ struct AccountAnalyticsSheet: View {
                         .symbol {
                             ZStack {
                                 Circle()
-                                    .fill(themeColor.opacity(0.35))
+                                    .fill(chartThemeColor.opacity(0.35))
                                     .frame(width: 18, height: 18)
                                 Circle()
-                                    .fill(themeColor)
+                                    .fill(chartThemeColor)
                                     .frame(width: 9, height: 9)
                                 Circle()
                                     .fill(Color.white)

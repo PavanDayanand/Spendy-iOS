@@ -49,12 +49,14 @@ struct WeekdaySpectrumCard: View {
                 Spacer(minLength: 10)
                 
                 // 2. Middle: 7-Day Spectrum Columns
+                let activeBarColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
+                let activeTextColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
                 HStack(spacing: 6) {
                     ForEach(0..<7, id: \.self) { index in
                         let isPeak = index == peakDayIndex
                         VStack(spacing: 6) {
                             RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                .fill(isPeak ? color : SpendyColors.cardBackgroundSecondary)
+                                .fill(isPeak ? activeBarColor : SpendyColors.cardBackgroundSecondary)
                                 .frame(height: isPeak ? 22 : 9)
                                 .overlay {
                                     if !isPeak {
@@ -65,7 +67,7 @@ struct WeekdaySpectrumCard: View {
                             
                             Text(dayLabels[index])
                                 .font(.system(size: 9.5, weight: isPeak ? .bold : .medium))
-                                .foregroundStyle(isPeak ? color : SpendyColors.textTertiary)
+                                .foregroundStyle(isPeak ? activeTextColor : SpendyColors.textTertiary)
                         }
                         .frame(maxWidth: .infinity)
                     }

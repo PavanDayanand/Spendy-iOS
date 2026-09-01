@@ -30,6 +30,7 @@ struct WeeklyBarChartCard: View {
         InsightCardShell(action: action, accessibilityLabel: "\(title), \(value) \(unit)") {
             VStack(alignment: .leading, spacing: 0) {
                 // 1. Header: Clean label + minimal top-right glyph
+                let effectiveColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
                 HStack {
                     Text(title)
                         .font(.system(size: 14, weight: .medium))
@@ -40,7 +41,7 @@ struct WeeklyBarChartCard: View {
                     if let icon = icon {
                         Image(systemName: icon)
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(color)
+                            .foregroundStyle(effectiveColor)
                     }
                 }
                 
@@ -50,7 +51,7 @@ struct WeeklyBarChartCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(value)
                         .spendyNumberFont(size: 30, weight: .bold, tracking: -0.5)
-                        .foregroundStyle(color)
+                        .foregroundStyle(effectiveColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                     
@@ -91,7 +92,7 @@ struct WeeklyBarChartCard: View {
                             path.move(to: CGPoint(x: 0, y: baselineY))
                             path.addLine(to: CGPoint(x: geo.size.width, y: baselineY))
                         }
-                        .stroke(color, lineWidth: 1.5)
+                        .stroke(effectiveColor, lineWidth: 1.5)
                     }
                 }
                 .frame(height: 58)

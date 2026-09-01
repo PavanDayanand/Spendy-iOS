@@ -395,14 +395,16 @@ struct AnalyticsView: View {
                 .position(by: .value("Type", "Spending"))
                 .cornerRadius(6)
                 
+                let incomeBarColor1 = SpendyColors.isMonoMode ? SpendyColors.textPrimary : Color(hex: "#30D158")
+                let incomeBarColor2 = SpendyColors.isMonoMode ? SpendyColors.textPrimary.opacity(0.8) : Color(hex: "#248A3D")
                 BarMark(
                     x: .value("Period", item.label),
                     y: .value("Income", item.incomeAmount * chartProgress)
                 )
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color(hex: "#30D158").opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
-                                 Color(hex: "#248A3D").opacity(isSelected ? 0.85 : 0.4)],
+                        colors: [incomeBarColor1.opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
+                                 incomeBarColor2.opacity(isSelected ? 0.85 : 0.4)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -479,14 +481,14 @@ struct AnalyticsView: View {
                 }
                 
                 HStack {
-                    Circle().fill(Color(hex: "#30D158")).frame(width: 7, height: 7)
+                    Circle().fill(SpendyColors.isMonoMode ? SpendyColors.textPrimary : Color(hex: "#30D158")).frame(width: 7, height: 7)
                     Text("Income")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                     Spacer()
                     Text("+" + totalIncome.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                         .spendyNumberFont(size: 14, weight: .heavy, tracking: -0.4)
-                        .foregroundStyle(Color(hex: "#30D158"))
+                        .foregroundStyle(SpendyColors.incomeGreen)
                 }
             }
         }
@@ -760,18 +762,19 @@ struct AnalyticsView: View {
             }
             
             // Native Swift Chart: Income Line Chart
+            let incomeLineColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : Color(hex: "#30D158")
             Chart {
                 ForEach(intervals) { item in
                     LineMark(
                         x: .value("Period", item.label),
                         y: .value("Income", item.incomeAmount * chartProgress)
                     )
-                    .foregroundStyle(Color(hex: "#30D158"))
+                    .foregroundStyle(incomeLineColor)
                     .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                     .symbol {
                         Circle()
-                            .fill(selectedIncomeLabel == item.label ? Color(hex: "#30D158") : SpendyColors.cardBackground)
-                            .stroke(Color(hex: "#30D158"), lineWidth: 2)
+                            .fill(selectedIncomeLabel == item.label ? incomeLineColor : SpendyColors.cardBackground)
+                            .stroke(incomeLineColor, lineWidth: 2)
                             .frame(width: selectedIncomeLabel == item.label ? 9 : 5, height: selectedIncomeLabel == item.label ? 9 : 5)
                     }
                     .interpolationMethod(.catmullRom)
@@ -782,7 +785,7 @@ struct AnalyticsView: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color(hex: "#30D158").opacity(0.25), Color(hex: "#30D158").opacity(0.01)],
+                            colors: [incomeLineColor.opacity(0.25), incomeLineColor.opacity(0.01)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -792,24 +795,24 @@ struct AnalyticsView: View {
                 
                 if avgIncome > 0 {
                     RuleMark(y: .value("Average", avgIncome * chartProgress))
-                        .foregroundStyle(Color(hex: "#30D158").opacity(0.5))
+                        .foregroundStyle(incomeLineColor.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .annotation(position: .top, alignment: .trailing) {
                             Text("AVG \(formatAxisAmount(avgIncome))")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Color(hex: "#30D158"))
+                                .foregroundStyle(incomeLineColor)
                                 .padding(.horizontal, 4)
                         }
                 }
                 
                 if let selectedLabel = selectedIncomeLabel, let sel = selectedInterval {
                     RuleMark(x: .value("Selected", selectedLabel))
-                        .foregroundStyle(Color(hex: "#30D158").opacity(0.6))
+                        .foregroundStyle(incomeLineColor.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .annotation(position: .top, alignment: .center) {
                             Text("+" + sel.incomeAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color(hex: "#30D158"))
+                                .foregroundStyle(incomeLineColor)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background {
@@ -1076,34 +1079,41 @@ struct AnalyticsView: View {
                     Chart {
                         ForEach(pacingItems) { item in
                             if item.isPeak && item.amount > 0 {
+                                let peakOverlayColor: Color = {
+                                    if SpendyColors.isMonoMode {
+                                        return SpendyColors.textPrimary.opacity(0.12)
+                                    }
+                                    return item.isOverTarget ? Color(hex: "#FF9F0A").opacity(0.12) : Color(hex: "#30D158").opacity(0.12)
+                                }()
                                 RectangleMark(
                                     x: .value("Period", item.label),
                                     yStart: .value("Min", 0),
                                     yEnd: .value("Max", (pacingItems.map(\.amount).max() ?? 1.0) * 1.15 * chartProgress)
                                 )
-                                .foregroundStyle(
-                                    item.isOverTarget 
-                                        ? Color(hex: "#FF9F0A").opacity(0.12)
-                                        : Color(hex: "#30D158").opacity(0.12)
-                                )
+                                .foregroundStyle(peakOverlayColor)
                                 .cornerRadius(6)
                             }
                             
+                            let barColor: Color = {
+                                if item.amount <= 0 { return SpendyColors.separator.opacity(0.35) }
+                                if SpendyColors.isMonoMode { return SpendyColors.textPrimary }
+                                return item.isOverTarget ? Color(hex: "#8E8E93") : Color(hex: "#30D158")
+                            }()
                             BarMark(
                                 x: .value("Period", item.label),
                                 y: .value("Spending", item.amount * chartProgress)
                             )
-                            .foregroundStyle(
-                                item.amount <= 0 
-                                    ? SpendyColors.separator.opacity(0.35)
-                                    : (item.isOverTarget ? Color(hex: "#8E8E93") : Color(hex: "#30D158"))
-                            )
+                            .foregroundStyle(barColor)
                             .cornerRadius(5)
                             .annotation(position: .top, alignment: .center, spacing: 4) {
                                 if item.isPeak && item.amount > 0 {
+                                    let iconColor: Color = {
+                                        if SpendyColors.isMonoMode { return SpendyColors.textPrimary }
+                                        return item.isOverTarget ? Color(hex: "#FF9F0A") : Color(hex: "#30D158")
+                                    }()
                                     Image(systemName: item.isOverTarget ? "flame.fill" : "bolt.fill")
                                         .font(.system(size: 9, weight: .bold))
-                                        .foregroundStyle(item.isOverTarget ? Color(hex: "#FF9F0A") : Color(hex: "#30D158"))
+                                        .foregroundStyle(iconColor)
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 2)
                                         .background {

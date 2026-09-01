@@ -262,27 +262,30 @@ struct AddSubscriptionSheet: View {
 
                 Spacer()
 
-                Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        showColorPalette.toggle()
-                    }
-                    HapticsManager.shared.trigger(.light)
-                }) {
-                    Circle()
-                        .fill(Color(hex: selectedColorHex))
-                        .frame(width: 24, height: 24)
-                        .overlay {
-                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                // Hide color picker in Mono Icon Mode
+                if !store.isMonoIconMode {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            showColorPalette.toggle()
                         }
+                        HapticsManager.shared.trigger(.light)
+                    }) {
+                        Circle()
+                            .fill(Color(hex: selectedColorHex))
+                            .frame(width: 24, height: 24)
+                            .overlay {
+                                Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
 
             // Hue & Brightness Custom sliders
-            if showColorPalette {
+            if showColorPalette && !store.isMonoIconMode {
                 colorSlidersCard
             }
 
