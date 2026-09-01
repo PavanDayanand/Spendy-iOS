@@ -304,8 +304,15 @@ struct AccountsView: View {
         .buttonStyle(.plain)
         .matchedTransitionSource(id: AppTransitionIDs.accountCard(account.id), in: topControlsNamespace ?? accountsNamespace)
         .contextMenu {
+            Button(action: {
+                HapticsManager.shared.trigger(.light)
+                selectedAccountForAnalytics = account
+            }) {
+                Label("View Analytics", systemImage: "chart.bar.xaxis")
+            }
 
             Button(action: {
+                HapticsManager.shared.trigger(.light)
                 editingAccount = account
             }) {
                 Label("Edit Account", systemImage: "pencil")

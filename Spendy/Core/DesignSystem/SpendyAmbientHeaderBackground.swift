@@ -20,9 +20,10 @@ struct SpendyAmbientHeaderBackground: View {
             LinearGradient(
                 stops: [
                     .init(color: color.opacity(opacity), location: 0.0),
-                    .init(color: color.opacity(opacity * 0.75), location: 0.18),
-                    .init(color: color.opacity(opacity * 0.40), location: 0.42),
-                    .init(color: color.opacity(opacity * 0.12), location: 0.70),
+                    .init(color: color.opacity(opacity * 0.82), location: 0.20),
+                    .init(color: color.opacity(opacity * 0.52), location: 0.48),
+                    .init(color: color.opacity(opacity * 0.25), location: 0.74),
+                    .init(color: color.opacity(opacity * 0.08), location: 0.90),
                     .init(color: Color.clear, location: 1.0)
                 ],
                 startPoint: .top,

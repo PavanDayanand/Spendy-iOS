@@ -1,32 +1,29 @@
 {
-  "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
-  },
+  "fill" : "automatic",
   "groups" : [
     {
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill" : "none",
-          "glass-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : true
-            }
-          ],
-          "hidden" : false,
-          "image-name" : "Group 10 3.png",
-          "name" : "Group 10 3",
-          "opacity" : 1,
+          "fill" : "automatic",
+          "glass" : true,
+          "image-name" : "LogoPng.png",
+          "name" : "LogoPng",
           "position" : {
-            "scale" : 2.23,
+            "scale" : 1.2,
             "translation-in-points" : [
-              15.611350710714873,
-              0
+              21.875,
+              -5
             ]
           }
         }
       ],
+      "position" : {
+        "scale" : 1.7,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5

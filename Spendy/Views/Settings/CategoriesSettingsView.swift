@@ -85,18 +85,20 @@ struct CategoriesSettingsView: View {
             AddFolderSheet(folderToEdit: folder)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .confirmationDialog(
+        .alert(
             "Delete Category?",
             isPresented: Binding(
                 get: { categoryToDelete != nil },
                 set: { if !$0 { categoryToDelete = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             Button("Delete \(categoryToDelete?.label ?? "Category")", role: .destructive) {
                 if let cat = categoryToDelete {
                     store.deleteCategory(id: cat.id)
                 }
+                categoryToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
                 categoryToDelete = nil
             }
         } message: {

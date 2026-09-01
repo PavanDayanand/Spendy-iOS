@@ -97,11 +97,7 @@ struct TransactionDetailSheet: View {
             }
             .background(Color.clear)
             .toolbar(.hidden, for: .navigationBar)
-            .confirmationDialog(
-                "Delete Transaction?",
-                isPresented: $showDeleteConfirm,
-                titleVisibility: .visible
-            ) {
+            .alert("Delete Transaction?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     HapticsManager.shared.trigger(.warning)
                     store.deleteTransaction(id: transaction.id)
@@ -115,7 +111,7 @@ struct TransactionDetailSheet: View {
         .presentationDetents([.height(500), .medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationBackground(SpendyColors.appBackground)
     }
 
     
@@ -140,36 +136,60 @@ struct TransactionDetailSheet: View {
             
             Spacer()
             
-            // Edit ✎ + Delete 🗑 (Right)
-            GlassButtonGroup(spacing: 10) {
+            // More Options Menu ••• (Right)
+            Menu {
+                Button {
+                    onEdit(transaction)
+                } label: {
+                    Label("Edit Transaction", systemImage: "pencil")
+                }
+                
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    let copy = Transaction(
+                        id: UUID(),
+                        title: transaction.title,
+                        amount: transaction.amount,
+                        type: transaction.type,
+                        categoryId: transaction.categoryId,
+                        accountId: transaction.accountId,
+                        toAccountId: transaction.toAccountId,
+                        date: Date(),
+                        notes: transaction.notes,
+                        subscriptionId: transaction.subscriptionId
+                    )
+                    store.addTransaction(copy)
+                    dismiss()
+                } label: {
+                    Label("Duplicate", systemImage: "doc.on.doc")
+                }
+                
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    UIPasteboard.general.string = "\(transaction.amount)"
+                } label: {
+                    Label("Copy Amount", systemImage: "doc.on.clipboard")
+                }
+                
+                Divider()
+                
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label("Delete Transaction", systemImage: "trash")
+                }
+            } label: {
                 GlassCircleButton(
-                    icon: SFIcons.edit,
+                    icon: "ellipsis",
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .light,
-                    accessibilityLabel: "Edit Transaction",
-                    morphID: "editButton",
+                    accessibilityLabel: "Transaction Options",
+                    morphID: "moreButton",
                     namespace: sheetNamespace
-                ) {
-                    onEdit(transaction)
-                }
-                
-                GlassCircleButton(
-                    icon: SFIcons.delete,
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    tintColor: SpendyColors.expenseRed.opacity(0.18),
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Transaction",
-                    morphID: "deleteButton",
-                    namespace: sheetNamespace
-                ) {
-                    showDeleteConfirm = true
-                }
+                ) { }
             }
         }
     }

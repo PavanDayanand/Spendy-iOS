@@ -22,7 +22,7 @@ struct LiquidMeshBackground: View {
     
     private var effectiveHeight: CGFloat {
         if let height = height { return height }
-        return style == .sheet ? 340 : 420
+        return style == .sheet ? 380 : 580
     }
     
     private var ambientColor: Color {

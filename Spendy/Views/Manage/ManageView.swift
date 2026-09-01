@@ -419,18 +419,21 @@ struct SubscriptionsView: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button {
+                HapticsManager.shared.trigger(.light)
                 selectedSubscriptionForDetail = sub
             } label: {
                 Label("View Details", systemImage: "info.circle")
             }
 
             Button {
+                HapticsManager.shared.trigger(.light)
                 subscriptionToEdit = sub
             } label: {
                 Label("Edit Subscription", systemImage: "pencil")
             }
 
             Button {
+                HapticsManager.shared.trigger(.light)
                 store.toggleSubscriptionPause(id: sub.id)
             } label: {
                 Label(
@@ -440,13 +443,19 @@ struct SubscriptionsView: View {
             }
 
             Button {
+                HapticsManager.shared.trigger(.light)
                 store.cancelSubscription(id: sub.id)
             } label: {
                 Label("Cancel Subscription", systemImage: "xmark.circle")
             }
 
+            Divider()
+
             Button(role: .destructive) {
-                store.deleteSubscription(id: sub.id)
+                HapticsManager.shared.trigger(.warning)
+                withAnimation(AppMotion.snappySpring) {
+                    store.deleteSubscription(id: sub.id)
+                }
             } label: {
                 Label("Delete", systemImage: "trash")
             }

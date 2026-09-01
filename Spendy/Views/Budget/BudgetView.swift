@@ -62,12 +62,20 @@ struct BudgetView: View {
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: isEditingExisting)
             }
+            .alert("Delete Budget?", isPresented: $showDeleteConfirmation) {
+                Button("Delete Budget", role: .destructive) {
+                    HapticsManager.shared.trigger(.medium)
+                    withAnimation(AppMotion.fluidSpring) {
+                        store.deleteBudget()
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will remove your current budget limit.")
+            }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
-                    category: category,
-                    topControlsNamespace: budgetControlsNamespace,
-                    backButtonMorphID: "editButton",
-                    editButtonMorphID: "deleteButton"
+                    category: category
                 ) {
                     withAnimation(AppMotion.fluidSpring) {
                         selectedCategoryForSheet = nil
@@ -102,46 +110,31 @@ struct BudgetView: View {
     
     // MARK: - Sticky Action Buttons (Stay fixed at top right)
     private var actionButtons: some View {
-        GlassButtonGroup(spacing: 10) {
-            // Edit Liquid Glass Button
-            GlassCircleButton(
-                icon: SFIcons.edit,
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Edit Budget",
-                morphID: "editButton",
-                namespace: budgetControlsNamespace
-            ) {
+        Menu {
+            Button {
                 isEditingExisting = true
                 showEditBudgetSheet = true
+            } label: {
+                Label("Edit Budget", systemImage: "pencil")
             }
             
-            // Delete Liquid Glass Button with Anchored Confirmation Dialog
-            GlassCircleButton(
-                icon: SFIcons.trash,
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.expenseRed,
-                haptic: .medium,
-                accessibilityLabel: "Delete Budget",
-                morphID: "deleteButton",
-                namespace: budgetControlsNamespace
-            ) {
+            Divider()
+            
+            Button(role: .destructive) {
                 showDeleteConfirmation = true
+            } label: {
+                Label("Delete Budget", systemImage: "trash")
             }
-            .confirmationDialog("Delete Budget?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-                Button("Delete Budget", role: .destructive) {
-                    HapticsManager.shared.trigger(.medium)
-                    withAnimation(AppMotion.fluidSpring) {
-                        store.deleteBudget()
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("This will remove your current budget limit.")
-            }
+        } label: {
+            GlassCircleButton(
+                icon: "ellipsis",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Budget Options"
+            ) { }
         }
     }
     

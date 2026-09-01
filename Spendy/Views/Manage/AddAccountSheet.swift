@@ -115,15 +115,12 @@ struct AddAccountSheet: View {
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
         }
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }
@@ -131,12 +128,7 @@ struct AddAccountSheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .confirmationDialog(
-
-            "Delete Account?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete Account?", isPresented: $showDeleteConfirm) {
             let fallback = store.accounts.first(where: { $0.id != accountToEdit?.id })
             
             Button("Delete & Move Transactions to \(fallback?.label ?? "Cash")", role: .destructive) {

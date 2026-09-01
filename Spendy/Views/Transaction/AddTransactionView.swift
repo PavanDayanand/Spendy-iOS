@@ -187,12 +187,11 @@ struct AddTransactionView: View {
             }
         }
         .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }
@@ -926,6 +925,7 @@ struct CategoryPickerDrawer: View {
         .presentationDetents([.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
+        .presentationBackground(SpendyColors.appBackground)
     }
     
     private func categoryFolderBlock(title: String, items: [Category]) -> some View {
@@ -1120,6 +1120,7 @@ struct AccountPickerDrawer: View {
         .presentationDetents([.fraction(0.55), .medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
+        .presentationBackground(SpendyColors.appBackground)
     }
 }
 
@@ -1315,6 +1316,7 @@ struct CustomCalendarDrawer: View {
         .presentationDetents([.fraction(0.68)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
+        .presentationBackground(SpendyColors.appBackground)
     }
     
     private var formattedDateTitle: String {

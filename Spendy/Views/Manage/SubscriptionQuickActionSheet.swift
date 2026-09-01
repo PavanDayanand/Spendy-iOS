@@ -182,6 +182,9 @@ struct SubscriptionQuickActionSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
+                // MARK: - Ambient Subscription Gradient Header Glow
+                SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+                
                 // MARK: - Scrollable Content
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
@@ -191,14 +194,11 @@ struct SubscriptionQuickActionSheet: View {
                         // MARK: - Hero Section
                         heroSection
                         
-                        Divider().overlay(SpendyColors.separator)
-                            .padding(.horizontal, 4)
-                        
-                        // MARK: - Structured Details List
-                        detailsList
+                        // MARK: - Structured Details Card
+                        detailsCard
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 24)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
                 }
                 
                 // MARK: - Floating Top Bar (✕ on Left, ••• on Right)
@@ -216,11 +216,7 @@ struct SubscriptionQuickActionSheet: View {
             }
             .background(Color.clear)
             .toolbar(.hidden, for: .navigationBar)
-            .confirmationDialog(
-                "Delete Subscription?",
-                isPresented: $showDeleteConfirmation,
-                titleVisibility: .visible
-            ) {
+            .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
                 Button("Delete Subscription", role: .destructive) {
                     HapticsManager.shared.trigger(.warning)
                     store.deleteSubscription(id: liveSub.id)
@@ -238,6 +234,7 @@ struct SubscriptionQuickActionSheet: View {
         .presentationDetents([.height(540), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
+        .presentationBackground(SpendyColors.appBackground)
     }
     
     // MARK: - Top Action Bar (✕ on Left, ••• Menu on Right)
@@ -409,11 +406,11 @@ struct SubscriptionQuickActionSheet: View {
         .padding(.vertical, 2)
     }
     
-    // MARK: - Structured Details List (Clean & Spacious)
-    private var detailsList: some View {
-        VStack(spacing: 14) {
+    // MARK: - Structured Details Card Container
+    private var detailsCard: some View {
+        VStack(spacing: 0) {
             // 1. Payment Method / Account Row
-            detailRow(icon: "creditcard.fill", label: "Payment Account") {
+            cardRow(icon: "creditcard.fill", label: "Payment Account") {
                 HStack(spacing: 8) {
                     SpendyIconBadge(
                         sfSymbol: linkedAccount.sfSymbol.isEmpty ? linkedAccount.type.defaultSymbol : linkedAccount.sfSymbol,
@@ -427,8 +424,10 @@ struct SubscriptionQuickActionSheet: View {
                 }
             }
             
+            rowDivider
+            
             // 2. Category Row
-            detailRow(icon: "tag.fill", label: "Category") {
+            cardRow(icon: "tag.fill", label: "Category") {
                 HStack(spacing: 8) {
                     SpendyIconBadge(
                         sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
@@ -442,8 +441,10 @@ struct SubscriptionQuickActionSheet: View {
                 }
             }
             
+            rowDivider
+            
             // 3. Billing Cycle Row
-            detailRow(icon: "repeat", label: "Billing Cycle") {
+            cardRow(icon: "repeat", label: "Billing Cycle") {
                 HStack(spacing: 8) {
                     Text(liveSub.cycle.label)
                         .font(.system(size: 14, weight: .semibold))
@@ -458,15 +459,19 @@ struct SubscriptionQuickActionSheet: View {
                 }
             }
             
+            rowDivider
+            
             // 4. Next Billing Due Date Row
-            detailRow(icon: "calendar", label: "Next Billing") {
+            cardRow(icon: "calendar", label: "Next Billing") {
                 Text(formattedDueDate)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
             }
             
+            rowDivider
+            
             // 5. Auto-Log Toggle Row
-            detailRow(icon: "bolt.fill", label: "Auto-Log Expense") {
+            cardRow(icon: "bolt.fill", label: "Auto-Log Expense") {
                 Toggle("", isOn: Binding(
                     get: { liveSub.autoDeduct },
                     set: { newValue in
@@ -477,14 +482,29 @@ struct SubscriptionQuickActionSheet: View {
                 .tint(SpendyColors.incomeGreen)
             }
             
+            rowDivider
+            
             // 6. Annual Projection Row
-            detailRow(icon: "chart.line.uptrend.xyaxis", label: "Annual Cost") {
+            cardRow(icon: "chart.line.uptrend.xyaxis", label: "Annual Cost") {
                 Text("\(annualProjectedCost.formattedCurrency(symbol: store.currencySymbol)) / yr")
                     .spendyNumberFont(size: 14, weight: .bold, tracking: -0.4)
                     .foregroundStyle(SpendyColors.textPrimary)
             }
         }
-        .padding(.vertical, 2)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
+    }
+    
+    private var rowDivider: some View {
+        Divider()
+            .overlay(SpendyColors.separator.opacity(0.6))
+            .padding(.leading, 48)
     }
     
     // MARK: - Action Handlers with Rich Spring Animation & Toast Feedback
@@ -602,12 +622,17 @@ struct SubscriptionQuickActionSheet: View {
     
     // MARK: - Helper Views
     @ViewBuilder
-    private func detailRow<V: View>(icon: String, label: String, @ViewBuilder valueView: () -> V) -> some View {
+    private func cardRow<V: View>(icon: String, label: String, @ViewBuilder valueView: () -> V) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .frame(width: 24, height: 24)
+            ZStack {
+                Circle()
+                    .fill(SpendyColors.chipBackground)
+                    .frame(width: 28, height: 28)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
             
             Text(label)
                 .font(.system(size: 14, weight: .medium))
@@ -617,6 +642,8 @@ struct SubscriptionQuickActionSheet: View {
             
             valueView()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
     }
 }
 

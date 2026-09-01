@@ -832,13 +832,12 @@ struct DashboardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
         .contextMenu {
-            Button(role: .destructive) {
-                HapticsManager.shared.trigger(.warning)
-                withAnimation(AppMotion.snappySpring) {
-                    store.deleteTransaction(id: tx.id)
-                }
+            Button {
+                HapticsManager.shared.trigger(.light)
+                lastInspectedTransaction = nil
+                editingTransaction = tx
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label("Edit", systemImage: "pencil")
             }
             
             Button {
@@ -858,6 +857,24 @@ struct DashboardView: View {
                 store.addTransaction(copy)
             } label: {
                 Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            
+            Button {
+                HapticsManager.shared.trigger(.light)
+                UIPasteboard.general.string = "\(tx.amount)"
+            } label: {
+                Label("Copy Amount", systemImage: "doc.on.clipboard")
+            }
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                HapticsManager.shared.trigger(.warning)
+                withAnimation(AppMotion.snappySpring) {
+                    store.deleteTransaction(id: tx.id)
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }

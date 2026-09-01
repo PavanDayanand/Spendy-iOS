@@ -93,12 +93,9 @@ struct AddFolderSheet: View {
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }
@@ -106,11 +103,7 @@ struct AddFolderSheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .confirmationDialog(
-            "Delete Folder?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete Folder?", isPresented: $showDeleteConfirm) {
             Button("Delete Folder", role: .destructive) {
                 if let folder = folderToEdit {
                     store.deleteFolder(id: folder.id, name: folder.name, type: folder.type)

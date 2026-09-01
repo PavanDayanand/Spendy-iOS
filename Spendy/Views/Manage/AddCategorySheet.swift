@@ -141,15 +141,12 @@ struct AddCategorySheet: View {
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
         }
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }
@@ -157,11 +154,7 @@ struct AddCategorySheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .confirmationDialog(
-            "Delete Category?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete Category?", isPresented: $showDeleteConfirm) {
             Button("Delete Category", role: .destructive) {
                 if let cat = categoryToEdit {
                     store.deleteCategory(id: cat.id)

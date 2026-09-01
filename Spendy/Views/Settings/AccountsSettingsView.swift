@@ -301,6 +301,21 @@ struct AccountsSettingsView: View {
                         .buttonStyle(.plain)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("\(account.label), \(account.type.rawValue), balance \(balance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                        .contextMenu {
+                            Button(action: {
+                                HapticsManager.shared.trigger(.light)
+                                selectedAccountForAnalytics = account
+                            }) {
+                                Label("View Analytics", systemImage: "chart.bar.xaxis")
+                            }
+
+                            Button(action: {
+                                HapticsManager.shared.trigger(.light)
+                                editingAccount = account
+                            }) {
+                                Label("Edit Account", systemImage: "pencil")
+                            }
+                        }
                     }
                 }
             }

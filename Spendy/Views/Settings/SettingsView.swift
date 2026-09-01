@@ -328,48 +328,50 @@ struct SettingsView: View {
                 .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
-                // Appearance Menu Picker Toggle (Native Apple Standard)
-                Menu {
-                    Picker("Appearance", selection: Binding(
-                        get: { store.appearanceMode },
-                        set: { newValue in
-                            store.appearanceMode = newValue
-                            HapticsManager.shared.trigger(.selection)
+                // Appearance Menu Picker Toggle (Native Apple Standard - Anchored to Trailing)
+                HStack(spacing: 14) {
+                    Image(systemName: store.appearanceMode.sfSymbol)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 26, height: 26)
+
+                    Text("Appearance")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(SpendyColors.textPrimary)
+
+                    Spacer()
+
+                    Menu {
+                        Picker("Appearance", selection: Binding(
+                            get: { store.appearanceMode },
+                            set: { newValue in
+                                store.appearanceMode = newValue
+                                HapticsManager.shared.trigger(.selection)
+                            }
+                        )) {
+                            ForEach(AppearanceMode.allCases) { mode in
+                                Label(mode.rawValue, systemImage: mode.sfSymbol)
+                                    .tag(mode)
+                            }
                         }
-                    )) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            Label(mode.rawValue, systemImage: mode.sfSymbol)
-                                .tag(mode)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: store.appearanceMode.sfSymbol)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .frame(width: 26, height: 26)
-
-                        Text("Appearance")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(SpendyColors.textPrimary)
-
-                        Spacer()
-
-                        HStack(spacing: 4) {
+                    } label: {
+                        HStack(spacing: 6) {
                             Text(store.appearanceMode.rawValue)
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
+                                .foregroundStyle(SpendyColors.textSecondary)
 
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(SpendyColors.textTertiary)
                         }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(SpendyColors.chipBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 13)
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
 
                 Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 

@@ -235,13 +235,10 @@ struct EditBudgetSheet: View {
         }
         .presentationDetents([.fraction(0.85), .large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .presentationBackground(SpendyColors.appBackground)
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }

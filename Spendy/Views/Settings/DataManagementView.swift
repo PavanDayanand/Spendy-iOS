@@ -219,15 +219,12 @@ struct DataManagementView: View {
         } message: {
             Text(importAlertMessage ?? "")
         }
-        .confirmationDialog(
-            "Erase All Local Data?",
-            isPresented: $showClearConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Erase All Local Data?", isPresented: $showClearConfirm) {
             Button("Erase All Data", role: .destructive) {
                 store.eraseAllData()
                 HapticsManager.shared.trigger(.warning)
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete all your data, including accounts and subscriptions. This action cannot be undone.")
         }

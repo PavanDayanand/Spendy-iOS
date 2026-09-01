@@ -110,13 +110,13 @@ struct EditProfileSheet: View {
                 .ignoresSafeArea()
             }
         }
+        .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .toolbar(.hidden, for: .navigationBar)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirm,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }

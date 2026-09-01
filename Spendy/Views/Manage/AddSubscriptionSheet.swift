@@ -129,16 +129,13 @@ struct AddSubscriptionSheet: View {
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Discard Changes", role: .destructive) {
                 dismiss()
             }
