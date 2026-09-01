@@ -92,14 +92,7 @@ struct AccountsView: View {
             CurrencyPickerSheet()
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
-            AccountAnalyticsSheet(
-                account: acc,
-                topControlsNamespace: topControlsNamespace ?? accountsNamespace,
-                backButtonMorphID: topControlsNamespace == nil ? "backButton" : "topControl_left",
-                editButtonMorphID: topControlsNamespace == nil ? "addAccountButton" : "topControl_right",
-                periodControlMorphID: "currencyPill"
-            )
-            .navigationTransition(.zoom(sourceID: AppTransitionIDs.accountCard(acc.id), in: topControlsNamespace ?? accountsNamespace))
+            AccountAnalyticsSheet(account: acc)
         }
     }
     
@@ -254,7 +247,6 @@ struct AccountsView: View {
             }
         }
         .buttonStyle(.plain)
-        .matchedTransitionSource(id: AppTransitionIDs.accountCard(account.id), in: topControlsNamespace ?? accountsNamespace)
         .contextMenu {
             Button(action: {
                 HapticsManager.shared.trigger(.light)
