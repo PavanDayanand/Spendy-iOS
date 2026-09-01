@@ -3,7 +3,8 @@
 //  Spendy
 //
 //  Adaptive edge-to-edge ambient header gradient background with fluid liquid mesh animation.
-//  Uses the user's custom accent/profile color configured in Settings.
+//  Active only when 'Gradient background' toggle is enabled in Settings; otherwise displays
+//  clean monochrome theme (pure dark / light background).
 //
 
 import SwiftUI
@@ -63,8 +64,8 @@ public struct LiquidMeshBackground: View {
                     height: effectiveHeight,
                     opacity: opacity
                 )
-            } else {
-                // Main App Screen Fluid Animated Background
+            } else if store.isGradientBackgroundEnabled {
+                // Main App Screen Fluid Animated Background (Only active when Gradient mode is ON)
                 VStack(spacing: 0) {
                     ZStack(alignment: .top) {
                         // 1. Moving ambient gradient wash across top safe area
@@ -93,7 +94,20 @@ public struct LiquidMeshBackground: View {
                             .blur(radius: 60)
                     }
                     .frame(height: effectiveHeight)
-                    .clipped()
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white, location: 0.0),
+                                .init(color: .white, location: 0.35),
+                                .init(color: .white.opacity(0.80), location: 0.58),
+                                .init(color: .white.opacity(0.35), location: 0.80),
+                                .init(color: .white.opacity(0.08), location: 0.92),
+                                .init(color: .clear, location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                     .ignoresSafeArea(edges: .top)
                     
                     Spacer()
@@ -111,8 +125,10 @@ public struct LiquidMeshBackground: View {
                     }
                 }
                 .animation(AppMotion.gentleSpring, value: ambientColor)
+                .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: store.isGradientBackgroundEnabled)
         .ignoresSafeArea()
     }
 }
