@@ -4,6 +4,7 @@
 //
 //  Lightweight, privacy-first local exposure tracking and fatigue manager.
 //  Prevents nagging while intelligently re-triggering on material delta shifts or critical warnings.
+//  Ensures insights remain available during active period switching.
 //
 
 import Foundation
@@ -35,15 +36,47 @@ final class InsightExposureStore: @unchecked Sendable {
         loadFromDisk()
     }
     
-    // MARK: - Fatigue & Cooldown Evaluation
+    // MARK: - Novelty Calculation
     
-    /// Evaluates whether an insight candidate should be suppressed due to recent exposure
+    /// Computes deterministic novelty score based on exposure history and material shifts
+    func calculateNovelty(
+        for semanticId: String,
+        currentDelta: Double? = nil,
+        currentValue: Double? = nil
+    ) -> Double {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        guard let record = records[semanticId] else {
+            return 1.0 // Unseen candidate: maximum novelty
+        }
+        
+        // If material shift occurred since last surfaced, novelty resets high
+        if let curDelta = currentDelta, let prevDelta = record.lastDeltaPercentage, abs(curDelta - prevDelta) >= 10.0 {
+            return 0.90
+        }
+        if let curVal = currentValue, let prevVal = record.lastNumericValue, prevVal > 0, (abs(curVal - prevVal) / prevVal) >= 0.20 {
+            return 0.90
+        }
+        
+        switch record.exposureCount {
+        case 0: return 1.0
+        case 1: return 0.70
+        case 2: return 0.40
+        default: return 0.15
+        }
+    }
+    
+    // MARK: - Fatigue & Suppression Evaluation
+    
+    /// Evaluates whether an insight candidate should be suppressed due to excessive fatigue.
+    /// Does NOT suppress active insights simply because they were viewed earlier in the current session.
     func shouldSuppress(
         semanticId: String,
         isCritical: Bool,
         currentDelta: Double? = nil,
         currentValue: Double? = nil,
-        cooldownHours: Double = 24.0,
+        maxExposures: Int = 4,
         now: Date = Date()
     ) -> Bool {
         // Critical alerts (e.g. budget exceeded, overdue bill) unconditionally bypass fatigue
@@ -58,30 +91,20 @@ final class InsightExposureStore: @unchecked Sendable {
             return false
         }
         
-        let elapsedSeconds = now.timeIntervalSince(record.lastSurfacedAt)
-        let cooldownSeconds = cooldownHours * 3600.0
-        
-        if elapsedSeconds < cooldownSeconds {
-            // Check for material change since last exposure
-            if let curDelta = currentDelta, let prevDelta = record.lastDeltaPercentage {
-                let deltaShift = abs(curDelta - prevDelta)
-                if deltaShift >= 10.0 { // e.g. grew from +15% to +26%
-                    return false
-                }
-            }
-            if let curVal = currentValue, let prevVal = record.lastNumericValue, prevVal > 0 {
-                let valueShiftPct = abs(curVal - prevVal) / prevVal
-                if valueShiftPct >= 0.20 { // 20% shift in underlying metric
-                    return false
-                }
-            }
-            return true
+        // Material shift unconditionally bypasses suppression
+        if let curDelta = currentDelta, let prevDelta = record.lastDeltaPercentage, abs(curDelta - prevDelta) >= 10.0 {
+            return false
+        }
+        if let curVal = currentValue, let prevVal = record.lastNumericValue, prevVal > 0, (abs(curVal - prevVal) / prevVal) >= 0.20 {
+            return false
         }
         
-        return false
+        // Suppress only if exposure count has reached the multi-session fatigue ceiling
+        return record.exposureCount >= maxExposures
     }
     
-    /// Records that an insight was surfaced to the user
+    /// Records that an insight was surfaced to the user.
+    /// Debounces rapid redraws / period-switching within the same active session.
     func recordExposure(
         semanticId: String,
         delta: Double? = nil,
@@ -92,8 +115,18 @@ final class InsightExposureStore: @unchecked Sendable {
         defer { lock.unlock() }
         
         if var existing = records[semanticId] {
+            let elapsed = now.timeIntervalSince(existing.lastSurfacedAt)
+            let isMaterialShift: Bool = {
+                if let d = delta, let prevD = existing.lastDeltaPercentage, abs(d - prevD) >= 10.0 { return true }
+                if let v = value, let prevV = existing.lastNumericValue, prevV > 0, (abs(v - prevV) / prevV) >= 0.20 { return true }
+                return false
+            }()
+            
+            // Only increment count if at least 1 hour has elapsed or a material shift occurred
+            if elapsed >= 3600.0 || isMaterialShift {
+                existing.exposureCount += 1
+            }
             existing.lastSurfacedAt = now
-            existing.exposureCount += 1
             existing.lastDeltaPercentage = delta
             existing.lastNumericValue = value
             records[semanticId] = existing

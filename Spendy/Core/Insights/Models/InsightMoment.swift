@@ -14,6 +14,7 @@ enum InsightEmphasis: Hashable, Sendable {
     case date(Date)
     case count(Int)
     case text(String)
+    case highlight(String) // Important token to receive subtle shiny highlight
 }
 
 struct InsightMoment: Identifiable, Hashable, Sendable {
@@ -22,6 +23,7 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
     let kind: InsightKind
     let family: InsightFamily
     let surface: InsightSurface
+    let period: InsightPeriod
     
     // Human-authored editorial copy
     let headline: String
@@ -30,7 +32,8 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
     // Semantic emphasis points
     let emphasis: [InsightEmphasis]
     
-    // Semantic interaction target
+    // Actionable Callout & Semantic Target
+    let actionTitle: String?
     let destination: InsightDestination?
     
     // Insufficient data flag
@@ -42,9 +45,11 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
         kind: InsightKind,
         family: InsightFamily,
         surface: InsightSurface,
+        period: InsightPeriod = .month,
         headline: String,
         supportingText: String? = nil,
         emphasis: [InsightEmphasis] = [],
+        actionTitle: String? = nil,
         destination: InsightDestination? = nil,
         isInsufficientData: Bool = false
     ) {
@@ -53,23 +58,28 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
         self.kind = kind
         self.family = family
         self.surface = surface
+        self.period = period
         self.headline = headline
         self.supportingText = supportingText
         self.emphasis = emphasis
+        self.actionTitle = actionTitle
         self.destination = destination
         self.isInsufficientData = isInsufficientData
     }
     
     /// Canonical empty / insufficient data moment
-    static func insufficientData(for surface: InsightSurface) -> InsightMoment {
+    static func insufficientData(for surface: InsightSurface, period: InsightPeriod = .month) -> InsightMoment {
         InsightMoment(
-            id: "insufficient_data_\(surface.rawIdentifier)",
+            id: "insufficient_data_\(surface.rawIdentifier)_\(period.rawValue)",
             candidateId: "insufficient_data",
             kind: .observation,
             family: .spending,
             surface: surface,
+            period: period,
             headline: "Insights",
             supportingText: "Add more transactions to unlock personalised insights",
+            emphasis: [],
+            actionTitle: nil,
             destination: nil,
             isInsufficientData: true
         )

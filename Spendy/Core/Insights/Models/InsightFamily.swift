@@ -15,4 +15,16 @@ enum InsightFamily: String, Codable, Sendable, CaseIterable {
     case subscription    // Committed recurring spend, price changes, double billing, due dates
     case income          // Income shifts, multi-stream diversification
     case anomaly         // Statistical transaction outliers
+    
+    var title: String {
+        switch self {
+        case .spending: return "Spending"
+        case .budget: return "Budget"
+        case .category: return "Category"
+        case .behavior: return "Habit"
+        case .subscription: return "Subscription"
+        case .income: return "Income"
+        case .anomaly: return "Anomaly"
+        }
+    }
 }

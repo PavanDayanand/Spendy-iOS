@@ -2,85 +2,86 @@
 //  InsightFactsExtractor.swift
 //  Spendy
 //
-//  Single canonical source of truth for extracting immutable mathematical facts from raw data.
+//  Single canonical source of truth for extracting immutable mathematical facts from raw data
+//  driven by the exact AnalyticsInsightContext (dates, scope, and comparison boundaries).
 //
 
 import Foundation
 
 enum InsightFactsExtractor {
     
-    /// Extract facts for the active financial period (defaulting to current calendar month vs previous calendar month)
+    /// Canonical context-driven fact extractor
     static func extractFacts(
         transactions: [Transaction],
         budget: Budget,
         categories: [Category],
         subscriptions: [Subscription],
-        now: Date = Date(),
+        context: AnalyticsInsightContext,
         calendar: Calendar = Calendar.current
     ) -> InsightFacts {
-        let periodStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-        let periodEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: periodStart) ?? now
+        let now = context.referenceDate
         
-        let baselineStart = calendar.date(byAdding: .month, value: -1, to: periodStart) ?? now
-        let baselineEnd = calendar.date(byAdding: .day, value: -1, to: periodStart) ?? now
+        // 0. Filter transactions by analytical scope (Global, Category-specific, Account-specific)
+        let scopedTransactions: [Transaction] = {
+            switch context.scope {
+            case .global:
+                return transactions
+            case .category(let catId):
+                return transactions.filter { $0.categoryId == catId }
+            case .account(let accId):
+                return transactions.filter { $0.accountId == accId }
+            }
+        }()
         
-        return extractFacts(
-            transactions: transactions,
-            budget: budget,
-            categories: categories,
-            subscriptions: subscriptions,
-            periodStart: periodStart,
-            periodEnd: periodEnd,
-            baselineStart: baselineStart,
-            baselineEnd: baselineEnd,
-            now: now,
-            calendar: calendar
-        )
-    }
-    
-    /// Extract facts for explicit custom period bounds
-    static func extractFacts(
-        transactions: [Transaction],
-        budget: Budget,
-        categories: [Category],
-        subscriptions: [Subscription],
-        periodStart: Date,
-        periodEnd: Date,
-        baselineStart: Date,
-        baselineEnd: Date,
-        now: Date = Date(),
-        calendar: Calendar = Calendar.current
-    ) -> InsightFacts {
-        let currentDayStart = calendar.startOfDay(for: now)
-        
-        let currentExpenseTxs = transactions.filter {
-            $0.type == .expense && $0.date >= periodStart && $0.date <= periodEnd
+        // Filter by exact date boundaries
+        let currentExpenseTxs = scopedTransactions.filter {
+            $0.type == .expense && $0.date >= context.startDate && $0.date <= context.endDate
         }
         
-        let baselineExpenseTxs = transactions.filter {
-            $0.type == .expense && $0.date >= baselineStart && $0.date <= baselineEnd
+        let baselineExpenseTxs = scopedTransactions.filter {
+            $0.type == .expense && $0.date >= context.baselineStartDate && $0.date <= context.baselineEndDate
         }
         
-        let currentIncomeTxs = transactions.filter {
-            $0.type == .income && $0.date >= periodStart && $0.date <= periodEnd
+        let currentIncomeTxs = scopedTransactions.filter {
+            $0.type == .income && $0.date >= context.startDate && $0.date <= context.endDate
         }
         
-        let baselineIncomeTxs = transactions.filter {
-            $0.type == .income && $0.date >= baselineStart && $0.date <= baselineEnd
+        let baselineIncomeTxs = scopedTransactions.filter {
+            $0.type == .income && $0.date >= context.baselineStartDate && $0.date <= context.baselineEndDate
         }
         
-        // 1. Temporal Math
-        let totalDaysInCycle = max(1, (calendar.dateComponents([.day], from: periodStart, to: periodEnd).day ?? 29) + 1)
-        let elapsedDaysRaw = (calendar.dateComponents([.day], from: periodStart, to: now).day ?? 0) + 1
-        let elapsedDays = max(1, min(totalDaysInCycle, elapsedDaysRaw))
+        // 1. Temporal Math & Sufficiency
+        let totalDaysInCycle = context.totalDays
+        let elapsedDays: Int = {
+            if context.isHistorical {
+                return totalDaysInCycle
+            } else if context.isPeriodInProgress {
+                let elapsedRaw = (calendar.dateComponents([.day], from: context.startDate, to: now).day ?? 0) + 1
+                return max(1, min(totalDaysInCycle, elapsedRaw))
+            } else {
+                return 1
+            }
+        }()
         let remainingDays = max(0, totalDaysInCycle - elapsedDays)
-        let isEarlyPeriod = elapsedDays < 3
+        let isEarlyPeriod = elapsedDays < 3 && context.period != .week && !context.isHistorical
+        let isPeriodInProgress = context.isPeriodInProgress
+        
+        let periodPhrase = context.isCustomRange ? "over this period" : context.period.currentPeriodPhrase
+        let baselinePeriodPhrase = context.isCustomRange ? "previous period" : context.period.baselinePeriodPhrase
+        let periodTitle = context.isCustomRange ? (context.customRangeLabel ?? "Custom Period") : context.period.title
+        
+        // Count represented days, weeks, months with activity
+        let representedDaysSet = Set(currentExpenseTxs.map { calendar.startOfDay(for: $0.date) })
+        let representedDaysCount = representedDaysSet.count
+        let representedWeeksCount = max(1, (calendar.dateComponents([.weekOfYear], from: context.startDate, to: min(now, context.endDate)).weekOfYear ?? 0) + 1)
+        let representedMonthsCount = max(1, (calendar.dateComponents([.month], from: context.startDate, to: min(now, context.endDate)).month ?? 0) + 1)
+        let hasBaselineHistory = !baselineExpenseTxs.isEmpty
         
         // 2. Spend Totals & Velocity
         let currentSpendTotal = currentExpenseTxs.reduce(0.0) { $0 + $1.amount }
         let baselineSpendTotal = baselineExpenseTxs.reduce(0.0) { $0 + $1.amount }
         let dailyRunRate = currentSpendTotal / Double(elapsedDays)
-        let projectedPeriodSpend = dailyRunRate * Double(totalDaysInCycle)
+        let projectedPeriodSpend = isPeriodInProgress ? (dailyRunRate * Double(totalDaysInCycle)) : currentSpendTotal
         let spendDeltaPercent: Double = baselineSpendTotal > 0
             ? ((currentSpendTotal - baselineSpendTotal) / baselineSpendTotal) * 100.0
             : 0.0
@@ -99,186 +100,246 @@ enum InsightFactsExtractor {
         }
         
         var summaries: [String: CategoryFactSummary] = [:]
-        var primaryDriverCandidate: CategoryFactSummary? = nil
-        var maxIncreaseAmount = 0.0
-        
-        for category in categories.filter({ $0.type == .expense }) {
-            let catId = category.id
-            let curSpend = currentCatTotals[catId] ?? 0.0
-            let baseSpend = baselineCatTotals[catId] ?? 0.0
-            let txCount = currentCatCounts[catId] ?? 0
-            let mean = txCount > 0 ? (curSpend / Double(txCount)) : 0.0
-            let curShare = currentSpendTotal > 0 ? ((curSpend / currentSpendTotal) * 100.0) : 0.0
-            let baseShare = baselineSpendTotal > 0 ? ((baseSpend / baselineSpendTotal) * 100.0) : 0.0
-            let delta = curSpend - baseSpend
-            let deltaPct: Double = baseSpend > 0 ? ((delta / baseSpend) * 100.0) : 0.0
+        for cat in categories {
+            let cur = currentCatTotals[cat.id] ?? 0.0
+            let base = baselineCatTotals[cat.id] ?? 0.0
+            let count = currentCatCounts[cat.id] ?? 0
+            let mean = count > 0 ? (cur / Double(count)) : 0.0
+            let curShare = currentSpendTotal > 0 ? (cur / currentSpendTotal) * 100.0 : 0.0
+            let baseShare = baselineSpendTotal > 0 ? (base / baselineSpendTotal) * 100.0 : 0.0
+            let deltaSpend = cur - base
+            let deltaPct = base > 0 ? ((cur - base) / base) * 100.0 : 0.0
             
-            let summary = CategoryFactSummary(
-                categoryId: catId,
-                categoryName: category.label,
-                currentSpend: curSpend,
-                baselineSpend: baseSpend,
-                txCount: txCount,
+            summaries[cat.id] = CategoryFactSummary(
+                categoryId: cat.id,
+                categoryName: cat.label,
+                currentSpend: cur,
+                baselineSpend: base,
+                txCount: count,
                 meanTxAmount: mean,
                 currentSharePercent: curShare,
                 baselineSharePercent: baseShare,
-                deltaSpend: delta,
+                deltaSpend: deltaSpend,
                 deltaPercent: deltaPct
             )
-            summaries[catId] = summary
-            
-            if delta > maxIncreaseAmount && delta >= 100.0 {
-                maxIncreaseAmount = delta
-                primaryDriverCandidate = summary
-            }
         }
         
-        let topCategory = summaries.values
-            .filter { $0.currentSpend > 0 }
-            .max(by: { $0.currentSpend < $1.currentSpend })
+        let topCategory = summaries.values.max { $0.currentSpend < $1.currentSpend }
         
-        // 4. Budget & Pacing Math
-        let hasActiveBudget = budget.isActive && budget.amount > 0
-        let budgetLimit = budget.period == .weekly ? (budget.amount * 4.3333) : budget.amount
-        let budgetCycleExpenses = currentSpendTotal
-        let budgetPercentSpent = budgetLimit > 0 ? ((budgetCycleExpenses / budgetLimit) * 100.0) : 0.0
-        let budgetSafePacePercent = (Double(elapsedDays) / Double(totalDaysInCycle)) * 100.0
-        let budgetOverPacePercent = budgetPercentSpent - budgetSafePacePercent
+        // Primary spending driver (largest absolute contributor to current spend increase)
+        let driver = summaries.values
+            .filter { $0.deltaSpend > 0 && $0.currentSpend > 0 }
+            .max { $0.deltaSpend < $1.deltaSpend }
         
-        var daysToExhaustion: Int? = nil
+        // 4. Budget & Pacing Math (Only if global scope and budget is active)
+        let hasActiveBudget = budget.isActive && budget.amount > 0 && context.scope == .global
+        let budgetLimit = budget.amount
+        let budgetExpenses = currentSpendTotal
+        let budgetPercentSpent = budgetLimit > 0 ? (budgetExpenses / budgetLimit) * 100.0 : 0.0
+        let expectedTimelinePacePercent = totalDaysInCycle > 0 ? (Double(elapsedDays) / Double(totalDaysInCycle)) * 100.0 : 0.0
+        let budgetOverPace = budgetPercentSpent - expectedTimelinePacePercent
+        
+        var exhaustionDays: Int? = nil
         var exhaustionDate: Date? = nil
-        if hasActiveBudget && dailyRunRate > 0 {
-            let daysDouble = budgetLimit / dailyRunRate
-            let safeDays = min(365, max(1, Int(daysDouble)))
-            daysToExhaustion = safeDays
-            if safeDays <= totalDaysInCycle {
-                exhaustionDate = calendar.date(byAdding: .day, value: safeDays, to: periodStart)
+        if dailyRunRate > 0 && hasActiveBudget {
+            let daysUntilExhaustion = Int(budgetLimit / dailyRunRate)
+            if daysUntilExhaustion < totalDaysInCycle {
+                exhaustionDays = daysUntilExhaustion
+                exhaustionDate = calendar.date(byAdding: .day, value: daysUntilExhaustion, to: context.startDate)
             }
         }
-        let budgetSafeDailyRemaining = remainingDays > 0 ? max(0.0, (budgetLimit - budgetCycleExpenses) / Double(remainingDays)) : 0.0
         
-        // 5. Habits & Weekend / Weekday Distribution
+        let safeDaily = remainingDays > 0 ? max(0.0, (budgetLimit - budgetExpenses) / Double(remainingDays)) : 0.0
+        
+        // 5. Habits & Weekend Rhythms
         var weekendTotal = 0.0
         var weekdayTotal = 0.0
-        var weekendCount = 0
-        var weekdayCount = 0
+        var weekendTxCount = 0
+        var weekdayTxCount = 0
         
         for tx in currentExpenseTxs {
-            let weekday = calendar.component(.weekday, from: tx.date) // 1 = Sunday, 7 = Saturday
-            if weekday == 1 || weekday == 7 {
+            let weekday = calendar.component(.weekday, from: tx.date)
+            if weekday == 1 || weekday == 7 { // Sunday or Saturday
                 weekendTotal += tx.amount
-                weekendCount += 1
+                weekendTxCount += 1
             } else {
                 weekdayTotal += tx.amount
-                weekdayCount += 1
+                weekdayTxCount += 1
             }
         }
         
-        let wAvg = weekendCount > 0 ? (weekendTotal / Double(weekendCount)) : 0.0
-        let dAvg = weekdayCount > 0 ? (weekdayTotal / Double(weekdayCount)) : 0.0
-        let weekendToWeekdayRatio = dAvg > 0 ? (wAvg / dAvg) : 1.0
-        let weekendSpendShare = currentSpendTotal > 0 ? ((weekendTotal / currentSpendTotal) * 100.0) : 0.0
+        let weekendRatio = weekdayTotal > 0 ? (weekendTotal / weekdayTotal) : 0.0
+        let weekendShare = currentSpendTotal > 0 ? (weekendTotal / currentSpendTotal) * 100.0 : 0.0
         
-        // Zero-Spend Days & Streaks
-        var txDays = Set<String>()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        for tx in currentExpenseTxs {
-            txDays.insert(formatter.string(from: tx.date))
-        }
-        
-        var maxStreak = 0
-        var currentStreak = 0
-        for i in 0..<elapsedDays {
-            if let d = calendar.date(byAdding: .day, value: i, to: periodStart) {
-                let dStr = formatter.string(from: d)
-                if !txDays.contains(dStr) {
-                    currentStreak += 1
-                    maxStreak = max(maxStreak, currentStreak)
-                } else {
-                    currentStreak = 0
-                }
+        // Zero-spend streak (consecutive days with 0 expenses ending today)
+        var streak = 0
+        var checkDate = calendar.startOfDay(for: now)
+        while streak < 30 {
+            let dayEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: checkDate) ?? checkDate
+            let dayTxs = scopedTransactions.filter { $0.type == .expense && $0.date >= checkDate && $0.date <= dayEnd }
+            if dayTxs.isEmpty {
+                streak += 1
+                guard let prevDay = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                checkDate = prevDay
+            } else {
+                break
             }
         }
         
-        // Rolling 7-day Zero Days
+        // Zero spend days in past 7 days
         var zeroDaysPastWeek = 0
-        if let weekStart = calendar.date(byAdding: .day, value: -6, to: currentDayStart) {
-            let weekTxDays = Set(currentExpenseTxs.filter { $0.date >= weekStart }.map { calendar.startOfDay(for: $0.date) })
-            zeroDaysPastWeek = max(0, 7 - weekTxDays.count)
+        for i in 0..<7 {
+            if let d = calendar.date(byAdding: .day, value: -i, to: calendar.startOfDay(for: now)) {
+                let dEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: d) ?? d
+                let hasTx = scopedTransactions.contains { $0.type == .expense && $0.date >= d && $0.date <= dEnd }
+                if !hasTx { zeroDaysPastWeek += 1 }
+            }
         }
         
-        // 6. Subscriptions
+        // 6. Committed Subscriptions
         let activeSubs = subscriptions.filter { !$0.isCancelled && !$0.isPaused }
-        let totalMonthlyCommitted = activeSubs.reduce(0.0) { sum, sub in
+        let totalMonthlyCommitted = activeSubs.reduce(0.0) { (sum: Double, sub: Subscription) -> Double in
             switch sub.cycle {
             case .monthly: return sum + sub.amount
-            case .yearly:  return sum + (sub.amount / 12.0)
-            case .weekly:  return sum + (sub.amount * 4.3333)
+            case .yearly: return sum + (sub.amount / 12.0)
+            case .weekly: return sum + (sub.amount * 4.33)
             }
         }
-        let subIds = Set(subscriptions.map { $0.id.uuidString.lowercased() })
-        let subExpenses = currentExpenseTxs.filter { tx in
-            guard let subId = tx.subscriptionId?.lowercased() else { return false }
-            return subIds.contains(subId)
+        
+        let subTxList = currentExpenseTxs.filter { tx in
+            activeSubs.contains { sub in
+                sub.name.localizedCaseInsensitiveContains(tx.title) ||
+                tx.title.localizedCaseInsensitiveContains(sub.name)
+            }
         }
         
         // 7. Income Totals
-        let currentIncomeTotal = currentIncomeTxs.reduce(0.0) { $0 + $1.amount }
-        let baselineIncomeTotal = baselineIncomeTxs.reduce(0.0) { $0 + $1.amount }
-        let activeIncomeCategories = Set(currentIncomeTxs.map { $0.categoryId }).count
+        let curIncomeTotal = currentIncomeTxs.reduce(0.0) { $0 + $1.amount }
+        let baseIncomeTotal = baselineIncomeTxs.reduce(0.0) { $0 + $1.amount }
+        let incomeSources = Set(currentIncomeTxs.map { $0.title.lowercased() }).count
         
-        // 8. Data Density & Sufficiency Gates
-        let totalTxCount = currentExpenseTxs.count
-        let dataDensityScore = min(1.0, Double(totalTxCount) / 8.0)
-        let hasSufficientGeneralData = totalTxCount >= 4
+        // 8. Long-Term Multi-Month Metrics
+        var monthlyTotals: [Date: Double] = [:]
+        for tx in scopedTransactions where tx.type == .expense {
+            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: tx.date)) ?? tx.date
+            monthlyTotals[monthStart, default: 0.0] += tx.amount
+        }
+        
+        let highestMonth = monthlyTotals.max { $0.value < $1.value }.map { item -> (Date, Double, String) in
+            let df = DateFormatter()
+            df.dateFormat = "MMMM"
+            return (item.key, item.value, df.string(from: item.key))
+        }
+        
+        let avgPastYear = monthlyTotals.values.isEmpty ? 0.0 : (monthlyTotals.values.reduce(0.0, +) / Double(monthlyTotals.count))
+        
+        // 9. Data Sufficiency Gates
+        let totalExpenseTxCount = currentExpenseTxs.count
+        let generalSufficiency: Bool = {
+            switch context.period {
+            case .week:
+                return totalExpenseTxCount >= 1
+            case .month:
+                return totalExpenseTxCount >= 3 || (totalExpenseTxCount >= 1 && hasBaselineHistory)
+            case .threeMonths, .sixMonths:
+                return totalExpenseTxCount >= 5 && representedMonthsCount >= 2
+            case .year, .all:
+                return totalExpenseTxCount >= 8 && representedMonthsCount >= 3
+            case .custom:
+                return totalExpenseTxCount >= 1
+            }
+        }()
+        
+        let multiMonthSufficiency = monthlyTotals.count >= 3 && scopedTransactions.count >= 10
+        let densityScore = min(1.0, Double(totalExpenseTxCount) / 15.0)
         
         return InsightFacts(
-            periodStart: periodStart,
-            periodEnd: periodEnd,
-            baselineStart: baselineStart,
-            baselineEnd: baselineEnd,
+            context: context,
+            period: context.period,
+            periodStart: context.startDate,
+            periodEnd: context.endDate,
+            baselineStart: context.baselineStartDate,
+            baselineEnd: context.baselineEndDate,
+            periodTitle: periodTitle,
+            periodPhrase: periodPhrase,
+            baselinePeriodPhrase: baselinePeriodPhrase,
             elapsedDays: elapsedDays,
             remainingDays: remainingDays,
             totalDaysInCycle: totalDaysInCycle,
             isEarlyPeriod: isEarlyPeriod,
+            isPeriodInProgress: isPeriodInProgress,
+            representedDaysCount: representedDaysCount,
+            representedWeeksCount: representedWeeksCount,
+            representedMonthsCount: representedMonthsCount,
+            hasBaselineHistory: hasBaselineHistory,
             currentSpendTotal: currentSpendTotal,
             baselineSpendTotal: baselineSpendTotal,
-            totalExpenseTxCount: totalTxCount,
+            totalExpenseTxCount: totalExpenseTxCount,
             dailyRunRate: dailyRunRate,
             projectedPeriodSpend: projectedPeriodSpend,
             spendDeltaPercent: spendDeltaPercent,
-            primarySpendingDriver: primaryDriverCandidate,
+            primarySpendingDriver: driver,
             hasActiveBudget: hasActiveBudget,
             budgetLimit: budgetLimit,
             budgetPeriodType: budget.period,
-            budgetCycleExpenses: budgetCycleExpenses,
+            budgetCycleExpenses: budgetExpenses,
             budgetPercentSpent: budgetPercentSpent,
-            budgetSafePacePercent: budgetSafePacePercent,
-            budgetOverPacePercent: budgetOverPacePercent,
-            budgetDaysToExhaustion: daysToExhaustion,
+            budgetSafePacePercent: expectedTimelinePacePercent,
+            budgetOverPacePercent: budgetOverPace,
+            budgetDaysToExhaustion: exhaustionDays,
             budgetExhaustionDate: exhaustionDate,
-            budgetSafeDailyRemaining: budgetSafeDailyRemaining,
+            budgetSafeDailyRemaining: safeDaily,
             categorySummaries: summaries,
             topSpendingCategory: topCategory,
             weekendSpendTotal: weekendTotal,
             weekdaySpendTotal: weekdayTotal,
-            weekendCount: weekendCount,
-            weekdayCount: weekdayCount,
-            weekendToWeekdayRatio: weekendToWeekdayRatio,
-            weekendSpendSharePercent: weekendSpendShare,
-            zeroSpendStreakDays: maxStreak,
+            weekendCount: weekendTxCount,
+            weekdayCount: weekdayTxCount,
+            weekendToWeekdayRatio: weekendRatio,
+            weekendSpendSharePercent: weekendShare,
+            zeroSpendStreakDays: streak,
             zeroSpendDaysInPastWeek: zeroDaysPastWeek,
             activeSubscriptions: activeSubs,
             totalMonthlySubscriptionCommitted: totalMonthlyCommitted,
-            subscriptionExpensesInPeriod: subExpenses,
-            currentIncomeTotal: currentIncomeTotal,
-            baselineIncomeTotal: baselineIncomeTotal,
-            incomeSourceCount: activeIncomeCategories,
-            dataDensityScore: dataDensityScore,
-            hasSufficientGeneralData: hasSufficientGeneralData,
-            transactions: currentExpenseTxs,
+            subscriptionExpensesInPeriod: subTxList,
+            currentIncomeTotal: curIncomeTotal,
+            baselineIncomeTotal: baseIncomeTotal,
+            incomeSourceCount: incomeSources,
+            monthlyHistoricalTotals: monthlyTotals,
+            highestHistoricalMonth: highestMonth,
+            averageMonthlySpendPastYear: avgPastYear,
+            dataDensityScore: densityScore,
+            hasSufficientGeneralData: generalSufficiency,
+            hasSufficientMultiMonthData: multiMonthSufficiency,
+            transactions: scopedTransactions,
             categories: categories
+        )
+    }
+    
+    /// Convenience helper for standard periods
+    static func extractFacts(
+        transactions: [Transaction],
+        budget: Budget,
+        categories: [Category],
+        subscriptions: [Subscription],
+        period: InsightPeriod = .month,
+        scope: AnalyticsInsightContext.Scope = .global,
+        now: Date = Date(),
+        calendar: Calendar = Calendar.current
+    ) -> InsightFacts {
+        let context = AnalyticsInsightContext.standard(
+            period: period,
+            scope: scope,
+            referenceDate: now,
+            calendar: calendar
+        )
+        return extractFacts(
+            transactions: transactions,
+            budget: budget,
+            categories: categories,
+            subscriptions: subscriptions,
+            context: context,
+            calendar: calendar
         )
     }
 }

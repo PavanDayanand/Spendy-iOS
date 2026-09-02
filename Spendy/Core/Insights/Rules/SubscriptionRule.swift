@@ -10,6 +10,7 @@ import Foundation
 struct SubscriptionRule: InsightRule {
     let id = "subscription_rule"
     let family = InsightFamily.subscription
+    let supportedPeriods: Set<InsightPeriod> = [.week, .month, .threeMonths, .sixMonths, .year, .all, .custom]
     
     init() {}
     
@@ -23,6 +24,7 @@ struct SubscriptionRule: InsightRule {
             let subTxs = facts.subscriptionExpensesInPeriod.filter {
                 $0.subscriptionId?.lowercased() == subId
             }
+            let materiality = min(1.0, sub.amount / 1500.0)
             
             // 1. Double Billing Detection (Critical)
             if subTxs.count > 1 {
@@ -41,13 +43,17 @@ struct SubscriptionRule: InsightRule {
                         kind: .warning,
                         surfaceAffinity: [.home, .subscriptions, .analytics],
                         affectedEntityId: subId,
+                        period: context.period,
                         confidence: 1.0,
                         severity: 0.85,
                         relevance: 1.0,
                         actionability: 0.95,
+                        materiality: materiality,
                         evidence: evidence,
-                        destination: .subscriptions,
-                        isCritical: true
+                        actionTitle: "View \(sub.name) →",
+                        destination: .subscriptionDetail(id: subId),
+                        isCritical: true,
+                        canActAsDriver: false
                     )
                 )
             }
@@ -69,15 +75,19 @@ struct SubscriptionRule: InsightRule {
                             semanticKey: "sub_price_change",
                             family: .subscription,
                             kind: .warning,
-                            surfaceAffinity: [.subscriptions, .analytics],
+                            surfaceAffinity: [.subscriptions, .analytics, .home],
                             affectedEntityId: subId,
+                            period: context.period,
                             confidence: 1.0,
                             severity: 0.65,
                             relevance: 0.85,
                             actionability: 0.80,
+                            materiality: materiality,
                             evidence: evidence,
-                            destination: .subscriptions,
-                            isCritical: false
+                            actionTitle: "View \(sub.name) →",
+                            destination: .subscriptionDetail(id: subId),
+                            isCritical: false,
+                            canActAsDriver: true
                         )
                     )
                 }
@@ -102,13 +112,17 @@ struct SubscriptionRule: InsightRule {
                         kind: .warning,
                         surfaceAffinity: [.home, .subscriptions],
                         affectedEntityId: subId,
+                        period: context.period,
                         confidence: 1.0,
                         severity: 0.90,
                         relevance: 0.95,
                         actionability: 0.90,
+                        materiality: materiality,
                         evidence: evidence,
-                        destination: .subscriptions,
-                        isCritical: true
+                        actionTitle: "View \(sub.name) →",
+                        destination: .subscriptionDetail(id: subId),
+                        isCritical: true,
+                        canActAsDriver: false
                     )
                 )
             } else if daysUntil > 0 && daysUntil <= 3 {
@@ -128,13 +142,17 @@ struct SubscriptionRule: InsightRule {
                         kind: .observation,
                         surfaceAffinity: [.home, .subscriptions],
                         affectedEntityId: subId,
+                        period: context.period,
                         confidence: 1.0,
                         severity: 0.45,
                         relevance: 0.85,
                         actionability: 0.70,
+                        materiality: materiality,
                         evidence: evidence,
-                        destination: .subscriptions,
-                        isCritical: false
+                        actionTitle: "View \(sub.name) →",
+                        destination: .subscriptionDetail(id: subId),
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }
@@ -153,13 +171,17 @@ struct SubscriptionRule: InsightRule {
                     family: .subscription,
                     kind: .observation,
                     surfaceAffinity: [.subscriptions],
+                    period: context.period,
                     confidence: 1.0,
                     severity: 0.20,
                     relevance: 0.60,
                     actionability: 0.30,
+                    materiality: min(1.0, facts.totalMonthlySubscriptionCommitted / 4000.0),
                     evidence: evidence,
+                    actionTitle: "View Subscriptions →",
                     destination: .subscriptions,
-                    isCritical: false
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }

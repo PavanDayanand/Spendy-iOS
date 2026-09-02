@@ -10,6 +10,7 @@ import Foundation
 struct BehavioralHabitRule: InsightRule {
     let id = "behavioral_habit_rule"
     let family = InsightFamily.behavior
+    let supportedPeriods: Set<InsightPeriod> = [.week, .month, .threeMonths, .sixMonths, .custom]
     
     init() {}
     
@@ -20,18 +21,22 @@ struct BehavioralHabitRule: InsightRule {
         if facts.zeroSpendStreakDays >= 2 {
             candidates.append(
                 InsightCandidate(
-                    id: "no_spend_streak",
+                    id: "no_spend_streak_\(context.period.rawValue)",
                     semanticKey: "no_spend_streak",
                     family: .behavior,
                     kind: .celebration,
                     surfaceAffinity: [.home, .analytics],
+                    period: context.period,
                     confidence: 0.90,
                     severity: 0.10,
                     relevance: 0.70,
                     actionability: 0.20,
+                    materiality: 0.30,
                     evidence: .zeroSpendStreak(streakDays: facts.zeroSpendStreakDays),
-                    destination: .analytics,
-                    isCritical: false
+                    actionTitle: nil,
+                    destination: nil,
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }
@@ -40,18 +45,22 @@ struct BehavioralHabitRule: InsightRule {
         if facts.zeroSpendDaysInPastWeek >= 3 && facts.totalExpenseTxCount >= 3 {
             candidates.append(
                 InsightCandidate(
-                    id: "zero_day_week",
+                    id: "zero_day_week_\(context.period.rawValue)",
                     semanticKey: "zero_day_week",
                     family: .behavior,
                     kind: .celebration,
                     surfaceAffinity: [.home, .analytics],
+                    period: context.period,
                     confidence: 0.90,
                     severity: 0.15,
                     relevance: 0.75,
                     actionability: 0.25,
+                    materiality: 0.35,
                     evidence: .zeroSpendWeekly(zeroDaysInWeek: facts.zeroSpendDaysInPastWeek),
-                    destination: .analytics,
-                    isCritical: false
+                    actionTitle: nil,
+                    destination: nil,
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }
@@ -68,18 +77,22 @@ struct BehavioralHabitRule: InsightRule {
                 )
                 candidates.append(
                     InsightCandidate(
-                        id: "weekend_bias",
+                        id: "weekend_bias_\(context.period.rawValue)",
                         semanticKey: "weekend_bias",
                         family: .behavior,
                         kind: .observation,
                         surfaceAffinity: [.home, .analytics],
+                        period: context.period,
                         confidence: facts.dataDensityScore,
                         severity: 0.35,
                         relevance: 0.70,
                         actionability: 0.40,
+                        materiality: min(1.0, facts.weekendSpendTotal / 4000.0),
                         evidence: evidence,
-                        destination: .analytics,
-                        isCritical: false
+                        actionTitle: nil,
+                        destination: nil,
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }

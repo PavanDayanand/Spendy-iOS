@@ -595,12 +595,69 @@ struct AccountAnalyticsSheet: View {
         return values
     }
 
+    // MARK: - 4.5. Account Insight Moments
+    private var activeAccountInsightContext: AnalyticsInsightContext {
+        let bounds = periodBounds
+        let scope = AnalyticsInsightContext.Scope.account(id: account.id)
+        
+        if let custom = customDateRange {
+            return AnalyticsInsightContext.custom(
+                startDate: custom.start,
+                endDate: custom.end,
+                scope: scope,
+                referenceDate: Date()
+            )
+        } else {
+            let insightPeriod: InsightPeriod = {
+                switch selectedPeriod {
+                case .week: return .week
+                case .month: return .month
+                case .threeMonths: return .threeMonths
+                case .sixMonths: return .sixMonths
+                case .year: return .year
+                }
+            }()
+            
+            let duration = bounds.end.timeIntervalSince(bounds.start)
+            let prevEnd = bounds.start.addingTimeInterval(-1)
+            let prevStart = prevEnd.addingTimeInterval(-duration)
+            
+            return AnalyticsInsightContext(
+                scope: scope,
+                period: insightPeriod,
+                startDate: bounds.start,
+                endDate: bounds.end,
+                baselineStartDate: prevStart,
+                baselineEndDate: prevEnd,
+                isCustomRange: false,
+                customRangeLabel: nil,
+                referenceDate: Date()
+            )
+        }
+    }
+
+    private var accountInsightMoments: [InsightMoment] {
+        let context = activeAccountInsightContext
+        let facts = InsightFactsExtractor.extractFacts(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions,
+            context: context
+        )
+        return InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .analytics,
+            period: context.period,
+            currencySymbol: store.currencySymbol,
+            now: context.referenceDate
+        )
+    }
+
     private var accountInsightsCarousel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Smart Insights")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 20)
+            EditorialInsightRailView(moments: accountInsightMoments)
+                .padding(.horizontal, 16)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {

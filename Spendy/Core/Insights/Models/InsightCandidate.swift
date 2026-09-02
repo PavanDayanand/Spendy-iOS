@@ -14,21 +14,27 @@ struct InsightCandidate: Identifiable, Hashable, Sendable {
     let kind: InsightKind
     let surfaceAffinity: [InsightSurface]
     let affectedEntityId: String?
+    let period: InsightPeriod
     
     // Scoring Dimensions (0.0 ... 1.0)
     let confidence: Double
     let severity: Double
     let relevance: Double
     let actionability: Double
+    let materiality: Double // 0.0 ... 1.0 derived from absolute financial magnitude
     
     // Structured Facts Payload
     let evidence: InsightEvidence
     
-    // Optional Destination
+    // Actionable metadata
+    let actionTitle: String?
     let destination: InsightDestination?
     
     // Critical Flag (Bypasses fatigue cooldown if true)
     let isCritical: Bool
+    
+    // Compound Relationship Flags
+    let canActAsDriver: Bool
     
     init(
         id: String,
@@ -37,13 +43,17 @@ struct InsightCandidate: Identifiable, Hashable, Sendable {
         kind: InsightKind,
         surfaceAffinity: [InsightSurface],
         affectedEntityId: String? = nil,
+        period: InsightPeriod = .month,
         confidence: Double,
         severity: Double,
         relevance: Double = 1.0,
         actionability: Double = 0.5,
+        materiality: Double = 0.5,
         evidence: InsightEvidence,
+        actionTitle: String? = nil,
         destination: InsightDestination? = nil,
-        isCritical: Bool = false
+        isCritical: Bool = false,
+        canActAsDriver: Bool = false
     ) {
         self.id = id
         self.semanticKey = semanticKey
@@ -51,12 +61,16 @@ struct InsightCandidate: Identifiable, Hashable, Sendable {
         self.kind = kind
         self.surfaceAffinity = surfaceAffinity
         self.affectedEntityId = affectedEntityId
+        self.period = period
         self.confidence = min(1.0, max(0.0, confidence))
         self.severity = min(1.0, max(0.0, severity))
         self.relevance = min(1.0, max(0.0, relevance))
         self.actionability = min(1.0, max(0.0, actionability))
+        self.materiality = min(1.0, max(0.0, materiality))
         self.evidence = evidence
+        self.actionTitle = actionTitle
         self.destination = destination
         self.isCritical = isCritical
+        self.canActAsDriver = canActAsDriver
     }
 }

@@ -236,9 +236,10 @@ struct BudgetView: View {
             )
             
             // Integrated Semantic Budget Moment
-            ForEach(budgetInsightMoments) { moment in
-                EditorialInsightMomentView(moment: moment)
-            }
+            EditorialInsightRailView(
+                moments: budgetInsightMoments,
+                showSectionHeader: false
+            )
             
             // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
             HStack(spacing: 10) {

@@ -653,26 +653,69 @@ struct CategoryAnalyticsSheet: View {
     }
     
     // MARK: - 4.5. Category Insight Moments
+    private var activeCategoryInsightContext: AnalyticsInsightContext {
+        let bounds = periodBounds
+        let scope = AnalyticsInsightContext.Scope.category(id: category.id)
+        
+        if let custom = customDateRange {
+            return AnalyticsInsightContext.custom(
+                startDate: custom.start,
+                endDate: custom.end,
+                scope: scope,
+                referenceDate: Date()
+            )
+        } else {
+            let insightPeriod: InsightPeriod = {
+                switch selectedPeriod {
+                case .week: return .week
+                case .month: return .month
+                case .threeMonths: return .threeMonths
+                case .sixMonths: return .sixMonths
+                case .year: return .year
+                }
+            }()
+            
+            let duration = bounds.end.timeIntervalSince(bounds.start)
+            let prevEnd = bounds.start.addingTimeInterval(-1)
+            let prevStart = prevEnd.addingTimeInterval(-duration)
+            
+            return AnalyticsInsightContext(
+                scope: scope,
+                period: insightPeriod,
+                startDate: bounds.start,
+                endDate: bounds.end,
+                baselineStartDate: prevStart,
+                baselineEndDate: prevEnd,
+                isCustomRange: false,
+                customRangeLabel: nil,
+                referenceDate: Date()
+            )
+        }
+    }
+
     private var categoryInsightMoments: [InsightMoment] {
+        let context = activeCategoryInsightContext
         let facts = InsightFactsExtractor.extractFacts(
             transactions: store.transactions,
             budget: store.budget,
             categories: store.categories,
-            subscriptions: store.subscriptions
+            subscriptions: store.subscriptions,
+            context: context
         )
         return InsightDecisionEngine.shared.evaluate(
             facts: facts,
             surface: .category(id: category.id),
-            currencySymbol: store.currencySymbol
+            period: context.period,
+            currencySymbol: store.currencySymbol,
+            now: context.referenceDate
         )
     }
 
     private var categoryInsightsSection: some View {
-        VStack(spacing: 8) {
-            ForEach(categoryInsightMoments) { moment in
-                EditorialInsightMomentView(moment: moment)
-            }
-        }
+        EditorialInsightRailView(
+            moments: categoryInsightMoments,
+            showSectionHeader: false
+        )
         .padding(.horizontal, 16)
     }
     

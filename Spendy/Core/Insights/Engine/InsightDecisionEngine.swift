@@ -2,7 +2,9 @@
 //  InsightDecisionEngine.swift
 //  Spendy
 //
-//  Contextual decision, scoring, fatigue filtering, compound synthesis, and surface router.
+//  Deterministic arbitration engine for Spendy's Smart Insights.
+//  Applies materiality weighting, contextual fatigue filtering, deduplication, and compound synthesis.
+//  Zero generative models, zero random selection.
 //
 
 import Foundation
@@ -17,42 +19,42 @@ final class InsightDecisionEngine: Sendable {
         rules: [any InsightRule]? = nil,
         exposureStore: InsightExposureStore = .shared
     ) {
-        if let customRules = rules {
-            self.rules = customRules
-        } else {
-            self.rules = [
-                SpendingVelocityRule(),
-                BudgetPacingRule(),
-                CategoryTrendRule(),
-                CategoryAnomalyRule(),
-                BehavioralHabitRule(),
-                SubscriptionRule(),
-                IncomeRule()
-            ]
-        }
+        self.rules = rules ?? [
+            SpendingVelocityRule(),
+            BudgetPacingRule(),
+            CategoryTrendRule(),
+            CategoryAnomalyRule(),
+            BehavioralHabitRule(),
+            SubscriptionRule(),
+            IncomeRule(),
+            LongTermPatternRule()
+        ]
         self.exposureStore = exposureStore
     }
     
-    // MARK: - Primary Public Evaluation API
+    // MARK: - Main Evaluation Pipeline
     
-    /// Evaluates facts and produces the best contextual InsightMoments for a given surface
     func evaluate(
         facts: InsightFacts,
         surface: InsightSurface,
+        period: InsightPeriod? = nil,
         currencySymbol: String = "₹",
-        recordExposures: Bool = true,
-        now: Date = Date()
+        now: Date? = nil,
+        recordExposures: Bool = true
     ) -> [InsightMoment] {
-        // Data Sufficiency Gate: If facts indicate insufficient general data, return empty state
+        let activePeriod = period ?? facts.context.period
+        let activeNow = now ?? facts.context.referenceDate
+        
+        // Data sufficiency check
         guard facts.hasSufficientGeneralData else {
-            return [InsightMoment.insufficientData(for: surface)]
+            return [InsightMoment.insufficientData(for: surface, period: activePeriod)]
         }
         
-        let context = InsightEvaluationContext(surface: surface, currencySymbol: currencySymbol, now: now)
+        let context = InsightEvaluationContext(surface: surface, period: activePeriod, currencySymbol: currencySymbol, now: activeNow)
         
-        // 1. Generate all candidate insights across domain rules
+        // 1. Generate all candidate insights across period-supported domain rules
         var allCandidates: [InsightCandidate] = []
-        for rule in rules {
+        for rule in rules where rule.supportedPeriods.contains(activePeriod) {
             let produced = rule.evaluate(facts: facts, context: context)
             allCandidates.append(contentsOf: produced)
         }
@@ -77,116 +79,132 @@ final class InsightDecisionEngine: Sendable {
         }
         
         guard !surfaceCandidates.isEmpty else {
-            return [InsightMoment.insufficientData(for: surface)]
+            return [InsightMoment.insufficientData(for: surface, period: activePeriod)]
+        }
+        
+        // Contextual exposure key helper
+        func contextKey(for candidate: InsightCandidate) -> String {
+            "\(surface.rawIdentifier):\(candidate.semanticKey):\(facts.context.scope.key):\(facts.context.period.id)"
         }
         
         // 3. Filter out fatigued candidates (unless critical or materially changed)
         let eligibleCandidates = surfaceCandidates.filter { candidate in
             let (delta, val) = extractDeltaAndValue(from: candidate)
             let isSuppressed = exposureStore.shouldSuppress(
-                semanticId: candidate.semanticKey,
+                semanticId: contextKey(for: candidate),
                 isCritical: candidate.isCritical,
                 currentDelta: delta,
                 currentValue: val,
-                now: now
+                now: activeNow
             )
             return !isSuppressed
         }
         
         guard !eligibleCandidates.isEmpty else {
-            return [InsightMoment.insufficientData(for: surface)]
+            return [InsightMoment.insufficientData(for: surface, period: activePeriod)]
         }
         
-        // 4. Score eligible candidates
+        // 4. Score eligible candidates with Materiality Weighting & Dynamic Novelty
         let scoredCandidates: [(candidate: InsightCandidate, score: Double)] = eligibleCandidates.map { candidate in
-            let novelty = calculateNovelty(for: candidate.semanticKey)
-            let score = (candidate.severity * 0.35)
+            let (delta, val) = extractDeltaAndValue(from: candidate)
+            let novelty = exposureStore.calculateNovelty(for: contextKey(for: candidate), currentDelta: delta, currentValue: val)
+            
+            // Materiality-Weighted Scoring Formula
+            let score = (candidate.severity * 0.30)
                       + (candidate.confidence * 0.25)
                       + (candidate.relevance * 0.20)
                       + (novelty * 0.15)
+                      + (candidate.materiality * 0.05)
                       + (candidate.actionability * 0.05)
+            
             return (candidate, score)
         }.sorted(by: { $0.score > $1.score })
         
-        // 5. Compound Insight Synthesis & Surface Routing
+        // 5. Compound Insight Synthesis & Multi-Moment Surface Routing
         var moments: [InsightMoment] = []
+        var consumedCandidateIds = Set<String>()
+        var seenFamilies = Set<InsightFamily>()
         
-        if surface == .home {
-            // Home Surface: Strictly 1 primary moment (or second only if critical)
-            if let topCandidate = scoredCandidates.first?.candidate {
+        for (candidate, _) in scoredCandidates {
+            if consumedCandidateIds.contains(candidate.id) { continue }
+            
+            // Check for Macro + Driver Compound Pairing
+            if (candidate.family == .budget || candidate.family == .spending) && candidate.kind == .warning {
+                let driverMatch = scoredCandidates.map { $0.candidate }.first(where: {
+                    $0.canActAsDriver && !consumedCandidateIds.contains($0.id)
+                })
                 
-                // Check if we can synthesize a compound moment with an explanatory driver
-                let driverCandidate = scoredCandidates.first(where: {
-                    $0.candidate.kind == .explanation &&
-                    $0.candidate.family == .category &&
-                    $0.candidate.id != topCandidate.id
-                })?.candidate
-                
-                if (topCandidate.family == .budget || topCandidate.family == .spending) && driverCandidate != nil {
-                    let compoundPayload = InsightMessageBuilder.buildCompoundMessage(
-                        primary: topCandidate,
-                        driver: driverCandidate!,
-                        currencySymbol: currencySymbol
-                    )
-                    
-                    moments.append(
-                        InsightMoment(
-                            id: "moment_\(topCandidate.id)_\(driverCandidate!.id)",
-                            candidateId: topCandidate.id,
-                            kind: topCandidate.kind,
-                            family: topCandidate.family,
-                            surface: .home,
-                            headline: compoundPayload.headline,
-                            supportingText: compoundPayload.supportingText,
-                            emphasis: compoundPayload.emphasis,
-                            destination: topCandidate.destination ?? driverCandidate?.destination
+                guard let driver = driverMatch else {
+                    // Output individual candidate
+                    if !seenFamilies.contains(candidate.family) || candidate.isCritical {
+                        seenFamilies.insert(candidate.family)
+                        consumedCandidateIds.insert(candidate.id)
+                        
+                        let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: currencySymbol)
+                        let (effDest, _, isSelfRef) = resolveDestination(candidateDestination: candidate.destination, surface: surface)
+                        let effActionTitle = isSelfRef ? nil : payload.actionTitle
+                        
+                        moments.append(
+                            InsightMoment(
+                                id: "moment_\(candidate.id)",
+                                candidateId: candidate.id,
+                                kind: candidate.kind,
+                                family: candidate.family,
+                                surface: surface,
+                                period: activePeriod,
+                                headline: payload.headline,
+                                supportingText: payload.supportingText,
+                                emphasis: payload.emphasis,
+                                actionTitle: effActionTitle,
+                                destination: effDest
+                            )
                         )
-                    )
-                } else {
-                    let payload = InsightMessageBuilder.buildMessage(for: topCandidate, currencySymbol: currencySymbol)
-                    moments.append(
-                        InsightMoment(
-                            id: "moment_\(topCandidate.id)",
-                            candidateId: topCandidate.id,
-                            kind: topCandidate.kind,
-                            family: topCandidate.family,
-                            surface: .home,
-                            headline: payload.headline,
-                            supportingText: payload.supportingText,
-                            emphasis: payload.emphasis,
-                            destination: topCandidate.destination
-                        )
-                    )
+                    }
+                    continue
                 }
                 
-                // Check for a secondary critical warning if distinct from the primary
-                if let secondaryCritical = scoredCandidates.dropFirst().first(where: {
-                    $0.candidate.isCritical && $0.candidate.family != topCandidate.family
-                })?.candidate {
-                    let secPayload = InsightMessageBuilder.buildMessage(for: secondaryCritical, currencySymbol: currencySymbol)
-                    moments.append(
-                        InsightMoment(
-                            id: "moment_\(secondaryCritical.id)",
-                            candidateId: secondaryCritical.id,
-                            kind: secondaryCritical.kind,
-                            family: secondaryCritical.family,
-                            surface: .home,
-                            headline: secPayload.headline,
-                            supportingText: secPayload.supportingText,
-                            emphasis: secPayload.emphasis,
-                            destination: secondaryCritical.destination
-                        )
+                // Synthesize Compound Moment
+                let compoundPayload = InsightMessageBuilder.buildCompoundMessage(
+                    primary: candidate,
+                    driver: driver,
+                    currencySymbol: currencySymbol
+                )
+                
+                let compoundDest = driver.destination ?? candidate.destination
+                let (effCompoundDest, _, isCompoundSelfRef) = resolveDestination(candidateDestination: compoundDest, surface: surface)
+                let effCompoundActionTitle = isCompoundSelfRef ? nil : compoundPayload.actionTitle
+                
+                moments.append(
+                    InsightMoment(
+                        id: "moment_\(candidate.id)_\(driver.id)",
+                        candidateId: candidate.id,
+                        kind: candidate.kind,
+                        family: candidate.family,
+                        surface: surface,
+                        period: activePeriod,
+                        headline: compoundPayload.headline,
+                        supportingText: compoundPayload.supportingText,
+                        emphasis: compoundPayload.emphasis,
+                        actionTitle: effCompoundActionTitle,
+                        destination: effCompoundDest
                     )
-                }
-            }
-        } else {
-            // Category / Budget / Subscriptions / Analytics surfaces: Deduplicate by family and pick top 1-2
-            var seenFamilies = Set<InsightFamily>()
-            for item in scoredCandidates {
-                let candidate = item.candidate
-                if !seenFamilies.contains(candidate.family) || surface != .analytics {
+                )
+                
+                consumedCandidateIds.insert(candidate.id)
+                consumedCandidateIds.insert(driver.id)
+                seenFamilies.insert(candidate.family)
+                seenFamilies.insert(driver.family)
+                
+            } else {
+                // Deduplicate by family to avoid redundancy on the rail
+                if !seenFamilies.contains(candidate.family) || candidate.isCritical {
                     seenFamilies.insert(candidate.family)
+                    consumedCandidateIds.insert(candidate.id)
+                    
                     let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: currencySymbol)
+                    let (effDest, _, isSelfRef) = resolveDestination(candidateDestination: candidate.destination, surface: surface)
+                    let effActionTitle = isSelfRef ? nil : payload.actionTitle
+                    
                     moments.append(
                         InsightMoment(
                             id: "moment_\(candidate.id)",
@@ -194,79 +212,109 @@ final class InsightDecisionEngine: Sendable {
                             kind: candidate.kind,
                             family: candidate.family,
                             surface: surface,
+                            period: activePeriod,
                             headline: payload.headline,
                             supportingText: payload.supportingText,
                             emphasis: payload.emphasis,
-                            destination: candidate.destination
+                            actionTitle: effActionTitle,
+                            destination: effDest
                         )
                     )
                 }
-                if moments.count >= 2 { break }
             }
+            
+            // Limit rail moments count: Maximum 3 moments for Home/Analytics, 2 for sub-surfaces
+            let maxMoments = (surface == .home || surface == .analytics) ? 3 : 2
+            if moments.count >= maxMoments { break }
         }
         
-        // 6. Record exposures if requested
+        // 6. Record exposures for surfaced moments
         if recordExposures {
             for moment in moments where !moment.isInsufficientData {
                 if let matched = surfaceCandidates.first(where: { $0.id == moment.candidateId }) {
                     let (delta, val) = extractDeltaAndValue(from: matched)
                     exposureStore.recordExposure(
-                        semanticId: matched.semanticKey,
+                        semanticId: contextKey(for: matched),
                         delta: delta,
                         value: val,
-                        now: now
+                        now: activeNow
                     )
                 }
             }
         }
         
-        return moments.isEmpty ? [InsightMoment.insufficientData(for: surface)] : moments
+        return moments.isEmpty ? [InsightMoment.insufficientData(for: surface, period: activePeriod)] : moments
     }
     
     // MARK: - Helpers
     
-    private func calculateNovelty(for semanticId: String) -> Double {
-        return 0.85
+    private func resolveDestination(
+        candidateDestination: InsightDestination?,
+        surface: InsightSurface
+    ) -> (destination: InsightDestination?, actionTitle: String?, isSelfReferential: Bool) {
+        guard let dest = candidateDestination else {
+            return (nil, nil, false)
+        }
+        switch (surface, dest) {
+        case (.category(let sId), .category(let dId)) where sId == dId:
+            return (nil, nil, true)
+        case (.budget, .budget):
+            return (nil, nil, true)
+        case (.subscriptions, .subscriptions):
+            return (nil, nil, true)
+        case (.analytics, .analytics):
+            return (nil, nil, true)
+        default:
+            return (dest, nil, false)
+        }
     }
     
-    private func extractDeltaAndValue(from candidate: InsightCandidate) -> (delta: Double?, value: Double?) {
+    private func extractDeltaAndValue(from candidate: InsightCandidate) -> (delta: Double, value: Double) {
         switch candidate.evidence {
-        case .spendingVelocity(let cur, _, let deltaPct, _, _):
-            return (deltaPct, cur)
+        case .spendingVelocity(let current, _, let deltaPct, _, _, _):
+            return (deltaPct, current)
+        case .categoryTrend(_, _, let current, _, _, let deltaPct, _):
+            return (deltaPct, current)
+        case .categoryDriver(_, _, let inc, _, let share, _):
+            return (share, inc)
+        case .categoryDominance(_, _, let spend, _, let share, _):
+            return (share, spend)
+        case .categoryForecast(_, _, let current, _, _, _):
+            return (10.0, current)
         case .budgetPacing(_, let spent, _, let overPace, _, _, _, _):
             return (overPace, spent)
-        case .budgetExceeded(_, _, let excess):
-            return (100.0, excess)
-        case .categoryTrend(_, _, _, _, let deltaAmount, let deltaPct):
-            return (deltaPct, deltaAmount)
-        case .categoryDriver(_, _, let catInc, _, let sharePct):
-            return (sharePct, catInc)
-        case .categoryDominance(_, _, let cur, _, let sharePct):
-            return (sharePct, cur)
-        case .categoryForecast(_, _, _, let proj, _, _):
-            return (nil, proj)
-        case .transactionAnomaly(_, _, _, let amount, _, let mult, _):
-            return (mult * 100.0, amount)
-        case .zeroSpendStreak(let streak):
-            return (nil, Double(streak))
-        case .zeroSpendWeekly(let count):
-            return (nil, Double(count))
-        case .weekendRhythm(_, _, let ratio, let share):
-            return (share, ratio)
-        case .subscriptionDoubleCharge(_, _, _, let total):
-            return (nil, total)
+        case .budgetExceeded(_, let spent, let excess):
+            return (excess, spent)
         case .subscriptionPriceChange(_, _, _, let actual, let deltaPct):
             return (deltaPct, actual)
-        case .subscriptionDue(_, _, let amount, _, _):
-            return (nil, amount)
-        case .subscriptionOverdue(_, _, let amount, _):
-            return (nil, amount)
-        case .subscriptionCommitment(_, let monthly):
-            return (nil, monthly)
-        case .incomeShift(let cur, _, let deltaPct):
-            return (deltaPct, cur)
-        case .incomeDiversification(let count):
-            return (nil, Double(count))
+        case .subscriptionOverdue(_, _, let amount, let days):
+            return (Double(days), amount)
+        case .subscriptionDue(_, _, let amount, let days, _):
+            return (Double(days), amount)
+        case .subscriptionDoubleCharge(_, _, _, let totalCharged):
+            return (2.0, totalCharged)
+        case .subscriptionCommitment(let count, let monthly):
+            return (Double(count), monthly)
+        case .incomeShift(let current, _, let deltaPct, _):
+            return (deltaPct, current)
+        case .incomeDiversification(let sourceCount):
+            return (Double(sourceCount), Double(sourceCount))
+        case .weekendRhythm(let weekend, _, let ratio, _):
+            return (ratio, weekend)
+        case .zeroSpendStreak(let streak):
+            return (Double(streak), Double(streak))
+        case .zeroSpendWeekly(let count):
+            return (Double(count), Double(count))
+        case .transactionAnomaly(_, _, _, let amount, _, let mult, _):
+            return (mult, amount)
+        case .seasonality(_, let peak, _, let mult):
+            return (mult, peak)
+        case .longTermCategoryTrend(_, _, _, _, _, let totalSpend):
+            return (10.0, totalSpend)
+        case .subscriptionBudgetImpact(_, let inc, _, let share):
+            return (share, inc)
+        case .anomalyDominance(_, _, let anomalyAmount, let share):
+            return (share, anomalyAmount)
         }
     }
 }

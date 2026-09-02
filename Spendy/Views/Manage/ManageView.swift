@@ -26,6 +26,7 @@ struct SubscriptionsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
+    var initialSelectedSubscriptionId: String? = nil
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
 
@@ -149,7 +150,13 @@ struct SubscriptionsView: View {
                         if !subscriptionInsightMoments.isEmpty {
                             VStack(spacing: 8) {
                                 ForEach(subscriptionInsightMoments) { moment in
-                                    EditorialInsightMomentView(moment: moment)
+                                    EditorialInsightMomentView(moment: moment, widthMode: .fullWidth) { destination in
+                                        if case .subscriptionDetail(let id) = destination {
+                                            if let match = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == id.lowercased() }) {
+                                                selectedSubscriptionForDetail = match
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -186,6 +193,19 @@ struct SubscriptionsView: View {
         }
         .sheet(item: $selectedSubscriptionForDetail) { sub in
             SubscriptionQuickActionSheet(sub: sub)
+        }
+        .onAppear {
+            selectInitialSubscriptionIfNeeded()
+        }
+        .task(id: initialSelectedSubscriptionId) {
+            selectInitialSubscriptionIfNeeded()
+        }
+    }
+    
+    private func selectInitialSubscriptionIfNeeded() {
+        if let targetId = initialSelectedSubscriptionId,
+           let match = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == targetId.lowercased() }) {
+            selectedSubscriptionForDetail = match
         }
     }
 

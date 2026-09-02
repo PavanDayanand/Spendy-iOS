@@ -150,7 +150,7 @@ struct DashboardView: View {
     @State private var showCurrencyConverter: Bool = false
     @State private var showBudgetHub: Bool = false
     @State private var showSubscriptionsHub: Bool = false
-    @State private var showSmartInsightsSheet: Bool = false
+    @State private var initialSubscriptionIdForHub: String? = nil
     @State private var showAccounts: Bool = false
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
@@ -310,13 +310,13 @@ struct DashboardView: View {
                 BudgetView(topControlsNamespace: topControlsNamespace)
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
-                SubscriptionsView(topControlsNamespace: topControlsNamespace)
+                SubscriptionsView(
+                    initialSelectedSubscriptionId: initialSubscriptionIdForHub,
+                    topControlsNamespace: topControlsNamespace
+                )
             }
             .navigationDestination(isPresented: $showAccounts) {
                 AccountsView(topControlsNamespace: topControlsNamespace)
-            }
-            .navigationDestination(isPresented: $showSmartInsightsSheet) {
-                SmartInsightsSheet()
             }
             .navigationDestination(isPresented: $showAllTransactionsSheet) {
                 AllTransactionsView()
@@ -568,12 +568,8 @@ struct DashboardView: View {
     
     @ViewBuilder
     private var smartInsightsSection: some View {
-        VStack(spacing: 10) {
-            ForEach(homeInsightMoments) { moment in
-                EditorialInsightMomentView(moment: moment) { destination in
-                    handleInsightDestination(destination)
-                }
-            }
+        EditorialInsightRailView(moments: homeInsightMoments) { destination in
+            handleInsightDestination(destination)
         }
     }
     
@@ -585,9 +581,19 @@ struct DashboardView: View {
             }
         case .budget:
             showBudgetHub = true
-        case .subscriptions, .subscriptionDetail:
+        case .subscriptions:
+            initialSubscriptionIdForHub = nil
             if let selectedTab = selectedTab {
                 selectedTab.wrappedValue = .subscriptions
+            } else {
+                showSubscriptionsHub = true
+            }
+        case .subscriptionDetail(let id):
+            initialSubscriptionIdForHub = id
+            if let selectedTab = selectedTab {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedTab.wrappedValue = .subscriptions
+                }
             } else {
                 showSubscriptionsHub = true
             }

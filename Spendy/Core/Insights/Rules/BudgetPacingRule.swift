@@ -10,6 +10,7 @@ import Foundation
 struct BudgetPacingRule: InsightRule {
     let id = "budget_pacing_rule"
     let family = InsightFamily.budget
+    let supportedPeriods: Set<InsightPeriod> = [.month]
     
     init() {}
     
@@ -21,6 +22,7 @@ struct BudgetPacingRule: InsightRule {
         let spent = facts.budgetCycleExpenses
         let pctSpent = facts.budgetPercentSpent
         let overPace = facts.budgetOverPacePercent
+        let materiality = min(1.0, spent / limit)
         
         // 1. Budget Exceeded (Critical)
         if pctSpent >= 100.0 {
@@ -32,13 +34,17 @@ struct BudgetPacingRule: InsightRule {
                     family: .budget,
                     kind: .warning,
                     surfaceAffinity: [.home, .budget, .analytics],
+                    period: context.period,
                     confidence: 1.0,
                     severity: 1.0,
                     relevance: 1.0,
                     actionability: 0.90,
+                    materiality: 1.0,
                     evidence: .budgetExceeded(limit: limit, spent: spent, excessAmount: excess),
+                    actionTitle: "View Budget →",
                     destination: .budget,
-                    isCritical: true
+                    isCritical: true,
+                    canActAsDriver: false
                 )
             )
             return candidates
@@ -67,13 +73,17 @@ struct BudgetPacingRule: InsightRule {
                     family: .budget,
                     kind: .warning,
                     surfaceAffinity: [.home, .budget, .analytics],
+                    period: context.period,
                     confidence: 0.92,
                     severity: 0.88,
                     relevance: 0.95,
                     actionability: 0.85,
+                    materiality: materiality,
                     evidence: evidence,
+                    actionTitle: "View Budget →",
                     destination: .budget,
-                    isCritical: true
+                    isCritical: true,
+                    canActAsDriver: false
                 )
             )
         }
@@ -97,13 +107,17 @@ struct BudgetPacingRule: InsightRule {
                     family: .budget,
                     kind: .warning,
                     surfaceAffinity: [.home, .budget],
+                    period: context.period,
                     confidence: 0.88,
                     severity: 0.70,
                     relevance: 0.85,
                     actionability: 0.75,
+                    materiality: materiality,
                     evidence: evidence,
+                    actionTitle: "View Budget →",
                     destination: .budget,
-                    isCritical: false
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }
@@ -127,13 +141,17 @@ struct BudgetPacingRule: InsightRule {
                     family: .budget,
                     kind: .recommendation,
                     surfaceAffinity: [.budget, .home],
+                    period: context.period,
                     confidence: 0.85,
                     severity: 0.50,
                     relevance: 0.80,
                     actionability: 0.90,
+                    materiality: materiality,
                     evidence: evidence,
+                    actionTitle: "View Budget →",
                     destination: .budget,
-                    isCritical: false
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }
@@ -157,13 +175,17 @@ struct BudgetPacingRule: InsightRule {
                     family: .budget,
                     kind: .celebration,
                     surfaceAffinity: [.budget, .home],
+                    period: context.period,
                     confidence: 0.82,
                     severity: 0.15,
                     relevance: 0.65,
                     actionability: 0.20,
+                    materiality: materiality,
                     evidence: evidence,
+                    actionTitle: "View Budget →",
                     destination: .budget,
-                    isCritical: false
+                    isCritical: false,
+                    canActAsDriver: false
                 )
             )
         }

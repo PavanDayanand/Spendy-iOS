@@ -2,7 +2,7 @@
 //  CategoryTrendRule.swift
 //  Spendy
 //
-//  Evaluates category surges, reductions, primary spending drivers, dominance, and forecasts.
+//  Evaluates category surges, reductions, primary spending drivers, dominance, and forecasts across timeframes.
 //
 
 import Foundation
@@ -10,6 +10,7 @@ import Foundation
 struct CategoryTrendRule: InsightRule {
     let id = "category_trend_rule"
     let family = InsightFamily.category
+    let supportedPeriods: Set<InsightPeriod> = [.week, .month, .threeMonths, .sixMonths, .year, .all, .custom]
     
     init() {}
     
@@ -22,7 +23,29 @@ struct CategoryTrendRule: InsightRule {
         let isOverallSpendUp = totalSpend > totalBaseline && totalBaseline > 0
         let overallIncrease = totalSpend - totalBaseline
         
-        for summary in facts.categorySummaries.values {
+        // Adaptive minimum transaction threshold per timeframe
+        let minTxThreshold: Int = {
+            switch context.period {
+            case .week, .custom: return 1
+            case .month: return 2
+            case .threeMonths, .sixMonths: return 3
+            case .year, .all: return 4
+            }
+        }()
+        
+        let targetSummaries: [CategoryFactSummary] = {
+            if case .category(let scopedId) = facts.context.scope {
+                if let summary = facts.categorySummaries[scopedId] {
+                    return [summary]
+                }
+                return []
+            }
+            return Array(facts.categorySummaries.values)
+        }()
+        
+        for summary in targetSummaries {
+            guard summary.txCount >= minTxThreshold else { continue }
+            
             let catId = summary.categoryId
             let catName = summary.categoryName
             let curSpend = summary.currentSpend
@@ -30,6 +53,7 @@ struct CategoryTrendRule: InsightRule {
             let delta = summary.deltaSpend
             let deltaPct = summary.deltaPercent
             let txCount = summary.txCount
+            let materiality = min(1.0, abs(delta) / 3000.0)
             
             // 1. Savings Win / Spend Reduction
             if baseSpend >= 50.0 && deltaPct <= -20.0 && abs(delta) >= 100.0 {
@@ -39,23 +63,28 @@ struct CategoryTrendRule: InsightRule {
                     currentAmount: curSpend,
                     baselineAmount: baseSpend,
                     deltaAmount: delta,
-                    deltaPercent: deltaPct
+                    deltaPercent: deltaPct,
+                    period: context.period
                 )
                 candidates.append(
                     InsightCandidate(
-                        id: "cat_savings_\(catId)",
+                        id: "cat_savings_\(catId)_\(context.period.rawValue)",
                         semanticKey: "cat_savings",
                         family: .category,
                         kind: .celebration,
                         surfaceAffinity: [.home, .category(id: catId), .analytics],
                         affectedEntityId: catId,
+                        period: context.period,
                         confidence: 0.85,
                         severity: 0.20,
                         relevance: 0.80,
-                        actionability: 0.30,
+                        actionability: 0.40,
+                        materiality: materiality,
                         evidence: evidence,
+                        actionTitle: "View \(catName) →",
                         destination: .category(id: catId),
-                        isCritical: false
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }
@@ -68,23 +97,28 @@ struct CategoryTrendRule: InsightRule {
                     currentAmount: curSpend,
                     baselineAmount: baseSpend,
                     deltaAmount: delta,
-                    deltaPercent: deltaPct
+                    deltaPercent: deltaPct,
+                    period: context.period
                 )
                 candidates.append(
                     InsightCandidate(
-                        id: "cat_surge_\(catId)",
+                        id: "cat_surge_\(catId)_\(context.period.rawValue)",
                         semanticKey: "cat_surge",
                         family: .category,
                         kind: .warning,
                         surfaceAffinity: [.home, .category(id: catId), .analytics],
                         affectedEntityId: catId,
+                        period: context.period,
                         confidence: 0.85,
                         severity: 0.65,
                         relevance: 0.85,
                         actionability: 0.70,
+                        materiality: materiality,
                         evidence: evidence,
+                        actionTitle: "View \(catName) →",
                         destination: .category(id: catId),
-                        isCritical: false
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }
@@ -98,58 +132,68 @@ struct CategoryTrendRule: InsightRule {
                         categoryName: catName,
                         categoryIncrease: delta,
                         totalIncrease: overallIncrease,
-                        driverSharePercent: driverShare
+                        driverSharePercent: driverShare,
+                        period: context.period
                     )
                     candidates.append(
                         InsightCandidate(
-                            id: "cat_driver_\(catId)",
+                            id: "cat_driver_\(catId)_\(context.period.rawValue)",
                             semanticKey: "cat_driver",
                             family: .category,
                             kind: .explanation,
-                            surfaceAffinity: [.home, .analytics, .category(id: catId)],
+                            surfaceAffinity: [.home, .analytics],
                             affectedEntityId: catId,
-                            confidence: 0.88,
-                            severity: 0.60,
-                            relevance: 0.90,
-                            actionability: 0.60,
+                            period: context.period,
+                            confidence: 0.90,
+                            severity: 0.65,
+                            relevance: 0.95,
+                            actionability: 0.70,
+                            materiality: materiality,
                             evidence: evidence,
+                            actionTitle: "View \(catName) →",
                             destination: .category(id: catId),
-                            isCritical: false
+                            isCritical: false,
+                            canActAsDriver: true
                         )
                     )
                 }
             }
             
-            // 4. Category Dominance (Only when >= 4 txs to avoid single transaction early-month bias)
-            if txCount >= 4 && summary.currentSharePercent >= 40.0 && curSpend >= 250.0 {
+            // 4. Category Dominance (Only when >= minTxThreshold and share >= 40%)
+            if summary.currentSharePercent >= 40.0 && curSpend >= 250.0 {
                 let evidence = InsightEvidence.categoryDominance(
                     categoryId: catId,
                     categoryName: catName,
                     categorySpend: curSpend,
                     totalSpend: totalSpend,
-                    sharePercent: summary.currentSharePercent
+                    sharePercent: summary.currentSharePercent,
+                    period: context.period
                 )
                 candidates.append(
                     InsightCandidate(
-                        id: "cat_dominance_\(catId)",
+                        id: "cat_dominance_\(catId)_\(context.period.rawValue)",
                         semanticKey: "cat_dominance",
                         family: .category,
                         kind: .observation,
-                        surfaceAffinity: [.category(id: catId), .analytics],
+                        surfaceAffinity: [.home, .analytics],
                         affectedEntityId: catId,
+                        period: context.period,
                         confidence: 0.80,
                         severity: 0.40,
                         relevance: 0.75,
                         actionability: 0.40,
+                        materiality: materiality,
                         evidence: evidence,
+                        actionTitle: "View \(catName) →",
                         destination: .category(id: catId),
-                        isCritical: false
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }
             
-            // 5. Category Run-Rate Forecast (Unlocked at >= 5 txs and >= 3 elapsed days)
-            if txCount >= 5 && facts.elapsedDays >= 3 && curSpend > 0 {
+            // 5. Category Run-Rate Forecast (Active for monthly pacing when >= 5 txs and >= 3 elapsed days)
+            if context.period == .month && txCount >= 5 && facts.elapsedDays >= 3 && curSpend > 0 {
                 let dailyRate = curSpend / Double(facts.elapsedDays)
                 let projected = dailyRate * Double(facts.totalDaysInCycle)
                 let isSurging = baseSpend > 0 ? (projected > baseSpend * 1.20) : false
@@ -170,13 +214,17 @@ struct CategoryTrendRule: InsightRule {
                         kind: .prediction,
                         surfaceAffinity: [.category(id: catId), .analytics],
                         affectedEntityId: catId,
+                        period: context.period,
                         confidence: 0.85,
                         severity: isSurging ? 0.60 : 0.30,
                         relevance: 0.80,
                         actionability: 0.50,
+                        materiality: materiality,
                         evidence: evidence,
+                        actionTitle: "View \(catName) →",
                         destination: .category(id: catId),
-                        isCritical: false
+                        isCritical: false,
+                        canActAsDriver: false
                     )
                 )
             }

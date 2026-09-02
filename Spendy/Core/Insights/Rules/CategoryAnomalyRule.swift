@@ -10,6 +10,7 @@ import Foundation
 struct CategoryAnomalyRule: InsightRule {
     let id = "category_anomaly_rule"
     let family = InsightFamily.anomaly
+    let supportedPeriods: Set<InsightPeriod> = [.week, .month, .threeMonths, .sixMonths, .year, .all, .custom]
     
     init() {}
     
@@ -30,6 +31,7 @@ struct CategoryAnomalyRule: InsightRule {
             
             for tx in anomalies {
                 let multiplier = tx.amount / mean
+                let materiality = min(1.0, tx.amount / 5000.0)
                 let evidence = InsightEvidence.transactionAnomaly(
                     transactionId: tx.id,
                     categoryId: catId,
@@ -48,13 +50,17 @@ struct CategoryAnomalyRule: InsightRule {
                         kind: .anomaly,
                         surfaceAffinity: [.home, .category(id: catId), .analytics],
                         affectedEntityId: catId,
+                        period: context.period,
                         confidence: 0.90,
                         severity: multiplier >= 5.0 ? 0.85 : 0.70,
                         relevance: 0.90,
-                        actionability: 0.80,
+                        actionability: 0.85,
+                        materiality: materiality,
                         evidence: evidence,
-                        destination: .category(id: catId),
-                        isCritical: multiplier >= 5.0 // Severe outliers bypass fatigue
+                        actionTitle: "View Transaction →",
+                        destination: .transaction(id: tx.id),
+                        isCritical: multiplier >= 5.0,
+                        canActAsDriver: false
                     )
                 )
             }

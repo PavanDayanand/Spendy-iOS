@@ -73,6 +73,8 @@ struct AnalyticsView: View {
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
+    @State private var selectedSubscriptionIdForDetail: String? = nil
+    @State private var inspectingTransaction: Transaction? = nil
     @State private var showEditBudgetSheet: Bool = false
     @State private var showAddTransaction: Bool = false
     
@@ -88,6 +90,78 @@ struct AnalyticsView: View {
     private var selectedAccountLabel: String {
         if selectedAccountId == "all" { return "All Accounts" }
         return store.accounts.first(where: { $0.id == selectedAccountId })?.label ?? "Account"
+    }
+    
+    private var activeInsightPeriod: InsightPeriod {
+        switch granularity {
+        case .day, .week: return .week
+        case .month: return .month
+        case .year: return .year
+        }
+    }
+    
+    private var activeAnalyticsInsightContext: AnalyticsInsightContext {
+        let bounds = currentPeriodBounds
+        let priorBounds = priorPeriodBounds
+        let period = activeInsightPeriod
+        let scope: AnalyticsInsightContext.Scope = (selectedAccountId == "all") ? .global : .account(id: selectedAccountId)
+        
+        return AnalyticsInsightContext(
+            scope: scope,
+            period: period,
+            startDate: bounds.start,
+            endDate: bounds.end,
+            baselineStartDate: priorBounds.start,
+            baselineEndDate: priorBounds.end,
+            isCustomRange: false,
+            customRangeLabel: nil,
+            referenceDate: selectedDate
+        )
+    }
+    
+    private var analyticsInsightMoments: [InsightMoment] {
+        let context = activeAnalyticsInsightContext
+        let facts = InsightFactsExtractor.extractFacts(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions,
+            context: context
+        )
+        return InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .analytics,
+            period: context.period,
+            currencySymbol: store.currencySymbol,
+            now: context.referenceDate
+        )
+    }
+    
+    private func handleInsightDestination(_ destination: InsightDestination) {
+        switch destination {
+        case .category(let id):
+            if let cat = store.categories.first(where: { $0.id == id }) {
+                selectedCategoryForSheet = cat
+            }
+        case .budget:
+            showEditBudgetSheet = true
+        case .subscriptions, .subscriptionDetail:
+            selectedCategoryForSheet = nil
+            selectedAccountForSheet = nil
+            if let selectedTab = selectedTab {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedTab.wrappedValue = .subscriptions
+                }
+            } else {
+                showSubscriptionSheet = true
+            }
+        case .transaction(let id):
+            if let tx = store.transactions.first(where: { $0.id == id }) {
+                inspectingTransaction = tx
+            }
+        case .analytics:
+            break
+        }
     }
     
     var body: some View {
@@ -130,6 +204,11 @@ struct AnalyticsView: View {
                                 .padding(.bottom, 30)
                             } else {
                                 VStack(spacing: 18) {
+                                    // Editorial Insight Rail for Analytics
+                                    EditorialInsightRailView(moments: analyticsInsightMoments) { destination in
+                                        handleInsightDestination(destination)
+                                    }
+                                    
                                     // Card 1: Cashflow Overview Card
                                     cashflowOverviewCard
                                     
@@ -164,7 +243,10 @@ struct AnalyticsView: View {
                 datePickerSheet
             }
             .navigationDestination(isPresented: $showSubscriptionSheet) {
-                SubscriptionsView()
+                SubscriptionsView(initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
+            }
+            .sheet(item: $inspectingTransaction) { tx in
+                TransactionDetailSheet(transaction: tx)
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: false)
