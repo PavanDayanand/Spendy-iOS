@@ -162,6 +162,7 @@ struct DashboardView: View {
     @State private var selectedAccountId: String = "all"
     @State private var hideBalance: Bool = false
     @State private var showAllTransactionsSheet: Bool = false
+    @State private var showEditBudgetSheet: Bool = false
     
     // MARK: - Dynamic Filtered Transactions
     private var displayedTransactions: [Transaction] {
@@ -239,8 +240,8 @@ struct DashboardView: View {
                         heroSpendBarSection
                             .padding(.top, 6)
                         
-                        // 4. Horizontal Daily Burn / Allowance Pacing Card (No heading)
-                        dailyBurnHorizontalCard
+                        // 4. Live Liquid Glass Budget Journey Card
+                        liveBudgetJourneyCard
                             .padding(.top, 2)
                         
                         // 5. Smart Insights Section (Above Accounts & Transactions)
@@ -294,6 +295,9 @@ struct DashboardView: View {
                 SettingsView(initialDestination: settingsInitialDestination)
                     .presentationBackground(SpendyColors.settingsBackground)
                     .presentationDragIndicator(.hidden)
+            }
+            .sheet(isPresented: $showEditBudgetSheet) {
+                EditBudgetSheet(isEditing: store.budget.isActive)
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
@@ -538,93 +542,16 @@ struct DashboardView: View {
         currentMonthExpenseTxs.reduce(0) { $0 + $1.amount }
     }
     
-    // MARK: - 4. Horizontal Daily Burn / Allowance Pacing Card (Matching Transaction Card Style)
-    private var dailyBurnHorizontalCard: some View {
-        let budgetTarget = store.budgetTargetAmount(for: store.budget.period)
-        let spent = store.budgetCycleExpenses
-        let isBudgetActive = store.budget.isActive && budgetTarget > 0
-        let isOver = isBudgetActive && spent > budgetTarget
-        
-        let iconSymbol = isBudgetActive ? (isOver ? "exclamationmark.shield.fill" : "gauge.with.dots.needle.bottom.50percent") : "target"
-        let iconColor: Color = isBudgetActive ? (isOver ? Color(hex: "#FF453A") : Color(hex: "#30D158")) : SpendyColors.primaryBlue
-        
-        let titleText = isBudgetActive ? "Daily Burn" : "Daily Allowance"
-        let valueText = isBudgetActive ? (hideBalance ? "••••" : "\(store.safeDailyAllowance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day") : "Set Limit"
-        let subtitleText = isBudgetActive ? (isOver ? "Budget exceeded · Restrict daily spend" : "\(store.budgetDaysLeft) days remaining in cycle") : "Plan your monthly limit & unlock safe daily allowance"
-        
-        let progress: Double = budgetTarget > 0 ? min(1.0, spent / budgetTarget) : 0.0
-        
-        return Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            if let selectedTab = selectedTab {
-                selectedTab.wrappedValue = .budget
-            }
-        }) {
-            HStack(spacing: 14) {
-                // Left Icon Avatar / Badge (44x44 circular matching transaction card)
-                SpendyIconBadge(
-                    sfSymbol: iconSymbol,
-                    color: iconColor,
-                    size: .medium,
-                    style: .circle
-                )
-                
-                // Content area
-                VStack(alignment: .leading, spacing: 6) {
-                    // Row 1: Title (Left) + Value (Right)
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(titleText)
-                            .font(.system(size: 15.5, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Spacer()
-                        
-                        Text(valueText)
-                            .spendyNumberFont(size: 16.5, weight: .bold, tracking: -0.4)
-                            .foregroundStyle(iconColor)
-                    }
-                    
-                    if isBudgetActive {
-                        // Row 2: Clean Colored Progress Bar (No repeated numbers)
-                        GeometryReader { geo in
-                            let trackWidth = geo.size.width
-                            let barWidth = max(0, min(trackWidth, trackWidth * CGFloat(progress)))
-                            
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(SpendyColors.cardBackgroundSecondary)
-                                    .frame(height: 5)
-                                
-                                Capsule()
-                                    .fill(iconColor)
-                                    .frame(width: barWidth, height: 5)
-                            }
-                        }
-                        .frame(height: 5)
-                        .padding(.vertical, 1)
-                    }
-                    
-                    // Row 3: Subtitle / Days remaining in cycle
-                    Text(subtitleText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
+    // MARK: - 4. Live Dynamic Island Liquid Glass Budget Journey Card
+    private var liveBudgetJourneyCard: some View {
+        LiveBudgetJourneyCard(
+            hideBalance: hideBalance,
+            onViewDetails: {
+                if let selectedTab = selectedTab {
+                    selectedTab.wrappedValue = .budget
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(titleText), \(valueText), \(subtitleText)")
+        )
     }
     
     // MARK: - 5. Smart Insights Curated Engine (Up to 5 Intelligent Actionable Cards)

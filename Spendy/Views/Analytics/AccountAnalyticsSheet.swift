@@ -2,16 +2,18 @@
 //  AccountAnalyticsSheet.swift
 //  Spendy
 //
-//  Apple HIG Bank Account Analytics Sheet with Hero Balance,
-//  Interactive Touch-Scrubbing SwiftCharts Area Graph on Content Layer,
-//  Glass Index Period Selector, 4-Metric Account Overview Card,
-//  and Date-Grouped Transaction Activity List.
+//  Apple HIG Bank Account Analytics Sheet
+//  Features:
+//  - Centralized Bank/Account Icon & Hero Balance
+//  - SwiftCharts Area Graph & Index Filter Strip matching Category Analytics
+//  - Liquid Glass Segmented Period Selector (1w, 1m, 3m, 6m, 1y, Custom)
+//  - Redesigned Liquid Glass Cash Flow & Stats Bento Hub
+//  - Pure Title Case Typography throughout (no ALL CAPS)
+//  - Date-Grouped Transaction Activity List
 //
 
 import SwiftUI
 import Charts
-
-
 
 struct AccountAnalyticsSheet: View {
     @Environment(ExpenseStore.self) private var store
@@ -32,7 +34,6 @@ struct AccountAnalyticsSheet: View {
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var editingAccountToEdit: Account? = nil
-    @State private var rawSelectedDate: Date? = nil
     @State private var showDatePicker: Bool = false
     @State private var showAddTransaction: Bool = false
     @Namespace private var accountSheetNamespace
@@ -89,10 +90,6 @@ struct AccountAnalyticsSheet: View {
         filteredTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
     }
     
-    private var netFlow: Double {
-        totalInflow - totalOutflow
-    }
-    
     private var daysInSelectedPeriod: Int {
         if let custom = customDateRange {
             let diff = Calendar.current.dateComponents([.day], from: custom.start, to: custom.end).day ?? 1
@@ -111,16 +108,12 @@ struct AccountAnalyticsSheet: View {
         return totalOutflow / Double(expenseTxs.count)
     }
     
+    // MARK: - SwiftCharts Points (Identical to Category Analytics)
     private var chartPoints: [CategoryChartPoint] {
         AnalyticsChartEngine.generateChartPoints(
             transactions: allAccountTransactions,
             period: selectedPeriod,
-            hasEnoughTxs: false,
-            valueForDay: { txs in
-                let inflow = txs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-                let outflow = txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-                return inflow - outflow
-            }
+            hasEnoughTxs: false
         ).filter { !$0.isPredicted }
     }
     
@@ -136,15 +129,15 @@ struct AccountAnalyticsSheet: View {
             formatter.dateFormat = "MMM d"
             return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
         case .month:
-            formatter.dateFormat = "MMMM"
-            return "Balance in \(formatter.string(from: bounds.start))"
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: bounds.start)
         case .threeMonths:
             return "Last 3 Months"
         case .sixMonths:
             return "Last 6 Months"
         case .year:
             formatter.dateFormat = "yyyy"
-            return "Balance in \(formatter.string(from: bounds.start))"
+            return formatter.string(from: bounds.start)
         }
     }
     
@@ -157,8 +150,8 @@ struct AccountAnalyticsSheet: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            // Dynamic Ambient Full-Width Header Glow
-            SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
+            // Ambient Header Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.35)
             
             VStack(spacing: 0) {
                 if isHomeOrigin {
@@ -166,49 +159,29 @@ struct AccountAnalyticsSheet: View {
                 }
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // 1. Clean Hero Account Balance Header (Pure Content)
-                        heroHeaderSection
-                            .padding(.horizontal, 20)
-                            .padding(.top, isHomeOrigin ? 4 : 12)
+                    VStack(spacing: 16) {
+                        // 1. Centralized Account Avatar & Hero Balance Header
+                        centralizedHeroHeader
+                            .padding(.horizontal, 16)
+                            .padding(.top, isHomeOrigin ? 2 : 6)
                         
-                        // 2. Uncarded SwiftCharts Area Graph & Glass Index Strip
+                        // 2. Exact SwiftCharts Area Graph & Index Filter Strip (from Category Analytics)
                         chartSection
                             .padding(.horizontal, 16)
                         
-                        // 3. Consolidated 4-Metric Account Overview Card or Insights Card
-                        if allAccountTransactions.count < 3 {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text("Insights")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Text("Add more transactions to unlock personalised insights")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineSpacing(4)
-                            }
-                            .padding(20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
-                            .padding(.horizontal, 16)
+                        // 3. Redesigned Unified Cash Flow & Stats Bento Hub
+                        if allAccountTransactions.isEmpty {
+                            emptyInsightsCard
+                                .padding(.horizontal, 16)
                         } else {
-                            accountOverviewCard
-                                .padding(.horizontal, 20)
-                                .padding(.top, 4)
+                            unifiedAccountStatsCard
+                                .padding(.horizontal, 16)
                         }
                         
                         // 4. Date-Grouped Account Activity List
                         transactionsSection
                             .padding(.horizontal, 16)
-                            .padding(.top, 4)
+                            .padding(.top, 2)
                             .padding(.bottom, 40)
                     }
                 }
@@ -257,7 +230,7 @@ struct AccountAnalyticsSheet: View {
         }
     }
     
-    // MARK: - 1. Top Header Bar (When Pushed from Home with Liquid Glass Morph)
+    // MARK: - 1. Top Header Bar (When Pushed with Liquid Glass Morph)
     private var topHeaderBar: some View {
         HStack {
             GlassCircleButton(
@@ -286,7 +259,6 @@ struct AccountAnalyticsSheet: View {
             
             Spacer()
             
-            // Trailing Edit button matching topControl_right
             GlassCircleButton(
                 icon: "pencil",
                 size: 44,
@@ -302,46 +274,43 @@ struct AccountAnalyticsSheet: View {
                 editingAccountToEdit = account
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.top, 4)
         .padding(.bottom, 2)
     }
     
-    // MARK: - 2. Hero Header Section (Clean Apple Wallet Typography)
-    private var heroHeaderSection: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(periodHeaderLabel)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                Text(currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                
-                Text(account.label)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            
-            Spacer(minLength: 16)
-            
+    // MARK: - 2. Centralized Bank Avatar & Hero Balance Header
+    private var centralizedHeroHeader: some View {
+        VStack(spacing: 6) {
+            // Centralized Bank / Account Icon Badge
             SpendyIconBadge(
                 sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                 color: themeColor,
-                size: .hero,
+                size: .large,
                 style: .circle
             )
+            .shadow(color: themeColor.opacity(0.4), radius: 12, y: 3)
+            
+            // Hero Balance Amount
+            Text(currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            
+            // Period / Context Subtitle
+            Text("Balance in \(periodHeaderLabel)")
+                .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                .foregroundStyle(SpendyColors.textSecondary)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 2)
     }
     
-    // MARK: - 3. Uncarded SwiftCharts Area Graph & Glass Index Strip
+    // MARK: - 3. SwiftCharts Area Graph & Index Filter Strip (Identical to Category Analytics)
     private var chartSection: some View {
         VStack(spacing: 14) {
-            if chartPoints.isEmpty {
+            if chartPoints.isEmpty || totalOutflow == 0 {
                 VStack(spacing: 8) {
                     Image(systemName: "chart.line.flattrend.xyaxis")
                         .font(.system(size: 28))
@@ -428,7 +397,6 @@ struct AccountAnalyticsSheet: View {
                     )
                     .onChange(of: selectedPeriod) { _, _ in
                         customDateRange = nil
-                        rawSelectedDate = nil
                     }
                     .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
 
@@ -453,110 +421,170 @@ struct AccountAnalyticsSheet: View {
         }
     }
 
+    // MARK: - Helper Formatters
+    private func axisLabelDate(_ date: Date) -> String {
+        AnalyticsChartEngine.axisLabel(for: date, period: selectedPeriod)
+    }
 
-    
-    // MARK: - 4. Consolidated 4-Metric Account Overview Card
-    private var accountOverviewCard: some View {
-        VStack(spacing: 16) {
+    // MARK: - 4. Redesigned Unified Cash Flow & Stats Bento Hub
+    private var unifiedAccountStatsCard: some View {
+        VStack(spacing: 14) {
+            // Row 1: Money In & Money Out Dual Hero Split
             HStack(spacing: 12) {
-                // Metric 1: Money In
-                metricCell(
-                    title: "Money In",
-                    value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                    icon: "arrow.down.left",
-                    iconColor: SpendyColors.incomeGreen
-                )
+                // Money In Cell
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(SpendyColors.incomeGreen.opacity(0.16))
+                            .frame(width: 34, height: 34)
+                        Image(systemName: "arrow.down.left")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.incomeGreen)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Money In")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        Text("+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                            .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                            .foregroundStyle(SpendyColors.incomeGreen)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Divider()
                     .overlay(SpendyColors.separator)
-                    .frame(height: 44)
+                    .frame(height: 36)
                 
-                // Metric 2: Money Out
-                metricCell(
-                    title: "Money Out",
-                    value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                    icon: "arrow.up.right",
-                    iconColor: SpendyColors.expenseRed
-                )
+                // Money Out Cell
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(SpendyColors.expenseRed.opacity(0.16))
+                            .frame(width: 34, height: 34)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(SpendyColors.expenseRed)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Money Out")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        Text("-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                            .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             
             Divider()
                 .overlay(SpendyColors.separator)
             
+            // Row 2: Daily Average & Avg Transaction
             HStack(spacing: 12) {
-                // Metric 3: Daily Average
-                metricCell(
-                    title: "Daily Average",
-                    value: "\(dailyAvgOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
-                    icon: "calendar",
-                    iconColor: themeColor
-                )
+                // Daily Average
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(themeColor.opacity(0.16))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(themeColor)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Daily Average")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        Text("\(dailyAvgOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Divider()
                     .overlay(SpendyColors.separator)
-                    .frame(height: 44)
+                    .frame(height: 32)
                 
-                // Metric 4: Avg Transaction
-                metricCell(
-                    title: "Avg Transaction",
-                    value: avgTransactionSize.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                    icon: "creditcard",
-                    iconColor: Color(hex: "#AF52DE")
-                )
+                // Avg Transaction
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "#AF52DE").opacity(0.16))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "creditcard")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#AF52DE"))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Avg Transaction")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        Text(avgTransactionSize.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(18)
+        .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#141416"))
+                .fill(SpendyColors.cardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.8)
                 }
         }
     }
     
-    private func metricCell(
-        title: String,
-        value: String,
-        icon: String,
-        iconColor: Color
-    ) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.16))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(iconColor)
-            }
+    // MARK: - Empty Insights Card
+    private var emptyInsightsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Insights")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Text(value)
-                    .spendyNumberFont(size: 16, weight: .bold, tracking: -0.4)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            
-            Spacer(minLength: 0)
+            Text("Add more transactions to unlock personalised insights")
+                .font(.system(size: 13.5, weight: .regular))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .lineSpacing(4)
         }
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+        }
     }
     
-    // MARK: - 5. Date-Grouped Recent Activity Section
+    // MARK: - 5. Date-Grouped Recent Activity Section (Title Case)
     private var transactionsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("RECENT ACTIVITY")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .tracking(1.2)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recent Activity")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.leading, 4)
             
             if dateGroupedTransactions.isEmpty {
@@ -598,77 +626,49 @@ struct AccountAnalyticsSheet: View {
                                         HapticsManager.shared.trigger(.selection)
                                         inspectingTransaction = tx
                                     }) {
-                                        HStack(spacing: 14) {
-                                             SpendyIconBadge(
+                                        HStack(spacing: 12) {
+                                            SpendyIconBadge(
                                                 sfSymbol: iconSymbol,
                                                 color: iconColor,
                                                 size: .medium,
                                                 style: .circle
                                             )
                                             
-                                            VStack(alignment: .leading, spacing: 3) {
-                                                Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                                                    .font(.system(size: 15, weight: .bold))
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(tx.title)
+                                                    .font(.system(size: 14.5, weight: .semibold))
                                                     .foregroundStyle(SpendyColors.textPrimary)
+                                                    .lineLimit(1)
                                                 
-                                                Text(formattedTime(tx.date))
+                                                Text(cat?.label ?? "General")
                                                     .font(.system(size: 12, weight: .medium))
                                                     .foregroundStyle(SpendyColors.textSecondary)
                                             }
                                             
                                             Spacer()
                                             
-                                            Text(formattedAmount(tx))
-                                                .spendyNumberFont(size: 15, weight: .bold, tracking: -0.4)
+                                            Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                                                .spendyNumberFont(size: 15, weight: .bold, tracking: -0.3)
                                                 .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                                         }
-                                        .padding(14)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .background(SpendyColors.cardBackground)
                                     }
                                     .buttonStyle(.plain)
                                     
                                     if idx < txs.count - 1 {
                                         Divider()
                                             .overlay(SpendyColors.separator)
-                                            .padding(.leading, 68)
+                                            .padding(.leading, 64)
                                     }
                                 }
                             }
-                            .background {
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
                     }
                 }
             }
         }
     }
-    
-    // MARK: - Helper Formatters
-    private func formattedTime(_ date: Date) -> String {
-        AnalyticsChartEngine.formattedTime(date)
-    }
-    
-    private func formattedPointDate(_ date: Date) -> String {
-        AnalyticsChartEngine.formattedPointDate(date, period: selectedPeriod)
-    }
-    
-    private func axisLabelDate(_ date: Date) -> String {
-        AnalyticsChartEngine.axisLabel(for: date, period: selectedPeriod)
-    }
-    
-    private func formattedAmount(_ tx: Transaction) -> String {
-        let sym = store.currencySymbol
-        switch tx.type {
-        case .expense: return "-\(tx.amount.formattedCurrency(symbol: sym))"
-        case .income: return "+\(tx.amount.formattedCurrency(symbol: sym))"
-        case .transfer: return "\(tx.amount.formattedCurrency(symbol: sym))"
-        }
-    }
 }
-
-
