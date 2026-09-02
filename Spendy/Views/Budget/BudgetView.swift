@@ -204,6 +204,20 @@ struct BudgetView: View {
     }
     
     // MARK: - Active Budget Content
+    private var budgetInsightMoments: [InsightMoment] {
+        let facts = InsightFactsExtractor.extractFacts(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions
+        )
+        return InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .budget,
+            currencySymbol: store.currencySymbol
+        )
+    }
+    
     private var activeBudgetContent: some View {
         VStack(spacing: 20) {
             // Main Analytics-Style Circular Ring Budget Card
@@ -220,6 +234,11 @@ struct BudgetView: View {
                 pacingInsightMessage: store.budgetPacingInsightMessage,
                 pacingState: store.budgetPacingState
             )
+            
+            // Integrated Semantic Budget Moment
+            ForEach(budgetInsightMoments) { moment in
+                EditorialInsightMomentView(moment: moment)
+            }
             
             // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
             HStack(spacing: 10) {

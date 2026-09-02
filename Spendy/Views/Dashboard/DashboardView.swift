@@ -551,98 +551,54 @@ struct DashboardView: View {
         )
     }
     
-    // MARK: - 5. Smart Insights Curated Engine (Up to 5 Intelligent Actionable Cards)
-    private var allDashboardInsightCards: [InsightCardViewModel] {
-        InsightsEngine.getDashboardCuratedCards(
+    // MARK: - 5. Smart Insights Moments (Apple HIG Editorial Observation)
+    private var homeInsightMoments: [InsightMoment] {
+        let facts = InsightFactsExtractor.extractFacts(
             transactions: displayedTransactions,
             budget: store.budget,
             categories: store.categories,
-            subscriptions: store.subscriptions,
-            currencySymbol: store.currencySymbol,
-            hideBalance: hideBalance
+            subscriptions: store.subscriptions
+        )
+        return InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .home,
+            currencySymbol: store.currencySymbol
         )
     }
     
     @ViewBuilder
     private var smartInsightsSection: some View {
-        if !allDashboardInsightCards.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Smart Insight")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        showSmartInsightsSheet = true
-                    }) {
-                        HStack(spacing: 4) {
-                            Text("View all")
-                                .font(.system(size: 14, weight: .semibold))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(allDashboardInsightCards) { insight in
-                            renderDashboardInsightCard(insight)
-                        }
-                    }
-                    .padding(.vertical, 2)
+        VStack(spacing: 10) {
+            ForEach(homeInsightMoments) { moment in
+                EditorialInsightMomentView(moment: moment) { destination in
+                    handleInsightDestination(destination)
                 }
             }
         }
     }
     
-    // MARK: - Polymorphic Insight Card Renderer (Strictly Unified 175pt Width × 188pt Height)
-    @ViewBuilder
-    private func renderDashboardInsightCard(_ insight: InsightCardViewModel) -> some View {
-        let cardAction: () -> Void = {
-            if let catId = insight.categoryId,
-               let cat = store.categories.first(where: { $0.id == catId }) {
+    private func handleInsightDestination(_ destination: InsightDestination) {
+        switch destination {
+        case .category(let id):
+            if let cat = store.categories.first(where: { $0.id == id }) {
                 selectedCategoryForSheet = cat
-            } else if insight.family == "budget" || insight.id == "set_budget" {
-                showBudgetHub = true
-            } else if insight.family == "subscription" || insight.id == "subscriptions_track" {
-                if let selectedTab = selectedTab {
-                    selectedTab.wrappedValue = .subscriptions
-                } else {
-                    showSubscriptionsHub = true
-                }
-            } else if insight.family == "analytics" || insight.family == "spotlight" || insight.family == "habit" || insight.family == "velocity" {
-                if let selectedTab = selectedTab {
-                    selectedTab.wrappedValue = .analytics
-                }
             }
-        }
-        
-        if insight.isSpotlight, let peakIdx = insight.peakDayIndex {
-            SpotlightBarCard(
-                title: insight.title,
-                peakDayName: insight.value,
-                peakDayIndex: peakIdx,
-                action: cardAction
-            )
-            .frame(width: 170)
-        } else {
-            CategoryCard(
-                title: insight.title,
-                value: insight.value,
-                subtitle: insight.subtitle,
-                icon: insight.icon,
-                color: insight.color,
-                tagText: insight.tagText,
-                tagColor: insight.tagColor,
-                action: cardAction
-            )
-            .frame(width: 170)
+        case .budget:
+            showBudgetHub = true
+        case .subscriptions, .subscriptionDetail:
+            if let selectedTab = selectedTab {
+                selectedTab.wrappedValue = .subscriptions
+            } else {
+                showSubscriptionsHub = true
+            }
+        case .analytics:
+            if let selectedTab = selectedTab {
+                selectedTab.wrappedValue = .analytics
+            }
+        case .transaction(let id):
+            if let tx = store.transactions.first(where: { $0.id == id }) {
+                inspectingTransaction = tx
+            }
         }
     }
     

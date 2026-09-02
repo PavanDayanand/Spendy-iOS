@@ -11,6 +11,12 @@ import SwiftUI
 struct SpendyApp: App {
     @State private var store = ExpenseStore()
     
+    init() {
+        #if DEBUG
+        SmartInsightsUnitTests.runAllTests()
+        #endif
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

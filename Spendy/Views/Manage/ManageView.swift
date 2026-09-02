@@ -105,6 +105,21 @@ struct SubscriptionsView: View {
             }
         }
     }
+    
+    private var subscriptionInsightMoments: [InsightMoment] {
+        let facts = InsightFactsExtractor.extractFacts(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions
+        )
+        let moments = InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .subscriptions,
+            currencySymbol: store.currencySymbol
+        )
+        return moments.filter { !$0.isInsufficientData }
+    }
 
     // MARK: - Body
 
@@ -129,6 +144,16 @@ struct SubscriptionsView: View {
                         balancedHeroSpendCard
                             .padding(.horizontal, 20)
                             .padding(.top, topControlsNamespace != nil ? 12 : 2)
+
+                        // 2.5 Subscription Semantic Insight Moments
+                        if !subscriptionInsightMoments.isEmpty {
+                            VStack(spacing: 8) {
+                                ForEach(subscriptionInsightMoments) { moment in
+                                    EditorialInsightMomentView(moment: moment)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
 
                         // 3. Subscriptions List Section (with Filters & Cards)
                         subscriptionsListSection

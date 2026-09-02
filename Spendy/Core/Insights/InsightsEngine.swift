@@ -29,8 +29,8 @@ struct InsightItem: Identifiable, Hashable {
     }
 }
 
-// Facts generated from data
-struct InsightFacts {
+//// Legacy facts generated from data
+struct LegacyInsightFacts {
     let periodStart: Date
     let periodEnd: Date
     let currentTotal: Double
@@ -44,13 +44,13 @@ struct InsightFacts {
     let weekendCount: Int
     let weekdayCount: Int
     let maxStreak: Int
-    let budgetPacing: BudgetPacing?
+    let budgetPacing: LegacyBudgetPacing?
     let dataDensity: Double
     let elapsedDays: Int
     let transactions: [Transaction]
 }
 
-struct BudgetPacing {
+struct LegacyBudgetPacing {
     let percentSpent: Double
     let safePace: Double
     let overPace: Double
@@ -76,7 +76,7 @@ struct InsightsEngine {
         prevStart: Date,
         prevEnd: Date,
         dataType: TransactionType
-    ) -> InsightFacts {
+    ) -> LegacyInsightFacts {
         let calendar = Calendar.current
         let now = Date()
         
@@ -142,7 +142,7 @@ struct InsightsEngine {
         }
         
         // Budget
-        var budgetPacing: BudgetPacing? = nil
+        var budgetPacing: LegacyBudgetPacing? = nil
         let daysInMonth = calendar.range(of: .day, in: .month, for: periodStart)?.count ?? 30
         // Determine if period is roughly a month (checking if periodStart and periodEnd are a month apart)
         let isMonthPeriod = (calendar.dateComponents([.day], from: periodStart, to: periodEnd).day ?? 0) >= 28
@@ -158,7 +158,7 @@ struct InsightsEngine {
             let daysToExhaustion = avgDailySpend > 0 ? (limit / avgDailySpend) : Double(daysInMonth)
             let safeDailyRemaining = remainingDays > 0 ? max(0, limit - currentTotal) / Double(remainingDays) : 0
             
-            budgetPacing = BudgetPacing(
+            budgetPacing = LegacyBudgetPacing(
                 percentSpent: percentSpent,
                 safePace: safePace,
                 overPace: percentSpent - safePace,
@@ -174,7 +174,7 @@ struct InsightsEngine {
             )
         }
         
-        return InsightFacts(
+        return LegacyInsightFacts(
             periodStart: periodStart,
             periodEnd: periodEnd,
             currentTotal: currentTotal,
@@ -196,7 +196,7 @@ struct InsightsEngine {
     }
     
     // MARK: - 2. Mindset Layer
-    static func inferUserMindset(facts: InsightFacts, budget: Budget) -> String {
+    static func inferUserMindset(facts: LegacyInsightFacts, budget: Budget) -> String {
         if facts.txCount < 5 || facts.dataDensity < 0.3 {
             return "beginner"
         }
@@ -215,7 +215,7 @@ struct InsightsEngine {
         return "reflector"
     }
     
-    static func generateVelocityInsights(facts: InsightFacts, currencySymbol: String) -> [InsightItem] {
+    static func generateVelocityInsights(facts: LegacyInsightFacts, currencySymbol: String) -> [InsightItem] {
         var insights: [InsightItem] = []
         guard facts.elapsedDays >= 3 && facts.currentTotal > 0 else { return insights }
         
@@ -251,7 +251,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateRatioShiftInsights(facts: InsightFacts, categories: [Category], currencySymbol: String) -> [InsightItem] {
+    static func generateRatioShiftInsights(facts: LegacyInsightFacts, categories: [Category], currencySymbol: String) -> [InsightItem] {
         var insights: [InsightItem] = []
         guard facts.currentTotal > 0 && facts.prevTotal > 0 else { return insights }
         
@@ -282,7 +282,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateBudgetInsights(facts: InsightFacts, currencySymbol: String) -> [InsightItem] {
+    static func generateBudgetInsights(facts: LegacyInsightFacts, currencySymbol: String) -> [InsightItem] {
         var insights: [InsightItem] = []
         guard let pacing = facts.budgetPacing else { return insights }
         
@@ -335,7 +335,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateBehaviorInsights(facts: InsightFacts, dataType: TransactionType) -> [InsightItem] {
+    static func generateBehaviorInsights(facts: LegacyInsightFacts, dataType: TransactionType) -> [InsightItem] {
         var insights: [InsightItem] = []
         let wAvg = facts.weekendCount > 0 ? facts.weekendTotal / Double(facts.weekendCount) : 0
         let dAvg = facts.weekdayCount > 0 ? facts.weekdayTotal / Double(facts.weekdayCount) : 0
@@ -396,7 +396,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateCategoryInsights(facts: InsightFacts, categories: [Category], currencySymbol: String, dataType: TransactionType) -> [InsightItem] {
+    static func generateCategoryInsights(facts: LegacyInsightFacts, categories: [Category], currencySymbol: String, dataType: TransactionType) -> [InsightItem] {
         var insights: [InsightItem] = []
         
         for cat in categories.filter({ $0.type == dataType }) {
@@ -484,7 +484,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateSubscriptionInsights(facts: InsightFacts, subscriptions: [Subscription], currencySymbol: String) -> [InsightItem] {
+    static func generateSubscriptionInsights(facts: LegacyInsightFacts, subscriptions: [Subscription], currencySymbol: String) -> [InsightItem] {
         var insights: [InsightItem] = []
         let now = Date()
         
@@ -539,7 +539,7 @@ struct InsightsEngine {
         return insights
     }
     
-    static func generateIncomeInsights(facts: InsightFacts) -> [InsightItem] {
+    static func generateIncomeInsights(facts: LegacyInsightFacts) -> [InsightItem] {
         var insights: [InsightItem] = []
         if facts.prevTotal > 0 {
             let pctChange = ((facts.currentTotal - facts.prevTotal) / facts.prevTotal) * 100

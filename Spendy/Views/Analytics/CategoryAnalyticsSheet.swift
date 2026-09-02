@@ -198,7 +198,7 @@ struct CategoryAnalyticsSheet: View {
                             categoryBentoHub
                                 .padding(.horizontal, 16)
                             
-                            categoryInsightsCarousel
+                            categoryInsightsSection
                                 .padding(.top, 2)
                         }
                         
@@ -652,124 +652,28 @@ struct CategoryAnalyticsSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
-    // MARK: - 4.5. Analytics Smart Insights Carousel (4 Bento Cards)
-    private var averageSpentPerWeek: Double {
-        guard !filteredTransactions.isEmpty else { return 0 }
-        let weeks = max(1, Double(daysInSelectedPeriod) / 7.0)
-        return totalSpent / weeks
-    }
-    
-    private var topSpendingWeekday: (name: String, dayIndex: Int, amount: Double) {
-        var dayTotals = Array(repeating: 0.0, count: 7)
-        let calendar = Calendar.current
-        for tx in filteredTransactions {
-            let weekday = calendar.component(.weekday, from: tx.date) - 1
-            if weekday >= 0 && weekday < 7 {
-                dayTotals[weekday] += tx.amount
-            }
-        }
-        var maxIdx = 4
-        var maxAmt = 0.0
-        for (idx, amt) in dayTotals.enumerated() {
-            if amt > maxAmt {
-                maxAmt = amt
-                maxIdx = idx
-            }
-        }
-        let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        return (dayNames[maxIdx], maxIdx, maxAmt)
-    }
-    
-    private var monthForecast: Double {
-        let calendar = Calendar.current
-        let now = Date()
-        let startMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-        let range = calendar.range(of: .day, in: .month, for: now) ?? 1..<31
-        let totalDays = Double(range.count)
-        let dayPassed = max(1.0, Double(calendar.component(.day, from: now)))
-        let monthTxs = allCategoryTransactions.filter { $0.date >= startMonth && $0.date <= now }
-        let monthSpent = monthTxs.reduce(0) { $0 + $1.amount }
-        let dailyRate = monthSpent / dayPassed
-        return dailyRate * totalDays
+    // MARK: - 4.5. Category Insight Moments
+    private var categoryInsightMoments: [InsightMoment] {
+        let facts = InsightFactsExtractor.extractFacts(
+            transactions: store.transactions,
+            budget: store.budget,
+            categories: store.categories,
+            subscriptions: store.subscriptions
+        )
+        return InsightDecisionEngine.shared.evaluate(
+            facts: facts,
+            surface: .category(id: category.id),
+            currencySymbol: store.currencySymbol
+        )
     }
 
-    private var categoryInsightsCarousel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Smart Insights")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 20)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    // Card 1: Avg Spent (Gradient Trend Card)
-                    avgSpentCard
-                    
-                    // Card 2: Top Day (Spotlight Bar Card)
-                    topDayCard
-                    
-                    // Card 3: Month Forecast (Pacing Pin Bar Card)
-                    monthForecastCard
-                    
-                    // Card 4: Activity / Transactions Count (Dot Matrix Card)
-                    activityCard
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 4)
+    private var categoryInsightsSection: some View {
+        VStack(spacing: 8) {
+            ForEach(categoryInsightMoments) { moment in
+                EditorialInsightMomentView(moment: moment)
             }
         }
-    }
-    
-    // Bento Card 1: Avg Spent (Gradient Trend Card)
-    private var avgSpentCard: some View {
-        GradientTrendCard(
-            title: "Avg spent",
-            value: averageSpentPerWeek.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-            subtitle: "Per week",
-            lineColor: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 2: Top Day (Spotlight Bar Card)
-    private var topDayCard: some View {
-        let topDayInfo = topSpendingWeekday
-        return SpotlightBarCard(
-            title: "Top day",
-            peakDayName: topDayInfo.name,
-            peakDayIndex: topDayInfo.dayIndex,
-            accentColor: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 3: Month Forecast (Pacing Pin Bar Card)
-    private var monthForecastCard: some View {
-        let ratio = min(1.0, max(0.1, totalSpent / max(1.0, monthForecast)))
-        return PacingPinBarCard(
-            title: "Month Forecast",
-            value: monthForecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-            deltaText: "\(store.currencySymbol)\(Int(monthForecast))",
-            subtitle: "Projected spent by month-end",
-            progress: ratio,
-            icon: "sparkles",
-            color: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 4: Activity (Dot Matrix Habit Card)
-    private var activityCard: some View {
-        DotMatrixCard(
-            title: "Activity",
-            streakCount: filteredTransactions.count,
-            streakUnit: filteredTransactions.count == 1 ? "expense in period" : "expenses in period",
-            icon: "square.stack.3d.up.fill",
-            color: themeColor,
-            totalDays: 30,
-            activeDays: min(30, filteredTransactions.count)
-        )
-        .frame(width: 180)
+        .padding(.horizontal, 16)
     }
     
     // MARK: - 5. Date-Grouped Recent Activity Section (Title Case)
