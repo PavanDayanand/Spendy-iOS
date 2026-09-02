@@ -117,6 +117,7 @@ struct SubscriptionsView: View {
             VStack(spacing: 0) {
                 if topControlsNamespace != nil {
                     topHeaderBar
+                        .padding(.bottom, 6)
                 }
 
                 ScrollView(showsIndicators: false) {
@@ -124,7 +125,7 @@ struct SubscriptionsView: View {
                         // 1. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
                         balancedHeroSpendCard
                             .padding(.horizontal, 20)
-                            .padding(.top, topControlsNamespace != nil ? 4 : 12)
+                            .padding(.top, topControlsNamespace != nil ? 12 : 16)
 
                         // 2. Subscriptions List Section (with Filters & Cards)
                         subscriptionsListSection
@@ -201,8 +202,8 @@ struct SubscriptionsView: View {
             Color.clear.frame(width: 44, height: 44)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     // Typealias for backwards compatibility
@@ -300,7 +301,7 @@ struct SubscriptionsView: View {
                         } label: {
                             Text(filter.rawValue)
                                 .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? Color.white : SpendyColors.textSecondary)
+                                .foregroundStyle(isSelected ? SpendyColors.inverseText : SpendyColors.textSecondary)
                                 .padding(.horizontal, 16)
                                 .frame(height: 34)
                                 .background {

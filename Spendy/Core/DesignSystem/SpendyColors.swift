@@ -88,13 +88,13 @@ enum SpendyColors {
     ))
 
     static let cardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 20.0/255.0, green: 20.0/255.0, blue: 22.0/255.0, alpha: 1.0) // Sleek rich dark surface (#141416)
+        light: UIColor(white: 1.0, alpha: 0.82),
+        dark: UIColor(red: 20.0/255.0, green: 20.0/255.0, blue: 22.0/255.0, alpha: 0.68) // Enhanced ambient mesh translucency (#141416 @ 68%)
     ))
 
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1.0),
-        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0) // Elevated secondary layer (#1C1C1E)
+        light: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 0.82),
+        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 0.58) // Elevated secondary layer (#1C1C1E @ 58%)
     ))
 
     static let sheetCardBackground = Color(uiColor: .dynamic(
