@@ -2,6 +2,89 @@
   "fill" : "automatic",
   "groups" : [
     {
+      "hidden" : false,
+      "layers" : [
+        {
+          "blend-mode" : "hard-light",
+          "fill" : "none",
+          "glass-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : true
+            }
+          ],
+          "hidden" : false,
+          "image-name" : "Icon.png",
+          "name" : "Icon",
+          "opacity" : 1,
+          "position" : {
+            "scale" : 2.1,
+            "translation-in-points" : [
+              -10.240000000000009,
+              -12.800000000000068
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : true,
+      "layers" : [
+        {
+          "image-name" : "icon2.png",
+          "name" : "icon2",
+          "position" : {
+            "scale" : 2.06,
+            "translation-in-points" : [
+              -2.560000000000059,
+              -36.16212953780769
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : true,
+      "layers" : [
+        {
+          "image-name" : "icon3.png",
+          "name" : "icon3",
+          "position" : {
+            "scale" : 2.04,
+            "translation-in-points" : [
+              -10.240000000000009,
+              2.5599999999999454
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : true,
       "layers" : [
         {
           "glass" : false,

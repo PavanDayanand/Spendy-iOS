@@ -12,6 +12,7 @@ enum SettingsDestination: Hashable {
     case categories
     case dataBackup
     case insightCardsGallery
+    case appIcon
 }
 
 struct SettingsView: View {
@@ -96,6 +97,8 @@ struct SettingsView: View {
                     DataManagementView()
                 case .insightCardsGallery:
                     InsightCardsGalleryView()
+                case .appIcon:
+                    AppIconPickerView()
                 }
             }
             .onAppear {
@@ -347,6 +350,47 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
+
+                // App Icon Selector
+                NavigationLink(value: SettingsDestination.appIcon) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "app.badge")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 26, height: 26)
+
+                        Text("App Icon")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+
+                        Spacer()
+
+                        HStack(spacing: 8) {
+                            Image(SpendyAppIcon.current.assetImageName)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 24, height: 24)
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                )
+                            
+                            Text(SpendyAppIcon.current.title)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(SpendyColors.textTertiary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
 
                 Divider().overlay(SpendyColors.separator).padding(.leading, 52)
 
