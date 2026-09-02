@@ -2,100 +2,87 @@
 //  WeeklyBarChartCard.swift
 //  Spendy
 //
-//  Card Design: 7-Day Bar Chart with Target Average Rule Line (Inspired by Apple Health Weekly View)
-//  Features:
-//  - Subtle header label + tiny top-right unbordered glyph
-//  - Large primary value with inline "Avg." subtitle
-//  - 7 vertical bar columns with variable spend heights
-//  - Horizontal average target baseline line cutting across the bars
-//  - Bottom day letter row (T F S S M T W)
+//  Compact 7-Day Spending Bar Chart Card:
+//  - Top: SpendyIconBadge
+//  - Title & Amount
+//  - Middle: 7-Day Vertical Spending Bars with Target Rule Line
+//  - Subtitle: Clean period caption
 //
 
 import SwiftUI
 
 struct WeeklyBarChartCard: View {
-    let title: String // e.g. "Last 7 days"
-    let value: String // e.g. "₹6,201"
-    var unit: String = "Avg."
+    let title: String
+    let value: String
+    let subtitle: String
+    let dailyValues: [Double] // Expected: exactly 7 elements (Mon..Sun or Sun..Sat)
+    var averageBaseline: Double = 0.0
     var icon: String? = "chart.bar.fill"
-    var color: Color = .orange
-    
-    // 7 days normalized heights (0.0 to 1.0)
-    var barValues: [Double] = [0.45, 0.30, 0.95, 0.65, 0.40, 0.35, 0.50]
-    var dayLabels: [String] = ["T", "F", "S", "S", "M", "T", "W"]
-    var avgBaselineRatio: Double = 0.52 // Normalized height (0.0 to 1.0) of average line
+    var color: Color = .blue
     var action: (() -> Void)? = nil
     
+    private let dayLabels = ["M", "T", "W", "T", "F", "S", "S"]
+    
     var body: some View {
-        InsightCardShell(action: action, accessibilityLabel: "\(title), \(value) \(unit)") {
+        InsightCardShell(action: action, accessibilityLabel: "\(title), \(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Header: Clean label + minimal top-right glyph
-                let effectiveColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
-                HStack {
+                // 1. Top Header Row: Icon Badge
+                if let icon = icon {
+                    SpendyIconBadge(
+                        sfSymbol: icon,
+                        color: color,
+                        size: .small,
+                        style: .circle
+                    )
+                }
+                
+                Spacer().frame(height: 8)
+                
+                // 2. Title & Value
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
                     
-                    Spacer()
-                    
-                    if let icon = icon {
-                        Image(systemName: icon)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(effectiveColor)
-                    }
+                    Text(value)
+                        .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
                 }
                 
                 Spacer(minLength: 6)
                 
-                // 2. Value + Inline Avg. Label
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(value)
-                        .spendyNumberFont(size: 30, weight: .bold, tracking: -0.5)
-                        .foregroundStyle(effectiveColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                    
-                    Text(unit)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Spacer(minLength: 10)
-                
-                // 3. 7-Day Vertical Bar Chart with Horizontal Target Line
-                GeometryReader { geo in
-                    let chartHeight: CGFloat = geo.size.height - 18
-                    let baselineY = chartHeight * CGFloat(1.0 - avgBaselineRatio)
-                    
-                    ZStack(alignment: .topLeading) {
-                        // 7 Vertical Bars
-                        HStack(alignment: .bottom, spacing: 6) {
-                            ForEach(0..<min(7, barValues.count), id: \.self) { idx in
-                                let val = barValues[idx]
-                                VStack(spacing: 5) {
-                                    Spacer(minLength: 0)
-                                    
-                                    RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                        .fill(SpendyColors.cardBackgroundSecondary)
-                                        .frame(height: max(6, chartHeight * CGFloat(val)))
-                                    
-                                    Text(idx < dayLabels.count ? dayLabels[idx] : "")
-                                        .font(.system(size: 9.5, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
+                // 3. Middle: 7-Day Micro Bar Chart
+                let maxVal = max(1.0, dailyValues.max() ?? 1.0)
+                let activeColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(0..<min(7, dailyValues.count), id: \.self) { index in
+                        let val = dailyValues[index]
+                        let barHeight = max(4.0, (val / maxVal) * 24.0)
+                        let isHigh = val >= averageBaseline && averageBaseline > 0
                         
-                        // Thin Horizontal Baseline Rule Line
-                        Path { path in
-                            path.move(to: CGPoint(x: 0, y: baselineY))
-                            path.addLine(to: CGPoint(x: geo.size.width, y: baselineY))
+                        VStack(spacing: 3) {
+                            RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                                .fill(isHigh ? activeColor : activeColor.opacity(0.35))
+                                .frame(height: barHeight)
+                            
+                            Text(index < dayLabels.count ? dayLabels[index] : "")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundStyle(SpendyColors.textTertiary)
                         }
-                        .stroke(effectiveColor, lineWidth: 1.5)
+                        .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(height: 58)
+                .frame(height: 34)
+                
+                Spacer(minLength: 6)
+                
+                // 4. Subtitle
+                Text(subtitle)
+                    .font(.system(size: 11.5, weight: .regular))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .lineLimit(1)
             }
         }
     }
@@ -107,22 +94,21 @@ struct WeeklyBarChartCard: View {
         
         HStack(spacing: 12) {
             WeeklyBarChartCard(
-                title: "Last 7 days",
-                value: "₹6,201",
-                unit: "Avg.",
-                icon: "chart.bar.fill",
+                title: "Dining Out",
+                value: "₹3,450",
+                subtitle: "7-day average pace",
+                dailyValues: [200, 450, 0, 800, 1200, 600, 200],
+                averageBaseline: 492,
                 color: .orange
             )
             
             WeeklyBarChartCard(
-                title: "Dining Spend",
-                value: "₹1,450",
-                unit: "Avg.",
-                icon: "fork.knife",
-                color: .purple,
-                barValues: [0.2, 0.4, 0.8, 1.0, 0.3, 0.2, 0.5],
-                dayLabels: ["S", "M", "T", "W", "T", "F", "S"],
-                avgBaselineRatio: 0.45
+                title: "Fuel",
+                value: "₹2,100",
+                subtitle: "Weekly fuel expenditure",
+                dailyValues: [0, 1000, 0, 0, 1100, 0, 0],
+                averageBaseline: 300,
+                color: .blue
             )
         }
         .padding(16)

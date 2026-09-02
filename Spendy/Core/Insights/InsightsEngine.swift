@@ -763,11 +763,11 @@ struct InsightsEngine {
                             id: "savings_win_\(cat.id)",
                             title: cat.label,
                             icon: cat.sfSymbol,
-                            color: Color(hex: "#30D158"),
+                            color: Color(hex: cat.colorHex),
                             value: formattedVal,
-                            subtitle: "Saved \(currencySymbol)\(Int(saved)) vs last month · Great progress!",
-                            tagText: "\(Int(pctChange))%",
-                            tagColor: Color(hex: "#30D158"),
+                            subtitle: "Saved \(currencySymbol)\(Int(saved)) vs last month • Great progress!",
+                            tagText: nil,
+                            tagColor: nil,
                             categoryId: cat.id,
                             family: "savings"
                         )
@@ -782,8 +782,8 @@ struct InsightsEngine {
                             color: Color(hex: cat.colorHex),
                             value: formattedVal,
                             subtitle: "+\(currencySymbol)\(Int(diff)) higher than last month",
-                            tagText: "+\(Int(pctChange))%",
-                            tagColor: Color(hex: "#FF9500"),
+                            tagText: nil,
+                            tagColor: nil,
                             categoryId: cat.id,
                             family: "surge"
                         )
@@ -933,9 +933,8 @@ struct InsightsEngine {
             return (cat, data.total, data.count)
         }.sorted(by: { $0.1 > $1.1 })
         
-        for (index, item) in sortedCats.enumerated() {
+        for (_, item) in sortedCats.enumerated() {
             let catPct = currentTotal > 0 ? Int((item.1 / currentTotal) * 100) : 0
-            let isTop1 = index == 0
             candidateCards.append(
                 InsightCardViewModel(
                     id: "top_cat_\(item.0.id)",
@@ -944,8 +943,8 @@ struct InsightsEngine {
                     color: Color(hex: item.0.colorHex),
                     value: hideBalance ? "••••" : item.1.formattedCurrency(symbol: currencySymbol, decimals: 0),
                     subtitle: "\(item.2) \(item.2 == 1 ? "expense" : "expenses") · \(catPct)% of spend",
-                    tagText: isTop1 ? "Top Spend" : "\(catPct)%",
-                    tagColor: Color(hex: item.0.colorHex),
+                    tagText: nil,
+                    tagColor: nil,
                     categoryId: item.0.id,
                     family: "category"
                 )

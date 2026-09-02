@@ -55,19 +55,20 @@ struct SpotlightBarCard: View {
                 HStack(alignment: .bottom, spacing: 6) {
                     ForEach(0..<7, id: \.self) { index in
                         let isPeak = index == peakDayIndex
+                        let effectiveColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : accentColor
                         VStack(spacing: 6) {
                             if isPeak {
                                 // Glowing Spotlight Pill Bar
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.white, Color(white: 0.7)],
+                                            colors: [effectiveColor, effectiveColor.opacity(0.7)],
                                             startPoint: .top,
                                             endPoint: .bottom
                                         )
                                     )
                                     .frame(height: 38)
-                                    .shadow(color: Color.white.opacity(0.2), radius: 4)
+                                    .shadow(color: effectiveColor.opacity(0.2), radius: 4)
                             } else {
                                 // Muted Horizontal Dash Marker
                                 RoundedRectangle(cornerRadius: 1.5, style: .continuous)
@@ -103,7 +104,8 @@ struct SpotlightBarCard: View {
             SpotlightBarCard(
                 title: "Peak Weekend",
                 peakDayName: "Saturday",
-                peakDayIndex: 6
+                peakDayIndex: 6,
+                accentColor: .purple
             )
         }
         .padding(16)

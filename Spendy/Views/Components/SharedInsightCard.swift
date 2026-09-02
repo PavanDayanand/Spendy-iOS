@@ -2,8 +2,12 @@
 //  SharedInsightCard.swift
 //  Spendy
 //
-//  Standardized Reusable Rectangle Insight Card Component.
-//  Matching Home Page Dashboard 2-Card Dimensions (Corner Radius: 24pt, Padding: 18pt).
+//  Standardized Reusable Modern Insight Card Component.
+//  Matching Screenshot Architecture:
+//  - Top: SpendyIconBadge + Tag Chip
+//  - Middle: Eyebrow + Bold Title + Custom Middle Content
+//  - Hairline Divider
+//  - Bottom: Large Monospaced Spend Value + Subtitle + Action Chevron
 //
 
 import SwiftUI
@@ -14,6 +18,7 @@ struct SharedInsightCard<MiddleContent: View>: View {
     let subtitle: String
     let icon: String
     let color: Color
+    var eyebrow: String = "INSIGHT"
     var tagText: String? = nil
     var tagColor: Color? = nil
     var action: (() -> Void)? = nil
@@ -25,6 +30,7 @@ struct SharedInsightCard<MiddleContent: View>: View {
         subtitle: String,
         icon: String,
         color: Color,
+        eyebrow: String = "INSIGHT",
         tagText: String? = nil,
         tagColor: Color? = nil,
         action: (() -> Void)? = nil,
@@ -35,6 +41,7 @@ struct SharedInsightCard<MiddleContent: View>: View {
         self.subtitle = subtitle
         self.icon = icon
         self.color = color
+        self.eyebrow = eyebrow
         self.tagText = tagText
         self.tagColor = tagColor
         self.action = action
@@ -42,84 +49,97 @@ struct SharedInsightCard<MiddleContent: View>: View {
     }
     
     var body: some View {
-        Button(action: {
-            if let action = action {
-                HapticsManager.shared.trigger(.selection)
-                action()
-            }
-        }) {
+        InsightCardShell(action: action, accessibilityLabel: "\(title), \(tagText != nil ? "\(tagText!), " : "")\(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // Top Header Row: Icon Badge (Top-Left, NO progress ring!) + Optional Tag
-                HStack(alignment: .top, spacing: 4) {
+                // 1. Top Header Row: Icon Badge (Left) + Tag (Right)
+                HStack(alignment: .center) {
                     SpendyIconBadge(
                         sfSymbol: icon,
                         color: color,
-                        size: .medium,
+                        size: .small,
                         style: .circle
                     )
                     
-                    Spacer(minLength: 2)
+                    Spacer(minLength: 4)
                     
-                    if let tagText = tagText {
+                    if let tagText = tagText, !tagText.isEmpty {
                         let effectiveTagColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (tagColor ?? color)
                         Text(tagText)
-                            .font(.system(size: 9.5, weight: .bold))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(effectiveTagColor)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(
                                 Capsule()
                                     .fill(effectiveTagColor.opacity(SpendyColors.isMonoMode ? 0.12 : 0.15))
                             )
+                            .overlay(
+                                Capsule()
+                                    .stroke(effectiveTagColor.opacity(0.25), lineWidth: 0.8)
+                            )
                             .lineLimit(1)
                     }
                 }
-                .padding(.bottom, 8)
                 
-                // Name / Title directly below icon
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .default))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.80)
+                Spacer().frame(height: 8)
                 
-                // Optional Middle Custom Visualizer Content or Gap
+                // 2. Eyebrow + Hero Title
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(eyebrow.uppercased())
+                        .font(.system(size: 9.5, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundStyle(SpendyColors.textTertiary)
+                        .lineLimit(1)
+                    
+                    Text(title)
+                        .font(.system(size: 16.5, weight: .bold, design: .default))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                
+                // 3. Middle Custom Content
                 let middle = middleContent()
                 if !(middle is EmptyView) {
                     middle
-                        .padding(.top, 6)
+                        .padding(.top, 4)
                 }
                 
-                Spacer(minLength: 12)
+                Spacer(minLength: 8)
                 
-                // Bottom Area: Amount Text & Subtext underneath
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(value)
-                        .spendyNumberFont(size: 19, weight: .bold)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.70)
-                    
-                    Text(subtitle)
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.80)
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 175, maxHeight: 175, alignment: .topLeading)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                // 4. Hairline Divider
+                Rectangle()
+                    .fill(SpendyColors.separator)
+                    .frame(height: 0.8)
+                    .padding(.bottom, 8)
+                
+                // 5. Bottom Footer Row: Value (Left) + Chevron (Right)
+                HStack(alignment: .bottom, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1.5) {
+                        if !value.isEmpty {
+                            Text(value)
+                                .spendyNumberFont(size: 18.5, weight: .bold, tracking: -0.4)
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        
+                        Text(subtitle)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.80)
                     }
+                    
+                    Spacer(minLength: 4)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary.opacity(0.6))
+                        .padding(.bottom, 3)
+                }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .buttonStyle(SharedCardButtonStyle(isEnabled: action != nil))
     }
 }
 
@@ -131,6 +151,7 @@ extension SharedInsightCard where MiddleContent == EmptyView {
         subtitle: String,
         icon: String,
         color: Color,
+        eyebrow: String = "INSIGHT",
         tagText: String? = nil,
         tagColor: Color? = nil,
         action: (() -> Void)? = nil
@@ -141,6 +162,7 @@ extension SharedInsightCard where MiddleContent == EmptyView {
             subtitle: subtitle,
             icon: icon,
             color: color,
+            eyebrow: eyebrow,
             tagText: tagText,
             tagColor: tagColor,
             action: action,
@@ -149,31 +171,19 @@ extension SharedInsightCard where MiddleContent == EmptyView {
     }
 }
 
-// MARK: - Interactive Button Style for Shared Cards
-private struct SharedCardButtonStyle: ButtonStyle {
-    let isEnabled: Bool
-    
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && isEnabled ? 0.97 : 1.0)
-            .opacity(configuration.isPressed && isEnabled ? 0.9 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.75), value: configuration.isPressed)
-    }
-}
-
 #Preview {
     ZStack {
-        LiquidMeshBackground()
+        SpendyColors.appBackground.ignoresSafeArea()
         
         VStack(spacing: 20) {
-            // 2-Column Grid Preview (Standard Home Dashboard Placement)
             HStack(spacing: 14) {
                 SharedInsightCard(
                     title: "Public Transport",
                     value: "₹3,168",
                     subtitle: "14 expenses this month",
-                    icon: "bus.fill",
+                    icon: "tram.fill",
                     color: .blue,
+                    eyebrow: "COMMUTE",
                     tagText: "+12%"
                 )
                 
@@ -182,22 +192,13 @@ private struct SharedCardButtonStyle: ButtonStyle {
                     value: "₹852",
                     subtitle: "Under monthly budget limit",
                     icon: "cart.fill",
-                    color: .green
+                    color: .green,
+                    eyebrow: "LIVING",
+                    tagText: "On Track"
                 )
             }
-            
-            // Full Width Single Card Preview
-            SharedInsightCard(
-                title: "Smart Insight",
-                value: "High Dining Expense",
-                subtitle: "You spent 35% more on Restaurants this week compared to last week.",
-                icon: "fork.knife",
-                color: .orange,
-                tagText: "Alert",
-                tagColor: .orange
-            )
         }
-        .padding(20)
+        .padding(16)
     }
     .preferredColorScheme(.dark)
 }

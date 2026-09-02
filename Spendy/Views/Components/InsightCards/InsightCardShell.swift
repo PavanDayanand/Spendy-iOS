@@ -3,11 +3,10 @@
 //  Spendy
 //
 //  Unified polymorphic card container enforcing:
-//  - Strictly standardized dimensions: Fixed 170pt height, flexible width in 2-column grid
-//  - Corner radius: 24pt continuous Apple squircle
-//  - Subtle 0.8pt border and adaptive dark/light surfaces
-//  - Spring press animation & haptic feedback
-//  - 44×44pt minimum touch target and accessible content shape
+//  - Clean solid matte card finish matching modern minimalist aesthetic
+//  - Strictly standardized compact dimensions (Height: 170pt, flexible width in grid or 170pt in carousel)
+//  - Corner radius: 20pt continuous Apple squircle with 0.8pt hairline stroke
+//  - Spring press animation & haptic feedback on tap
 //
 
 import SwiftUI
@@ -27,17 +26,17 @@ struct InsightCardShell<Content: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 content()
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 188, maxHeight: 188, alignment: .topLeading)
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 170, maxHeight: 170, alignment: .topLeading)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(SpendyColors.cardBackground)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(InsightCardPressStyle(isEnabled: action != nil))
         .accessibilityElement(children: .combine)
@@ -51,8 +50,8 @@ private struct InsightCardPressStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && isEnabled ? 0.97 : 1.0)
-            .opacity(configuration.isPressed && isEnabled ? 0.92 : 1.0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.75), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.975 : 1.0)
+            .opacity(configuration.isPressed && isEnabled ? 0.90 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.72), value: configuration.isPressed)
     }
 }

@@ -630,7 +630,7 @@ struct DashboardView: View {
                 peakDayIndex: peakIdx,
                 action: cardAction
             )
-            .frame(width: 175)
+            .frame(width: 170)
         } else {
             CategoryCard(
                 title: insight.title,
@@ -642,7 +642,7 @@ struct DashboardView: View {
                 tagColor: insight.tagColor,
                 action: cardAction
             )
-            .frame(width: 175)
+            .frame(width: 170)
         }
     }
     

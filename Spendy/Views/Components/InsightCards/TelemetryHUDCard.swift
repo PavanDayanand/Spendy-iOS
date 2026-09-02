@@ -2,11 +2,11 @@
 //  TelemetryHUDCard.swift
 //  Spendy
 //
-//  Archetype 2: Daily Burn Rate & Pacing Card
-//  Features:
-//  - Clean header: Icon + Title (or pure text title)
-//  - Large bold burn rate figure with monospaced unit
-//  - Clean, elegant bottom runway text (NO capsule buttons or safe badges)
+//  Redesigned Daily Burn Rate & Pacing Card matching Screenshot Architecture:
+//  - Top: Icon badge + Tag chip
+//  - Middle: Eyebrow + Title + Velocity Rate
+//  - Hairline Divider
+//  - Bottom: Main Metric + Runway Subtitle + Action Chevron
 //
 
 import SwiftUI
@@ -23,8 +23,9 @@ struct TelemetryHUDCard: View {
     var body: some View {
         InsightCardShell(action: action, accessibilityLabel: "\(title), \(value) \(unit), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Top Row: Optional Icon badge + Section Title
-                HStack(spacing: 8) {
+                // 1. Top Header Row
+                let effectiveColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : color
+                HStack(alignment: .center) {
                     if let icon = icon {
                         SpendyIconBadge(
                             sfSymbol: icon,
@@ -34,39 +35,73 @@ struct TelemetryHUDCard: View {
                         )
                     }
                     
-                    Text(title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                    Spacer(minLength: 4)
                     
-                    Spacer(minLength: 0)
+                    Text("Velocity")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(effectiveColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(effectiveColor.opacity(0.12))
+                        )
+                        .overlay(
+                            Capsule().stroke(effectiveColor.opacity(0.25), lineWidth: 0.8)
+                        )
                 }
                 
-                Spacer(minLength: 12)
+                Spacer().frame(height: 8)
                 
-                // 2. Middle: Large Burn Rate Amount + Unit
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(value)
-                        .spendyNumberFont(size: 28, weight: .heavy, tracking: -0.5)
+                // 2. Eyebrow + Title
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SPENDING VELOCITY")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundStyle(SpendyColors.textTertiary)
+                    
+                    Text(title)
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                }
+                
+                Spacer(minLength: 8)
+                
+                // 3. Middle: Rate Figure
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(value)
+                        .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.4)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
                     
                     Text(unit)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
                 }
                 
-                Spacer(minLength: 14)
+                Spacer(minLength: 10)
                 
-                // 3. Bottom: Clean Text Runway (No pill badges)
-                Text(subtitle)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                // 4. Hairline Divider
+                Rectangle()
+                    .fill(SpendyColors.separator)
+                    .frame(height: 0.8)
+                    .padding(.bottom, 8)
+                
+                // 5. Bottom Footer Row
+                HStack(alignment: .bottom, spacing: 6) {
+                    Text(subtitle)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Spacer(minLength: 4)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary.opacity(0.6))
+                        .padding(.bottom, 2)
+                }
             }
         }
     }
@@ -81,7 +116,7 @@ struct TelemetryHUDCard: View {
                 title: "Daily Burn",
                 value: "₹450",
                 unit: "/day",
-                subtitle: "18 days left · Safe pace",
+                subtitle: "18 days left • Safe pace",
                 icon: "gauge.with.dots.needle.bottom.50percent",
                 color: .green
             )
@@ -90,7 +125,7 @@ struct TelemetryHUDCard: View {
                 title: "Spending Velocity",
                 value: "₹1,240",
                 unit: "/day",
-                subtitle: "Higher than your ₹800 daily target",
+                subtitle: "Pacing above target",
                 icon: "speedometer",
                 color: .orange
             )

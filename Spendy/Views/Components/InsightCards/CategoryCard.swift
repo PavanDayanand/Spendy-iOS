@@ -2,13 +2,11 @@
 //  CategoryCard.swift
 //  Spendy
 //
-//  Dedicated Category Widget Card (Unified Curated Design)
-//  Features:
-//  - Standard 188pt height with InsightCardShell (24pt squircle radius)
-//  - Top: 42×42pt solid vibrant circular icon badge with soft glow
-//  - Just below icon: Category Name (Semibold)
-//  - Open middle spacing
-//  - Bottom: Formatted spend amount + 2-line wrapped subtitle
+//  Compact Solid Minimal Insight Card:
+//  - Top: Colored Category Icon Badge (SpendyIconBadge)
+//  - Title: Bold Category Name
+//  - Value: Formatted Spend Amount (Monospaced Bold)
+//  - Subtitle: Full multi-line insight description without truncation
 //
 
 import SwiftUI
@@ -24,64 +22,42 @@ struct CategoryCard: View {
     var action: (() -> Void)? = nil
     
     var body: some View {
-        InsightCardShell(action: action, accessibilityLabel: "\(title), \(tagText != nil ? "\(tagText!), " : "")\(value), \(subtitle)") {
+        InsightCardShell(action: action, accessibilityLabel: "\(title), \(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Top: Circular Icon Badge with Subtle Glow + Optional Tag Pill
-                HStack(alignment: .top) {
-                    SpendyIconBadge(
-                        sfSymbol: icon,
-                        color: color,
-                        size: .medium,
-                        style: .circle
-                    )
-                    
-                    Spacer(minLength: 4)
-                    
-                    if let tag = tagText, !tag.isEmpty {
-                        let effectiveTagColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (tagColor ?? color)
-                        Text(tag)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(effectiveTagColor)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3.5)
-                            .background(
-                                Capsule()
-                                    .fill(effectiveTagColor.opacity(SpendyColors.isMonoMode ? 0.12 : 0.15))
-                            )
-                            .lineLimit(1)
-                    }
-                }
+                // 1. Top Row: Circular Category Icon Badge
+                SpendyIconBadge(
+                    sfSymbol: icon,
+                    color: color,
+                    size: .small,
+                    style: .circle
+                )
                 
                 Spacer().frame(height: 10)
                 
-                // 2. Just below icon: Category Name
-                Text(title)
-                    .font(.system(size: 15.5, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                
-                // 3. Middle: Open Space
-                Spacer(minLength: 12)
-                
-                // 4. Bottom: Spend Amount + 2-Line Subtitle
-                VStack(alignment: .leading, spacing: 2.5) {
+                // 2. Title & Value
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15.5, weight: .bold, design: .default))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                    
                     if !value.isEmpty {
                         Text(value)
-                            .spendyNumberFont(size: 20, weight: .bold, tracking: -0.4)
+                            .spendyNumberFont(size: 18, weight: .bold, tracking: -0.4)
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.75)
                     }
-                    
-                    Text(subtitle)
-                        .font(.system(size: 11.5, weight: .regular))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .minimumScaleFactor(0.80)
                 }
-                .padding(.bottom, 2)
+                
+                Spacer(minLength: 6)
+                
+                // 3. Full Insight Message (Multi-line, no cutoff)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .lineSpacing(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -93,23 +69,22 @@ struct CategoryCard: View {
         
         HStack(spacing: 12) {
             CategoryCard(
-                title: "Subscriptions",
-                value: "₹17,782",
-                subtitle: "4 active · Monthly committed",
-                icon: "repeat.circle.fill",
-                color: .purple
+                title: "Restaurants",
+                value: "₹240",
+                subtitle: "Saved ₹2,342 vs last month • Great progress on dining out!",
+                icon: "fork.knife",
+                color: Color(hex: "#FF9F0A")
             )
             
             CategoryCard(
-                title: "Food delivery",
-                value: "$21,144",
-                subtitle: "3 expenses this month",
-                icon: "pizza.fill",
-                color: .orange
+                title: "Food Delivery",
+                value: "₹340",
+                subtitle: "Saved ₹789 vs last month • 2 orders logged",
+                icon: "bag.badge.plus",
+                color: Color(hex: "#FF6482")
             )
         }
         .padding(16)
     }
     .preferredColorScheme(.dark)
 }
-

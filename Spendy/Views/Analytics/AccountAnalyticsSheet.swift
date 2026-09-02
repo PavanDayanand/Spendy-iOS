@@ -166,6 +166,9 @@ struct AccountAnalyticsSheet: View {
                         if !allAccountTransactions.isEmpty {
                             cashFlowBentoHub
                                 .padding(.horizontal, 16)
+                            
+                            accountInsightsCarousel
+                                .padding(.top, 2)
                         }
                         
                         // 4. Date-Grouped Account Activity List
@@ -547,6 +550,108 @@ struct AccountAnalyticsSheet: View {
         }
     }
     
+    // MARK: - 4.5. Analytics Smart Insights Carousel (Bar Charts, Dot Matrix, Peak Day, Trend)
+    private var dailyAverageSpent: Double {
+        totalOutflow / Double(max(1, daysInSelectedPeriod))
+    }
+
+    private var topSpendingWeekday: (name: String, dayIndex: Int) {
+        let calendar = Calendar.current
+        var weekdayTotals: [Int: Double] = [:]
+        for tx in filteredTransactions where tx.type == .expense {
+            let wd = calendar.component(.weekday, from: tx.date) - 1 // 0 = Sun .. 6 = Sat
+            weekdayTotals[wd, default: 0] += tx.amount
+        }
+        let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        if let maxEntry = weekdayTotals.max(by: { $0.value < $1.value }) {
+            let idx = max(0, min(6, maxEntry.key))
+            return (dayNames[idx], idx)
+        }
+        return ("Sunday", 0)
+    }
+
+    private var activeDaysCount: Int {
+        let calendar = Calendar.current
+        let uniqueDays = Set(filteredTransactions.map { calendar.startOfDay(for: $0.date) })
+        return uniqueDays.count
+    }
+
+    private var past7DaysValues: [Double] {
+        let calendar = Calendar.current
+        let now = Date()
+        var values: [Double] = []
+        for i in (0..<7).reversed() {
+            guard let targetDate = calendar.date(byAdding: .day, value: -i, to: now) else {
+                values.append(0.0)
+                continue
+            }
+            let dayStart = calendar.startOfDay(for: targetDate)
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            let dayTotal = filteredTransactions
+                .filter { $0.type == .expense && $0.date >= dayStart && $0.date < dayEnd }
+                .reduce(0) { $0 + $1.amount }
+            values.append(dayTotal)
+        }
+        return values
+    }
+
+    private var accountInsightsCarousel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Smart Insights")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .padding(.horizontal, 20)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    // 1. Peak Activity Weekday Spotlight Card
+                    SpotlightBarCard(
+                        title: "Peak Day",
+                        peakDayName: topSpendingWeekday.name,
+                        peakDayIndex: topSpendingWeekday.dayIndex,
+                        accentColor: themeColor
+                    )
+                    .frame(width: 170)
+                    
+                    // 2. 3x10 Activity Dot Matrix
+                    DotMatrixCard(
+                        title: "Activity",
+                        streakCount: activeDaysCount,
+                        streakUnit: "\(activeDaysCount) active \(activeDaysCount == 1 ? "day" : "days")",
+                        icon: "flame.fill",
+                        color: themeColor,
+                        totalDays: daysInSelectedPeriod,
+                        activeDays: activeDaysCount
+                    )
+                    .frame(width: 170)
+                    
+                    // 3. 7-Day Outflow Bar Chart
+                    WeeklyBarChartCard(
+                        title: "7-Day Outflow",
+                        value: past7DaysValues.reduce(0, +).formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        subtitle: "7-day total spending",
+                        dailyValues: past7DaysValues,
+                        averageBaseline: dailyAverageSpent,
+                        color: themeColor
+                    )
+                    .frame(width: 170)
+                    
+                    // 4. Daily Outflow Burn Rate Card
+                    TelemetryHUDCard(
+                        title: "Daily Outflow",
+                        value: dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        unit: "/day",
+                        subtitle: "Average account burn rate",
+                        icon: "gauge.with.dots.needle.bottom.50percent",
+                        color: themeColor
+                    )
+                    .frame(width: 170)
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
     // MARK: - 5. Date-Grouped Recent Activity Section (Title Case)
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {

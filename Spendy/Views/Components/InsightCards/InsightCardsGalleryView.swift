@@ -61,13 +61,12 @@ struct InsightCardsGalleryView: View {
                         // 2. 7-Day Vertical Bar Chart with Target Baseline Line
                         WeeklyBarChartCard(
                             title: "Last 7 days",
-                            value: "6,201",
-                            unit: "Avg.",
+                            value: "₹6,201",
+                            subtitle: "7-day average pace",
+                            dailyValues: [450, 300, 950, 650, 400, 350, 500],
+                            averageBaseline: 520,
                             icon: "chart.bar.fill",
-                            color: .orange,
-                            barValues: [0.45, 0.30, 0.95, 0.65, 0.40, 0.35, 0.50],
-                            dayLabels: ["T", "F", "S", "S", "M", "T", "W"],
-                            avgBaselineRatio: 0.52
+                            color: .orange
                         ) {
                             lastTappedCard = "7-Day Bar Chart"
                         }
