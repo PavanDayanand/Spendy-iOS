@@ -89,63 +89,67 @@ struct LiveBudgetJourneyCard: View {
     // MARK: - Body
     
     var body: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            onViewDetails()
-        }) {
-            VStack(alignment: .leading, spacing: 12) {
-                // 1. Top Row: Status Headline + Days Remaining (Clean White & Secondary)
-                HStack(alignment: .center) {
-                    Text(statusHeadline)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    if isBudgetActive {
+        if !isBudgetActive {
+            SpendyEmptyCardView(
+                message: "Add a few more transactions so we can suggest a more accurate category limit.",
+                actionTitle: "Set budget limit",
+                isEnclosedInCard: true
+            ) {
+                onViewDetails()
+            }
+        } else {
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                onViewDetails()
+            }) {
+                VStack(alignment: .leading, spacing: 12) {
+                    // 1. Top Row: Status Headline + Days Remaining (Clean White & Secondary)
+                    HStack(alignment: .center) {
+                        Text(statusHeadline)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Spacer()
+                        
                         let daysLeft = store.budgetDaysLeft
                         Text("\(daysLeft) \(daysLeft == 1 ? "day" : "days") left")
                             .font(.system(size: 12.5, weight: .medium, design: .rounded))
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
-                }
-                
-                // 2. Center: 1-Split Segmented Progress Track (80% Safe Zone + 20% Buffer Zone)
-                if isBudgetActive {
+                    
+                    // 2. Center: 1-Split Segmented Progress Track (80% Safe Zone + 20% Buffer Zone)
                     segmentedProgressTrack
-                }
-                
-                // 3. Bottom Row: Big Daily Allowance + Remaining Balance
-                HStack(alignment: .firstTextBaseline) {
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text(allowanceFormatted)
-                            .spendyNumberFont(size: 21, weight: .bold, tracking: -0.5)
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        if isBudgetActive {
+                    
+                    // 3. Bottom Row: Big Daily Allowance + Remaining Balance
+                    HStack(alignment: .firstTextBaseline) {
+                        HStack(alignment: .firstTextBaseline, spacing: 3) {
+                            Text(allowanceFormatted)
+                                .spendyNumberFont(size: 21, weight: .bold, tracking: -0.5)
+                                .foregroundStyle(SpendyColors.textPrimary)
+                            
                             Text("/day")
                                 .font(.system(size: 13.5, weight: .medium, design: .rounded))
                                 .foregroundStyle(SpendyColors.textSecondary)
                         }
+                        
+                        Spacer()
+                        
+                        Text(remainingSubtitle)
+                            .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(SpendyColors.textSecondary)
                     }
-                    
-                    Spacer()
-                    
-                    Text(remainingSubtitle)
-                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background {
+                    cardGlassBackground
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .background {
-                cardGlassBackground
-            }
+            .buttonStyle(LiveCardButtonStyle())
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("\(statusHeadline), \(allowanceFormatted) per day, \(remainingSubtitle)")
         }
-        .buttonStyle(LiveCardButtonStyle())
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(statusHeadline), \(allowanceFormatted) per day, \(remainingSubtitle)")
     }
     
     // MARK: - Segmented Progress Track (1 Split with physical gap)

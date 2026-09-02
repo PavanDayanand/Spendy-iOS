@@ -38,7 +38,8 @@ struct AccountCardRow: View {
                                         sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                                         color: account.color,
                                         size: .small,
-                                        style: .circle
+                                        style: .circle,
+                                        showCutoutBorder: false
                                     )
                                     
                                     Spacer()
@@ -46,12 +47,12 @@ struct AccountCardRow: View {
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(account.label)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textSecondary)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(SpendyColors.textPrimary)
                                         .lineLimit(1)
                                     
                                     Text(balance.formattedCurrency(symbol: store.currencySymbol))
-                                        .font(.system(size: 16, weight: .bold))
+                                        .spendyNumberFont(size: 15.5, weight: .bold, tracking: -0.3)
                                         .foregroundStyle(SpendyColors.textPrimary)
                                 }
                             }

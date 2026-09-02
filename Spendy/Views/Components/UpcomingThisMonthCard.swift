@@ -2,19 +2,19 @@
 //  UpcomingThisMonthCard.swift
 //  Spendy
 //
-//  Subscription reminder card showing upcoming expenses & income for the current month.
-//  Collects real subscription icons into overlapping badge clusters.
+//  Minimal, Authentic Apple HIG Upcoming Subscriptions & Bills Card.
+//  Presents real upcoming commitments with clean typography, due dates,
+//  and compact layout with zero clutter.
 //
 
 import SwiftUI
-
-// MARK: - Upcoming This Month Card
 
 struct UpcomingThisMonthCard: View {
     @Environment(ExpenseStore.self) private var store
     
     /// Only show this card when there are upcoming subscriptions this month
     var showOnlyWhenRelevant: Bool = true
+    var onOpenSubscriptions: (() -> Void)? = nil
     
     // MARK: - Computed Data
     
@@ -37,266 +37,130 @@ struct UpcomingThisMonthCard: View {
         upcomingExpenseSubs.reduce(0) { $0 + $1.amount }
     }
     
-    private var currentMonthIncomeTxs: [Transaction] {
-        let calendar = Calendar.current
-        let now = Date()
-        return store.transactions.filter {
-            $0.type == .income &&
-            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
-            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
-        }
-    }
-    
-    private var incomeTotal: Double {
-        currentMonthIncomeTxs.reduce(0) { $0 + $1.amount }
-    }
-    
-    /// Unique income category icons for the badge cluster
-    private var incomeIconInfos: [(icon: String, color: Color)] {
-        var seen = Set<String>()
-        var results: [(icon: String, color: Color)] = []
-        for tx in currentMonthIncomeTxs {
-            guard !seen.contains(tx.categoryId) else { continue }
-            seen.insert(tx.categoryId)
-            let cat = store.categories.first(where: { $0.id == tx.categoryId })
-            let icon = cat?.sfSymbol ?? "dollarsign.circle.fill"
-            let color = Color(hex: cat?.colorHex ?? "#30D158")
-            results.append((icon, color))
-            if results.count >= 3 { break }
-        }
-        return results
-    }
-    
     private var shouldShow: Bool {
         if !showOnlyWhenRelevant { return true }
-        return !upcomingExpenseSubs.isEmpty || !currentMonthIncomeTxs.isEmpty
+        return !upcomingExpenseSubs.isEmpty
     }
     
     // MARK: - Body
     
     var body: some View {
         if shouldShow {
-            VStack(alignment: .leading, spacing: 14) {
-                // Card Title
-                Text("Upcoming this month")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                // Two Sub-Cards Side by Side
-                HStack(spacing: 10) {
-                    // Expenses Sub-Card
-                    expensesSubCard
+            VStack(alignment: .leading, spacing: 10) {
+                // MARK: - Section Header
+                HStack(alignment: .center) {
+                    Text("Upcoming")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                     
-                    // Income Sub-Card
-                    incomeSubCard
-                }
-            }
-            .padding(18)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    Spacer()
+                    
+                    if !upcomingExpenseSubs.isEmpty {
+                        HStack(spacing: 4) {
+                            Text(upcomingExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                .spendyNumberFont(size: 13, weight: .bold, tracking: -0.3)
+                            
+                            Text("due")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(SpendyColors.cardBackgroundSecondary)
+                        }
                     }
+                }
+                
+                // MARK: - Grouped Card Container
+                VStack(spacing: 0) {
+                    if upcomingExpenseSubs.isEmpty {
+                        emptyUpcomingView
+                    } else {
+                        ForEach(Array(upcomingExpenseSubs.prefix(3).enumerated()), id: \.element.id) { index, sub in
+                            subscriptionUpcomingRow(sub: sub)
+                            
+                            if index < min(upcomingExpenseSubs.count, 3) - 1 {
+                                Rectangle()
+                                    .fill(SpendyColors.separator.opacity(0.5))
+                                    .frame(height: 0.5)
+                                    .padding(.leading, 56)
+                                    .padding(.trailing, 16)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+                .background {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(SpendyColors.cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        }
+                }
             }
         }
     }
     
-    // MARK: - Expenses Sub-Card
-    
-    private var expensesSubCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Overlapping Subscription Icon Badges
-            if !upcomingExpenseSubs.isEmpty {
-                OverlappingBadgeCluster(
-                    items: upcomingExpenseSubs.prefix(4).map { sub in
-                        BadgeItem(icon: sub.sfSymbol, color: sub.color)
-                    }
-                )
-            } else {
-                // Empty state placeholder
-                ZStack {
-                    Circle()
-                        .fill(SpendyColors.cardBackgroundSecondary)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: SFIcons.subscriptions)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
+    // MARK: - Subscription Upcoming Row
+    private func subscriptionUpcomingRow(sub: Subscription) -> some View {
+        let calendar = Calendar.current
+        let startToday = calendar.startOfDay(for: Date())
+        let startBilling = calendar.startOfDay(for: sub.nextBillingDate)
+        let daysRemaining = calendar.dateComponents([.day], from: startToday, to: startBilling).day ?? 0
+        
+        let dueText: String = {
+            if daysRemaining == 0 { return "Due today" }
+            if daysRemaining == 1 { return "Due tomorrow" }
+            return "Due in \(daysRemaining) days"
+        }()
+        
+        return HStack(spacing: 12) {
+            // Subscription Icon Badge
+            SpendyIconBadge(
+                sfSymbol: sub.sfSymbol.isEmpty ? SFIcons.subscriptions : sub.sfSymbol,
+                color: sub.color,
+                size: .small,
+                style: .circle,
+                showCutoutBorder: false
+            )
             
-            Text("Expenses")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(upcomingExpenseTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.7)
+            // Name & Due Date
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sub.name)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
                 
-                Text("\(upcomingExpenseSubs.count) \(upcomingExpenseSubs.count == 1 ? "transaction" : "transactions")")
+                Text(dueText)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.6)
-                }
-        }
-    }
-    
-    // MARK: - Income Sub-Card
-    
-    private var incomeSubCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Overlapping Income Category Icon Badges
-            if !incomeIconInfos.isEmpty {
-                OverlappingBadgeCluster(
-                    items: incomeIconInfos.map { info in
-                        BadgeItem(icon: info.icon, color: info.color)
-                    }
-                )
-            } else {
-                // Empty state placeholder
-                ZStack {
-                    Circle()
-                        .fill(SpendyColors.cardBackgroundSecondary)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "dollarsign.circle")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
+                    .foregroundStyle(daysRemaining <= 2 ? SpendyColors.expenseRed : SpendyColors.textSecondary)
             }
             
-            Text("Income")
-                .font(.system(size: 15, weight: .semibold))
+            Spacer()
+            
+            // Amount
+            Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
+                .spendyNumberFont(size: 15, weight: .bold, tracking: -0.3)
                 .foregroundStyle(SpendyColors.textPrimary)
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text("+\(incomeTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .spendyNumberFont(size: 22, weight: .heavy, tracking: -0.7)
-                    .foregroundStyle(SpendyColors.incomeGreen)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                
-                Text("\(currentMonthIncomeTxs.count) \(currentMonthIncomeTxs.count == 1 ? "transaction" : "transactions")")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-            }
+                .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.6)
-                }
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
     }
-}
-
-// MARK: - Badge Item Model
-
-struct BadgeItem: Identifiable {
-    let id = UUID()
-    let icon: String
-    let color: Color
-}
-
-// MARK: - Overlapping Badge Cluster
-
-/// Renders circular icon badges in a compact triangle cluster, matching the reference design.
-// MARK: - Overlapping Badge Cluster
-
-/// Renders circular icon badges in a compact cluster pattern, matching the reference design.
-struct OverlappingBadgeCluster: View {
-    let items: [BadgeItem]
-    var badgeSize: CGFloat = 34
     
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            ForEach(Array(items.prefix(5).enumerated()), id: \.element.id) { index, item in
-                singleBadge(item)
-                    .offset(x: offsetX(for: index), y: offsetY(for: index))
-                    .zIndex(Double(items.count - index))
-            }
-        }
-        .frame(
-            width: clusterWidth,
-            height: clusterHeight,
-            alignment: .topLeading
+    // MARK: - Empty State Placeholder
+    private var emptyUpcomingView: some View {
+        SpendyEmptyCardView(
+            icon: "repeat.circle",
+            iconColor: SpendyColors.vibrantPurple,
+            title: "No upcoming bills due",
+            subtitle: "All recurring subscriptions for this month are up to date",
+            actionTitle: nil,
+            isEnclosedInCard: false
         )
-    }
-    
-    private func singleBadge(_ item: BadgeItem) -> some View {
-        SpendyIconBadge(
-            sfSymbol: item.icon,
-            color: item.color,
-            size: .small,
-            style: .circle
-        )
-    }
-    
-    // MARK: - Cluster Position Logic
-    
-    private func offsetX(for index: Int) -> CGFloat {
-        switch index {
-        case 0: return 0                        // top-left
-        case 1: return badgeSize * 0.65         // top-right, overlapping
-        case 2: return badgeSize * 0.2          // bottom-left, offset slightly
-        case 3: return badgeSize * 0.85         // bottom-right
-        case 4: return badgeSize * 0.5          // center-bottom peek
-        default: return 0
-        }
-    }
-    
-    private func offsetY(for index: Int) -> CGFloat {
-        switch index {
-        case 0: return 0                        // top row
-        case 1: return 0                        // top row
-        case 2: return badgeSize * 0.6          // bottom row
-        case 3: return badgeSize * 0.6          // bottom row
-        case 4: return badgeSize * 0.8          // extra bottom peek
-        default: return 0
-        }
-    }
-    
-    private var clusterWidth: CGFloat {
-        switch items.count {
-        case 0: return 0
-        case 1: return badgeSize
-        case 2: return badgeSize * 1.65
-        case 3: return badgeSize * 1.65
-        case 4: return badgeSize * 1.85
-        default: return badgeSize * 1.85
-        }
-    }
-    
-    private var clusterHeight: CGFloat {
-        if items.count <= 2 { return badgeSize }
-        if items.count <= 4 { return badgeSize * 1.6 }
-        return badgeSize * 1.8
-    }
-}
-
-// MARK: - Animated Badge Cluster (Controlled In-Bounds Layout)
-
-struct AnimatedBadgeCluster: View {
-    let items: [BadgeItem]
-    var badgeSize: CGFloat = 28
-    
-    var body: some View {
-        OverlappingBadgeCluster(items: items, badgeSize: badgeSize)
     }
 }

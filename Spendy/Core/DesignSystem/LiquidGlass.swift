@@ -226,7 +226,11 @@ struct GlassEffectUnionModifier<ID: Hashable & Sendable>: ViewModifier {
 
 // MARK: - Native Apple Liquid Glass Toggle Style
 struct GlassToggleStyle: ToggleStyle {
-    var tintColor: Color = SpendyColors.incomeGreen
+    var tintColor: Color = SpendyColors.primaryBlue
+    
+    init(tintColor: Color = SpendyColors.primaryBlue) {
+        self.tintColor = tintColor
+    }
     
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -241,30 +245,36 @@ struct GlassToggleStyle: ToggleStyle {
                 HapticsManager.shared.trigger(.selection)
             }) {
                 ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                    // Liquid Glass Track with Specular Reflection
                     Capsule(style: .continuous)
                         .fill(configuration.isOn ? tintColor : SpendyColors.cardBackgroundSecondary)
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    configuration.isOn ? tintColor.opacity(0.3) : SpendyColors.separator,
+                                    configuration.isOn
+                                        ? LinearGradient(colors: [Color.white.opacity(0.35), tintColor.opacity(0.3)], startPoint: .top, endPoint: .bottom)
+                                        : LinearGradient(colors: [Color.white.opacity(0.12), SpendyColors.separator], startPoint: .top, endPoint: .bottom),
                                     lineWidth: 0.8
                                 )
                         }
-                        .frame(width: 50, height: 30)
-                        .shadow(color: configuration.isOn ? tintColor.opacity(0.25) : Color.black.opacity(0.10), radius: 4, y: 1.5)
+                        .frame(width: 48, height: 28)
+                        .shadow(color: configuration.isOn ? tintColor.opacity(0.30) : Color.black.opacity(0.12), radius: 5, y: 1.5)
                     
+                    // Glossy Smooth Thumb Disc
                     Circle()
                         .fill(Color.white)
                         .overlay {
                             Circle()
-                                .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                                .stroke(Color.black.opacity(0.08), lineWidth: 0.5)
                         }
-                        .frame(width: 26, height: 26)
+                        .frame(width: 24, height: 24)
                         .padding(.horizontal, 2)
-                        .shadow(color: Color.black.opacity(0.20), radius: 3, x: 0, y: 1.5)
+                        .shadow(color: Color.black.opacity(0.22), radius: 3, x: 0, y: 1.5)
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(configuration.isOn ? "On" : "Off")
         }
     }
 }

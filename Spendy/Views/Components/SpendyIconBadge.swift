@@ -19,6 +19,50 @@ extension EnvironmentValues {
     }
 }
 
+// MARK: - Shared Badge Item Model
+struct BadgeItem: Identifiable {
+    let id = UUID()
+    let icon: String
+    let color: Color
+}
+
+// MARK: - Overlapping Badge Cluster
+struct OverlappingBadgeCluster: View {
+    let items: [BadgeItem]
+    var badgeSize: CGFloat = 32
+    
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(items.prefix(5).enumerated()), id: \.element.id) { index, item in
+                singleBadge(item)
+                    .offset(x: CGFloat(index) * (badgeSize * 0.58), y: 0)
+                    .zIndex(Double(items.count - index))
+            }
+        }
+        .frame(
+            width: clusterWidth,
+            height: badgeSize,
+            alignment: .leading
+        )
+    }
+    
+    private func singleBadge(_ item: BadgeItem) -> some View {
+        SpendyIconBadge(
+            sfSymbol: item.icon,
+            color: item.color,
+            size: .small,
+            style: .circle,
+            showCutoutBorder: true
+        )
+    }
+    
+    private var clusterWidth: CGFloat {
+        let count = min(items.count, 5)
+        if count <= 1 { return badgeSize }
+        return badgeSize + CGFloat(count - 1) * (badgeSize * 0.58)
+    }
+}
+
 struct SpendyIconBadge: View {
     enum Style {
         case circle
@@ -139,7 +183,7 @@ struct SpendyIconBadge: View {
                             )
                         )
                         .overlay(Circle().stroke(color.opacity(0.35), lineWidth: 1))
-                        .shadow(color: color.opacity(0.25), radius: 6, y: 2)
+                        .shadow(color: color.opacity(0.20), radius: 5, y: 2)
                 } else if isGradient && isMonoMode {
                     // Mono gradient mode: subtle monochrome gradient
                     Circle()
@@ -157,10 +201,13 @@ struct SpendyIconBadge: View {
                         .overlay {
                             if showCutoutBorder {
                                 Circle()
-                                    .stroke(Color.black.opacity(0.65), lineWidth: size.strokeWidth)
+                                    .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
+                            } else {
+                                Circle()
+                                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 0.8)
                             }
                         }
-                        .shadow(color: effectiveShadowColor, radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
+                        .shadow(color: effectiveShadowColor.opacity(0.7), radius: size == .hero ? 10 : 4, y: size == .hero ? 3 : 1.5)
                 }
             case .rounded(let radius):
                 if isGradient && !isMonoMode {
@@ -173,7 +220,7 @@ struct SpendyIconBadge: View {
                             )
                         )
                         .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(color.opacity(0.35), lineWidth: 1))
-                        .shadow(color: color.opacity(0.25), radius: 6, y: 2)
+                        .shadow(color: color.opacity(0.20), radius: 5, y: 2)
                 } else if isGradient && isMonoMode {
                     RoundedRectangle(cornerRadius: radius, style: .continuous)
                         .fill(
@@ -190,10 +237,13 @@ struct SpendyIconBadge: View {
                         .overlay {
                             if showCutoutBorder {
                                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                    .stroke(Color.black.opacity(0.65), lineWidth: size.strokeWidth)
+                                    .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
+                            } else {
+                                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 0.8)
                             }
                         }
-                        .shadow(color: effectiveShadowColor, radius: size == .hero ? 12 : 5, y: size == .hero ? 4 : 2)
+                        .shadow(color: effectiveShadowColor.opacity(0.7), radius: size == .hero ? 10 : 4, y: size == .hero ? 3 : 1.5)
                 }
             }
             

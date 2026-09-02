@@ -260,14 +260,14 @@ struct AccountsView: View {
                     style: .circle
                 )
                 
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(account.label)
-                        .font(AppTypography.rowTitle)
+                        .font(.system(size: 15.5, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
-                    Text("Tap for analytics & details")
-                        .font(AppTypography.captionMedium)
-                        .foregroundStyle(SpendyColors.textTertiary)
+                    Text(account.type.rawValue)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
                 
                 Spacer()
@@ -309,32 +309,15 @@ struct AccountsView: View {
     
     // MARK: - Empty State
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "creditcard.and.123")
-                .font(.system(size: 36))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 24)
-            
-            Text("No accounts in this category")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-            
-            Button("Add Account") {
-                showAddAccount = true
-            }
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(SpendyColors.primaryBlue)
-            .padding(.top, 4)
-            .padding(.bottom, 24)
-        }
-        .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
+        SpendyEmptyCardView(
+            icon: "creditcard",
+            iconColor: SpendyColors.primaryBlue,
+            title: "No accounts in this filter",
+            subtitle: "Add a wallet, bank, or savings account to start tracking",
+            actionTitle: "Add Account",
+            isEnclosedInCard: true
+        ) {
+            showAddAccount = true
         }
     }
     

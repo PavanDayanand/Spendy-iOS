@@ -642,113 +642,51 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 6. Accounts Section (Unified Grouped Card on Home)
+    // MARK: - 6. Accounts Section (Redesigned Master Apple HIG Card)
     private var accountsUnifiedCardSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
+        AccountsDashboardCard(
+            hideBalance: hideBalance,
+            onOpenAccounts: {
                 showAccounts = true
-            }) {
-                HStack {
-                    Text("Accounts")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 4) {
-                        Text("\(store.accounts.count)")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                }
+            },
+            onSelectAccount: { acc in
+                selectedAccountForSheet = acc
             }
-            .buttonStyle(.plain)
-            
-            VStack(spacing: 14) {
-                // Top: Total Net Worth / Balance & Sparkline
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    showAccounts = true
-                }) {
-                    HStack(alignment: .center) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Total Balance")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                            
-                            Text(hideBalance ? "••••••" : store.totalBalance.formattedCurrency(symbol: store.currencySymbol))
-                                .spendyNumberFont(size: 22, weight: .bold, tracking: -0.5)
-                                .foregroundStyle(SpendyColors.textPrimary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Sparkline Trend Curve
-                        let isPositive = store.netWorthChangePercentage >= 0
-                        TrendSparkline(isPositive: isPositive)
-                            .frame(width: 80, height: 32)
-                    }
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-                    .overlay(SpendyColors.separator)
-                
-                // Account Rows
-                VStack(spacing: 12) {
-                    ForEach(store.accounts) { acc in
-                        let bal = store.balance(for: acc.id)
-                        
-                        Button(action: {
-                            HapticsManager.shared.trigger(.selection)
-                            selectedAccountForSheet = acc
-                        }) {
-                            HStack(spacing: 14) {
-                                SpendyIconBadge(
-                                    sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
-                                    color: acc.color,
-                                    size: .medium,
-                                    style: .circle
-                                )
-                                
-                                Text(acc.label)
-                                    .font(.system(size: 15.5, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Spacer()
-                                
-                                Text(hideBalance ? "••••" : bal.formattedCurrency(symbol: store.currencySymbol))
-                                    .spendyNumberFont(size: 15.5, weight: .bold, tracking: -0.3)
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(18)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
-        }
+        )
     }
     
     // MARK: - 7. Unified Grouped Recent Transactions Section
     private var recentTransactionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Recent transactions")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
+            HStack(alignment: .center) {
+                Text("Recent transactions")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                if !visibleTransactions.isEmpty {
+                    Button(action: {
+                        HapticsManager.shared.trigger(.selection)
+                        showAllTransactionsSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("View all")
+                                .font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(SpendyColors.cardBackgroundSecondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             
             if visibleTransactions.isEmpty {
                 emptyRecentActivityView
@@ -756,7 +694,20 @@ struct DashboardView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(visibleTransactions.enumerated()), id: \.element.id) { index, tx in
                         transactionRow(tx)
+                        
+                        if index < visibleTransactions.count - 1 {
+                            Rectangle()
+                                .fill(SpendyColors.separator.opacity(0.6))
+                                .frame(height: 0.5)
+                                .padding(.leading, 58)
+                                .padding(.trailing, 16)
+                        }
                     }
+                    
+                    // Wide Divider before All Transactions link
+                    Rectangle()
+                        .fill(SpendyColors.separator)
+                        .frame(height: 0.8)
                     
                     // Bottom "All transactions" link button inside the card
                     Button(action: {
@@ -765,7 +716,7 @@ struct DashboardView: View {
                     }) {
                         HStack {
                             Text("All transactions")
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.system(size: 15.5, weight: .semibold))
                                 .foregroundStyle(SpendyColors.textPrimary)
                             
                             Spacer()
@@ -775,7 +726,7 @@ struct DashboardView: View {
                                 .foregroundStyle(SpendyColors.textSecondary)
                         }
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 15)
+                        .padding(.vertical, 14)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -916,49 +867,13 @@ struct DashboardView: View {
     }
     
     private var emptyRecentActivityView: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(SpendyColors.primaryBlue.opacity(0.12))
-                    .frame(width: 56, height: 56)
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(SpendyColors.primaryBlue)
-            }
-            .padding(.top, 4)
-            
-            VStack(spacing: 4) {
-                Text("No transactions logged yet")
-                    .font(.system(size: 15, weight: .bold, design: .default))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Text("Start tracking your daily expenses and income")
-                    .font(.system(size: 12, weight: .medium, design: .default))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
-                showAddTransaction = true
-            }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
-                    Text("Add Transaction")
-                        .font(.system(size: 13, weight: .bold, design: .default))
-                }
-                .foregroundStyle(SpendyColors.inverseText)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(Capsule().fill(SpendyColors.primaryBlue))
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
+        SpendyEmptyCardView(
+            message: "Log your first expense or income transaction to start tracking daily activity.",
+            actionTitle: "Add transaction",
+            isEnclosedInCard: true
+        ) {
+            showAddTransaction = true
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
     }
     
     // MARK: - Dynamic Dashboard Section Dispatcher

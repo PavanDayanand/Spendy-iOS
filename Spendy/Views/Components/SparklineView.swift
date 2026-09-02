@@ -170,7 +170,7 @@ struct SparklineView: View {
 struct TrendSparkline: View {
     var isPositive: Bool = true
     var color: Color? = nil
-    var height: CGFloat = 36
+    var height: CGFloat = 32
     
     private var effectiveColor: Color {
         if SpendyColors.isMonoMode { return SpendyColors.monoGraphLine }
@@ -187,14 +187,46 @@ struct TrendSparkline: View {
     }
     
     var body: some View {
-        SparklineView(
-            points: mockPoints,
-            color: effectiveColor,
-            style: .area,
-            height: height,
-            lineWidth: 1.5,
-            showEndpoint: false
-        )
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+            let points = mockPoints
+            let count = points.count
+            let maxVal = max(0.001, points.max() ?? 1.0)
+            
+            let coords: [CGPoint] = points.enumerated().map { index, value in
+                let x = count > 1 ? (CGFloat(index) / CGFloat(count - 1)) * w : w / 2
+                let normalized = value / maxVal
+                let y = h - (normalized * (h - 8) + 4)
+                return CGPoint(x: x, y: y)
+            }
+            
+            if coords.count > 1 {
+                Path { path in
+                    path.move(to: coords[0])
+                    for i in 1..<coords.count {
+                        let prev = coords[i - 1]
+                        let cur = coords[i]
+                        let midX = (prev.x + cur.x) / 2
+                        path.addCurve(
+                            to: cur,
+                            control1: CGPoint(x: midX, y: prev.y),
+                            control2: CGPoint(x: midX, y: cur.y)
+                        )
+                    }
+                }
+                .stroke(
+                    LinearGradient(
+                        colors: [effectiveColor.opacity(0.35), effectiveColor],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
+                )
+                .shadow(color: effectiveColor.opacity(0.30), radius: 3, x: 0, y: 1)
+            }
+        }
+        .frame(height: height)
     }
 }
 

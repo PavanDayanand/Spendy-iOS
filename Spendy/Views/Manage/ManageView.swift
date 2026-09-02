@@ -486,34 +486,16 @@ struct SubscriptionsView: View {
     }
 
     // MARK: - Empty State
-
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "repeat.circle")
-                .font(.system(size: 36))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 24)
-
-            Text("No subscriptions found")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-
-            Button("Add Subscription") {
-                showAddSubscription = true
-            }
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(SpendyColors.primaryBlue)
-            .padding(.top, 4)
-            .padding(.bottom, 24)
-        }
-        .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
+        SpendyEmptyCardView(
+            icon: "repeat.circle",
+            iconColor: SpendyColors.vibrantPurple,
+            title: "No subscriptions found",
+            subtitle: "Track recurring payments, bills, and monthly memberships",
+            actionTitle: "Add Subscription",
+            isEnclosedInCard: true
+        ) {
+            showAddSubscription = true
         }
     }
 
