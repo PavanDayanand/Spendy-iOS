@@ -12,7 +12,7 @@ import SwiftUI
 enum AppTab: String, CaseIterable, Identifiable {
     case home
     case analytics
-    case budget
+    case subscriptions
     case quickAdd
 
     var id: String { rawValue }
@@ -21,7 +21,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Home"
         case .analytics: return "Stats"
-        case .budget: return "Budget"
+        case .subscriptions: return "Subscriptions"
         case .quickAdd: return "Add"
         }
     }
@@ -30,7 +30,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .home: return SFIcons.tabDashboardOutline
         case .analytics: return SFIcons.tabAnalyticsOutline
-        case .budget: return SFIcons.tabBudgetOutline
+        case .subscriptions: return SFIcons.subscriptions
         case .quickAdd: return SFIcons.quickAdd
         }
     }
@@ -39,7 +39,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .home: return SFIcons.tabDashboard
         case .analytics: return SFIcons.tabAnalytics
-        case .budget: return SFIcons.tabBudget
+        case .subscriptions: return SFIcons.subscriptions
         case .quickAdd: return SFIcons.quickAdd
         }
     }
@@ -174,7 +174,7 @@ struct GlassTabBar: View {
 private extension GlassTabBar {
 
     func tabBarContent(isGlass: Bool) -> some View {
-        let mainTabs: [AppTab] = [.home, .analytics, .budget]
+        let mainTabs: [AppTab] = [.home, .analytics, .subscriptions]
         return GeometryReader { geometry in
             let totalWidth = geometry.size.width
             let count = CGFloat(mainTabs.count)

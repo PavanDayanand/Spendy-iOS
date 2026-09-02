@@ -9,6 +9,10 @@ import SwiftUI
 
 struct BudgetView: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    
+    var topControlsNamespace: Namespace.ID? = nil
+    var onDismiss: (() -> Void)? = nil
     
     @State private var showEditBudgetSheet: Bool = false
     @State private var isEditingExisting: Bool = false
@@ -26,14 +30,28 @@ struct BudgetView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+        ZStack {
+            SpendyColors.appBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                topHeaderBar
+                    .padding(.bottom, 6)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // Title Header (Scrolls away with page)
-                        titleHeader
+                        // Title Subtitle Range Chip
+                        HStack {
+                            Text(cycleDateRangeString)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(SpendyColors.separator, in: Capsule())
+                            
+                            Spacer()
+                        }
+                        .padding(.top, 4)
                         
                         if !store.budget.isActive || store.budget.amount <= 0 {
                             // Empty State View
@@ -44,59 +62,70 @@ struct BudgetView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 120)
                 }
             }
-            .overlay(alignment: .topTrailing) {
-                // Sticky Action Buttons (Stay fixed at top right)
-                if store.budget.isActive {
-                    actionButtons
-                        .padding(.trailing, 20)
-                        .padding(.top, 8)
-                        .zIndex(100)
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .sheet(isPresented: $showEditBudgetSheet) {
+            EditBudgetSheet(isEditing: isEditingExisting)
+        }
+        .alert("Delete Budget?", isPresented: $showDeleteConfirmation) {
+            Button("Delete Budget", role: .destructive) {
+                HapticsManager.shared.trigger(.medium)
+                withAnimation(AppMotion.fluidSpring) {
+                    store.deleteBudget()
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showEditBudgetSheet) {
-                EditBudgetSheet(isEditing: isEditingExisting)
-            }
-            .alert("Delete Budget?", isPresented: $showDeleteConfirmation) {
-                Button("Delete Budget", role: .destructive) {
-                    HapticsManager.shared.trigger(.medium)
-                    withAnimation(AppMotion.fluidSpring) {
-                        store.deleteBudget()
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("This will remove your current budget limit.")
-            }
-            .navigationDestination(item: $selectedCategoryForSheet) { category in
-                CategoryAnalyticsSheet(category: category)
-            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove your current budget limit.")
+        }
+        .navigationDestination(item: $selectedCategoryForSheet) { category in
+            CategoryAnalyticsSheet(category: category)
         }
     }
-
     
-    // MARK: - Title Header (Scrolls away)
-    private var titleHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Budget")
-                    .font(AppTypography.largeTitle)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
+    // MARK: - Top Header Bar
+    private var topHeaderBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Back",
+                morphID: "topControl_left",
+                namespace: topControlsNamespace
+            ) {
+                if let onDismiss = onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
             }
-            
-            Text(cycleDateRangeString)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(SpendyColors.separator, in: Capsule())
+
+            Spacer()
+
+            Text("Budget")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+
+            Spacer()
+
+            if store.budget.isActive {
+                actionButtons
+            } else {
+                Color.clear.frame(width: 44, height: 44)
+            }
         }
+        .padding(.horizontal, 20)
         .padding(.top, 8)
+        .padding(.bottom, 4)
     }
     
     // MARK: - Sticky Action Buttons (Stay fixed at top right)

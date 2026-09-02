@@ -148,6 +148,7 @@ struct DashboardView: View {
     @State private var showSettings: Bool = false
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showCurrencyConverter: Bool = false
+    @State private var showBudgetHub: Bool = false
     @State private var showSubscriptionsHub: Bool = false
     @State private var showSmartInsightsSheet: Bool = false
     @State private var showAccounts: Bool = false
@@ -305,6 +306,9 @@ struct DashboardView: View {
                     }
                 }
             }
+            .navigationDestination(isPresented: $showBudgetHub) {
+                BudgetView(topControlsNamespace: topControlsNamespace)
+            }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView(topControlsNamespace: topControlsNamespace)
             }
@@ -416,15 +420,15 @@ struct DashboardView: View {
                     }
                 }
                 
-                // 3. Subscriptions Hub Button
+                // 3. Budget Hub Button
                 GlassCircleButton(
-                    icon: SFIcons.subscriptions,
+                    icon: "target",
                     size: 44,
                     iconSize: 16,
-                    accessibilityLabel: "Subscriptions"
+                    accessibilityLabel: "Budget"
                 ) {
                     HapticsManager.shared.trigger(.selection)
-                    showSubscriptionsHub = true
+                    showBudgetHub = true
                 }
             }
             .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
@@ -542,9 +546,7 @@ struct DashboardView: View {
         LiveBudgetJourneyCard(
             hideBalance: hideBalance,
             onViewDetails: {
-                if let selectedTab = selectedTab {
-                    selectedTab.wrappedValue = .budget
-                }
+                showBudgetHub = true
             }
         )
     }
@@ -607,11 +609,13 @@ struct DashboardView: View {
                let cat = store.categories.first(where: { $0.id == catId }) {
                 selectedCategoryForSheet = cat
             } else if insight.family == "budget" || insight.id == "set_budget" {
-                if let selectedTab = selectedTab {
-                    selectedTab.wrappedValue = .budget
-                }
+                showBudgetHub = true
             } else if insight.family == "subscription" || insight.id == "subscriptions_track" {
-                showSubscriptionsHub = true
+                if let selectedTab = selectedTab {
+                    selectedTab.wrappedValue = .subscriptions
+                } else {
+                    showSubscriptionsHub = true
+                }
             } else if insight.family == "analytics" || insight.family == "spotlight" || insight.family == "habit" || insight.family == "velocity" {
                 if let selectedTab = selectedTab {
                     selectedTab.wrappedValue = .analytics

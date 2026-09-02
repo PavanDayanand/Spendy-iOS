@@ -167,11 +167,7 @@ struct AnalyticsView: View {
                 SubscriptionsView()
             }
             .sheet(isPresented: $showEditBudgetSheet) {
-                EditBudgetSheet(isEditing: false) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                        selectedTab?.wrappedValue = .budget
-                    }
-                }
+                EditBudgetSheet(isEditing: false)
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(

@@ -110,9 +110,7 @@ struct SubscriptionsView: View {
 
     var body: some View {
         ZStack {
-            // Clean Solid Dark Background (No Gradient)
-            SpendyColors.appBackground
-                .ignoresSafeArea()
+            LiquidMeshBackground()
 
             VStack(spacing: 0) {
                 if topControlsNamespace != nil {
@@ -122,37 +120,34 @@ struct SubscriptionsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        // 1. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
+                        // 1. Unpinned Header Bar: Large Title "Subscriptions" with Top Right Add Button
+                        if topControlsNamespace == nil {
+                            tabHeaderBar
+                        }
+
+                        // 2. Balanced Hero Spend Card (Metrics on Left, Top 5 Bubble Cluster on Right)
                         balancedHeroSpendCard
                             .padding(.horizontal, 20)
-                            .padding(.top, topControlsNamespace != nil ? 12 : 16)
+                            .padding(.top, topControlsNamespace != nil ? 12 : 2)
 
-                        // 2. Subscriptions List Section (with Filters & Cards)
+                        // 3. Subscriptions List Section (with Filters & Cards)
                         subscriptionsListSection
                             .padding(.horizontal, 20)
 
-                        // 3. Past & Cancelled Section
+                        // 4. Past & Cancelled Section
                         if !cancelledSubs.isEmpty {
                             pastAndCancelledSection
                                 .padding(.horizontal, 20)
                         }
                     }
-                    .padding(.bottom, 110) // Clearance for bottom floating plus button
+                    .padding(.bottom, 120) // Clearance for bottom floating GlassTabBar
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-
-            // Bottom Floating Action Button (Add +) on Top Layer
-            VStack {
-                Spacer()
-                bottomFloatingBar
-            }
-            .zIndex(100)
         }
-        .navigationTitle(topControlsNamespace != nil ? "" : "Subscriptions")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
         }
@@ -167,6 +162,32 @@ struct SubscriptionsView: View {
         .sheet(item: $selectedSubscriptionForDetail) { sub in
             SubscriptionQuickActionSheet(sub: sub)
         }
+    }
+
+    // MARK: - Tab Header Bar (Large Title with Top Right 44pt Add Button)
+    private var tabHeaderBar: some View {
+        HStack(alignment: .center) {
+            Text("Subscriptions")
+                .font(.system(size: 32, weight: .heavy))
+                .foregroundStyle(SpendyColors.textPrimary)
+
+            Spacer()
+
+            GlassCircleButton(
+                icon: "plus",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Add Subscription"
+            ) {
+                HapticsManager.shared.trigger(.selection)
+                showAddSubscription = true
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
     }
 
     // MARK: - Top Header Bar (When Pushed from Home with Liquid Glass Morph)
@@ -198,8 +219,18 @@ struct SubscriptionsView: View {
 
             Spacer()
 
-            // Balance placeholder to center title
-            Color.clear.frame(width: 44, height: 44)
+            GlassCircleButton(
+                icon: "plus",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .light,
+                accessibilityLabel: "Add Subscription"
+            ) {
+                HapticsManager.shared.trigger(.selection)
+                showAddSubscription = true
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -576,30 +607,6 @@ struct SubscriptionsView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Bottom Floating Action Bar (Standard Liquid Glass Plus Button)
-
-    private var bottomFloatingBar: some View {
-        HStack {
-            Spacer()
-
-            // Standard Liquid Glass Floating Quick Add Button (+)
-            Button {
-                HapticsManager.shared.trigger(.cardSnap)
-                showAddSubscription = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .frame(width: 54, height: 54)
-                    .nativeLiquidGlassCircle(isInteractive: true)
-                    .shadow(color: Color.black.opacity(0.18), radius: 14, y: 6)
-            }
-            .buttonStyle(LiquidScaleButtonStyle())
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
     }
 }
 

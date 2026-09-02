@@ -23,8 +23,10 @@ struct MainTabView: View {
                     AnalyticsView(selectedTab: $selectedTab)
                 }
                 
-                Tab(AppTab.budget.label, systemImage: AppTab.budget.sfSymbol, value: AppTab.budget) {
-                    BudgetView()
+                Tab(AppTab.subscriptions.label, systemImage: AppTab.subscriptions.sfSymbol, value: AppTab.subscriptions) {
+                    NavigationStack {
+                        SubscriptionsView()
+                    }
                 }
                 
                 Tab(value: AppTab.quickAdd, role: .search) {
@@ -59,8 +61,10 @@ struct MainTabView: View {
                         DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                     case .analytics:
                         AnalyticsView(selectedTab: $selectedTab)
-                    case .budget:
-                        BudgetView()
+                    case .subscriptions:
+                        NavigationStack {
+                            SubscriptionsView()
+                        }
                     case .quickAdd:
                         DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
                     }
