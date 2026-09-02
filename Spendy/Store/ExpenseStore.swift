@@ -25,6 +25,32 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum DashboardSectionId: String, Codable, CaseIterable, Identifiable {
+    case spendingChart = "spending_chart"
+    case budget = "budget"
+    case spendingByCategory = "spending_by_category"
+    case upcoming = "upcoming"
+    case accounts = "accounts"
+    case recentTransactions = "recent_transactions"
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .spendingChart: return "Spending chart"
+        case .budget: return "Budget"
+        case .spendingByCategory: return "Spending by category"
+        case .upcoming: return "Upcoming"
+        case .accounts: return "Accounts"
+        case .recentTransactions: return "Recent transactions"
+        }
+    }
+    
+    var isAlwaysVisible: Bool {
+        self == .recentTransactions
+    }
+}
+
 @Observable
 final class ExpenseStore {
     // MARK: - App State
@@ -137,6 +163,67 @@ final class ExpenseStore {
             SpendyColors.isMonoMode = isMonoIconMode
             scheduleSave()
         }
+    }
+    
+    // MARK: - Dashboard Section Visibility & Ordering Controls
+    var dashboardSectionOrder: [DashboardSectionId] = [
+        .spendingChart,
+        .budget,
+        .spendingByCategory,
+        .upcoming,
+        .accounts,
+        .recentTransactions
+    ] {
+        didSet { scheduleSave() }
+    }
+    
+    var dashboardHiddenSections: [String] = [] {
+        didSet { scheduleSave() }
+    }
+    
+    func isSectionVisible(_ section: DashboardSectionId) -> Bool {
+        if section.isAlwaysVisible { return true }
+        return !dashboardHiddenSections.contains(section.id)
+    }
+    
+    func setSectionVisible(_ section: DashboardSectionId, isVisible: Bool) {
+        if section.isAlwaysVisible { return }
+        if isVisible {
+            dashboardHiddenSections.removeAll { $0 == section.id }
+        } else {
+            if !dashboardHiddenSections.contains(section.id) {
+                dashboardHiddenSections.append(section.id)
+            }
+        }
+    }
+    
+    func resetDashboardConfigToDefault() {
+        dashboardSectionOrder = [
+            .spendingChart,
+            .budget,
+            .spendingByCategory,
+            .upcoming,
+            .accounts,
+            .recentTransactions
+        ]
+        dashboardHiddenSections = []
+    }
+    
+    var showHomeSpendBarChart: Bool {
+        get { isSectionVisible(.spendingChart) }
+        set { setSectionVisible(.spendingChart, isVisible: newValue) }
+    }
+    var showHomeBudgetCard: Bool {
+        get { isSectionVisible(.budget) }
+        set { setSectionVisible(.budget, isVisible: newValue) }
+    }
+    var showHomeSmartInsights: Bool {
+        get { isSectionVisible(.spendingByCategory) }
+        set { setSectionVisible(.spendingByCategory, isVisible: newValue) }
+    }
+    var showHomeAccountsCard: Bool {
+        get { isSectionVisible(.accounts) }
+        set { setSectionVisible(.accounts, isVisible: newValue) }
     }
     
     var colorScheme: ColorScheme? {
@@ -264,6 +351,12 @@ final class ExpenseStore {
         var budget: Budget
         var currencySymbol: String
         var currencyCode: String
+        var showHomeSpendBarChart: Bool?
+        var showHomeBudgetCard: Bool?
+        var showHomeSmartInsights: Bool?
+        var showHomeAccountsCard: Bool?
+        var dashboardSectionOrder: [String]?
+        var dashboardHiddenSections: [String]?
         var customFolders: [Folder]?
         var ratesToUSD: [String: Double]?
         var ratesLastUpdated: Date?
@@ -293,6 +386,26 @@ final class ExpenseStore {
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
                 self.topGradientHue = payload.topGradientHue ?? 0.60
                 self.topGradientBrightness = payload.topGradientBrightness ?? 0.85
+                if let orderRaw = payload.dashboardSectionOrder {
+                    let decodedOrder = orderRaw.compactMap { DashboardSectionId(rawValue: $0) }
+                    var fullOrder = decodedOrder
+                    for section in DashboardSectionId.allCases {
+                        if !fullOrder.contains(section) {
+                            fullOrder.append(section)
+                        }
+                    }
+                    self.dashboardSectionOrder = fullOrder
+                } else {
+                    self.dashboardSectionOrder = [
+                        .spendingChart,
+                        .budget,
+                        .spendingByCategory,
+                        .upcoming,
+                        .accounts,
+                        .recentTransactions
+                    ]
+                }
+                self.dashboardHiddenSections = payload.dashboardHiddenSections ?? []
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories
@@ -352,6 +465,12 @@ final class ExpenseStore {
                 budget: budget,
                 currencySymbol: currencySymbol,
                 currencyCode: currencyCode,
+                showHomeSpendBarChart: isSectionVisible(.spendingChart),
+                showHomeBudgetCard: isSectionVisible(.budget),
+                showHomeSmartInsights: isSectionVisible(.spendingByCategory),
+                showHomeAccountsCard: isSectionVisible(.accounts),
+                dashboardSectionOrder: dashboardSectionOrder.map { $0.rawValue },
+                dashboardHiddenSections: dashboardHiddenSections,
                 customFolders: customFolders,
                 ratesToUSD: ratesToUSD,
                 ratesLastUpdated: ratesLastUpdated

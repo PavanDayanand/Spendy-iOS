@@ -2,16 +2,19 @@
 //  CategoryAnalyticsSheet.swift
 //  Spendy
 //
-//  Dedicated Category Sheet with Vibrant Category Gradient Glow, SwiftCharts Area Graph,
-//  Top-Right Calendar Index Menu, Bento Insight Cards, Bank-Badged Transactions List,
-//  and TransactionDetailSheet Drawer Integration.
+//  Apple HIG Category Analytics Sheet
+//  Features:
+//  - Minimal, Direct Fintech IA: Focus on Category Spending Velocity & Budget Adherence
+//  - Centered Category Icon Avatar (Clean, no glow) & Hero Total Spent
+//  - SwiftCharts Area Graph & Period Selector on Content Layer
+//  - Direct 2-Row Category Performance & Pace Bento Hub
+//  - Pure Title Case Typography throughout (no ALL CAPS)
+//  - Date-Grouped Transaction Activity List
 //
 
 import SwiftUI
 import Charts
 
-
-// MARK: - Category Analytics Sheet
 struct CategoryAnalyticsSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -100,28 +103,34 @@ struct CategoryAnalyticsSheet: View {
             .reduce(0) { $0 + $1.amount }
     }
     
-    private var comparisonText: String {
-        if previousPeriodSpent == 0 && totalSpent == 0 { return "No data yet" }
-        if previousPeriodSpent == 0 { return "No data from last period" }
+    private var comparisonPercentage: Double? {
+        guard previousPeriodSpent > 0 else { return nil }
         let diff = totalSpent - previousPeriodSpent
-        let pct = (diff / previousPeriodSpent) * 100
-        if pct > 0 {
-            return "↑ \(String(format: "%.0f", abs(pct)))% vs last period"
-        } else if pct < 0 {
-            return "↓ \(String(format: "%.0f", abs(pct)))% vs last period"
-        } else {
-            return "Same as last period"
-        }
+        return (diff / previousPeriodSpent) * 100
     }
     
-    private var comparisonColor: Color {
-        if previousPeriodSpent == 0 { return SpendyColors.textTertiary }
-        let diff = totalSpent - previousPeriodSpent
-        if category.type == .expense {
-            return diff > 0 ? SpendyColors.expenseRed : SpendyColors.incomeGreen
-        } else {
-            return diff > 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+    private var dailyAverageSpent: Double {
+        totalSpent / Double(max(1, daysInSelectedPeriod))
+    }
+    
+    private var highestSingleDay: (date: Date, amount: Double)? {
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: filteredTransactions) { calendar.startOfDay(for: $0.date) }
+        var maxDay: (date: Date, amount: Double)? = nil
+        for (day, txs) in groups {
+            let total = txs.reduce(0) { $0 + $1.amount }
+            if maxDay == nil || total > (maxDay?.amount ?? 0) {
+                maxDay = (date: day, amount: total)
+            }
         }
+        return maxDay
+    }
+    
+    private var categoryBudgetAmount: Double? {
+        if let budgetVal = store.budget.categoryBudgets[category.id], budgetVal > 0 {
+            return budgetVal
+        }
+        return nil
     }
     
     private var chartPoints: [CategoryChartPoint] {
@@ -144,149 +153,19 @@ struct CategoryAnalyticsSheet: View {
             formatter.dateFormat = "MMM d"
             return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
         case .month:
-            formatter.dateFormat = "MMMM"
-            return "Spent in \(formatter.string(from: bounds.start))"
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: bounds.start)
         case .threeMonths:
             return "Last 3 Months"
         case .sixMonths:
             return "Last 6 Months"
         case .year:
             formatter.dateFormat = "yyyy"
-            return "Spent in \(formatter.string(from: bounds.start))"
+            return formatter.string(from: bounds.start)
         }
-    }
-
-    
-    // MARK: - Insights Calculations
-    private var averageSpentPerWeek: Double {
-        guard !filteredTransactions.isEmpty else { return 0 }
-        let weeks = max(1, Double(daysInSelectedPeriod) / 7.0)
-        return totalSpent / weeks
-    }
-    
-    private var topSpendingWeekday: (name: String, dayIndex: Int, amount: Double) {
-        var dayTotals = Array(repeating: 0.0, count: 7)
-        let calendar = Calendar.current
-        for tx in filteredTransactions {
-            let weekday = calendar.component(.weekday, from: tx.date) - 1
-            if weekday >= 0 && weekday < 7 {
-                dayTotals[weekday] += tx.amount
-            }
-        }
-        var maxIdx = 4
-        var maxAmt = 0.0
-        for (idx, amt) in dayTotals.enumerated() {
-            if amt > maxAmt {
-                maxAmt = amt
-                maxIdx = idx
-            }
-        }
-        let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        return (dayNames[maxIdx], maxIdx, maxAmt)
-    }
-    
-    private var monthForecast: Double {
-        let calendar = Calendar.current
-        let now = Date()
-        let startMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-        let range = calendar.range(of: .day, in: .month, for: now) ?? 1..<31
-        let totalDays = Double(range.count)
-        let dayPassed = max(1.0, Double(calendar.component(.day, from: now)))
-        let monthTxs = allCategoryTransactions.filter { $0.date >= startMonth && $0.date <= now }
-        let monthSpent = monthTxs.reduce(0) { $0 + $1.amount }
-        let dailyRate = monthSpent / dayPassed
-        return dailyRate * totalDays
-    }
-    
-    private var highestSingleDay: (Date, Double)? {
-        let calendar = Calendar.current
-        let groups = Dictionary(grouping: filteredTransactions) { calendar.startOfDay(for: $0.date) }
-        var maxDay: (Date, Double)? = nil
-        for (day, txs) in groups {
-            let total = txs.reduce(0) { $0 + $1.amount }
-            if maxDay == nil || total > (maxDay?.1 ?? 0) {
-                maxDay = (day, total)
-            }
-        }
-        return maxDay
-    }
-    
-    // Dynamic AI Category Insights Engine
-    private var dynamicCategoryInsights: [InsightItem] {
-        guard totalSpent > 0 else { return [] }
-        var items: [InsightItem] = []
-        let currSymbol = store.currencySymbol
-        
-        // 1. Pace / Trend Insight
-        if previousPeriodSpent > 0 {
-            let diff = totalSpent - previousPeriodSpent
-            let pct = abs((diff / previousPeriodSpent) * 100)
-            let isIncrease = diff > 0
-            
-            if category.type == .expense {
-                items.append(InsightItem(
-                    id: "cat_trend_\(category.id)",
-                    family: "Trend",
-                    scope: "Category",
-                    personaFit: [],
-                    confidence: 0.9,
-                    severity: isIncrease ? 0.7 : 0.3,
-                    eligibility: true,
-                    title: isIncrease ? "Spending Increased" : "Spending Decreased",
-                    value: "\(isIncrease ? "+" : "-")\(String(format: "%.0f", pct))%",
-                    desc: isIncrease ? "You spent \(diff.formattedCurrency(symbol: currSymbol, decimals: 0)) more on \(category.label) than last period." : "Great job! Spent \(abs(diff).formattedCurrency(symbol: currSymbol, decimals: 0)) less than last period.",
-                    icon: isIncrease ? "arrow.up.right" : "arrow.down.right",
-                    colorHex: isIncrease ? "#FF3B30" : "#30D158",
-                    categoryId: category.id
-                ))
-            }
-        }
-        
-        // 2. High Day Insight
-        if let (highDate, highAmount) = highestSingleDay, highAmount > 0 {
-            let df = DateFormatter()
-            df.dateFormat = "MMM d"
-            items.append(InsightItem(
-                id: "cat_peak_\(category.id)",
-                family: "Peak",
-                scope: "Category",
-                personaFit: [],
-                confidence: 0.85,
-                severity: 0.4,
-                eligibility: true,
-                title: "Peak Spending Day",
-                value: highAmount.formattedCurrency(symbol: currSymbol, decimals: 0),
-                desc: "Highest single day was \(df.string(from: highDate)).",
-                icon: "bolt.fill",
-                colorHex: category.colorHex,
-                categoryId: category.id
-            ))
-        }
-        
-        // 3. Weekly Velocity Insight
-        if averageSpentPerWeek > 0 {
-            items.append(InsightItem(
-                id: "cat_weekly_\(category.id)",
-                family: "Velocity",
-                scope: "Category",
-                personaFit: [],
-                confidence: 0.8,
-                severity: 0.3,
-                eligibility: true,
-                title: "Weekly Pace",
-                value: "\(averageSpentPerWeek.formattedCurrency(symbol: currSymbol, decimals: 0))/wk",
-                desc: "Average weekly pace in \(category.label) for this period.",
-                icon: "calendar.badge.clock",
-                colorHex: "#5E5CE6",
-                categoryId: category.id
-            ))
-        }
-        
-        return items
     }
     
     private var dateGroupedTransactions: [(String, Double, [Transaction])] {
-
         AnalyticsChartEngine.dateGroupedTransactions(from: filteredTransactions)
     }
     
@@ -295,8 +174,8 @@ struct CategoryAnalyticsSheet: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            // Ambient Category Full-Width Header Glow
-            SpendyAmbientHeaderBackground(color: themeColor, height: 420, opacity: 0.38)
+            // Ambient Category Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 380, opacity: 0.32)
             
             VStack(spacing: 0) {
                 if isHomeOrigin {
@@ -304,47 +183,26 @@ struct CategoryAnalyticsSheet: View {
                 }
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // 1. Pure Hero Header
-                        heroHeaderSection
-                            .padding(.horizontal, 20)
-                            .padding(.top, isHomeOrigin ? 4 : 12)
+                    VStack(spacing: 16) {
+                        // 1. Centralized Category Avatar (No Glow) & Hero Total Spent
+                        centralizedHeroHeader
+                            .padding(.horizontal, 16)
+                            .padding(.top, isHomeOrigin ? 2 : 6)
                         
-                        // 2. Uncarded SwiftCharts Area Graph & Glass Selector
+                        // 2. SwiftCharts Area Graph on Content Layer
                         chartSection
                             .padding(.horizontal, 16)
                         
-                        // 3. Insights Card (when low data) or Dynamic Carousel (when enough data)
-                        if allCategoryTransactions.count < 3 || dynamicCategoryInsights.isEmpty {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text("Insights")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                
-                                Text("Add more transactions to unlock personalised insights")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineSpacing(4)
-                            }
-                            .padding(20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
-                            .padding(.horizontal, 16)
-                        } else {
-                            categoryInsightsCarousel
+                        // 3. Direct Category Spending & Pace Bento Hub
+                        if !filteredTransactions.isEmpty {
+                            categoryBentoHub
+                                .padding(.horizontal, 16)
                         }
                         
-                        // 4. Date-Grouped Activity List
+                        // 4. Date-Grouped Category Activity List
                         transactionsSection
                             .padding(.horizontal, 16)
-                            .padding(.top, 4)
+                            .padding(.top, 2)
                             .padding(.bottom, 40)
                     }
                 }
@@ -422,7 +280,6 @@ struct CategoryAnalyticsSheet: View {
             
             Spacer()
             
-            // Trailing Edit button matching topControl_right
             GlassCircleButton(
                 icon: "pencil",
                 size: 44,
@@ -438,43 +295,56 @@ struct CategoryAnalyticsSheet: View {
                 editingCategoryToEdit = category
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.top, 4)
         .padding(.bottom, 2)
     }
     
-    // MARK: - 2. Clean Hero Header Section
-    private var heroHeaderSection: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(periodHeaderLabel)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                
-                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                
-                Text(comparisonText == "No data yet" ? "No data from last period" : comparisonText)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(comparisonColor)
-            }
-            
-            Spacer(minLength: 16)
-            
+    // MARK: - 2. Centralized Category Avatar (No Glow) & Hero Total Spent
+    private var centralizedHeroHeader: some View {
+        VStack(spacing: 6) {
+            // Clean Category Icon Badge (Zero shadow glow)
             SpendyIconBadge(
                 sfSymbol: category.sfSymbol,
                 color: themeColor,
-                size: .hero,
+                size: .large,
                 style: .circle
             )
+            
+            // Hero Total Spent Amount
+            Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            
+            // Period / Context Subtitle or Trend Pill
+            if let pct = comparisonPercentage {
+                let isIncrease = pct > 0
+                HStack(spacing: 4) {
+                    Image(systemName: isIncrease ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("\(String(format: "%.0f", abs(pct)))% vs last period")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(isIncrease ? SpendyColors.expenseRed : SpendyColors.incomeGreen)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3.5)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill((isIncrease ? SpendyColors.expenseRed : SpendyColors.incomeGreen).opacity(0.12))
+                }
+            } else {
+                Text("Spent in \(periodHeaderLabel)")
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 2)
     }
     
-    // MARK: - 3. SwiftCharts Area Graph & Index Filter Strip
+    // MARK: - 3. SwiftCharts Area Graph & Period Selector
     private var chartSection: some View {
         VStack(spacing: 14) {
             if chartPoints.isEmpty || totalSpent == 0 {
@@ -490,7 +360,7 @@ struct CategoryAnalyticsSheet: View {
                 .frame(maxWidth: .infinity)
             } else {
                 Chart {
-                    // 1. Actual Area Gradient below historical curve
+                    // 1. Area Gradient below curve
                     ForEach(chartPoints) { point in
                         AreaMark(
                             x: .value("Date", point.date),
@@ -506,7 +376,7 @@ struct CategoryAnalyticsSheet: View {
                         .interpolationMethod(.monotone)
                     }
                     
-                    // 2. Actual Solid Line Curve
+                    // 2. Solid Line Curve
                     ForEach(chartPoints) { point in
                         LineMark(
                             x: .value("Date", point.date),
@@ -517,7 +387,7 @@ struct CategoryAnalyticsSheet: View {
                         .interpolationMethod(.monotone)
                     }
                     
-                    // 3. Luminous "Today" Anchor Beacon
+                    // 3. Anchor Beacon
                     if let lastActual = chartPoints.last {
                         PointMark(
                             x: .value("Date", lastActual.date),
@@ -567,7 +437,7 @@ struct CategoryAnalyticsSheet: View {
                     }
                     .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
 
-                    // Calendar Date Picker Button (Highlighted when custom date range is active)
+                    // Calendar Date Picker Button
                     GlassCircleButton(
                         icon: "calendar",
                         size: 44,
@@ -588,140 +458,210 @@ struct CategoryAnalyticsSheet: View {
         }
     }
 
-
-    
-    // MARK: - Helper Formatters
     private func axisLabelDate(_ date: Date) -> String {
         AnalyticsChartEngine.axisLabel(for: date, period: selectedPeriod)
     }
-    
-    // MARK: - 4. Category Insights Bento Carousel
-    private var categoryInsightsCarousel: some View {
-        let bounds = periodBounds
-        let catInsights = InsightsEngine.getAnalyticsInsights(
-            transactions: store.transactions,
-            budget: store.budget,
-            categories: store.categories,
-            subscriptions: store.subscriptions,
-            periodStart: bounds.start,
-            periodEnd: bounds.end,
-            prevStart: bounds.start,
-            prevEnd: bounds.end,
-            dataType: category.type,
-            currencySymbol: store.currencySymbol
-        ).filter { $0.categoryId == category.id }
-        
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(themeColor)
-                Text("Smart Insights")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.horizontal, 20)
-            
-            Text("Specifically generated based on your spendings")
-                .font(.system(size: 11.5, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 20)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    // Engine generated specific insights for this category
-                    ForEach(catInsights) { insight in
-                        MinimalCategoryCard(
-                            title: insight.title,
-                            value: insight.value,
-                            subtitle: insight.desc,
-                            icon: insight.icon,
-                            color: insight.color
-                        )
-                        .frame(width: 180)
-                    }
-                    
-                    // Card 1: Avg Spent (Gradient Trend Card)
-                    avgSpentCard
-                    
-                    // Card 2: Top Day (Spotlight Bar Card)
-                    topDayCard
-                    
-                    // Card 3: Month Forecast (Pacing Pin Bar Card)
-                    monthForecastCard
-                    
-                    // Card 4: Activity / Transactions Count (Dot Matrix Card)
-                    activityCard
+
+    // MARK: - 4. Direct Category Spending & Pace Bento Hub
+    private var categoryBentoHub: some View {
+        VStack(spacing: 14) {
+            // Row 1: Total Spent & Budget Remaining (or Previous Period)
+            HStack(spacing: 12) {
+                totalSpentCell
+                
+                Divider()
+                    .overlay(SpendyColors.separator)
+                    .frame(height: 36)
+                
+                if let budget = categoryBudgetAmount {
+                    budgetMetricCell(budget: budget)
+                } else {
+                    lastPeriodMetricCell
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 4)
+            }
+            
+            Divider()
+                .overlay(SpendyColors.separator)
+            
+            // Row 2: Daily Pace & Peak Day
+            HStack(spacing: 12) {
+                dailyPaceCell
+                
+                Divider()
+                    .overlay(SpendyColors.separator)
+                    .frame(height: 32)
+                
+                peakDayCell
             }
         }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.8)
+                }
+        }
+    }
+
+    private var totalSpentCell: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(themeColor.opacity(0.16))
+                    .frame(width: 34, height: 34)
+                Image(systemName: "creditcard.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(themeColor)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Total Spent")
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func budgetMetricCell(budget: Double) -> some View {
+        let remaining = max(0.0, budget - totalSpent)
+        let isOver = totalSpent > budget
+        let statusColor = isOver ? SpendyColors.expenseRed : SpendyColors.incomeGreen
+        
+        return HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(statusColor.opacity(0.16))
+                    .frame(width: 34, height: 34)
+                Image(systemName: isOver ? "exclamationmark.triangle.fill" : "checkmark.shield.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(statusColor)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isOver ? "Over Budget" : "Budget Left")
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Text(remaining.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                    .foregroundStyle(statusColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var lastPeriodMetricCell: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(SpendyColors.cardBackgroundSecondary)
+                    .frame(width: 34, height: 34)
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Last Period")
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Text(previousPeriodSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.4)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var dailyPaceCell: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(themeColor.opacity(0.16))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "speedometer")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(themeColor)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Daily Pace")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Text("\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var peakDayCell: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#FF9F0A").opacity(0.16))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#FF9F0A"))
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Peak Day")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                if let peak = highestSingleDay {
+                    let df = DateFormatter()
+                    let _ = df.dateFormat = "d MMM"
+                    Text("\(peak.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) (\(df.string(from: peak.date)))")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                } else {
+                    Text("—")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
-    // Bento Card 1: Avg Spent (Gradient Trend Card)
-    private var avgSpentCard: some View {
-        GradientTrendCard(
-            title: "Avg spent",
-            value: averageSpentPerWeek.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-            subtitle: "Per week",
-            lineColor: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 2: Top Day (Spotlight Bar Card)
-    private var topDayCard: some View {
-        let topDayInfo = topSpendingWeekday
-        return SpotlightBarCard(
-            title: "Top day",
-            peakDayName: topDayInfo.name,
-            peakDayIndex: topDayInfo.dayIndex,
-            accentColor: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 3: Month Forecast (Pacing Pin Bar Card)
-    private var monthForecastCard: some View {
-        let ratio = min(1.0, max(0.1, totalSpent / max(1.0, monthForecast)))
-        return PacingPinBarCard(
-            title: "Month Forecast",
-            value: monthForecast.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-            deltaText: "\(store.currencySymbol)\(Int(monthForecast))",
-            subtitle: "Projected spent by month-end",
-            progress: ratio,
-            icon: "sparkles",
-            color: themeColor
-        )
-        .frame(width: 180)
-    }
-    
-    // Bento Card 4: Activity (Dot Matrix Habit Card)
-    private var activityCard: some View {
-        DotMatrixCard(
-            title: "Activity",
-            streakCount: filteredTransactions.count,
-            streakUnit: filteredTransactions.count == 1 ? "expense in period" : "expenses in period",
-            icon: "square.stack.3d.up.fill",
-            color: themeColor,
-            totalDays: 30,
-            activeDays: min(30, filteredTransactions.count)
-        )
-        .frame(width: 180)
-    }
-    
-    // MARK: - 5. Date-Grouped Recent Activity Transactions Section
+    // MARK: - 5. Date-Grouped Recent Activity Section (Title Case)
     private var transactionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Recent Activity")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .tracking(1.2)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.leading, 4)
             
             if dateGroupedTransactions.isEmpty {
                 VStack(spacing: 8) {
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(SpendyColors.textTertiary)
                     Text("No transactions found")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SpendyColors.textTertiary)
@@ -729,107 +669,76 @@ struct CategoryAnalyticsSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
             } else {
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     ForEach(dateGroupedTransactions, id: \.0) { dateGroup, dayTotal, txs in
                         VStack(alignment: .leading, spacing: 8) {
-                            // Date Group Header
                             HStack {
                                 Text(dateGroup)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textTertiary)
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                
                                 Spacer()
+                                
                                 Text(dayTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                    .spendyNumberFont(size: 12, weight: .bold, tracking: -0.3)
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
+                            .padding(.horizontal, 4)
                             
-                            // Card Container
                             VStack(spacing: 0) {
-                                ForEach(Array(txs.enumerated()), id: \.element.id) { index, tx in
-                                    categoryTransactionRow(tx)
-                                        .onTapGesture {
-                                            HapticsManager.shared.trigger(.selection)
-                                            inspectingTransaction = tx
-                                        }
+                                ForEach(Array(txs.enumerated()), id: \.element.id) { idx, tx in
+                                    let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
+                                    let iconSymbol = subscription?.sfSymbol ?? category.sfSymbol
+                                    let iconColor = subscription?.color ?? category.color
+                                    let acc = store.accounts.first(where: { $0.id == tx.accountId })
                                     
-                                    if index < txs.count - 1 {
+                                    Button(action: {
+                                        HapticsManager.shared.trigger(.selection)
+                                        inspectingTransaction = tx
+                                    }) {
+                                        HStack(spacing: 12) {
+                                            SpendyIconBadge(
+                                                sfSymbol: iconSymbol,
+                                                color: iconColor,
+                                                size: .medium,
+                                                style: .circle
+                                            )
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(tx.title)
+                                                    .font(.system(size: 14.5, weight: .semibold))
+                                                    .foregroundStyle(SpendyColors.textPrimary)
+                                                    .lineLimit(1)
+                                                
+                                                Text(acc?.label ?? "General")
+                                                    .font(.system(size: 12, weight: .medium))
+                                                    .foregroundStyle(SpendyColors.textSecondary)
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                                                .spendyNumberFont(size: 15, weight: .bold, tracking: -0.3)
+                                                .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .background(SpendyColors.cardBackground)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    if idx < txs.count - 1 {
                                         Divider()
-                                            .background(Color.white.opacity(0.06))
+                                            .overlay(SpendyColors.separator)
                                             .padding(.leading, 64)
                                     }
                                 }
                             }
-                            .background(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color(hex: "#141416"))
-                                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 0.8))
-                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
                     }
                 }
             }
         }
-    }
-    
-    // Individual Transaction Row with Category Icon & Bank Badge
-    private func categoryTransactionRow(_ tx: Transaction) -> some View {
-        let account = store.accounts.first(where: { $0.id == tx.accountId })
-        
-        return HStack(spacing: 14) {
-            // Category Icon Badge
-            SpendyIconBadge(
-                sfSymbol: category.sfSymbol,
-                color: category.color,
-                size: .small,
-                style: .circle
-            )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(tx.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                
-                HStack(spacing: 6) {
-                    // Bank Account Badge
-                    if let acc = account {
-                        HStack(spacing: 4) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(acc.color)
-                                    .frame(width: 14, height: 14)
-                                Image(systemName: acc.sfSymbol)
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
-                            Text(acc.label)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(SpendyColors.chipBackground)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(SpendyColors.chipBorder, lineWidth: 0.8))
-                        )
-                    }
-                    
-                    Text(tx.date.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
-            
-            Spacer()
-            
-            // Amount
-            Text(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
-                .foregroundStyle(SpendyColors.textPrimary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
     }
 }

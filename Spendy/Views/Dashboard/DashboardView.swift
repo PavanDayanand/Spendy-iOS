@@ -163,6 +163,7 @@ struct DashboardView: View {
     @State private var hideBalance: Bool = false
     @State private var showAllTransactionsSheet: Bool = false
     @State private var showEditBudgetSheet: Bool = false
+    @State private var showHomeConfigSheet: Bool = false
     
     // MARK: - Dynamic Filtered Transactions
     private var displayedTransactions: [Transaction] {
@@ -236,25 +237,16 @@ struct DashboardView: View {
                         // 2. Account Dropdown Selector (Below Top Toggles)
                         accountDropdownSelector
                         
-                        // 3. Hero Spend Section with On-Screen Bar Chart
-                        heroSpendBarSection
-                            .padding(.top, 6)
+                        // 3. Dynamic Configured Dashboard Sections in User Defined Order
+                        ForEach(store.dashboardSectionOrder) { section in
+                            if store.isSectionVisible(section) {
+                                dashboardSectionView(for: section)
+                            }
+                        }
                         
-                        // 4. Live Liquid Glass Budget Journey Card
-                        liveBudgetJourneyCard
-                            .padding(.top, 2)
-                        
-                        // 5. Smart Insights Section (Above Accounts & Transactions)
-                        smartInsightsSection
-                            .padding(.top, 6)
-                        
-                        // 6. Accounts Section (Unified Grouped Card on Home)
-                        accountsUnifiedCardSection
-                            .padding(.top, 6)
-                        
-                        // 7. Classic Recent Transactions Section
-                        recentTransactionsSection
-                            .padding(.top, 6)
+                        // 4. Modify Dashboard Button (Apple Wallet / Payment Sheet Style)
+                        modifyDashboardButton
+                            .padding(.top, 14)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120) // Clearance for bottom floating tab bar
@@ -298,6 +290,9 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
+            }
+            .sheet(isPresented: $showHomeConfigSheet) {
+                HomeConfigurationSheet()
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
@@ -964,5 +959,58 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
+    }
+    
+    // MARK: - Dynamic Dashboard Section Dispatcher
+    @ViewBuilder
+    private func dashboardSectionView(for section: DashboardSectionId) -> some View {
+        switch section {
+        case .spendingChart:
+            heroSpendBarSection
+                .padding(.top, 6)
+        case .budget:
+            liveBudgetJourneyCard
+                .padding(.top, 2)
+        case .spendingByCategory:
+            smartInsightsSection
+                .padding(.top, 6)
+        case .upcoming:
+            UpcomingThisMonthCard(showOnlyWhenRelevant: false)
+                .padding(.top, 6)
+        case .accounts:
+            accountsUnifiedCardSection
+                .padding(.top, 6)
+        case .recentTransactions:
+            recentTransactionsSection
+                .padding(.top, 6)
+        }
+    }
+    
+    // MARK: - 8. Modify Dashboard Button
+    private var modifyDashboardButton: some View {
+        Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            showHomeConfigSheet = true
+        }) {
+            HStack(spacing: 7) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .bold))
+                Text("Modify dashboard")
+                    .font(.system(size: 13.5, weight: .semibold))
+            }
+            .foregroundStyle(SpendyColors.textSecondary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    }
+            }
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
