@@ -4,36 +4,30 @@ import Charts
 // MARK: - Chart Period Enum
 enum ChartPeriod: String, CaseIterable, Identifiable {
     case week = "1w"
-    case twoWeeks = "2w"
     case month = "1m"
     case threeMonths = "3m"
     case sixMonths = "6m"
     case year = "1y"
-    case all = "all"
     
     var id: String { rawValue }
     
     var title: String {
         switch self {
         case .week: return "1 Week"
-        case .twoWeeks: return "2 Weeks"
         case .month: return "1 Month"
         case .threeMonths: return "3 Months"
         case .sixMonths: return "6 Months"
         case .year: return "1 Year"
-        case .all: return "All Time"
         }
     }
     
     var shortLabel: String {
         switch self {
         case .week: return "1W"
-        case .twoWeeks: return "2W"
         case .month: return "1M"
         case .threeMonths: return "3M"
         case .sixMonths: return "6M"
         case .year: return "1Y"
-        case .all: return "ALL"
         }
     }
 }
@@ -79,9 +73,6 @@ enum AnalyticsChartEngine {
         case .week:
             let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
             return (start, now)
-        case .twoWeeks:
-            let start = calendar.date(byAdding: .day, value: -13, to: calendar.startOfDay(for: now)) ?? now
-            return (start, now)
         case .month:
             return (now.startOfMonth, now.endOfMonth)
         case .threeMonths:
@@ -92,14 +83,6 @@ enum AnalyticsChartEngine {
             return (start, now.endOfDay)
         case .year:
             return (now.startOfYear, now.endOfYear)
-        case .all:
-            if let earliest = transactions.map(\.date).min() {
-                let start = calendar.startOfDay(for: earliest)
-                return (start, now)
-            } else {
-                let start = calendar.date(byAdding: .year, value: -1, to: calendar.startOfDay(for: now)) ?? now
-                return (start, now)
-            }
         }
     }
     
@@ -130,7 +113,7 @@ enum AnalyticsChartEngine {
         let extractor = valueForDay ?? defaultExtractor
         
         switch period {
-        case .week, .twoWeeks, .month:
+        case .week, .month:
             var points: [CategoryChartPoint] = []
             var current = calendar.startOfDay(for: bounds.start)
             let endDay = calendar.startOfDay(for: bounds.end)
@@ -181,7 +164,7 @@ enum AnalyticsChartEngine {
             }
             return points
             
-        case .threeMonths, .sixMonths, .year, .all:
+        case .threeMonths, .sixMonths, .year:
             var points: [CategoryChartPoint] = []
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
             let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
@@ -276,11 +259,9 @@ enum AnalyticsChartEngine {
         let fmt = DateFormatter()
         switch period {
         case .week: fmt.dateFormat = "EEE"
-        case .twoWeeks: fmt.dateFormat = "d MMM"
         case .month: fmt.dateFormat = "d MMM"
         case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
         case .year: fmt.dateFormat = "MMM yy"
-        case .all: fmt.dateFormat = "yyyy"
         }
         return fmt.string(from: date)
     }
@@ -294,10 +275,8 @@ enum AnalyticsChartEngine {
     
     static func formattedPointDate(_ date: Date, period: ChartPeriod) -> String {
         let fmt = DateFormatter()
-        if period == .week || period == .twoWeeks || period == .month {
+        if period == .week || period == .month {
             fmt.dateFormat = "d MMM"
-        } else if period == .all {
-            fmt.dateFormat = "MMM yyyy"
         } else {
             fmt.dateFormat = "MMM yyyy"
         }

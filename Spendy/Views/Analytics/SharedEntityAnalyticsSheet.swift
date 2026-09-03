@@ -71,9 +71,9 @@ enum AnalyticsEntity {
 
 // MARK: - Section Tab Enum
 enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
+    case insights = "Insights"
     case overview = "Overview"
     case activity = "Recent Activity"
-    case insights = "Insights"
     
     var id: String { rawValue }
 }
@@ -116,7 +116,7 @@ struct SharedEntityAnalyticsSheet: View {
     
     @Namespace private var internalSheetNamespace
     
-    // MARK: - Colors & Theming (Light & Dark Mode Adaptive)
+    // MARK: - Colors & Theming (Apple HIG Luxury Graphite in Dark Mode, Crisp in Light Mode)
     private var themeColor: Color {
         entity.color
     }
@@ -125,11 +125,33 @@ struct SharedEntityAnalyticsSheet: View {
         SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : entity.color
     }
     
+    /// Replaces harsh #000000 pitch black with Apple's elevated deep graphite palette
+    private var sheetBackgroundColor: Color {
+        Color(uiColor: .dynamic(
+            light: UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1.0),
+            dark: UIColor(red: 16.0/255.0, green: 16.0/255.0, blue: 19.0/255.0, alpha: 1.0) // #101013 Apple sheet graphite
+        ))
+    }
+    
     private var cardFillColor: Color {
         Color(uiColor: .dynamic(
-            light: UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1.0),
-            dark: UIColor(red: 22.0/255.0, green: 22.0/255.0, blue: 24.0/255.0, alpha: 1.0)
+            light: UIColor(white: 1.0, alpha: 1.0), // Crisp white in light mode
+            dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 33.0/255.0, alpha: 1.0) // #1C1C21 elevated card
         ))
+    }
+    
+    private var cardBorderColor: Color {
+        Color(uiColor: .dynamic(
+            light: UIColor(white: 0.0, alpha: 0.06),
+            dark: UIColor(white: 1.0, alpha: 0.08)
+        ))
+    }
+    
+    private var chartTransitionID: String {
+        if let custom = customDateRange {
+            return "custom_\(custom.start.timeIntervalSince1970)_\(custom.end.timeIntervalSince1970)"
+        }
+        return selectedPeriod.rawValue
     }
     
     private var isHomeOrigin: Bool {
@@ -297,9 +319,6 @@ struct SharedEntityAnalyticsSheet: View {
         case .week:
             formatter.dateFormat = "MMM d"
             return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
-        case .twoWeeks:
-            formatter.dateFormat = "MMM d"
-            return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
         case .month:
             formatter.dateFormat = "MMMM yyyy"
             return formatter.string(from: bounds.start)
@@ -310,8 +329,6 @@ struct SharedEntityAnalyticsSheet: View {
         case .year:
             formatter.dateFormat = "yyyy"
             return formatter.string(from: bounds.start)
-        case .all:
-            return "All Time"
         }
     }
     
@@ -340,12 +357,10 @@ struct SharedEntityAnalyticsSheet: View {
             let insightPeriod: InsightPeriod = {
                 switch selectedPeriod {
                 case .week: return .week
-                case .twoWeeks: return .week
                 case .month: return .month
                 case .threeMonths: return .threeMonths
                 case .sixMonths: return .sixMonths
                 case .year: return .year
-                case .all: return .all
                 }
             }()
             
@@ -396,15 +411,15 @@ struct SharedEntityAnalyticsSheet: View {
         if insightMoments.isEmpty {
             return [.overview, .activity]
         } else {
-            return [.overview, .activity, .insights]
+            return [.insights, .overview, .activity]
         }
     }
     
     // MARK: - Body
     var body: some View {
         ZStack {
-            // Adaptive background for both light and dark mode (no top ambient glow gradient)
-            SpendyColors.appBackground.ignoresSafeArea()
+            // Adaptive Apple graphite background for dark mode, crisp light background for light mode
+            sheetBackgroundColor.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 if isHomeOrigin {
@@ -435,6 +450,7 @@ struct SharedEntityAnalyticsSheet: View {
                 }
             }
         }
+        .presentationBackground(sheetBackgroundColor)
         .navigationTitle(isHomeOrigin ? "" : entity.label)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isHomeOrigin ? .hidden : .visible, for: .navigationBar)
@@ -486,6 +502,18 @@ struct SharedEntityAnalyticsSheet: View {
         }
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
+        }
+        .onAppear {
+            if !insightMoments.isEmpty {
+                selectedSection = .insights
+            } else {
+                selectedSection = .overview
+            }
+        }
+        .onChange(of: availableSections) { _, newSections in
+            if !newSections.contains(selectedSection) {
+                selectedSection = newSections.first ?? .overview
+            }
         }
     }
     
@@ -626,7 +654,7 @@ struct SharedEntityAnalyticsSheet: View {
                 .fill(cardFillColor)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        .stroke(cardBorderColor, lineWidth: 0.8)
                 }
                 .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 8, y: 3)
         }
@@ -816,6 +844,8 @@ struct SharedEntityAnalyticsSheet: View {
                     }
                 }
                 .frame(height: 205)
+                .id(chartTransitionID)
+                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
                 .onChange(of: scrubbedDate) { _, newDate in
                     handleScrub(date: newDate)
                 }
@@ -906,7 +936,7 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var sectionButtonsBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             ForEach(availableSections, id: \.id) { section in
                 let isSelected = selectedSection == section
                 Button {
@@ -916,33 +946,26 @@ struct SharedEntityAnalyticsSheet: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
+                        if section == .insights {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 11.5, weight: .bold))
+                                .foregroundStyle(isSelected ? themeColor : SpendyColors.textTertiary)
+                        }
+                        
                         Text(section.rawValue)
-                            .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold, design: .rounded))
+                            .font(.system(size: 13.5, weight: isSelected ? .bold : .medium, design: .rounded))
                             .lineLimit(1)
                         
                         if section == .insights, !insightMoments.isEmpty {
                             Circle()
                                 .fill(themeColor)
-                                .frame(width: 6, height: 6)
+                                .frame(width: 5.5, height: 5.5)
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
                     .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                    .background {
-                        if isSelected {
-                            Capsule(style: .continuous)
-                                .fill(cardFillColor)
-                                .overlay {
-                                    Capsule(style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.06), radius: 4, y: 1)
-                        }
-                    }
-                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .nativeLiquidGlassPill(isSelected: isSelected, tint: isSelected ? cardFillColor : nil)
             }
             Spacer()
         }
@@ -971,183 +994,113 @@ struct SharedEntityAnalyticsSheet: View {
     @ViewBuilder
     private var sectionContent: some View {
         switch selectedSection {
+        case .insights:
+            insightsSectionView
+                .transition(.opacity)
         case .overview:
             overviewSectionView
                 .transition(.opacity)
         case .activity:
             recentActivitySectionView
                 .transition(.opacity)
-        case .insights:
-            insightsSectionView
-                .transition(.opacity)
         }
     }
     
-    // MARK: - Section 1: Overview (Image 3 Top Card + Image 2 Clean List)
+    // MARK: - Section: Overview (Clean List with Reusable Flow Indicators)
     private var overviewSectionView: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            // 1. Top 3-Metric Summary Card (Image 3: Expenses, Income, Net)
-            threeMetricSummaryCard
-            
-            // 2. Clean List of Metrics with Dividers (Image 2)
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Overview")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .padding(.top, 4)
-                    .padding(.bottom, 16)
-                    .padding(.horizontal, 4)
-                
-                VStack(spacing: 0) {
-                    // Money in
-                    overviewRow(
-                        label: "Money in",
-                        value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                        valueColor: SpendyColors.incomeGreen
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    
-                    // Money out
-                    overviewRow(
-                        label: "Money out",
-                        value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                        valueColor: SpendyColors.textPrimary
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    
-                    // Net cash flow
-                    overviewRow(
-                        label: "Net cash flow",
-                        value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                        valueColor: netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    
-                    // Budget Left / Over Budget (if budgeted)
-                    if let budget = categoryBudgetAmount {
-                        let remaining = budget - totalOutflow
-                        overviewRow(
-                            label: remaining >= 0 ? "Budget left" : "Over budget",
-                            value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                            valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-                        )
-                        Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    } else if case .account = entity {
-                        overviewRow(
-                            label: "Current balance",
-                            value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                            valueColor: currentBalance >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-                        )
-                        Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    }
-                    
-                    // Active days
-                    overviewRow(
-                        label: "Active days",
-                        value: "\(activeDaysCount) \(activeDaysCount == 1 ? "day" : "days")",
-                        valueColor: SpendyColors.textPrimary
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    
-                    // Peak weekday
-                    overviewRow(
-                        label: "Peak weekday",
-                        value: topWeekday.name,
-                        valueColor: SpendyColors.textPrimary
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                    
-                    // Daily outflow/inflow rate
-                    overviewRow(
-                        label: entity.defaultType == .income ? "Daily inflow rate" : "Daily outflow rate",
-                        value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
-                        valueColor: SpendyColors.textPrimary
-                    )
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Overview")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .padding(.top, 4)
+                .padding(.bottom, 16)
                 .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                // Money in
+                overviewRow(
+                    flowType: .income,
+                    label: "Money in",
+                    value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                    valueColor: SpendyColors.incomeGreen
+                )
+                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                
+                // Money out
+                overviewRow(
+                    flowType: .expense,
+                    label: "Money out",
+                    value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                    valueColor: SpendyColors.textPrimary
+                )
+                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                
+                // Net cash flow
+                overviewRow(
+                    flowType: .net(isPositive: netCashFlow >= 0),
+                    label: "Net cash flow",
+                    value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                    valueColor: netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+                )
+                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                
+                // Budget Left / Over Budget (if budgeted)
+                if let budget = categoryBudgetAmount {
+                    let remaining = budget - totalOutflow
+                    overviewRow(
+                        flowType: remaining >= 0 ? .income : .expense,
+                        label: remaining >= 0 ? "Budget left" : "Over budget",
+                        value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                        valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+                    )
+                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                } else if case .account = entity {
+                    overviewRow(
+                        flowType: currentBalance >= 0 ? .income : .expense,
+                        label: "Current balance",
+                        value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                        valueColor: currentBalance >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+                    )
+                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                }
+                
+                // Active days
+                overviewRow(
+                    flowType: nil,
+                    label: "Active days",
+                    value: "\(activeDaysCount) \(activeDaysCount == 1 ? "day" : "days")",
+                    valueColor: SpendyColors.textPrimary
+                )
+                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                
+                // Peak weekday
+                overviewRow(
+                    flowType: nil,
+                    label: "Peak weekday",
+                    value: topWeekday.name,
+                    valueColor: SpendyColors.textPrimary
+                )
+                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                
+                // Daily outflow/inflow rate
+                overviewRow(
+                    flowType: nil,
+                    label: entity.defaultType == .income ? "Daily inflow rate" : "Daily outflow rate",
+                    value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
+                    valueColor: SpendyColors.textPrimary
+                )
             }
+            .padding(.horizontal, 4)
         }
     }
     
-    // MARK: - Three-Metric Summary Card (Image 3: Expenses, Income, Net)
-    private var threeMetricSummaryCard: some View {
-        HStack(spacing: 0) {
-            // Expenses
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Text("Expenses")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Text(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+    // MARK: - Overview List Row (Image 2 with Reusable Flow Indicators)
+    private func overviewRow(flowType: SpendyFlowType? = nil, label: String, value: String, valueColor: Color) -> some View {
+        HStack(spacing: 9) {
+            if let flowType = flowType {
+                SpendyFlowIndicator(type: flowType, size: 14)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Income
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.down.left.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Text("Income")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Text(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.incomeGreen)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Net
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "equal.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Text("Net")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Text("\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 15)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(cardFillColor)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
-        }
-    }
-    
-    // MARK: - Overview List Row (Image 2)
-    private func overviewRow(label: String, value: String, valueColor: Color) -> some View {
-        HStack {
             Text(label)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(SpendyColors.textSecondary)
