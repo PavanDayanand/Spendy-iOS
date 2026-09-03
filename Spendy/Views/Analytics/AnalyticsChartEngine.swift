@@ -4,30 +4,36 @@ import Charts
 // MARK: - Chart Period Enum
 enum ChartPeriod: String, CaseIterable, Identifiable {
     case week = "1w"
+    case twoWeeks = "2w"
     case month = "1m"
     case threeMonths = "3m"
     case sixMonths = "6m"
     case year = "1y"
+    case all = "all"
     
     var id: String { rawValue }
     
     var title: String {
         switch self {
         case .week: return "1 Week"
+        case .twoWeeks: return "2 Weeks"
         case .month: return "1 Month"
         case .threeMonths: return "3 Months"
         case .sixMonths: return "6 Months"
         case .year: return "1 Year"
+        case .all: return "All Time"
         }
     }
     
     var shortLabel: String {
         switch self {
-        case .week: return "1w"
-        case .month: return "1m"
-        case .threeMonths: return "3m"
-        case .sixMonths: return "6m"
-        case .year: return "1y"
+        case .week: return "1W"
+        case .twoWeeks: return "2W"
+        case .month: return "1M"
+        case .threeMonths: return "3M"
+        case .sixMonths: return "6M"
+        case .year: return "1Y"
+        case .all: return "ALL"
         }
     }
 }
@@ -38,13 +44,25 @@ struct CategoryChartPoint: Identifiable, Equatable {
     let date: Date
     let label: String
     let amount: Double
+    let dayVolume: Double
+    let txCount: Int
     let isPredicted: Bool
     
-    init(id: String = UUID().uuidString, date: Date, label: String, amount: Double, isPredicted: Bool = false) {
+    init(
+        id: String = UUID().uuidString,
+        date: Date,
+        label: String,
+        amount: Double,
+        dayVolume: Double = 0,
+        txCount: Int = 0,
+        isPredicted: Bool = false
+    ) {
         self.id = id
         self.date = date
         self.label = label
         self.amount = amount
+        self.dayVolume = dayVolume
+        self.txCount = txCount
         self.isPredicted = isPredicted
     }
 }
@@ -53,13 +71,16 @@ struct CategoryChartPoint: Identifiable, Equatable {
 enum AnalyticsChartEngine {
     
     /// Calculate period bounds for a given ChartPeriod
-    static func periodBounds(for period: ChartPeriod) -> (start: Date, end: Date) {
+    static func periodBounds(for period: ChartPeriod, transactions: [Transaction] = []) -> (start: Date, end: Date) {
         let calendar = Calendar.current
         let now = Date()
         
         switch period {
         case .week:
             let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
+            return (start, now)
+        case .twoWeeks:
+            let start = calendar.date(byAdding: .day, value: -13, to: calendar.startOfDay(for: now)) ?? now
             return (start, now)
         case .month:
             return (now.startOfMonth, now.endOfMonth)
@@ -71,6 +92,14 @@ enum AnalyticsChartEngine {
             return (start, now.endOfDay)
         case .year:
             return (now.startOfYear, now.endOfYear)
+        case .all:
+            if let earliest = transactions.map(\.date).min() {
+                let start = calendar.startOfDay(for: earliest)
+                return (start, now)
+            } else {
+                let start = calendar.date(byAdding: .year, value: -1, to: calendar.startOfDay(for: now)) ?? now
+                return (start, now)
+            }
         }
     }
     
@@ -101,7 +130,7 @@ enum AnalyticsChartEngine {
         let extractor = valueForDay ?? defaultExtractor
         
         switch period {
-        case .week, .month:
+        case .week, .twoWeeks, .month:
             var points: [CategoryChartPoint] = []
             var current = calendar.startOfDay(for: bounds.start)
             let endDay = calendar.startOfDay(for: bounds.end)
@@ -123,13 +152,16 @@ enum AnalyticsChartEngine {
                     let dayStart = current
                     let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
                     let dayTxs = txs.filter { $0.date >= dayStart && $0.date < dayEnd }
+                    let dayVol = extractor(dayTxs)
                     
-                    cumulativeValue += extractor(dayTxs)
+                    cumulativeValue += dayVol
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
                         amount: cumulativeValue,
+                        dayVolume: dayVol,
+                        txCount: dayTxs.count,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
@@ -140,6 +172,8 @@ enum AnalyticsChartEngine {
                         date: current,
                         label: dateFormatter.string(from: current),
                         amount: predictedAmount,
+                        dayVolume: dailyRate,
+                        txCount: 0,
                         isPredicted: true
                     ))
                 }
@@ -147,7 +181,7 @@ enum AnalyticsChartEngine {
             }
             return points
             
-        case .threeMonths, .sixMonths, .year:
+        case .threeMonths, .sixMonths, .year, .all:
             var points: [CategoryChartPoint] = []
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
             let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
@@ -169,12 +203,15 @@ enum AnalyticsChartEngine {
                 
                 if isActual {
                     let monthTxs = txs.filter { $0.date >= monthStart && $0.date < monthEnd }
-                    cumulativeValue += extractor(monthTxs)
+                    let monthVol = extractor(monthTxs)
+                    cumulativeValue += monthVol
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
                         label: dateFormatter.string(from: current),
                         amount: cumulativeValue,
+                        dayVolume: monthVol,
+                        txCount: monthTxs.count,
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
@@ -186,6 +223,8 @@ enum AnalyticsChartEngine {
                         date: current,
                         label: dateFormatter.string(from: current),
                         amount: predictedAmount,
+                        dayVolume: monthlyRate,
+                        txCount: 0,
                         isPredicted: true
                     ))
                 }
@@ -237,9 +276,11 @@ enum AnalyticsChartEngine {
         let fmt = DateFormatter()
         switch period {
         case .week: fmt.dateFormat = "EEE"
+        case .twoWeeks: fmt.dateFormat = "d MMM"
         case .month: fmt.dateFormat = "d MMM"
         case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
         case .year: fmt.dateFormat = "MMM yy"
+        case .all: fmt.dateFormat = "yyyy"
         }
         return fmt.string(from: date)
     }
@@ -253,8 +294,10 @@ enum AnalyticsChartEngine {
     
     static func formattedPointDate(_ date: Date, period: ChartPeriod) -> String {
         let fmt = DateFormatter()
-        if period == .week || period == .month {
+        if period == .week || period == .twoWeeks || period == .month {
             fmt.dateFormat = "d MMM"
+        } else if period == .all {
+            fmt.dateFormat = "MMM yyyy"
         } else {
             fmt.dateFormat = "MMM yyyy"
         }

@@ -670,13 +670,15 @@ enum SmartInsightsUnitTests {
         
         // Evaluate on Home surface -> should keep destination & actionTitle
         let homeMoments = engine.evaluate(facts: catFacts, surface: .home, recordExposures: false)
-        assert(homeMoments.first?.destination == .category(id: catId), "On Home, destination must be preserved")
-        assert(homeMoments.first?.actionTitle == "View Groceries →", "On Home, actionTitle must be preserved")
+        let catHomeMoment = homeMoments.first(where: { $0.family == .category }) ?? homeMoments.first
+        assert(catHomeMoment?.destination == .category(id: catId), "On Home, destination must be preserved")
+        assert(catHomeMoment?.actionTitle == "View Groceries →", "On Home, actionTitle must be preserved")
         
         // Evaluate on Category surface -> self-referential destination must be stripped to nil
         let categoryMoments = engine.evaluate(facts: catFacts, surface: .category(id: catId), recordExposures: false)
-        assert(categoryMoments.first?.destination == nil, "On Category surface, self-referential destination must be nil")
-        assert(categoryMoments.first?.actionTitle == nil, "On Category surface, actionTitle must be nil")
+        let catCategoryMoment = categoryMoments.first(where: { $0.family == .category }) ?? categoryMoments.first
+        assert(catCategoryMoment?.destination == nil, "On Category surface, self-referential destination must be nil")
+        assert(catCategoryMoment?.actionTitle == nil, "On Category surface, actionTitle must be nil")
     }
     
     // MARK: - 18. Label Capitalization Normal Title Case
