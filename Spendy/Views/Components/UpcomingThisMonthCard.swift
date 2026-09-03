@@ -118,13 +118,10 @@ struct UpcomingThisMonthCard: View {
         }()
         
         return HStack(spacing: 12) {
-            // Subscription Icon Badge
-            SpendyIconBadge(
-                sfSymbol: sub.sfSymbol.isEmpty ? SFIcons.subscriptions : sub.sfSymbol,
-                color: sub.color,
-                size: .small,
-                style: .circle,
-                showCutoutBorder: false
+            // Subscription Icon Badge with Timing Progress Ring
+            SubscriptionProgressRingBadge(
+                subscription: sub,
+                size: .small
             )
             
             // Name & Due Date

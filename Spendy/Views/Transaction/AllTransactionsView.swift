@@ -52,12 +52,12 @@ struct AllTransactionsView: View {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             txs = txs.filter { tx in
-                let cat = store.categories.first(where: { $0.id == tx.categoryId })
-                let acc = store.accounts.first(where: { $0.id == tx.accountId })
+                let cat = store.category(for: tx.categoryId)
+                let acc = store.account(for: tx.accountId)
                 return tx.title.lowercased().contains(query) ||
                        (tx.notes?.lowercased().contains(query) ?? false) ||
-                       (cat?.label.lowercased().contains(query) ?? false) ||
-                       (acc?.label.lowercased().contains(query) ?? false)
+                       cat.label.lowercased().contains(query) ||
+                       acc.label.lowercased().contains(query)
             }
         }
         
@@ -77,9 +77,7 @@ struct AllTransactionsView: View {
             } else if calendar.isDateInYesterday(tx.date) {
                 key = "Yesterday"
             } else {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMM"
-                key = formatter.string(from: tx.date)
+                key = SpendyDateFormatterCache.dayMonth.string(from: tx.date)
             }
             
             if groups[key] == nil {

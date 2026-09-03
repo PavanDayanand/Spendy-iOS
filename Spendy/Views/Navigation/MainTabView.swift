@@ -54,20 +54,21 @@ struct MainTabView: View {
             }
         } else {
             ZStack(alignment: .bottom) {
-                // Main Screen Content
-                Group {
-                    switch selectedTab {
-                    case .home:
-                        DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
-                    case .analytics:
-                        AnalyticsView(selectedTab: $selectedTab)
-                    case .subscriptions:
-                        NavigationStack {
-                            SubscriptionsView()
-                        }
-                    case .quickAdd:
-                        DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
+                // Main Screen Content (Preserve View Hierarchies & Scroll States)
+                ZStack {
+                    DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
+                        .opacity(selectedTab == .home || selectedTab == .quickAdd ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .home || selectedTab == .quickAdd)
+                    
+                    AnalyticsView(selectedTab: $selectedTab)
+                        .opacity(selectedTab == .analytics ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .analytics)
+                    
+                    NavigationStack {
+                        SubscriptionsView()
                     }
+                    .opacity(selectedTab == .subscriptions ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .subscriptions)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 

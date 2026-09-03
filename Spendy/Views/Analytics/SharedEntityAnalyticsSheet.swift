@@ -125,19 +125,14 @@ struct SharedEntityAnalyticsSheet: View {
         SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : entity.color
     }
     
-    /// Replaces harsh #000000 pitch black with Apple's elevated deep graphite palette
+    /// Adaptive base background for sheets: #000000 in dark mode, #F6F6F6 in light mode
     private var sheetBackgroundColor: Color {
-        Color(uiColor: .dynamic(
-            light: UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1.0),
-            dark: UIColor(red: 16.0/255.0, green: 16.0/255.0, blue: 19.0/255.0, alpha: 1.0) // #101013 Apple sheet graphite
-        ))
+        SpendyColors.appBackground
     }
     
+    /// Standard card fill: #1A1A1A in dark mode, #FFFFFF in light mode
     private var cardFillColor: Color {
-        Color(uiColor: .dynamic(
-            light: UIColor(white: 1.0, alpha: 1.0), // Crisp white in light mode
-            dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 33.0/255.0, alpha: 1.0) // #1C1C21 elevated card
-        ))
+        SpendyColors.cardBackground
     }
     
     private var cardBorderColor: Color {
@@ -309,26 +304,21 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var periodHeaderLabel: String {
-        let formatter = DateFormatter()
         let bounds = periodBounds
         if customDateRange != nil {
-            formatter.dateFormat = "d MMM"
-            return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
+            return "\(SpendyDateFormatterCache.dayMonth.string(from: bounds.start)) – \(SpendyDateFormatterCache.dayMonth.string(from: bounds.end))"
         }
         switch selectedPeriod {
         case .week:
-            formatter.dateFormat = "MMM d"
-            return "\(formatter.string(from: bounds.start)) – \(formatter.string(from: bounds.end))"
+            return "\(SpendyDateFormatterCache.monthDay.string(from: bounds.start)) – \(SpendyDateFormatterCache.monthDay.string(from: bounds.end))"
         case .month:
-            formatter.dateFormat = "MMMM yyyy"
-            return formatter.string(from: bounds.start)
+            return SpendyDateFormatterCache.monthYear.string(from: bounds.start)
         case .threeMonths:
             return "Last 3 Months"
         case .sixMonths:
             return "Last 6 Months"
         case .year:
-            formatter.dateFormat = "yyyy"
-            return formatter.string(from: bounds.start)
+            return SpendyDateFormatterCache.year.string(from: bounds.start)
         }
     }
     
@@ -1173,7 +1163,7 @@ struct SharedEntityAnalyticsSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                             .overlay {
                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(SpendyColors.separator, lineWidth: 0.7)
+                                    .stroke(cardBorderColor, lineWidth: 0.8)
                             }
                         }
                     }

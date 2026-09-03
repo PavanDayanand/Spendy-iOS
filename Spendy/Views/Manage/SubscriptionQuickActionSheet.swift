@@ -229,6 +229,7 @@ struct SubscriptionQuickActionSheet: View {
         }
         .presentationDetents([.height(540), .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(SpendyColors.appBackground)
     }
     
     // MARK: - Top Action Bar (✕ on Left, ••• Menu on Right)
@@ -305,14 +306,11 @@ struct SubscriptionQuickActionSheet: View {
         VStack(spacing: 12) {
             // Subscription Avatar Icon Badge + Title
             VStack(spacing: 6) {
-                SpendyIconBadge(
-                    sfSymbol: liveSub.sfSymbol,
-                    color: themeColor,
-                    size: .large,
-                    style: .circle
+                SubscriptionProgressRingBadge(
+                    subscription: liveSub,
+                    size: .large
                 )
                 .scaleEffect(heroPulseScale)
-                .shadow(color: themeColor.opacity(liveSub.isPaused ? 0.05 : 0.35), radius: 12, y: 4)
                 
                 Text(liveSub.name)
                     .font(.system(size: 18, weight: .bold))

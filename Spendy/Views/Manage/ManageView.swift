@@ -432,12 +432,10 @@ struct SubscriptionsView: View {
             selectedSubscriptionForDetail = sub
         }) {
             HStack(spacing: AppSpacing.md14) {
-                // Vibrant Subscription Icon Badge
-                SpendyIconBadge(
-                    sfSymbol: sub.sfSymbol,
-                    color: Color(hex: sub.colorHex),
-                    size: .medium,
-                    style: .circle
+                // Vibrant Subscription Icon Badge with Timing Progress Ring
+                SubscriptionProgressRingBadge(
+                    subscription: sub,
+                    size: .medium
                 )
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
@@ -668,8 +666,7 @@ fileprivate func relativeDueText(for date: Date, isTrial: Bool) -> String {
     else if days == 1  { return "\(prefix) tomorrow" }
     else if days <= 10 { return "\(prefix) in \(days)d" }
     else {
-        let fmt = DateFormatter(); fmt.dateFormat = "MMM d"
-        return "\(prefix) \(fmt.string(from: date))"
+        return "\(prefix) \(SpendyDateFormatterCache.monthDay.string(from: date))"
     }
 }
 

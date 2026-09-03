@@ -7,6 +7,82 @@
 
 import Foundation
 
+// MARK: - Thread-Safe Static DateFormatter Cache
+enum SpendyDateFormatterCache {
+    static let dayMonth: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f
+    }()
+    
+    static let mediumDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+    
+    static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+    
+    static let monthYear: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMMM yyyy"
+        return f
+    }()
+    
+    static let shortMonth: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+    
+    static let shortWeekday: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f
+    }()
+    
+    static let monthDay: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+    
+    static let year: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy"
+        return f
+    }()
+    
+    static let monthYearShort: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM yyyy"
+        return f
+    }()
+    
+    static let dayNumber: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+    
+    static let dayMonthYear: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+    
+    static let shortMonthShortYear: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM yy"
+        return f
+    }()
+}
+
 extension Date {
     var isToday: Bool {
         Calendar.current.isDateInToday(self)
@@ -22,29 +98,20 @@ extension Date {
         } else if isYesterday {
             return "Yesterday"
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "d MMM"
-            return formatter.string(from: self)
+            return SpendyDateFormatterCache.dayMonth.string(from: self)
         }
     }
     
     var formattedFullDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: self)
+        SpendyDateFormatterCache.mediumDate.string(from: self)
     }
     
     var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: self)
+        SpendyDateFormatterCache.time.string(from: self)
     }
     
     var formattedMonthYear: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: self)
+        SpendyDateFormatterCache.monthYear.string(from: self)
     }
     
     var startOfDay: Date {

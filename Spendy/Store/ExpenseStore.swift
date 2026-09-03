@@ -52,10 +52,14 @@ enum DashboardSectionId: String, Codable, CaseIterable, Identifiable {
 }
 
 @Observable
+@MainActor
 final class ExpenseStore {
     // MARK: - App State
     
     @ObservationIgnored private var _saveTask: Task<Void, Never>?
+    @ObservationIgnored private var _cachedBalances: [String: Double]?
+    @ObservationIgnored private var _cachedCategoryMap: [String: Category]?
+    @ObservationIgnored private var _cachedAccountMap: [String: Account]?
     
     private func scheduleSave() {
         _saveTask?.cancel()
@@ -98,15 +102,25 @@ final class ExpenseStore {
     }
     
     var transactions: [Transaction] = [] {
-        didSet { scheduleSave() }
+        didSet {
+            _cachedBalances = nil
+            scheduleSave()
+        }
     }
     
     var accounts: [Account] = [] {
-        didSet { scheduleSave() }
+        didSet {
+            _cachedBalances = nil
+            _cachedAccountMap = nil
+            scheduleSave()
+        }
     }
     
     var categories: [Category] = [] {
-        didSet { scheduleSave() }
+        didSet {
+            _cachedCategoryMap = nil
+            scheduleSave()
+        }
     }
     
     var customFolders: [Folder] = [] {
@@ -330,7 +344,7 @@ final class ExpenseStore {
         HapticsManager.shared.isEnabled = hapticsEnabled
     }
     
-    private struct StoragePayload: Codable {
+    private struct StoragePayload: Codable, Sendable {
         var userName: String?
         var hapticsEnabled: Bool?
         var profileImageData: Data?
@@ -443,42 +457,46 @@ final class ExpenseStore {
     }
     
     private func saveToDisk() {
-        do {
-            let payload = StoragePayload(
-                userName: userName,
-                hapticsEnabled: hapticsEnabled,
-                profileImageData: profileImageData,
-                profileIconSymbol: profileIconSymbol,
-                profileColorHex: profileColorHex,
-                soundEnabled: soundEnabled,
-                notificationsEnabled: notificationsEnabled,
-                appearanceMode: .dark,
-                isMonoIconMode: isMonoIconMode,
-                topGradientColorHex: topGradientColorHex,
-                isGradientBackgroundEnabled: isGradientBackgroundEnabled,
-                topGradientHue: topGradientHue,
-                topGradientBrightness: topGradientBrightness,
-                transactions: transactions,
-                accounts: accounts,
-                categories: categories,
-                subscriptions: subscriptions,
-                budget: budget,
-                currencySymbol: currencySymbol,
-                currencyCode: currencyCode,
-                showHomeSpendBarChart: isSectionVisible(.spendingChart),
-                showHomeBudgetCard: isSectionVisible(.budget),
-                showHomeSmartInsights: isSectionVisible(.spendingByCategory),
-                showHomeAccountsCard: isSectionVisible(.accounts),
-                dashboardSectionOrder: dashboardSectionOrder.map { $0.rawValue },
-                dashboardHiddenSections: dashboardHiddenSections,
-                customFolders: customFolders,
-                ratesToUSD: ratesToUSD,
-                ratesLastUpdated: ratesLastUpdated
-            )
-            let data = try ExpenseStore.jsonEncoder.encode(payload)
-            try data.write(to: storageURL, options: .atomic)
-        } catch {
-            print("Failed to save local store: \(error.localizedDescription)")
+        let payload = StoragePayload(
+            userName: userName,
+            hapticsEnabled: hapticsEnabled,
+            profileImageData: profileImageData,
+            profileIconSymbol: profileIconSymbol,
+            profileColorHex: profileColorHex,
+            soundEnabled: soundEnabled,
+            notificationsEnabled: notificationsEnabled,
+            appearanceMode: appearanceMode,
+            isMonoIconMode: isMonoIconMode,
+            topGradientColorHex: topGradientColorHex,
+            isGradientBackgroundEnabled: isGradientBackgroundEnabled,
+            topGradientHue: topGradientHue,
+            topGradientBrightness: topGradientBrightness,
+            transactions: transactions,
+            accounts: accounts,
+            categories: categories,
+            subscriptions: subscriptions,
+            budget: budget,
+            currencySymbol: currencySymbol,
+            currencyCode: currencyCode,
+            showHomeSpendBarChart: isSectionVisible(.spendingChart),
+            showHomeBudgetCard: isSectionVisible(.budget),
+            showHomeSmartInsights: isSectionVisible(.spendingByCategory),
+            showHomeAccountsCard: isSectionVisible(.accounts),
+            dashboardSectionOrder: dashboardSectionOrder.map { $0.rawValue },
+            dashboardHiddenSections: dashboardHiddenSections,
+            customFolders: customFolders,
+            ratesToUSD: ratesToUSD,
+            ratesLastUpdated: ratesLastUpdated
+        )
+        let destinationURL = storageURL
+        Task.detached(priority: .utility) {
+            do {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(payload)
+                try data.write(to: destinationURL, options: .atomic)
+            } catch {
+                print("Failed to save local store: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -506,6 +524,9 @@ final class ExpenseStore {
     
     /// Calculate current live balance for each account
     var accountBalances: [String: Double] {
+        if let cached = _cachedBalances {
+            return cached
+        }
         var balances: [String: Double] = [:]
         for account in accounts {
             balances[account.id] = account.openingBalance
@@ -524,6 +545,7 @@ final class ExpenseStore {
                 }
             }
         }
+        _cachedBalances = balances
         return balances
     }
     
@@ -602,7 +624,14 @@ final class ExpenseStore {
     
     // MARK: - Lookup Helpers
     func category(for id: String) -> Category {
-        if let found = categories.first(where: { $0.id == id }) {
+        if _cachedCategoryMap == nil {
+            var map: [String: Category] = [:]
+            for cat in categories {
+                map[cat.id] = cat
+            }
+            _cachedCategoryMap = map
+        }
+        if let found = _cachedCategoryMap?[id] {
             return found
         }
         return Category(
@@ -614,7 +643,14 @@ final class ExpenseStore {
     }
     
     func account(for id: String) -> Account {
-        if let found = accounts.first(where: { $0.id == id }) {
+        if _cachedAccountMap == nil {
+            var map: [String: Account] = [:]
+            for acc in accounts {
+                map[acc.id] = acc
+            }
+            _cachedAccountMap = map
+        }
+        if let found = _cachedAccountMap?[id] {
             return found
         }
         return Account(

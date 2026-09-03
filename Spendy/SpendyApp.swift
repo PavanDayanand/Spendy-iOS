@@ -13,7 +13,9 @@ struct SpendyApp: App {
     
     init() {
         #if DEBUG
-        SmartInsightsUnitTests.runAllTests()
+        Task { @MainActor in
+            SmartInsightsUnitTests.runAllTests()
+        }
         #endif
     }
     

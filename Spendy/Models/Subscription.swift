@@ -101,6 +101,62 @@ struct Subscription: Identifiable, Codable, Hashable {
         status == "cancelled"
     }
     
+    // MARK: - Timing & Cycle Progress
+    
+    /// The computed start date of the current billing cycle
+    var cycleStartDate: Date {
+        let calendar = Calendar.current
+        switch cycle {
+        case .monthly:
+            return calendar.date(byAdding: .month, value: -1, to: nextBillingDate) ?? nextBillingDate
+        case .yearly:
+            return calendar.date(byAdding: .year, value: -1, to: nextBillingDate) ?? nextBillingDate
+        case .weekly:
+            return calendar.date(byAdding: .day, value: -7, to: nextBillingDate) ?? nextBillingDate
+        }
+    }
+    
+    /// Signed difference in whole calendar days from today to nextBillingDate
+    var daysRemaining: Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let target = calendar.startOfDay(for: nextBillingDate)
+        return calendar.dateComponents([.day], from: today, to: target).day ?? 0
+    }
+    
+    /// Progress through the billing cycle: 0.0 (just renewed) to 1.0 (due / overdue)
+    var cycleProgress: Double {
+        if isPaused || isCancelled { return 0.0 }
+        
+        let now = Date()
+        let start = cycleStartDate
+        let end = nextBillingDate
+        
+        let total = end.timeIntervalSince(start)
+        guard total > 0 else { return 1.0 }
+        
+        let elapsed = now.timeIntervalSince(start)
+        let ratio = elapsed / total
+        
+        // Show at least a subtle starting notch (0.05) if the cycle is ongoing, up to 1.0
+        if ratio <= 0 { return 0.05 }
+        if ratio >= 1.0 { return 1.0 }
+        return min(max(ratio, 0.05), 1.0)
+    }
+    
+    /// Proximity indicators
+    var isDueSoon: Bool {
+        !isPaused && !isCancelled && daysRemaining >= 0 && daysRemaining <= 3
+    }
+    
+    var isDueToday: Bool {
+        !isPaused && !isCancelled && daysRemaining == 0
+    }
+    
+    var isOverdue: Bool {
+        !isPaused && !isCancelled && daysRemaining < 0
+    }
+    
     // MARK: - Default Subscriptions
     static let samples: [Subscription] = []
 }

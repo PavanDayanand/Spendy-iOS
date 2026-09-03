@@ -1378,15 +1378,13 @@ struct AnalyticsView: View {
             
         case .week:
             let start = selectedDate.startOfWeek
-            let shortFmt = DateFormatter()
-            shortFmt.dateFormat = "EEE"
             for d in 0..<7 {
                 let dayStart = calendar.date(byAdding: .day, value: d, to: start) ?? start
                 let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? start
                 let dayTxs = txs.filter { $0.date >= dayStart && $0.date < dayEnd }
                 let spend = dayTxs.filter { $0.type == .expense }.reduce(0.0) { $0 + $1.amount }
                 let inc = dayTxs.filter { $0.type == .income }.reduce(0.0) { $0 + $1.amount }
-                intervals.append(PeriodIntervalData(label: shortFmt.string(from: dayStart), startDate: dayStart, endDate: dayEnd, spendingAmount: spend, incomeAmount: inc))
+                intervals.append(PeriodIntervalData(label: SpendyDateFormatterCache.shortWeekday.string(from: dayStart), startDate: dayStart, endDate: dayEnd, spendingAmount: spend, incomeAmount: inc))
             }
             
         case .month:
@@ -1420,15 +1418,13 @@ struct AnalyticsView: View {
             
         case .year:
             let start = selectedDate.startOfYear
-            let monthFmt = DateFormatter()
-            monthFmt.dateFormat = "MMM"
             for m in 0..<12 {
                 let mStart = calendar.date(byAdding: .month, value: m, to: start) ?? start
                 let mEnd = calendar.date(byAdding: .month, value: 1, to: mStart) ?? start
                 let mTxs = txs.filter { $0.date >= mStart && $0.date < mEnd }
                 let spend = mTxs.filter { $0.type == .expense }.reduce(0.0) { $0 + $1.amount }
                 let inc = mTxs.filter { $0.type == .income }.reduce(0.0) { $0 + $1.amount }
-                intervals.append(PeriodIntervalData(label: monthFmt.string(from: mStart), startDate: mStart, endDate: mEnd, spendingAmount: spend, incomeAmount: inc))
+                intervals.append(PeriodIntervalData(label: SpendyDateFormatterCache.shortMonth.string(from: mStart), startDate: mStart, endDate: mEnd, spendingAmount: spend, incomeAmount: inc))
             }
         }
         
@@ -1516,14 +1512,14 @@ struct AnalyticsView: View {
     }
     
     private var formattedPillTitle: String {
-        let fmt = DateFormatter()
         switch granularity {
-        case .day: fmt.dateFormat = "d MMM"
-        case .week: fmt.dateFormat = "d MMM"
-        case .month: fmt.dateFormat = "MMM yyyy"
-        case .year: fmt.dateFormat = "yyyy"
+        case .day, .week:
+            return SpendyDateFormatterCache.dayMonth.string(from: selectedDate)
+        case .month:
+            return SpendyDateFormatterCache.monthYearShort.string(from: selectedDate)
+        case .year:
+            return SpendyDateFormatterCache.year.string(from: selectedDate)
         }
-        return fmt.string(from: selectedDate)
     }
     
     private var remainingDaysText: String {
@@ -1565,9 +1561,7 @@ struct AnalyticsView: View {
     private func formattedMonthRange(_ date: Date) -> String {
         let start = date.startOfMonth
         let end = date.endOfMonth
-        let fmt = DateFormatter()
-        fmt.dateFormat = "MMM d"
-        return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
+        return "\(SpendyDateFormatterCache.monthDay.string(from: start)) – \(SpendyDateFormatterCache.monthDay.string(from: end))"
     }
     
     private func formatAxisAmount(_ amount: Double) -> String {

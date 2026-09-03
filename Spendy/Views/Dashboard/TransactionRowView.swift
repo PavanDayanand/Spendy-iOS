@@ -16,7 +16,7 @@ struct TransactionRowView: View {
         let account = store.account(for: transaction.accountId)
         let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == transaction.subscriptionId?.lowercased() })
         
-        let accent = subscription != nil ? Color(hex: subscription!.colorHex) : nil
+        let accent = subscription.map { Color(hex: $0.colorHex) }
         
         SpendyRowCard(
             accentColor: accent,

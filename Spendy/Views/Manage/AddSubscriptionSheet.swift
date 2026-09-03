@@ -203,6 +203,26 @@ struct AddSubscriptionSheet: View {
             }
         }
     }
+    
+    private var previewProgress: Double {
+        let calendar = Calendar.current
+        let start: Date
+        switch cycle {
+        case .monthly:
+            start = calendar.date(byAdding: .month, value: -1, to: nextBillingDate) ?? nextBillingDate
+        case .yearly:
+            start = calendar.date(byAdding: .year, value: -1, to: nextBillingDate) ?? nextBillingDate
+        case .weekly:
+            start = calendar.date(byAdding: .day, value: -7, to: nextBillingDate) ?? nextBillingDate
+        }
+        let total = nextBillingDate.timeIntervalSince(start)
+        guard total > 0 else { return 1.0 }
+        let elapsed = Date().timeIntervalSince(start)
+        let ratio = elapsed / total
+        if ratio <= 0 { return 0.05 }
+        if ratio >= 1.0 { return 1.0 }
+        return min(max(ratio, 0.05), 1.0)
+    }
 
     private var avatarHeroSection: some View {
         VStack(spacing: 12) {
@@ -211,11 +231,12 @@ struct AddSubscriptionSheet: View {
                     HapticsManager.shared.trigger(.light)
                     showIconPickerSheet = true
                 }) {
-                    SpendyIconBadge(
+                    SubscriptionProgressRingBadge(
                         sfSymbol: selectedSymbol,
                         color: Color(hex: selectedColorHex),
-                        size: .hero,
-                        style: .circle
+                        progress: previewProgress,
+                        isPaused: false,
+                        size: .hero
                     )
                 }
                 .buttonStyle(.plain)

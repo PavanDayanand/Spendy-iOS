@@ -81,30 +81,34 @@ enum SpendyColors {
     // to resolve to monochrome without changing any call sites across the app.
     static var isMonoMode: Bool = false
     
-    // Dynamic Base Backgrounds
+    // Dynamic Base Backgrounds (#000000 in Dark Mode, #F6F6F6 in Light Mode for non-gradient surfaces & sheets)
     static let appBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+        light: UIColor(red: 246.0/255.0, green: 246.0/255.0, blue: 246.0/255.0, alpha: 1.0), // #F6F6F6
+        dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
+    // Card Surfaces (#1A1A1A in Dark Mode, #FFFFFF in Light Mode)
     static let cardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 0.82),
-        dark: UIColor(red: 20.0/255.0, green: 20.0/255.0, blue: 22.0/255.0, alpha: 0.68) // Enhanced ambient mesh translucency (#141416 @ 68%)
+        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 1.0)      // #1A1A1A
     ))
 
+    // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 0.82),
-        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 0.58) // Elevated secondary layer (#1C1C1E @ 58%)
+        light: UIColor(red: 238.0/255.0, green: 238.0/255.0, blue: 238.0/255.0, alpha: 1.0), // #EEEEEE
+        dark: UIColor(red: 38.0/255.0, green: 38.0/255.0, blue: 38.0/255.0, alpha: 1.0)      // #262626
     ))
 
+    // Sheet Card Surfaces (#1A1A1A in Dark Mode, #FFFFFF in Light Mode)
     static let sheetCardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 0.16, green: 0.16, blue: 0.173, alpha: 1.0)
+        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 1.0)      // #1A1A1A
     ))
 
+    // Settings Background (#000000 in Dark Mode, #F6F6F6 in Light Mode)
     static let settingsBackground = Color(uiColor: .dynamic(
-        light: UIColor(red: 0.949, green: 0.949, blue: 0.969, alpha: 1.0), // Apple systemGroupedBackground (#F2F2F7)
-        dark: UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)     // Sleek dark gray (#1C1C1E) in dark mode
+        light: UIColor(red: 246.0/255.0, green: 246.0/255.0, blue: 246.0/255.0, alpha: 1.0), // #F6F6F6
+        dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
     static let separator = Color(uiColor: .dynamic(

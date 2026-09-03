@@ -117,6 +117,7 @@ struct TransactionDetailSheet: View {
         }
         .presentationDetents([.height(500), .medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(SpendyColors.appBackground)
         .fullScreenCover(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction)
         }
@@ -227,13 +228,14 @@ struct TransactionDetailSheet: View {
                 )
                 .shadow(color: Color(hex: sub.colorHex).opacity(0.35), radius: 12, y: 4)
             } else {
+                let catColor = category.map { Color(hex: $0.colorHex) } ?? themeColor
                 SpendyIconBadge(
                     sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
-                    color: category != nil ? Color(hex: category!.colorHex) : themeColor,
+                    color: catColor,
                     size: .large,
                     style: .circle
                 )
-                .shadow(color: (category != nil ? Color(hex: category!.colorHex) : themeColor).opacity(0.35), radius: 12, y: 4)
+                .shadow(color: catColor.opacity(0.35), radius: 12, y: 4)
             }
             
             // Title
@@ -252,7 +254,7 @@ struct TransactionDetailSheet: View {
                 HStack(spacing: 5) {
                     Image(systemName: typeBadgeIcon)
                         .font(.system(size: 10, weight: .bold))
-                    Text(subscription != nil ? "Subscription • \(subscription!.cycle.rawValue.capitalized)" : typeBadgeTitle)
+                    Text(subscription.map { "Subscription • \($0.cycle.rawValue.capitalized)" } ?? typeBadgeTitle)
                         .font(.system(size: 12, weight: .semibold))
                 }
                 .foregroundStyle(themeColor)
@@ -278,7 +280,7 @@ struct TransactionDetailSheet: View {
                 HStack(spacing: 8) {
                     SpendyIconBadge(
                         sfSymbol: category?.sfSymbol ?? "tag.fill",
-                        color: category != nil ? Color(hex: category!.colorHex) : SpendyColors.primaryBlue,
+                        color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
                         size: .small,
                         style: .circle
                     )
@@ -310,9 +312,15 @@ struct TransactionDetailSheet: View {
             } else {
                 cardRow(icon: "creditcard.fill", label: "Account") {
                     HStack(spacing: 8) {
+                        let symbol: String = {
+                            if let sym = account?.sfSymbol, !sym.isEmpty {
+                                return sym
+                            }
+                            return account?.type.defaultSymbol ?? "building.columns.fill"
+                        }()
                         SpendyIconBadge(
-                            sfSymbol: account?.sfSymbol.isEmpty == false ? account!.sfSymbol : (account?.type.defaultSymbol ?? "building.columns.fill"),
-                            color: account != nil ? Color(hex: account!.colorHex) : SpendyColors.incomeGreen,
+                            sfSymbol: symbol,
+                            color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
                             size: .small,
                             style: .circle
                         )

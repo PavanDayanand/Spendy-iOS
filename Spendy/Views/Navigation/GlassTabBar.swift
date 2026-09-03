@@ -178,18 +178,18 @@ private extension GlassTabBar {
         return GeometryReader { geometry in
             let totalWidth = geometry.size.width
             let count = CGFloat(mainTabs.count)
-            let itemWidth = totalWidth / count
+            let itemWidth = count > 0 ? totalWidth / count : 0
             let activeIndex = CGFloat(mainTabs.firstIndex(of: selectedTab) ?? 0)
 
-            let pillWidth = isDragging ? itemWidth + 4 : itemWidth - 8
+            let pillWidth = max(24, isDragging ? itemWidth + 4 : itemWidth - 8)
             let pillHeight: CGFloat = isDragging ? 52 : 44
 
             let currentOffset: CGFloat = {
-                if let dragX = dragX {
+                if let dragX = dragX, !dragX.isNaN, !dragX.isInfinite {
                     let halfWidth = pillWidth / 2
                     let rawX = dragX - halfWidth
                     let minOffset: CGFloat = isDragging ? -2 : 4
-                    let maxOffset = totalWidth - pillWidth - (isDragging ? -2 : 4)
+                    let maxOffset = max(minOffset, totalWidth - pillWidth - minOffset)
                     return min(max(rawX, minOffset), maxOffset)
                 } else {
                     return (activeIndex * itemWidth) + (isDragging ? -2 : 4)
@@ -250,6 +250,7 @@ private extension GlassTabBar {
                     }
                     .onChanged { value in
                         let x = value.location.x
+                        guard itemWidth > 0, !x.isNaN, !x.isInfinite else { return }
                         dragX = x
                         
                         let targetIndex = min(max(Int(x / itemWidth), 0), mainTabs.count - 1)

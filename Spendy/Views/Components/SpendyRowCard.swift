@@ -67,23 +67,29 @@ struct SpendyRowCard<LeadingIcon: View, ContentTitle: View, TrailingContent: Vie
         .padding(.horizontal, paddingHorizontal)
         .padding(.vertical, paddingVertical)
         .background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    effectiveAccent != nil ? AnyShapeStyle(
+            let fillStyle: AnyShapeStyle = {
+                if let accent = effectiveAccent {
+                    return AnyShapeStyle(
                         LinearGradient(
                             colors: [
-                                effectiveAccent!.opacity(0.12),
-                                effectiveAccent!.opacity(0.02)
+                                accent.opacity(0.12),
+                                accent.opacity(0.02)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
-                    ) : AnyShapeStyle(SpendyColors.cardBackground)
-                )
+                    )
+                } else {
+                    return AnyShapeStyle(SpendyColors.cardBackground)
+                }
+            }()
+            let strokeColor = effectiveAccent?.opacity(0.18) ?? SpendyColors.separator
+
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(fillStyle)
                 .background(SpendyColors.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
-                    let strokeColor = effectiveAccent != nil ? effectiveAccent!.opacity(0.18) : SpendyColors.separator
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(strokeColor, lineWidth: 0.8)
                 }

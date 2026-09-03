@@ -118,8 +118,7 @@ enum AnalyticsChartEngine {
             var current = calendar.startOfDay(for: bounds.start)
             let endDay = calendar.startOfDay(for: bounds.end)
             
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = period == .week ? "EEE" : "d"
+            let dateLabelFmt = period == .week ? SpendyDateFormatterCache.shortWeekday : SpendyDateFormatterCache.dayNumber
             
             let daysElapsed = max(1, calendar.dateComponents([.day], from: bounds.start, to: min(today, bounds.end)).day ?? 1)
             let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
@@ -141,7 +140,7 @@ enum AnalyticsChartEngine {
                     points.append(CategoryChartPoint(
                         id: "actual_\(current.timeIntervalSince1970)",
                         date: current,
-                        label: dateFormatter.string(from: current),
+                        label: dateLabelFmt.string(from: current),
                         amount: cumulativeValue,
                         dayVolume: dayVol,
                         txCount: dayTxs.count,
@@ -153,7 +152,7 @@ enum AnalyticsChartEngine {
                     points.append(CategoryChartPoint(
                         id: "pred_\(current.timeIntervalSince1970)",
                         date: current,
-                        label: dateFormatter.string(from: current),
+                        label: dateLabelFmt.string(from: current),
                         amount: predictedAmount,
                         dayVolume: dailyRate,
                         txCount: 0,
@@ -174,8 +173,7 @@ enum AnalyticsChartEngine {
             let totalValueSoFar = extractor(actualTxs)
             let monthlyRate = monthsElapsed > 0 ? (totalValueSoFar / Double(monthsElapsed)) : 0
             
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM"
+            let dateFormatter = SpendyDateFormatterCache.shortMonth
             
             var cumulativeValue: Double = 0
             
@@ -235,8 +233,6 @@ enum AnalyticsChartEngine {
             calendar.startOfDay(for: tx.date)
         }
         
-        let dateFormatter = DateFormatter()
-        
         return groups.keys.sorted(by: >).map { day -> (label: String, dayTotal: Double, transactions: [Transaction]) in
             let dayTxs = groups[day]!.sorted { $0.date > $1.date }
             let dayTotal = dayTxs.reduce(0) { $0 + $1.amount }
@@ -247,8 +243,7 @@ enum AnalyticsChartEngine {
             } else if calendar.isDateInYesterday(day) {
                 label = "Yesterday"
             } else {
-                dateFormatter.dateFormat = "d MMM yyyy"
-                label = dateFormatter.string(from: day)
+                label = SpendyDateFormatterCache.dayMonthYear.string(from: day)
             }
             return (label, dayTotal, dayTxs)
         }
@@ -256,30 +251,28 @@ enum AnalyticsChartEngine {
     
     /// Format axis label for date based on period
     static func axisLabel(for date: Date, period: ChartPeriod) -> String {
-        let fmt = DateFormatter()
         switch period {
-        case .week: fmt.dateFormat = "EEE"
-        case .month: fmt.dateFormat = "d MMM"
-        case .threeMonths, .sixMonths: fmt.dateFormat = "MMM"
-        case .year: fmt.dateFormat = "MMM yy"
+        case .week:
+            return SpendyDateFormatterCache.shortWeekday.string(from: date)
+        case .month:
+            return SpendyDateFormatterCache.dayMonth.string(from: date)
+        case .threeMonths, .sixMonths:
+            return SpendyDateFormatterCache.shortMonth.string(from: date)
+        case .year:
+            return SpendyDateFormatterCache.shortMonthShortYear.string(from: date)
         }
-        return fmt.string(from: date)
     }
     
     /// Format time for transaction row
     static func formattedTime(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "h:mm a"
-        return fmt.string(from: date)
+        SpendyDateFormatterCache.time.string(from: date)
     }
     
     static func formattedPointDate(_ date: Date, period: ChartPeriod) -> String {
-        let fmt = DateFormatter()
         if period == .week || period == .month {
-            fmt.dateFormat = "d MMM"
+            return SpendyDateFormatterCache.dayMonth.string(from: date)
         } else {
-            fmt.dateFormat = "MMM yyyy"
+            return SpendyDateFormatterCache.monthYearShort.string(from: date)
         }
-        return fmt.string(from: date)
     }
 }
