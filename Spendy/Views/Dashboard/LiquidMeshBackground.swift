@@ -3,11 +3,33 @@
 //  Spendy
 //
 //  Adaptive edge-to-edge ambient header gradient background with fluid liquid mesh animation.
-//  Active only when 'Gradient background' toggle is enabled in Settings; otherwise displays
-//  clean monochrome theme (pure dark / light background).
+//  Blends the signature electric blue palette:
+//  - Deep Electric Blue (#1B17E9)
+//  - Royal Blue (#1870FF)
+//  - Neon Electric Blue (#00E5FF)
+//  - Deep Pitch Black (#000000)
+//  A fixed signature aesthetic that stays consistent across user selections.
 //
 
 import SwiftUI
+
+// MARK: - Spendy Signature Palette
+public enum SpendySignatureTheme {
+    /// 1. Pure Pitch / AMOLED Black Canvas
+    public static let pitchBlack = Color(hex: "#000000")
+    /// 2. Deep Electric Ultramarine Blue (Core Brand Blue)
+    public static let deepElectricBlue = Color(hex: "#1B17E9")
+    /// 3. Deep Saturated Royal Blue ("blur / royal blue")
+    public static let royalBlue = Color(hex: "#1870FF")
+    /// 4. Luminous Electric Neon Blue
+    public static let neonBlue = Color(hex: "#00E5FF")
+    
+    // Hex String Constants for user reference
+    public static let hexPitchBlack = "#000000"
+    public static let hexDeepElectricBlue = "#1B17E9"
+    public static let hexRoyalBlue = "#1870FF"
+    public static let hexNeonBlue = "#00E5FF"
+}
 
 public struct LiquidMeshBackground: View {
     @Environment(ExpenseStore.self) private var store
@@ -20,7 +42,7 @@ public struct LiquidMeshBackground: View {
     public var color: Color? = nil
     public var style: Style = .screen
     public var height: CGFloat? = nil
-    public var opacity: Double = 0.38
+    public var opacity: Double = 0.44
     
     @State private var isDrifting: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -29,7 +51,7 @@ public struct LiquidMeshBackground: View {
         color: Color? = nil,
         style: Style = .screen,
         height: CGFloat? = nil,
-        opacity: Double = 0.38
+        opacity: Double = 0.44
     ) {
         self.color = color
         self.style = style
@@ -42,93 +64,168 @@ public struct LiquidMeshBackground: View {
         return style == .sheet ? 380 : 540
     }
     
-    private var ambientColor: Color {
-        if let color = color { return color }
-        if let hex = store.profileColorHex, !hex.isEmpty {
-            return Color(hex: hex)
-        }
-        if !store.topGradientColorHex.isEmpty {
-            return Color(hex: store.topGradientColorHex)
-        }
-        return Color(hex: "#007AFF")
+    // Default signature 4-layer palette
+    private var baseDeepElectricBlue: Color {
+        SpendySignatureTheme.deepElectricBlue
+    }
+    
+    private var baseRoyalBlue: Color {
+        SpendySignatureTheme.royalBlue
+    }
+    
+    private var baseNeonBlue: Color {
+        SpendySignatureTheme.neonBlue
+    }
+    
+    private var baseBlack: Color {
+        SpendySignatureTheme.pitchBlack
     }
     
     public var body: some View {
         ZStack {
-            SpendyColors.appBackground
+            // Base: Pure Pitch Black Canvas
+            baseBlack
                 .ignoresSafeArea()
             
             if style == .sheet {
-                SpendyAmbientHeaderBackground(
-                    color: ambientColor,
-                    height: effectiveHeight,
-                    opacity: opacity
-                )
+                // Sheet Ambient Multi-Blue Header Glow
+                sheetAmbientHeader
             } else if store.isGradientBackgroundEnabled {
-                // Main App Screen Fluid Animated Background (Only active when Gradient mode is ON)
-                VStack(spacing: 0) {
-                    ZStack(alignment: .top) {
-                        // 1. Moving ambient gradient wash across top safe area
-                        LinearGradient(
-                            stops: [
-                                .init(color: ambientColor.opacity(opacity * 1.15), location: 0.0),
-                                .init(color: ambientColor.opacity(opacity * 0.85), location: 0.22),
-                                .init(color: ambientColor.opacity(opacity * 0.50), location: 0.50),
-                                .init(color: ambientColor.opacity(opacity * 0.20), location: 0.76),
-                                .init(color: ambientColor.opacity(opacity * 0.05), location: 0.92),
-                                .init(color: Color.clear, location: 1.0)
-                            ],
-                            startPoint: (isDrifting && !reduceMotion) ? .topTrailing : .topLeading,
-                            endPoint: (isDrifting && !reduceMotion) ? .bottomLeading : .bottomTrailing
-                        )
-                        
-                        // 2. Animated floating ambient glow orb
-                        Circle()
-                            .fill(ambientColor.opacity(opacity * 0.70))
-                            .frame(width: 340, height: 340)
-                            .offset(
-                                x: (isDrifting && !reduceMotion) ? 50 : -50,
-                                y: (isDrifting && !reduceMotion) ? -30 : -80
-                            )
-                            .scaleEffect((isDrifting && !reduceMotion) ? 1.15 : 0.90)
-                            .blur(radius: 60)
-                    }
-                    .frame(height: effectiveHeight)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .white, location: 0.0),
-                                .init(color: .white, location: 0.35),
-                                .init(color: .white.opacity(0.80), location: 0.58),
-                                .init(color: .white.opacity(0.35), location: 0.80),
-                                .init(color: .white.opacity(0.08), location: 0.92),
-                                .init(color: .clear, location: 1.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .ignoresSafeArea(edges: .top)
-                    
-                    Spacer()
-                }
-                .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-                .onAppear {
-                    if !reduceMotion {
-                        withAnimation(
-                            .easeInOut(duration: 4.5)
-                            .repeatForever(autoreverses: true)
-                        ) {
-                            isDrifting = true
-                        }
-                    }
-                }
-                .animation(AppMotion.gentleSpring, value: ambientColor)
-                .transition(.opacity)
+                // Main App Screen Fluid Multi-Blue Animated Liquid Mesh
+                screenFluidMesh
             }
         }
         .animation(.easeInOut(duration: 0.35), value: store.isGradientBackgroundEnabled)
         .ignoresSafeArea()
+    }
+    
+    // MARK: - Screen Fluid Multi-Blue Mesh Background
+    private var screenFluidMesh: some View {
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                // Layer 1: Ambient Multi-Stop Gradient Wash (Neon -> Royal -> Deep Electric #1B17E9 -> Black)
+                LinearGradient(
+                    stops: [
+                        .init(color: baseNeonBlue.opacity(opacity * 0.90), location: 0.0),
+                        .init(color: baseRoyalBlue.opacity(opacity * 1.05), location: 0.18),
+                        .init(color: baseDeepElectricBlue.opacity(opacity * 1.15), location: 0.38),
+                        .init(color: baseDeepElectricBlue.opacity(opacity * 0.55), location: 0.65),
+                        .init(color: baseBlack.opacity(0.0), location: 1.0)
+                    ],
+                    startPoint: (isDrifting && !reduceMotion) ? .topTrailing : .topLeading,
+                    endPoint: (isDrifting && !reduceMotion) ? .bottomLeading : .bottomTrailing
+                )
+                
+                // Layer 2: Deep Electric Blue (#1B17E9) Fluid Core Mass
+                Circle()
+                    .fill(baseDeepElectricBlue.opacity(opacity * 1.0))
+                    .frame(width: 350, height: 350)
+                    .offset(
+                        x: (isDrifting && !reduceMotion) ? 30 : -50,
+                        y: (isDrifting && !reduceMotion) ? -10 : -60
+                    )
+                    .scaleEffect((isDrifting && !reduceMotion) ? 1.10 : 0.94)
+                    .blur(radius: 70)
+                
+                // Layer 3: Royal Blue (#1870FF) Fluid Mid-Tone Orb
+                Circle()
+                    .fill(baseRoyalBlue.opacity(opacity * 0.85))
+                    .frame(width: 290, height: 290)
+                    .offset(
+                        x: (isDrifting && !reduceMotion) ? -55 : 45,
+                        y: (isDrifting && !reduceMotion) ? -45 : -15
+                    )
+                    .scaleEffect((isDrifting && !reduceMotion) ? 0.95 : 1.14)
+                    .blur(radius: 60)
+                
+                // Layer 4: Electric Neon Blue (#00E5FF) Upper Crest Glow
+                Circle()
+                    .fill(baseNeonBlue.opacity(opacity * 0.70))
+                    .frame(width: 230, height: 230)
+                    .offset(
+                        x: (isDrifting && !reduceMotion) ? 60 : -30,
+                        y: (isDrifting && !reduceMotion) ? -75 : -35
+                    )
+                    .scaleEffect((isDrifting && !reduceMotion) ? 1.15 : 0.90)
+                    .blur(radius: 48)
+            }
+            .frame(height: effectiveHeight)
+            .mask(
+                // Ease-out vertical falloff mask into Pitch Black
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0.0),
+                        .init(color: .white, location: 0.35),
+                        .init(color: .white.opacity(0.85), location: 0.55),
+                        .init(color: .white.opacity(0.40), location: 0.78),
+                        .init(color: .white.opacity(0.10), location: 0.92),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .ignoresSafeArea(edges: .top)
+            
+            Spacer()
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+        .onAppear {
+            if !reduceMotion {
+                withAnimation(
+                    .easeInOut(duration: 4.8)
+                    .repeatForever(autoreverses: true)
+                ) {
+                    isDrifting = true
+                }
+            }
+        }
+        .transition(.opacity)
+    }
+    
+    // MARK: - Sheet Ambient Multi-Blue Header Glow
+    private var sheetAmbientHeader: some View {
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                // Multi-Stop Blend: Neon -> Royal -> Deep Electric -> Sheet Base
+                LinearGradient(
+                    stops: [
+                        .init(color: baseNeonBlue.opacity(opacity * 0.75), location: 0.0),
+                        .init(color: baseRoyalBlue.opacity(opacity * 0.90), location: 0.20),
+                        .init(color: baseDeepElectricBlue.opacity(opacity * 1.0), location: 0.42),
+                        .init(color: baseDeepElectricBlue.opacity(opacity * 0.35), location: 0.65),
+                        .init(color: baseBlack.opacity(0.0), location: 1.0)
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                
+                // Floating subtle neon specular orb
+                Circle()
+                    .fill(baseNeonBlue.opacity(opacity * 0.45))
+                    .frame(width: 180, height: 180)
+                    .offset(x: 50, y: -40)
+                    .blur(radius: 40)
+            }
+            .frame(height: effectiveHeight)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0.0),
+                        .init(color: .white.opacity(0.80), location: 0.45),
+                        .init(color: .white.opacity(0.25), location: 0.80),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .ignoresSafeArea(edges: .top)
+            
+            Spacer()
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
     }
 }

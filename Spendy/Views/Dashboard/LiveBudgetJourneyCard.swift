@@ -113,7 +113,7 @@ struct LiveBudgetJourneyCard: View {
                         
                         let daysLeft = store.budgetDaysLeft
                         Text("\(daysLeft) \(daysLeft == 1 ? "day" : "days") left")
-                            .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                            .font(.system(size: 12.5, weight: .medium, design: .monospaced))
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
                     
@@ -128,14 +128,14 @@ struct LiveBudgetJourneyCard: View {
                                 .foregroundStyle(SpendyColors.textPrimary)
                             
                             Text("/day")
-                                .font(.system(size: 13.5, weight: .medium, design: .rounded))
+                                .font(.system(size: 13.5, weight: .medium, design: .default))
                                 .foregroundStyle(SpendyColors.textSecondary)
                         }
                         
                         Spacer()
                         
                         Text(remainingSubtitle)
-                            .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                            .font(.system(size: 12.5, weight: .medium, design: .monospaced))
                             .monospacedDigit()
                             .foregroundStyle(SpendyColors.textSecondary)
                     }

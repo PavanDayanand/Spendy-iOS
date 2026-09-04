@@ -226,8 +226,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LiquidMeshBackground(color: ambientHeaderColor)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedAccountId)
+                LiquidMeshBackground()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
@@ -511,14 +510,22 @@ struct DashboardView: View {
                 .font(AppTypography.itemTitle)
                 .foregroundStyle(SpendyColors.textSecondary)
             
-            // Large Amount Text (e.g. ₹258,406.00)
-            Text(hideBalance ? "••••••" : totalSpentAllTime.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
-                .foregroundStyle(SpendyColors.textPrimary)
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            // Large Amount Text with Vertical Gradient (Reference Image 1: 8 429 style)
+            if hideBalance {
+                Text("••••••")
+                    .spendyNumberFont(size: 42, weight: .heavy, tracking: -1.0)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .padding(.bottom, 6)
+            } else {
+                SpendyGradientText(
+                    totalSpentAllTime.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
+                    size: 42,
+                    weight: .heavy,
+                    tracking: -1.0,
+                    colors: SpendyGradientPresets.electricBlueToWhite
+                )
                 .padding(.bottom, 6)
+            }
             
             // On-Screen Bar Chart with Gridlines & Y/X-Axes (No card wrapper)
             HeroSpendBarChart(dataPoints: barChartDataPoints)

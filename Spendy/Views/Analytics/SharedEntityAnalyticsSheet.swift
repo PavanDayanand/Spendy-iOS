@@ -596,7 +596,7 @@ struct SharedEntityAnalyticsSheet: View {
                     // Amount and Trend number row (Number + arrow directly, no pill capsule background)
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .font(.system(size: 32, weight: .heavy, design: .monospaced))
                             .monospacedDigit()
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
@@ -633,7 +633,7 @@ struct SharedEntityAnalyticsSheet: View {
                 Spacer()
                 
                 Text(cardSecondaryRateLabel(isScrubbing: isScrubbing))
-                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                     .foregroundStyle(SpendyColors.textPrimary)
             }
@@ -684,7 +684,7 @@ struct SharedEntityAnalyticsSheet: View {
     private func trendOrSecondaryText(isScrubbing: Bool) -> some View {
         if let scrubbed = scrubbedPoint {
             Text(scrubbed.dayVolume.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
                 .monospacedDigit()
                 .foregroundStyle(themeColor)
         } else if case .account = entity {
@@ -693,7 +693,7 @@ struct SharedEntityAnalyticsSheet: View {
                 Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
                     .font(.system(size: 12, weight: .bold))
                 Text("\(isPositive ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .monospacedDigit()
             }
             .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
@@ -706,7 +706,7 @@ struct SharedEntityAnalyticsSheet: View {
                 Image(systemName: isIncrease ? "arrow.up.right" : "arrow.down.right")
                     .font(.system(size: 12, weight: .bold))
                 Text("\(String(format: "%.0f", abs(pct)))%")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .monospacedDigit()
             }
             .foregroundStyle(color)
@@ -1098,7 +1098,7 @@ struct SharedEntityAnalyticsSheet: View {
             Spacer()
             
             Text(value)
-                .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                .font(.system(size: 16.5, weight: .bold, design: .monospaced))
                 .monospacedDigit()
                 .foregroundStyle(valueColor)
         }
@@ -1134,7 +1134,7 @@ struct SharedEntityAnalyticsSheet: View {
                                 Spacer()
                                 
                                 Text(dayTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
                                     .monospacedDigit()
                                     .foregroundStyle(SpendyColors.textTertiary)
                             }
@@ -1246,7 +1246,7 @@ private struct AnalyticsTransactionRowView: View {
                 Spacer()
                 
                 Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: currencySymbol, decimals: 0))")
-                    .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 15.5, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                     .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
             }
