@@ -212,17 +212,11 @@ struct AnalyticsView: View {
                                     // Card 1: Cashflow Overview Card
                                     cashflowOverviewCard
                                     
-                                    // Card 2: Spending Chart Card
-                                    spendingChartCard
+                                    // Card 2: Spending Breakdown Card & List
+                                    spendingBreakdownCard
                                     
-                                    // Spending by Category / Account (12pt Gap Cards matching Reference)
-                                    spendingBreakdownListSection
-                                    
-                                    // Card 3: Income Chart Card
-                                    incomeChartCard
-                                    
-                                    // Income by Category / Account (12pt Gap Cards matching Reference)
-                                    incomeBreakdownListSection
+                                    // Card 3: Income Breakdown Card & List
+                                    incomeBreakdownCard
                                     
                                     // Card 4: Budget Ring & Pacing Card
                                     budgetRingPacingCard
@@ -583,8 +577,9 @@ struct AnalyticsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         }
     }
-    // MARK: - Card 2: Spending Chart Card (Line & Area Chart)
-    private var spendingChartCard: some View {
+     // MARK: - Card 2: Spending Breakdown Card (No Donut, Neutral Gray)
+    private var spendingBreakdownCard: some View {
+        let items = spendingBreakdownItems
         let intervals = intervalData
         let avgSpend = dailyAverageSpend
         let selectedInterval = intervals.first(where: { $0.label == selectedSpendingLabel })
@@ -714,175 +709,97 @@ struct AnalyticsView: View {
             .onChange(of: selectedSpendingLabel) { _, _ in
                 HapticsManager.shared.trigger(.selection)
             }
-        }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        }
-    }
-    
-    // MARK: - Subtitle and Icon Helpers for Category Cards (Matching Reference Image)
-    private func categorySubtitle(for item: AnalyticsBreakdownItem) -> String {
-        if groupingMode == .categories {
-            if let limit = store.budget.categoryBudgets[item.id], limit > 0 {
-                let remaining = limit - item.amount
-                if remaining >= 0 {
-                    return "/ \(remaining.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) left"
-                } else {
-                    return "Limit exceeded by \(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))"
-                }
-            } else {
-                return "No limit"
-            }
-        } else {
-            return "\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")"
-        }
-    }
-    
-    @ViewBuilder
-    private func breakdownIconBadge(for item: AnalyticsBreakdownItem) -> some View {
-        let limit = groupingMode == .categories ? (store.budget.categoryBudgets[item.id] ?? 0) : 0
-        let hasBudget = limit > 0
-        let progress = hasBudget ? min(1.0, max(0.0, item.amount / limit)) : 0.0
-        let isExceeded = hasBudget && item.amount > limit
-        
-        ZStack {
-            SpendyIconBadge(
-                sfSymbol: item.sfSymbol,
-                color: Color(hex: item.colorHex),
-                size: .medium,
-                style: .rounded()
-            )
             
-            if hasBudget {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        isExceeded ? SpendyColors.expenseRed : Color(hex: item.colorHex),
-                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 48, height: 48)
-            }
-        }
-        .frame(width: 48, height: 48)
-    }
-    
-    // MARK: - Spending Breakdown Section (Standardized Individual Cards with 12pt Gap)
-    private var spendingBreakdownListSection: some View {
-        let items = spendingBreakdownItems
-        let displayedItems = isSpendingListExpanded ? items : Array(items.prefix(4))
-        
-        return VStack(alignment: .leading, spacing: 12) {
+            Divider().background(SpendyColors.separator)
+            
             // Sub-header: Spending by Category / Account
-            HStack(alignment: .center) {
+            HStack {
                 Text(groupingMode == .categories ? "Spending by Category" : "Spending by Account")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
                 if items.count > 4 {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            isSpendingListExpanded.toggle()
-                            HapticsManager.shared.trigger(.selection)
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Text(isSpendingListExpanded ? "Show less" : "View all (\(items.count))")
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: isSpendingListExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(SpendyColors.cardBackgroundSecondary))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
-            
-            if items.isEmpty {
-                VStack(spacing: 6) {
-                    Text("No spending recorded in this period.")
-                        .font(.system(size: 14, weight: .medium))
+                    Image(systemName: isSpendingListExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if items.count > 4 {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isSpendingListExpanded.toggle()
+                        HapticsManager.shared.trigger(.selection)
+                    }
                 }
+            }
+            .padding(.top, 4)
+            
+            // List of Category / Account Breakdown Rows
+            if items.isEmpty {
+                Text("No spending recorded in this period.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .padding(.vertical, 8)
             } else {
+                let displayedItems = isSpendingListExpanded ? items : Array(items.prefix(4))
                 VStack(spacing: 12) {
                     ForEach(displayedItems) { item in
-                        breakdownItemCard(item: item)
+                        HStack(spacing: 12) {
+                            SpendyIconBadge(
+                                sfSymbol: item.sfSymbol,
+                                color: Color(hex: item.colorHex),
+                                size: .medium,
+                                style: .rounded()
+                            )
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.label)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Text("\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
+                                .foregroundStyle(SpendyColors.textPrimary)
+                        }
+                        .padding(.vertical, AppSpacing.xxs)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            HapticsManager.shared.trigger(.selection)
+                            if groupingMode == .categories {
+                                let cat = store.categories.first(where: { $0.id == item.id }) ?? store.category(for: item.id)
+                                selectedCategoryForSheet = cat
+                            } else {
+                                if let acc = store.accounts.first(where: { $0.id == item.id }) {
+                                    selectedAccountForSheet = acc
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-    
-    private func breakdownItemCard(item: AnalyticsBreakdownItem) -> some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            if groupingMode == .categories {
-                let cat = store.categories.first(where: { $0.id == item.id }) ?? store.category(for: item.id)
-                selectedCategoryForSheet = cat
-            } else {
-                if let acc = store.accounts.first(where: { $0.id == item.id }) {
-                    selectedAccountForSheet = acc
-                }
-            }
-        }) {
-            HStack(spacing: 14) {
-                // Category Icon with optional budget progress ring
-                breakdownIconBadge(for: item)
-                
-                // Category Name & Dynamic Subtitle
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.label)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    Text(categorySubtitle(for: item))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-                
-                // Amount
-                Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+
+        .padding(20)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         }
-        .buttonStyle(.plain)
     }
     
-    // MARK: - Card 3: Income Chart Card
-    private var incomeChartCard: some View {
+    // MARK: - Card 3: Income Breakdown Card (No Donut, Green Accent)
+    private var incomeBreakdownCard: some View {
+        let items = incomeBreakdownItems
         let intervals = intervalData
         let avgIncome = totalIncome / Double(max(1, intervals.count))
         let selectedInterval = intervals.first(where: { $0.label == selectedIncomeLabel })
@@ -1012,70 +929,71 @@ struct AnalyticsView: View {
             .onChange(of: selectedIncomeLabel) { _, _ in
                 HapticsManager.shared.trigger(.selection)
             }
-        }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        }
-    }
-    
-    // MARK: - Income Breakdown Section (Standardized Individual Cards with 12pt Gap)
-    private var incomeBreakdownListSection: some View {
-        let items = incomeBreakdownItems
-        let displayedItems = isIncomeListExpanded ? items : Array(items.prefix(4))
-        
-        return VStack(alignment: .leading, spacing: 12) {
+            
+            Divider().background(SpendyColors.separator)
+            
             // Sub-header: Income by Category / Account
-            HStack(alignment: .center) {
+            HStack {
                 Text(groupingMode == .categories ? "Income by Category" : "Income by Account")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
                 if items.count > 4 {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            isIncomeListExpanded.toggle()
-                            HapticsManager.shared.trigger(.selection)
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Text(isIncomeListExpanded ? "Show less" : "View all (\(items.count))")
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: isIncomeListExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(SpendyColors.cardBackgroundSecondary))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
-            
-            if items.isEmpty {
-                VStack(spacing: 6) {
-                    Text("No income recorded in this period.")
-                        .font(.system(size: 14, weight: .medium))
+                    Image(systemName: isIncomeListExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SpendyColors.textTertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if items.count > 4 {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isIncomeListExpanded.toggle()
+                        HapticsManager.shared.trigger(.selection)
+                    }
                 }
+            }
+            .padding(.top, 4)
+            
+            // List of Income Rows
+            if items.isEmpty {
+                Text("No income recorded in this period.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .padding(.vertical, 8)
             } else {
+                let displayedItems = isIncomeListExpanded ? items : Array(items.prefix(4))
                 VStack(spacing: 12) {
                     ForEach(displayedItems) { item in
-                        Button(action: {
+                        HStack(spacing: 12) {
+                            SpendyIconBadge(
+                                sfSymbol: item.sfSymbol,
+                                color: Color(hex: item.colorHex),
+                                size: .medium,
+                                style: .rounded()
+                            )
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.label)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                
+                                Text("\(item.txCount) \(item.txCount == 1 ? "transaction" : "transactions")")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                .spendyNumberFont(size: 15, weight: .heavy, tracking: -0.4)
+                                .foregroundStyle(SpendyColors.incomeGreen)
+                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
                             HapticsManager.shared.trigger(.selection)
                             if groupingMode == .categories {
                                 let cat = store.categories.first(where: { $0.id == item.id }) ?? store.category(for: item.id)
@@ -1085,48 +1003,16 @@ struct AnalyticsView: View {
                                     selectedAccountForSheet = acc
                                 }
                             }
-                        }) {
-                            HStack(spacing: 14) {
-                                SpendyIconBadge(
-                                    sfSymbol: item.sfSymbol,
-                                    color: Color(hex: item.colorHex),
-                                    size: .medium,
-                                    style: .rounded()
-                                )
-                                
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(item.label)
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                        .lineLimit(1)
-                                    
-                                    Text("\(item.txCount) \(item.txCount == 1 ? "deposit" : "deposits")")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textSecondary)
-                                        .lineLimit(1)
-                                }
-                                
-                                Spacer()
-                                
-                                Text("+" + item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
-                                    .foregroundStyle(SpendyColors.incomeGreen)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
+        }
+        .padding(20)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
         }
     }
     
