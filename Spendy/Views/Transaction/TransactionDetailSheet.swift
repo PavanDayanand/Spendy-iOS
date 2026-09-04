@@ -233,7 +233,7 @@ struct TransactionDetailSheet: View {
                     sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
                     color: catColor,
                     size: .large,
-                    style: .circle
+                    style: .rounded()
                 )
                 .shadow(color: catColor.opacity(0.35), radius: 12, y: 4)
             }
@@ -282,7 +282,7 @@ struct TransactionDetailSheet: View {
                         sfSymbol: category?.sfSymbol ?? "tag.fill",
                         color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
                         size: .small,
-                        style: .circle
+                        style: .rounded()
                     )
                     Text(category?.label ?? "General")
                         .font(.system(size: 14, weight: .semibold))
@@ -322,7 +322,7 @@ struct TransactionDetailSheet: View {
                             sfSymbol: symbol,
                             color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
                             size: .small,
-                            style: .circle
+                            style: .rounded()
                         )
                         Text(account?.label ?? "Cash")
                             .font(.system(size: 14, weight: .semibold))

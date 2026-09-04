@@ -257,7 +257,7 @@ struct AccountsView: View {
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                     color: account.color,
                     size: .medium,
-                    style: .circle
+                    style: .rounded()
                 )
                 
                 VStack(alignment: .leading, spacing: 2) {

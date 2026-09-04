@@ -33,7 +33,7 @@ struct WeekdaySpectrumCard: View {
                             sfSymbol: icon,
                             color: color,
                             size: .small,
-                            style: .circle
+                            style: .rounded()
                         )
                     }
                     

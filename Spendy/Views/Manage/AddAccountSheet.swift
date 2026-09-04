@@ -231,7 +231,7 @@ struct AddAccountSheet: View {
                         sfSymbol: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol,
                         color: Color(hex: selectedColorHex),
                         size: .hero,
-                        style: .circle
+                        style: .rounded()
                     )
                 }
                 .buttonStyle(.plain)
@@ -293,12 +293,14 @@ struct AddAccountSheet: View {
                         }
                         HapticsManager.shared.trigger(.light)
                     }) {
-                        Circle()
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .fill(Color(hex: selectedColorHex))
                             .frame(width: 24, height: 24)
                             .overlay {
-                                Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
                             }
+                            .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 2, x: 0, y: 0)
                     }
                     .buttonStyle(.plain)
                 }

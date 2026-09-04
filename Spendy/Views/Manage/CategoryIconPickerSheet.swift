@@ -330,19 +330,19 @@ struct CategoryIconPickerSheet: View {
     private var photoPickerSlot: some View {
         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isPhotoSet ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isPhotoSet {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
-                    .shadow(color: isPhotoSet ? Color.black.opacity(0.20) : Color.clear, radius: 6, y: 2)
+                    .shadow(color: isPhotoSet ? SpendyColors.primaryBlue.opacity(0.35) : Color.black.opacity(0.06), radius: 5, x: 0, y: 0)
                 
                 Image(systemName: "photo.on.rectangle")
                     .font(.system(size: 20, weight: .semibold))
@@ -352,7 +352,7 @@ struct CategoryIconPickerSheet: View {
                             : SpendyColors.textPrimary
                     )
             }
-            .contentShape(Circle())
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
     
@@ -368,19 +368,19 @@ struct CategoryIconPickerSheet: View {
             dismiss()
         } label: {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isSelected ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isSelected {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
-                    .shadow(color: isSelected ? Color.black.opacity(0.20) : Color.clear, radius: 6, y: 2)
+                    .shadow(color: isSelected ? SpendyColors.primaryBlue.opacity(0.35) : Color.black.opacity(0.06), radius: 5, x: 0, y: 0)
                 
                 Text("Aa")
                     .font(.system(size: 19, weight: .bold, design: .rounded))
@@ -391,7 +391,7 @@ struct CategoryIconPickerSheet: View {
                     )
                     .symbolEffect(.bounce.byLayer, value: isSelected)
             }
-            .contentShape(Circle())
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -408,19 +408,19 @@ struct CategoryIconPickerSheet: View {
             dismiss()
         } label: {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isSelected ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isSelected {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
-                    .shadow(color: isSelected ? Color.black.opacity(0.20) : Color.clear, radius: 6, y: 2)
+                    .shadow(color: isSelected ? SpendyColors.primaryBlue.opacity(0.35) : Color.black.opacity(0.06), radius: 5, x: 0, y: 0)
                 
                 Image(systemName: cleanSymbolName(symbol))
                     .font(.system(size: 20, weight: .semibold))
@@ -431,7 +431,7 @@ struct CategoryIconPickerSheet: View {
                     )
                     .symbolEffect(.bounce.byLayer, value: isSelected)
             }
-            .contentShape(Circle())
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }

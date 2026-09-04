@@ -64,9 +64,9 @@ struct OverlappingBadgeCluster: View {
 }
 
 struct SpendyIconBadge: View {
-    enum Style {
+    enum Style: Equatable {
         case circle
-        case rounded(cornerRadius: CGFloat)
+        case rounded(cornerRadius: CGFloat? = nil)
     }
     
     enum Size {
@@ -95,10 +95,10 @@ struct SpendyIconBadge: View {
         
         var defaultCornerRadius: CGFloat {
             switch self {
-            case .small: return 12
-            case .medium: return 14
-            case .large: return 18
-            case .hero: return 24
+            case .small: return 10
+            case .medium: return 12
+            case .large: return 16
+            case .hero: return 22
             }
         }
         
@@ -115,9 +115,9 @@ struct SpendyIconBadge: View {
     var sfSymbol: String
     var color: Color
     var size: Size = .medium
-    var style: Style = .circle
+    var style: Style = .rounded()
     var isGradient: Bool = false
-    var showCutoutBorder: Bool = true
+    var showCutoutBorder: Bool = false
     
     @Environment(\.isMonoIconMode) private var isMonoMode
     @Environment(\.colorScheme) private var colorScheme
@@ -169,6 +169,15 @@ struct SpendyIconBadge: View {
         SpendyColors.textPrimary
     }
     
+    private var resolvedCornerRadius: CGFloat {
+        switch style {
+        case .circle:
+            return size.dimension / 2
+        case .rounded(let radius):
+            return radius ?? size.defaultCornerRadius
+        }
+    }
+    
     var body: some View {
         ZStack {
             switch style {
@@ -202,16 +211,14 @@ struct SpendyIconBadge: View {
                             if showCutoutBorder {
                                 Circle()
                                     .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
-                            } else {
-                                Circle()
-                                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 0.8)
                             }
                         }
                         .shadow(color: effectiveShadowColor.opacity(0.7), radius: size == .hero ? 10 : 4, y: size == .hero ? 3 : 1.5)
                 }
-            case .rounded(let radius):
+            case .rounded:
+                let cornerRadius = resolvedCornerRadius
                 if isGradient && !isMonoMode {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [color.opacity(0.35), color.opacity(0.18)],
@@ -219,10 +226,10 @@ struct SpendyIconBadge: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(color.opacity(0.35), lineWidth: 1))
-                        .shadow(color: color.opacity(0.20), radius: 5, y: 2)
+                        .shadow(color: color.opacity(0.25), radius: size == .hero ? 8 : 4, x: 0, y: 0)
+                        .shadow(color: color.opacity(0.20), radius: size == .hero ? 12 : 5, x: 0, y: 2)
                 } else if isGradient && isMonoMode {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [monoGradientColor.opacity(0.35), monoGradientColor.opacity(0.18)],
@@ -230,20 +237,18 @@ struct SpendyIconBadge: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(monoGradientColor.opacity(0.35), lineWidth: 1))
                 } else {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(effectiveFillColor)
                         .overlay {
                             if showCutoutBorder {
-                                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                     .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
-                            } else {
-                                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 0.8)
                             }
                         }
-                        .shadow(color: effectiveShadowColor.opacity(0.7), radius: size == .hero ? 10 : 4, y: size == .hero ? 3 : 1.5)
+                        // All-sides shading: ambient 360-degree diffusion + subtle key depth
+                        .shadow(color: effectiveShadowColor.opacity(0.45), radius: size == .hero ? 8 : 3.5, x: 0, y: 0)
+                        .shadow(color: effectiveShadowColor.opacity(0.30), radius: size == .hero ? 12 : 4.5, x: 0, y: 1.5)
                 }
             }
             

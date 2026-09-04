@@ -32,7 +32,7 @@ struct WeeklyBarChartCard: View {
                         sfSymbol: icon,
                         color: color,
                         size: .small,
-                        style: .circle
+                        style: .rounded()
                     )
                 }
                 

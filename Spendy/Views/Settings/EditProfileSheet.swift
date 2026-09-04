@@ -215,7 +215,7 @@ struct EditProfileSheet: View {
                                 sfSymbol: selectedIconSymbol.isEmpty ? "person.fill" : selectedIconSymbol,
                                 color: Color(hex: selectedColorHex),
                                 size: .hero,
-                                style: .circle
+                                style: .rounded()
                             )
                         }
                     }

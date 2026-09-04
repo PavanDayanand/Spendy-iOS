@@ -38,7 +38,7 @@ struct AccountCardRow: View {
                                         sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                                         color: account.color,
                                         size: .small,
-                                        style: .circle,
+                                        style: .rounded(),
                                         showCutoutBorder: false
                                     )
                                     

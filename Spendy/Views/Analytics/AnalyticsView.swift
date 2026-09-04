@@ -753,11 +753,11 @@ struct AnalyticsView: View {
                 sfSymbol: item.sfSymbol,
                 color: Color(hex: item.colorHex),
                 size: .medium,
-                style: .circle
+                style: .rounded()
             )
             
             if hasBudget {
-                Circle()
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .trim(from: 0, to: progress)
                     .stroke(
                         isExceeded ? SpendyColors.expenseRed : Color(hex: item.colorHex),
@@ -1091,7 +1091,7 @@ struct AnalyticsView: View {
                                     sfSymbol: item.sfSymbol,
                                     color: Color(hex: item.colorHex),
                                     size: .medium,
-                                    style: .circle
+                                    style: .rounded()
                                 )
                                 
                                 VStack(alignment: .leading, spacing: 3) {
@@ -1147,7 +1147,7 @@ struct AnalyticsView: View {
                     sfSymbol: SFIcons.tabBudget,
                     color: SpendyColors.primaryBlue,
                     size: .medium,
-                    style: .circle
+                    style: .rounded()
                 )
                 
                 VStack(alignment: .leading, spacing: 3) {

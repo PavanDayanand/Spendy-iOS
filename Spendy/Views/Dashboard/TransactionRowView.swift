@@ -37,7 +37,7 @@ struct TransactionRowView: View {
                     sfSymbol: category.sfSymbol,
                     color: category.color,
                     size: .medium,
-                    style: .circle
+                    style: .rounded()
                 )
             }
         } titleContent: {
@@ -52,7 +52,11 @@ struct TransactionRowView: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.inverseText : .white)
                         .frame(width: 14, height: 14)
-                        .background(SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color, in: Circle())
+                        .background(
+                            SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color,
+                            in: RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                        )
+                        .shadow(color: (SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color).opacity(0.35), radius: 1, x: 0, y: 0)
                     
                     Text(account.label)
                         .font(.system(size: 13, weight: .medium))

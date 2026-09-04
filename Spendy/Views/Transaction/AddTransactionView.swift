@@ -338,14 +338,15 @@ struct AddTransactionView: View {
             HapticsManager.shared.trigger(.selection)
         }) {
             HStack(spacing: 8) {
-                // Vibrant Account Avatar Circle (32x32)
+                // Vibrant Account Avatar Rounded Square (32x32)
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .fill(account?.color ?? SpendyColors.cardBackgroundSecondary)
                         .frame(width: 32, height: 32)
+                        .shadow(color: (account?.color ?? Color.black).opacity(0.35), radius: 3, x: 0, y: 0)
                     
                     Text(initialLetter)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(account != nil ? Color.white : SpendyColors.textPrimary)
                 }
                 .padding(.leading, 6)
@@ -594,12 +595,12 @@ struct AddTransactionView: View {
                             HapticsManager.shared.trigger(.selection)
                         }) {
                             HStack(spacing: 8) {
-                                // Vibrant Category Circle Badge
+                                // Vibrant Category Rounded Square Badge
                                 SpendyIconBadge(
                                     sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
                                     color: selectedCategory?.color ?? Color(hex: "#34C759"),
                                     size: .small,
-                                    style: .circle
+                                    style: .rounded()
                                 )
                                 .padding(.leading, 6)
                                 
@@ -918,7 +919,7 @@ struct CategoryPickerDrawer: View {
                                 sfSymbol: cat.sfSymbol,
                                 color: cat.color,
                                 size: .small,
-                                style: .circle
+                                style: .rounded()
                             )
                             
                             Text(cat.label)

@@ -609,7 +609,8 @@ struct SubscriptionsView: View {
                             SpendyIconBadge(
                                 sfSymbol: sub.sfSymbol,
                                 color: SpendyColors.separator,
-                                size: .small
+                                size: .small,
+                                style: .circle
                             )
 
                             VStack(alignment: .leading, spacing: 2) {

@@ -347,7 +347,7 @@ struct AllTransactionsView: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: .circle
+                    style: subscription != nil ? .circle : .rounded()
                 )
                 
                 // Title and Account Pill Indicator
@@ -363,7 +363,11 @@ struct AllTransactionsView: View {
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(.white)
                                 .frame(width: 14, height: 14)
-                                .background(acc.color, in: Circle())
+                                .background(
+                                    acc.color,
+                                    in: RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                )
+                                .shadow(color: acc.color.opacity(0.35), radius: 1, x: 0, y: 0)
                             
                             Text(acc.label)
                                 .font(AppTypography.footnoteMedium)

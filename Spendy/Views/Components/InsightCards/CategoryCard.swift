@@ -24,12 +24,12 @@ struct CategoryCard: View {
     var body: some View {
         InsightCardShell(action: action, accessibilityLabel: "\(title), \(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Top Row: Circular Category Icon Badge
+                // 1. Top Row: Rounded Category Icon Badge
                 SpendyIconBadge(
                     sfSymbol: icon,
                     color: color,
                     size: .small,
-                    style: .circle
+                    style: .rounded()
                 )
                 
                 Spacer().frame(height: 10)

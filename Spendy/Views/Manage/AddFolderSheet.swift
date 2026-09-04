@@ -183,7 +183,7 @@ struct AddFolderSheet: View {
                 sfSymbol: "folder.fill",
                 color: type == .expense ? SpendyColors.primaryBlue : SpendyColors.incomeGreen,
                 size: .hero,
-                style: .circle
+                style: .rounded()
             )
             
             Text(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Folder Name" : name)

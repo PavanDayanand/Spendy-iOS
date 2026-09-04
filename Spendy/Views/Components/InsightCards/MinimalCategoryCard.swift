@@ -23,12 +23,12 @@ struct MinimalCategoryCard: View {
     var body: some View {
         InsightCardShell(action: action, accessibilityLabel: "\(title), \(value), \(subtitle)") {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Top: Circular Icon Badge with Subtle Glow
+                // 1. Top: Rounded Icon Badge with Subtle Glow
                 SpendyIconBadge(
                     sfSymbol: icon,
                     color: color,
                     size: .medium,
-                    style: .circle
+                    style: .rounded()
                 )
                 
                 Spacer().frame(height: 10)

@@ -231,7 +231,7 @@ struct AddCategorySheet: View {
     private var avatarHeroSection: some View {
         VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
-                // Large Circular Avatar using unified SpendyIconBadge
+                // Large Rounded Squircle Avatar using unified SpendyIconBadge
                 Button(action: {
                     HapticsManager.shared.trigger(.light)
                     showIconPickerSheet = true
@@ -240,7 +240,7 @@ struct AddCategorySheet: View {
                         sfSymbol: selectedSymbol,
                         color: Color(hex: selectedColorHex),
                         size: .hero,
-                        style: .circle
+                        style: .rounded()
                     )
                 }
                 .buttonStyle(.plain)
@@ -288,19 +288,21 @@ struct AddCategorySheet: View {
             
             // Hide color picker in Mono Icon Mode
             if !store.isMonoIconMode {
-                // Circular Color Picker button
+                // Rounded Color Picker button
                 Button(action: {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         showColorPalette.toggle()
                     }
                     HapticsManager.shared.trigger(.light)
                 }) {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(Color(hex: selectedColorHex))
                         .frame(width: 24, height: 24)
                         .overlay {
-                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
                         }
+                        .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 2, x: 0, y: 0)
                 }
                 .buttonStyle(.plain)
             }

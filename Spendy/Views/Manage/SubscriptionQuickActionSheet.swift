@@ -408,7 +408,7 @@ struct SubscriptionQuickActionSheet: View {
                         sfSymbol: linkedAccount.sfSymbol.isEmpty ? linkedAccount.type.defaultSymbol : linkedAccount.sfSymbol,
                         color: Color(hex: linkedAccount.colorHex),
                         size: .small,
-                        style: .circle
+                        style: .rounded()
                     )
                     Text(linkedAccount.label)
                         .font(.system(size: 14, weight: .semibold))
@@ -425,7 +425,7 @@ struct SubscriptionQuickActionSheet: View {
                         sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
                         color: Color(hex: linkedCategory?.colorHex ?? "#5856D6"),
                         size: .small,
-                        style: .circle
+                        style: .rounded()
                     )
                     Text(linkedCategory?.label ?? "Subscriptions")
                         .font(.system(size: 14, weight: .semibold))

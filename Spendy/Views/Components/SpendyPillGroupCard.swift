@@ -251,12 +251,12 @@ struct SpendyPillRow: View {
             item.action?()
         }) {
             HStack(spacing: 12) {
-                // Leading Circular Icon Badge Container
+                // Leading Rounded Squircle Icon Badge Container
                 SpendyIconBadge(
                     sfSymbol: item.icon,
                     color: item.iconColor ?? SpendyColors.textPrimary,
                     size: .small,
-                    style: .circle,
+                    style: .rounded(),
                     showCutoutBorder: false
                 )
                 
