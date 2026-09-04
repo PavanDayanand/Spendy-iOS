@@ -56,13 +56,13 @@ public struct OnboardingView: View {
     @FocusState private var isNameFieldFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
-    // Stack offsets and rotations for the 10 stickers when stacked in center
+    // Stack offsets and rotations for the 8 stickers when stacked in center
     private let stackOffsets: [(x: CGFloat, y: CGFloat)] = [
         (0, 0), (-3, 2), (4, -1), (-2, 3), (3, -2),
-        (-4, 1), (2, -3), (-1, 2), (3, -1), (0, 0)
+        (-4, 1), (2, -3), (0, 0)
     ]
     private let stackRotations: [Double] = [
-        -4, 3, -2, 5, -6, 2, -3, 4, -5, 1
+        -4, 3, -2, 5, -6, 2, -3, 1
     ]
     
     public init(initialStep: Int = 0) {
@@ -71,7 +71,7 @@ public struct OnboardingView: View {
             if val == "0-picked" {
                 _currentStep = State(initialValue: 0)
                 _isGradientAtTop = State(initialValue: true)
-                _stackedCount = State(initialValue: 10)
+                _stackedCount = State(initialValue: 8)
                 _isBurstSpread = State(initialValue: true)
                 _dissolvingOthers = State(initialValue: true)
                 _isCompanionCentered = State(initialValue: true)
@@ -79,7 +79,7 @@ public struct OnboardingView: View {
             } else if val == "0-burst" {
                 _currentStep = State(initialValue: 0)
                 _isGradientAtTop = State(initialValue: true)
-                _stackedCount = State(initialValue: 10)
+                _stackedCount = State(initialValue: 8)
                 _isBurstSpread = State(initialValue: true)
                 _dissolvingOthers = State(initialValue: false)
                 _isCompanionCentered = State(initialValue: false)
@@ -99,7 +99,7 @@ public struct OnboardingView: View {
             } else if let intVal = Int(val), intVal > 0 {
                 _currentStep = State(initialValue: intVal)
                 _isGradientAtTop = State(initialValue: true)
-                _stackedCount = State(initialValue: 10)
+                _stackedCount = State(initialValue: 8)
                 _isBurstSpread = State(initialValue: true)
                 _dissolvingOthers = State(initialValue: true)
                 _isCompanionCentered = State(initialValue: true)
@@ -137,10 +137,8 @@ public struct OnboardingView: View {
                             introStickerGalaxyStage
                         case 1:
                             featureShowcaseStage
-                        case 2:
-                            currencySelectionStage
-                        case 3:
-                            namePersonalizationStage
+                        case 2, 3:
+                            unifiedPersonalizationStage
                         default:
                             EmptyView()
                         }
@@ -187,6 +185,15 @@ public struct OnboardingView: View {
             // Run intro sequence if starting at step 0 unburst
             if currentStep == 0 && !isBurstSpread {
                 runIntroSequence()
+            }
+        }
+        .onChange(of: currentStep) { _, newStep in
+            if newStep == 3 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    isNameFieldFocused = true
+                }
+            } else {
+                isNameFieldFocused = false
             }
         }
     }
@@ -491,8 +498,9 @@ public struct OnboardingView: View {
                             .foregroundStyle(Color.black)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .nativeLiquidGlassCapsule(isInteractive: true, tint: SpendyColors.primaryBlue)
-                            .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 14, y: 6)
+                            .background(Capsule().fill(Color.white))
+                            .nativeLiquidGlassCapsule(isInteractive: true)
+                            .shadow(color: Color.white.opacity(0.30), radius: 14, y: 6)
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 24)
@@ -511,26 +519,22 @@ public struct OnboardingView: View {
         let hScale = height / 780.0
         
         switch index {
-        case 0: // growthChart: top-left high
-            return (-116 * wScale, -285 * hScale, -8, 116)
-        case 1: // planSpendSave: top-right high
-            return (116 * wScale, -290 * hScale, 7, 114)
-        case 2: // zenPeace: mid-left high
-            return (-152 * wScale, -155 * hScale, 10, 118)
-        case 3: // billDue: mid-right high
-            return (152 * wScale, -160 * hScale, -9, 120)
-        case 4: // coffeeExpenses: far-right mid
-            return (156 * wScale, 10 * hScale, 10, 118)
-        case 5: // catCompanion: far-left mid
-            return (-156 * wScale, 12 * hScale, -8, 122)
-        case 6: // piggySavings: mid-right lower
-            return (145 * wScale, 170 * hScale, -10, 120)
-        case 7: // moneyHug: mid-left lower
-            return (-145 * wScale, 175 * hScale, 8, 118)
-        case 8: // icedBoba: bottom-right
-            return (78 * wScale, 330 * hScale, 12, 116)
-        case 9: // dreamIsland: bottom-left
-            return (-78 * wScale, 325 * hScale, -6, 116)
+        case 0: // growthChart: top-left
+            return (-120 * wScale, -285 * hScale, -8, 120)
+        case 1: // zenPeace: top-right
+            return (120 * wScale, -285 * hScale, 7, 120)
+        case 2: // billDue: upper-mid right
+            return (152 * wScale, -145 * hScale, -9, 122)
+        case 3: // coffeeExpenses: lower-mid right
+            return (152 * wScale, 140 * hScale, 9, 120)
+        case 4: // catCompanion: upper-mid left
+            return (-152 * wScale, -145 * hScale, 8, 124)
+        case 5: // piggySavings: lower-mid left
+            return (-152 * wScale, 140 * hScale, -8, 122)
+        case 6: // moneyHug: bottom-left
+            return (-88 * wScale, 325 * hScale, 8, 120)
+        case 7: // icedBoba: bottom-right
+            return (88 * wScale, 325 * hScale, -7, 120)
         default:
             return (0, 0, 0, 110)
         }
@@ -607,8 +611,9 @@ public struct OnboardingView: View {
                 .foregroundStyle(Color.black)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                .nativeLiquidGlassCapsule(isInteractive: true, tint: SpendyColors.primaryBlue)
-                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 14, y: 6)
+                .background(Capsule().fill(Color.white))
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .shadow(color: Color.white.opacity(0.30), radius: 14, y: 6)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
@@ -646,175 +651,186 @@ public struct OnboardingView: View {
         .nativeLiquidGlass(cornerRadius: 20, isInteractive: false)
     }
     
-    // MARK: - STEP 2: Choose Currency (Defaults to India INR)
-    private var currencySelectionStage: some View {
+    // MARK: - STEPS 2 & 3: Unified Personalization Stage
+    // Persistent floating companion (never reloads or jitters), smooth ghost text transitions,
+    // cross-fading input fields, and anchored Apple Liquid Glass action button.
+    private var unifiedPersonalizationStage: some View {
         VStack(spacing: 24) {
-            // Floating Hero Companion
-            if let companion = chosenSticker {
-                FloatingStickerView(sticker: companion, size: 150)
-                    .padding(.top, 8)
-            }
-            
-            VStack(spacing: 6) {
-                Text("choose currency")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white)
-                
-                Text("select your primary currency. you can change this anytime.")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.65))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 28)
-            }
-            
-            // Currency Selection Card (Defaults to India INR) with Native Liquid Glass
-            Button {
-                HapticsManager.shared.trigger(.selection)
-                showFullCurrencyPicker = true
-            } label: {
-                HStack(spacing: 16) {
-                    Text(CurrencyInfo.flag(for: store.currencyCode))
-                        .font(.system(size: 40))
-                    
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(store.currencySymbol)
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                            Text(store.currencyCode)
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                        }
-                        .foregroundStyle(Color.white)
-                        
-                        Text(CurrencyInfo.name(for: store.currencyCode))
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.65))
-                    }
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 4) {
-                        Text("change")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
-                }
-                .padding(20)
-                .nativeLiquidGlass(cornerRadius: 24, isInteractive: true)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 24)
-            
-            Text("tap card to choose from 160+ currencies")
-                .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.45))
-            
-            Spacer()
-            
-            // Continue Button with Native Liquid Glass
-            Button {
-                advanceToNextStep()
-            } label: {
-                HStack(spacing: 8) {
-                    Text("continue")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                }
-                .foregroundStyle(Color.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .nativeLiquidGlassCapsule(isInteractive: true, tint: SpendyColors.primaryBlue)
-                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 14, y: 6)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
-        }
-    }
-    
-    // MARK: - STEP 3: Name Personalization
-    private var namePersonalizationStage: some View {
-        VStack(spacing: 24) {
-            // Floating Hero Companion
+            // Persistent Floating Hero Companion (stays mounted, never reloads or resets)
             if let companion = chosenSticker {
                 FloatingStickerView(sticker: companion, size: 155)
                     .padding(.top, 8)
             }
             
-            VStack(spacing: 6) {
-                Text("what's your name?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white)
-                
-                Text("to personalize your daily dashboard.")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.65))
-            }
-            
-            // Clean Name Input Field with Native Liquid Glass (No emojis, no colored greeting text)
-            HStack(spacing: 14) {
-                Image(systemName: "person.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.70))
-                    .frame(width: 28)
-                
-                TextField("your name", text: $inputName)
-                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.white)
-                    .autocorrectionDisabled()
-                    .focused($isNameFieldFocused)
-                    .submitLabel(.done)
-                    .onSubmit {
-                        startSetupAndLaunch()
+            // Editorial Header with Smooth Ghost Fade & Drift Transition
+            ZStack {
+                if currentStep == 2 {
+                    VStack(spacing: 6) {
+                        Text("choose currency")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.white)
+                        
+                        Text("select your primary currency. you can change this anytime.")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.65))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
                     }
-                    .onChange(of: inputName) { _, _ in
-                        HapticsManager.shared.trigger(.selection)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 8)),
+                        removal: .opacity.combined(with: .offset(y: -8))
+                    ))
+                } else {
+                    VStack(spacing: 6) {
+                        Text("what's your name?")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.white)
+                        
+                        Text("to personalize your daily dashboard.")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.65))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
                     }
-                
-                if !inputName.isEmpty {
-                    Button {
-                        inputName = ""
-                        HapticsManager.shared.trigger(.light)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.white.opacity(0.40))
-                    }
-                    .frame(minWidth: 36, minHeight: 36)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 8)),
+                        removal: .opacity.combined(with: .offset(y: -8))
+                    ))
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .nativeLiquidGlass(cornerRadius: 22, isInteractive: true)
-            .padding(.horizontal, 24)
+            .frame(height: 64)
+            .animation(.easeInOut(duration: 0.40), value: currentStep)
+            
+            // Interactive Box Field (Currency Card <-> Name Input Field)
+            ZStack {
+                if currentStep == 2 {
+                    VStack(spacing: 12) {
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            showFullCurrencyPicker = true
+                        } label: {
+                            HStack(spacing: 16) {
+                                Text(CurrencyInfo.flag(for: store.currencyCode))
+                                    .font(.system(size: 40))
+                                
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text(store.currencySymbol)
+                                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                                            .monospacedDigit()
+                                        Text(store.currencyCode)
+                                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    }
+                                    .foregroundStyle(Color.white)
+                                    
+                                    Text(CurrencyInfo.name(for: store.currencyCode))
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        .foregroundStyle(Color.white.opacity(0.65))
+                                }
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 4) {
+                                    Text("change")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .nativeLiquidGlassCapsule(isInteractive: true)
+                            }
+                            .padding(20)
+                            .nativeLiquidGlass(cornerRadius: 24, isInteractive: true)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 24)
+                        
+                        Text("tap card to choose from 160+ currencies")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.45))
+                    }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                        removal: .opacity.combined(with: .scale(scale: 0.96))
+                    ))
+                } else {
+                    HStack(spacing: 14) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.70))
+                            .frame(width: 28)
+                        
+                        TextField("your name", text: $inputName)
+                            .font(.system(size: 20, weight: .medium, design: .rounded))
+                            .foregroundStyle(Color.white)
+                            .autocorrectionDisabled()
+                            .focused($isNameFieldFocused)
+                            .submitLabel(.done)
+                            .onSubmit {
+                                startSetupAndLaunch()
+                            }
+                            .onChange(of: inputName) { _, _ in
+                                HapticsManager.shared.trigger(.selection)
+                            }
+                        
+                        if !inputName.isEmpty {
+                            Button {
+                                inputName = ""
+                                HapticsManager.shared.trigger(.light)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Color.white.opacity(0.40))
+                            }
+                            .frame(minWidth: 36, minHeight: 36)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
+                    .nativeLiquidGlass(cornerRadius: 22, isInteractive: true)
+                    .padding(.horizontal, 24)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                        removal: .opacity.combined(with: .scale(scale: 0.96))
+                    ))
+                }
+            }
+            .animation(.easeInOut(duration: 0.38), value: currentStep)
             
             Spacer()
             
-            // "start" Button with Native Liquid Glass
+            // Anchored Apple Native Liquid Glass Button with Smooth Label Transition
             Button {
-                startSetupAndLaunch()
+                if currentStep == 2 {
+                    advanceToNextStep()
+                } else {
+                    startSetupAndLaunch()
+                }
             } label: {
                 HStack(spacing: 8) {
-                    Text("start")
+                    Text(currentStep == 2 ? "continue" : "start")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .id("personalizationBtnTitle_\(currentStep)")
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .offset(y: 4)),
+                            removal: .opacity.combined(with: .offset(y: -4))
+                        ))
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .bold))
                 }
                 .foregroundStyle(Color.black)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                .nativeLiquidGlassCapsule(isInteractive: true, tint: SpendyColors.primaryBlue)
-                .shadow(color: SpendyColors.primaryBlue.opacity(0.35), radius: 14, y: 6)
+                .background(Capsule().fill(Color.white))
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .shadow(color: Color.white.opacity(0.30), radius: 14, y: 6)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
+            .animation(.easeInOut(duration: 0.30), value: currentStep)
         }
     }
     
@@ -837,38 +853,32 @@ public struct OnboardingView: View {
     
     private func runIntroSequence() {
         Task { @MainActor in
-            // Step 1: Start with diffused liquid gradient breathing in middle
+            // Step 1: Start with diffused liquid gradient glowing in the center
             isGradientAtTop = false
             stackedCount = 0
             isBurstSpread = false
             
-            // Allow liquid motion to drift, breathe, and spread in the middle for 1.4s
-            try? await Task.sleep(for: .milliseconds(1400))
+            // Brief 350ms beat for the canvas and center glow to illuminate
+            try? await Task.sleep(for: .milliseconds(350))
             guard currentStep == 0 && !isBurstSpread else { return }
             
-            // Step 2: Slowly glide gradient to the top header (2.0s duration)
-            withAnimation(.easeInOut(duration: 2.0)) {
-                isGradientAtTop = true
-            }
-            
-            // Wait for gradient to smoothly settle at the top header
-            try? await Task.sleep(for: .milliseconds(1900))
-            guard currentStep == 0 && !isBurstSpread else { return }
-            
-            // Step 3: Now the stickers stack up slowly in the center with haptics
-            for i in 1...10 {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.70)) {
+            // Step 2: Stack stickers in the center right on top of the glowing center gradient!
+            for i in 1...8 {
+                withAnimation(.spring(response: 0.40, dampingFraction: 0.72)) {
                     stackedCount = i
                 }
-                HapticsManager.shared.trigger(i == 10 ? .medium : .light)
-                try? await Task.sleep(for: .milliseconds(250))
+                HapticsManager.shared.trigger(i == 8 ? .medium : .light)
+                try? await Task.sleep(for: .milliseconds(220))
             }
             
-            // Step 4: 0.6s pause with stacked stickers in center
-            try? await Task.sleep(for: .milliseconds(600))
+            // Step 3: 0.5s pause with stacked stickers resting in the center
+            try? await Task.sleep(for: .milliseconds(500))
             guard currentStep == 0 && !isBurstSpread else { return }
             
-            // Step 5: Slowly burst spread outward into wide organic galaxy
+            // Step 4: Simultaneously glide gradient to the top header AND burst spread stickers into galaxy
+            withAnimation(.easeInOut(duration: 1.8)) {
+                isGradientAtTop = true
+            }
             HapticsManager.shared.trigger(.cardSnap)
             withAnimation(.spring(response: 0.95, dampingFraction: 0.74)) {
                 isBurstSpread = true
