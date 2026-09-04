@@ -37,6 +37,7 @@ struct SettingsView: View {
     @State private var showReceiptPrinter: Bool = false
     @State private var showWhatsNewSheet: Bool = false
     @State private var showCoffeeSheet: Bool = false
+    @State private var showOnboardingTour: Bool = false
     @Namespace private var settingsNamespace
 
     var body: some View {
@@ -121,6 +122,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCoffeeSheet) {
                 coffeeSheet
+            }
+            .fullScreenCover(isPresented: $showOnboardingTour) {
+                OnboardingView()
             }
         }
     }
@@ -571,6 +575,13 @@ struct SettingsView: View {
                 .padding(.horizontal, 6)
 
             VStack(spacing: 0) {
+                Button(action: { showOnboardingTour = true }) {
+                    rowItem(icon: "star.fill", title: "Welcome Tour & Stickers", badgeText: "Replay")
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
+
                 Button(action: { showWhatsNewSheet = true }) {
                     rowItem(icon: "sparkles", title: "What's New in Spendy", badgeText: "v2.0.0")
                 }

@@ -94,6 +94,17 @@ final class ExpenseStore {
     }
     
     var soundEnabled: Bool = true {
+        didSet {
+            SoundManager.shared.isEnabled = soundEnabled
+            scheduleSave()
+        }
+    }
+    
+    var hasCompletedOnboarding: Bool = false {
+        didSet { scheduleSave() }
+    }
+    
+    var selectedSticker: String? = nil {
         didSet { scheduleSave() }
     }
     
@@ -374,6 +385,8 @@ final class ExpenseStore {
         var customFolders: [Folder]?
         var ratesToUSD: [String: Double]?
         var ratesLastUpdated: Date?
+        var hasCompletedOnboarding: Bool?
+        var selectedSticker: String?
     }
     
     private var storageURL: URL {
@@ -440,6 +453,8 @@ final class ExpenseStore {
                     "AED": 3.67,
                     "SGD": 1.34
                 ]
+                self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
+                self.selectedSticker = payload.selectedSticker
                 // Migration: Ensure seeded accounts are typed
                 for i in 0..<self.accounts.count {
                     if self.accounts[i].id == "cash" {
@@ -486,7 +501,9 @@ final class ExpenseStore {
             dashboardHiddenSections: dashboardHiddenSections,
             customFolders: customFolders,
             ratesToUSD: ratesToUSD,
-            ratesLastUpdated: ratesLastUpdated
+            ratesLastUpdated: ratesLastUpdated,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            selectedSticker: selectedSticker
         )
         let destinationURL = storageURL
         Task.detached(priority: .utility) {
@@ -504,6 +521,8 @@ final class ExpenseStore {
         self.userName = SpendyDefaultData.userName
         self.soundEnabled = true
         self.hapticsEnabled = true
+        self.hasCompletedOnboarding = false
+        self.selectedSticker = nil
         self.appearanceMode = SpendyDefaultData.appearanceMode
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
@@ -517,6 +536,11 @@ final class ExpenseStore {
         self.budget = SpendyDefaultData.budget
         self.currencySymbol = SpendyDefaultData.currencySymbol
         self.currencyCode = SpendyDefaultData.currencyCode
+        scheduleSave()
+    }
+    
+    func resetOnboarding() {
+        self.hasCompletedOnboarding = false
         scheduleSave()
     }
     

@@ -2,86 +2,19 @@
   "fill" : "automatic",
   "groups" : [
     {
-      "hidden" : true,
+      "blur-material" : 1,
+      "hidden" : false,
       "layers" : [
         {
-          "blend-mode" : "hard-light",
-          "fill" : "none",
-          "glass-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : true
-            }
-          ],
-          "hidden" : false,
-          "image-name" : "Icon.png",
-          "name" : "Icon",
-          "opacity" : 1,
-          "position" : {
-            "scale" : 2.1,
-            "translation-in-points" : [
-              -12.800000000000182,
-              34.28063034625086
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "layers" : [
-
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "hidden" : true,
-      "layers" : [
-        {
-          "image-name" : "icon3.png",
-          "name" : "icon3",
-          "position" : {
-            "scale" : 2.04,
-            "translation-in-points" : [
-              -10.240000000000009,
-              2.5599999999999454
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "layers" : [
-        {
+          "blend-mode" : "normal",
           "image-name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM.png",
           "name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM",
+          "opacity" : 1,
           "position" : {
             "scale" : 0.85,
             "translation-in-points" : [
-              -19.164999999999964,
-              -5.100000000000023
+              -36.85000000000002,
+              -37.94436965374916
             ]
           }
         }
