@@ -1104,10 +1104,28 @@ struct SharedEntityAnalyticsSheet: View {
         }
     }
     
-    // MARK: - Section 2: Recent Activity (Full-Width Date-Grouped Transactions)
+    // MARK: - Section 2: Recent Activity (Unified Grouped Container Matching Home Page)
     private var recentActivitySectionView: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if dateGroupedTransactions.isEmpty {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                Text("Recent transactions")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                if !filteredTransactions.isEmpty {
+                    Text("\(filteredTransactions.count)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 4)
+            
+            if filteredTransactions.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "tray.fill")
                         .font(.system(size: 28))
@@ -1119,57 +1137,122 @@ struct SharedEntityAnalyticsSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 36)
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(cardFillColor)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(cardBorderColor, lineWidth: 0.8)
+                        }
                 }
             } else {
-                VStack(spacing: 16) {
-                    ForEach(dateGroupedTransactions, id: \.0) { dateGroup, dayTotal, txs in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(dateGroup)
-                                    .font(.system(size: 12.5, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                
-                                Spacer()
-                                
-                                Text(dayTotal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
-                                    .monospacedDigit()
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                            .padding(.horizontal, 4)
-                            
-                            VStack(spacing: 0) {
-                                ForEach(Array(txs.enumerated()), id: \.element.id) { idx, tx in
-                                    AnalyticsTransactionRowView(
-                                        tx: tx,
-                                        entity: entity,
-                                        currencySymbol: store.currencySymbol,
-                                        cardFillColor: cardFillColor,
-                                        onSelect: {
-                                            HapticsManager.shared.trigger(.selection)
-                                            inspectingTransaction = tx
-                                        }
-                                    )
-                                    
-                                    if idx < txs.count - 1 {
-                                        Divider()
-                                            .overlay(SpendyColors.separator)
-                                            .padding(.leading, 64)
-                                    }
-                                }
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(cardBorderColor, lineWidth: 0.8)
-                            }
+                VStack(spacing: 0) {
+                    ForEach(Array(filteredTransactions.enumerated()), id: \.element.id) { index, tx in
+                        analyticsTransactionRow(tx)
+                        
+                        if index < filteredTransactions.count - 1 {
+                            Rectangle()
+                                .fill(SpendyColors.separator.opacity(0.6))
+                                .frame(height: 0.5)
+                                .padding(.leading, 58)
+                                .padding(.trailing, 16)
                         }
                     }
                 }
+                .background {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(cardFillColor)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(cardBorderColor, lineWidth: 0.8)
+                        }
+                }
             }
         }
+    }
+    
+    private func analyticsTransactionRow(_ tx: Transaction) -> some View {
+        let cat = store.categories.first(where: { $0.id == tx.categoryId })
+        let acc = store.accounts.first(where: { $0.id == tx.accountId })
+        let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
+        
+        let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? entity.sfSymbol)
+        let iconColor = subscription?.color ?? (cat?.color ?? entity.color)
+        
+        return Button(action: {
+            HapticsManager.shared.trigger(.selection)
+            inspectingTransaction = tx
+        }) {
+            HStack(spacing: 14) {
+                // Circular Category / Subscription / Account Icon Badge
+                SpendyIconBadge(
+                    sfSymbol: iconSymbol,
+                    color: iconColor,
+                    size: .medium,
+                    style: .circle
+                )
+                
+                // Middle: Title + Subtitle
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                    
+                    switch entity {
+                    case .category:
+                        if let acc = acc {
+                            HStack(spacing: 5) {
+                                Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 14, height: 14)
+                                    .background(acc.color, in: Circle())
+                                
+                                Text("\(acc.label) • \(tx.date.formattedRelative)")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            Text(tx.date.formattedRelative)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                        }
+                    case .account:
+                        if let cat = cat {
+                            HStack(spacing: 5) {
+                                Image(systemName: cat.sfSymbol)
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 14, height: 14)
+                                    .background(cat.color, in: Circle())
+                                
+                                Text("\(cat.label) • \(tx.date.formattedRelative)")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            Text(tx.date.formattedRelative)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                // Right: Amount
+                Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                    .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Section 3: Insights (Smart Moments)
@@ -1180,82 +1263,5 @@ struct SharedEntityAnalyticsSheet: View {
                 showSectionHeader: false
             )
         }
-    }
-}
-
-// MARK: - Extracted Transaction Row Subview for Swift Compiler Optimization
-private struct AnalyticsTransactionRowView: View {
-    @Environment(ExpenseStore.self) private var store
-    
-    let tx: Transaction
-    let entity: AnalyticsEntity
-    let currencySymbol: String
-    let cardFillColor: Color
-    let onSelect: () -> Void
-    
-    private var category: Category? {
-        store.categories.first(where: { $0.id == tx.categoryId })
-    }
-    
-    private var account: Account? {
-        store.accounts.first(where: { $0.id == tx.accountId })
-    }
-    
-    private var subscription: Subscription? {
-        store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
-    }
-    
-    private var iconSymbol: String {
-        subscription?.sfSymbol ?? (category?.sfSymbol ?? entity.sfSymbol)
-    }
-    
-    private var iconColor: Color {
-        subscription?.color ?? (category?.color ?? entity.color)
-    }
-    
-    private var sublabel: String {
-        switch entity {
-        case .category:
-            return account?.label ?? "General Account"
-        case .account:
-            return category?.label ?? "General Category"
-        }
-    }
-    
-    var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 12) {
-                SpendyIconBadge(
-                    sfSymbol: iconSymbol,
-                    color: iconColor,
-                    size: .medium,
-                    style: .circle
-                )
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tx.title)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    Text(sublabel)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Spacer()
-                
-                Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: currencySymbol, decimals: 0))")
-                    .font(.system(size: 15.5, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(minHeight: 56)
-            .contentShape(Rectangle())
-            .background(cardFillColor)
-        }
-        .buttonStyle(.plain)
     }
 }
