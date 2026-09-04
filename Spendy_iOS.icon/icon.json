@@ -2,7 +2,7 @@
   "fill" : "automatic",
   "groups" : [
     {
-      "hidden" : false,
+      "hidden" : true,
       "layers" : [
         {
           "blend-mode" : "hard-light",
@@ -36,19 +36,8 @@
       }
     },
     {
-      "hidden" : true,
       "layers" : [
-        {
-          "image-name" : "icon2.png",
-          "name" : "icon2",
-          "position" : {
-            "scale" : 2.06,
-            "translation-in-points" : [
-              -2.560000000000059,
-              -36.16212953780769
-            ]
-          }
-        }
+
       ],
       "shadow" : {
         "kind" : "neutral",
@@ -84,17 +73,15 @@
       }
     },
     {
-      "hidden" : true,
       "layers" : [
         {
-          "glass" : false,
-          "image-name" : "Logo.png",
-          "name" : "Logo",
+          "image-name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM.png",
+          "name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM",
           "position" : {
-            "scale" : 2.1,
+            "scale" : 0.85,
             "translation-in-points" : [
-              0,
-              0
+              -19.164999999999964,
+              -5.100000000000023
             ]
           }
         }

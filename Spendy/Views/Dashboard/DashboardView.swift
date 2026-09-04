@@ -25,19 +25,32 @@ struct SpendTrendPoint: Identifiable, Equatable {
     let amount: Double
 }
 
-// MARK: - On-Screen Hero Spend Bar Chart Component (Matching Screenshot, Uncarded)
+// MARK: - On-Screen Hero Spend Bar Chart Component with Interactive Scrubbing
 struct HeroSpendBarChart: View {
     let dataPoints: [MinimalBarPoint]
+    @Binding var scrubbedPoint: MinimalBarPoint?
+    @Binding var isScrubbing: Bool
     var barColor: Color = SpendyColors.textPrimary
     var gridColor: Color = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.12),
         dark: UIColor(white: 1.0, alpha: 0.18)
     ))
     
+    public init(
+        dataPoints: [MinimalBarPoint],
+        scrubbedPoint: Binding<MinimalBarPoint?> = .constant(nil),
+        isScrubbing: Binding<Bool> = .constant(false),
+        barColor: Color = SpendyColors.textPrimary
+    ) {
+        self.dataPoints = dataPoints
+        self._scrubbedPoint = scrubbedPoint
+        self._isScrubbing = isScrubbing
+        self.barColor = barColor
+    }
+    
     private var maxAmount: Double {
         let maxVal = dataPoints.map(\.amount).max() ?? 0
         if maxVal <= 0 { return 300_000 }
-        // Round up to nearest clean step (e.g. 300k, 200k, 100k)
         let magnitude = pow(10, floor(log10(maxVal)))
         let normalized = maxVal / magnitude
         let step: Double
@@ -56,11 +69,11 @@ struct HeroSpendBarChart: View {
     var body: some View {
         VStack(spacing: 8) {
             GeometryReader { geo in
-                let chartWidth = geo.size.width - 65 // Reserve 65pt for Y-axis labels on right
+                let chartWidth = max(10, geo.size.width - 65) // Reserve 65pt for Y-axis labels on right
                 let chartHeight = geo.size.height
                 let barCount = CGFloat(max(1, dataPoints.count))
                 let barWidth: CGFloat = min(48, max(28, (chartWidth / barCount) * 0.55))
-                let spacing = (chartWidth - (barWidth * barCount)) / (barCount + 1)
+                let spacing = max(4, (chartWidth - (barWidth * barCount)) / (barCount + 1))
                 
                 ZStack(alignment: .topLeading) {
                     // 1. Horizontal Grid Lines & Right-aligned Y-Axis Labels
@@ -74,7 +87,8 @@ struct HeroSpendBarChart: View {
                                 
                                 // Y-Axis Label
                                 Text(formatAxisNumber(level))
-                                    .font(.system(size: 11, weight: .semibold, design: .default))
+                                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                    .monospacedDigit()
                                     .foregroundStyle(SpendyColors.textSecondary)
                                     .frame(width: 50, alignment: .leading)
                             }
@@ -91,6 +105,8 @@ struct HeroSpendBarChart: View {
                         Spacer(minLength: 0)
                         
                         ForEach(dataPoints) { point in
+                            let isSelected = scrubbedPoint?.id == point.id
+                            let isAnySelected = scrubbedPoint != nil
                             let ratio = maxAmount > 0 ? CGFloat(min(1.0, max(0.0, point.amount / maxAmount))) : 0.0
                             let barH = max(4, ratio * (chartHeight - 4))
                             
@@ -99,30 +115,89 @@ struct HeroSpendBarChart: View {
                                 
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(barColor)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(isSelected ? Color.white : Color.clear, lineWidth: 1.5)
+                                    )
+                                    .shadow(
+                                        color: isSelected ? Color.white.opacity(0.4) : Color.clear,
+                                        radius: 8,
+                                        y: 0
+                                    )
                                     .frame(width: barWidth, height: barH)
+                                    .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
+                                    .opacity(isAnySelected && !isSelected ? 0.30 : 1.0)
                             }
                             .frame(width: barWidth, height: chartHeight)
+                            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
+                            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isAnySelected)
                         }
                         
                         Spacer(minLength: 0)
                     }
                     .frame(width: chartWidth, height: chartHeight)
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            isScrubbing = true
+                            if let closest = closestPoint(to: value.location.x, chartWidth: chartWidth) {
+                                if closest.id != scrubbedPoint?.id {
+                                    HapticsManager.shared.trigger(.selection)
+                                    withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.85)) {
+                                        scrubbedPoint = closest
+                                    }
+                                }
+                            }
+                        }
+                        .onEnded { _ in
+                            isScrubbing = false
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                scrubbedPoint = nil
+                            }
+                        }
+                )
             }
             .frame(height: 150)
             
             // 3. X-Axis Labels Row (Matching Chart Width)
             HStack(spacing: 0) {
                 ForEach(dataPoints) { point in
+                    let isSelected = scrubbedPoint?.id == point.id
                     Text(point.label)
-                        .font(.system(size: 12, weight: .semibold, design: .default))
-                        .foregroundStyle(SpendyColors.textSecondary)
+                        .font(.system(size: 12, weight: isSelected ? .bold : .semibold, design: isSelected ? .monospaced : .default))
+                        .monospacedDigit()
+                        .foregroundStyle(
+                            isSelected ? SpendyColors.textPrimary : (scrubbedPoint != nil ? SpendyColors.textTertiary : SpendyColors.textSecondary)
+                        )
                         .frame(maxWidth: .infinity)
+                        .animation(.easeInOut(duration: 0.15), value: isSelected)
                 }
             }
             .padding(.trailing, 65) // Align with chart area
             .padding(.top, 4)
         }
+    }
+    
+    private func closestPoint(to locationX: CGFloat, chartWidth: CGFloat) -> MinimalBarPoint? {
+        guard !dataPoints.isEmpty else { return nil }
+        let barCount = CGFloat(dataPoints.count)
+        let barWidth: CGFloat = min(48, max(28, (chartWidth / barCount) * 0.55))
+        let spacing = max(4, (chartWidth - (barWidth * barCount)) / (barCount + 1))
+        
+        var closest: MinimalBarPoint? = nil
+        var minDistance: CGFloat = .infinity
+        
+        for (index, point) in dataPoints.enumerated() {
+            let barCenterX = spacing + CGFloat(index) * (barWidth + spacing) + barWidth / 2
+            let distance = abs(locationX - barCenterX)
+            if distance < minDistance {
+                minDistance = distance
+                closest = point
+            }
+        }
+        return closest
     }
     
     private func formatAxisNumber(_ num: Double) -> String {
@@ -165,6 +240,8 @@ struct DashboardView: View {
     @State private var showAllTransactionsSheet: Bool = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var showHomeConfigSheet: Bool = false
+    @State private var scrubbedBarPoint: MinimalBarPoint? = nil
+    @State private var isScrubbingChart: Bool = false
     
     // MARK: - Dynamic Filtered Transactions
     private var displayedTransactions: [Transaction] {
@@ -251,6 +328,7 @@ struct DashboardView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120) // Clearance for bottom floating tab bar
                 }
+                .scrollDisabled(isScrubbingChart)
                 
                 if showCurrencyConverter {
                     Color(uiColor: .dynamic(
@@ -340,53 +418,77 @@ struct DashboardView: View {
     }
     
     // MARK: - 1. Top Header Bar (Profile Left + 3 Action Toggles Right)
+    private var profileDisplayName: String {
+        let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Personal" : name
+    }
+    
+    @ViewBuilder
+    private var profileAvatarView: some View {
+        let profColorHex = store.profileColorHex ?? store.topGradientColorHex
+        let avatarSize: CGFloat = 34
+        
+        ZStack {
+            if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: avatarSize, height: avatarSize)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.8))
+            } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
+                Circle()
+                    .fill(Color(hex: profColorHex))
+                    .frame(width: avatarSize, height: avatarSize)
+                
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.inverseText)
+            } else {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: profColorHex), SpendyColors.accentCyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: avatarSize, height: avatarSize)
+                
+                let initial = store.userName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1).uppercased()
+                Text(initial.isEmpty ? "P" : String(initial))
+                    .font(.system(size: 14, weight: .heavy, design: .default))
+                    .foregroundStyle(SpendyColors.inverseText)
+            }
+        }
+        .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
+    }
+    
     private var headerBar: some View {
         HStack(alignment: .center) {
-            // Profile / Account Button on Top-Left (Opens Settings)
+            // Profile / Account Capsule Pill on Top-Left (Opens Settings)
             Button(action: {
                 HapticsManager.shared.trigger(.light)
                 settingsInitialDestination = nil
                 showSettings = true
             }) {
-                ZStack {
-                    let profColorHex = store.profileColorHex ?? store.topGradientColorHex
-                    if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 44, height: 44)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(SpendyColors.separator, lineWidth: 1))
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
-                    } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
-                        Circle()
-                            .fill(Color(hex: profColorHex))
-                            .frame(width: 44, height: 44)
-                            .shadow(color: Color(hex: profColorHex).opacity(0.35), radius: 4, y: 2)
-                        
-                        Image(systemName: symbol)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(SpendyColors.inverseText)
-                    } else {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(hex: profColorHex), SpendyColors.accentCyan],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 44, height: 44)
-                            .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
-                        
-                        Text(store.userName.prefix(1).uppercased().isEmpty ? "P" : String(store.userName.prefix(1).uppercased()))
-                            .font(.system(size: 17, weight: .heavy, design: .default))
-                            .foregroundStyle(SpendyColors.inverseText)
-                    }
+                HStack(spacing: 8) {
+                    profileAvatarView
+                    
+                    Text(profileDisplayName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
+                .padding(.leading, 5)
+                .padding(.trailing, 14)
+                .frame(height: 44)
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Account and Settings")
+            .buttonStyle(ProfilePillPressStyle())
+            .accessibilityLabel("Profile, \(profileDisplayName). Opens settings.")
             .glassMorphID("topControl_left", in: topControlsNamespace)
             
             Spacer()
@@ -505,12 +607,23 @@ struct DashboardView: View {
     // MARK: - 3. Hero Spend Section with On-Screen Bar Chart (Matching Screenshot, Uncarded)
     private var heroSpendBarSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header Label: "Spent all time"
-            Text("Spent all time")
-                .font(AppTypography.itemTitle)
-                .foregroundStyle(SpendyColors.textSecondary)
+            // Header Label: "Spent all time" or "Spent in <Year> • Drag to inspect"
+            Group {
+                if let scrubbed = scrubbedBarPoint {
+                    Text("Spent in \(scrubbed.label) • Drag to inspect")
+                        .font(AppTypography.itemTitle)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                } else {
+                    Text("Spent all time")
+                        .font(AppTypography.itemTitle)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: scrubbedBarPoint?.id)
             
-            // Large Amount Text with Vertical Gradient (Reference Image 1: 8 429 style)
+            // Large Amount Text with Vertical Gradient
+            let displayAmount = scrubbedBarPoint?.amount ?? totalSpentAllTime
+            
             if hideBalance {
                 Text("••••••")
                     .spendyNumberFont(size: 42, weight: .heavy, tracking: -1.0)
@@ -518,18 +631,23 @@ struct DashboardView: View {
                     .padding(.bottom, 6)
             } else {
                 SpendyGradientText(
-                    totalSpentAllTime.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
+                    displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
                     size: 42,
                     weight: .heavy,
                     tracking: -1.0,
                     colors: SpendyGradientPresets.electricBlueToWhite
                 )
                 .padding(.bottom, 6)
+                .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scrubbedBarPoint?.id)
             }
             
-            // On-Screen Bar Chart with Gridlines & Y/X-Axes (No card wrapper)
-            HeroSpendBarChart(dataPoints: barChartDataPoints)
-                .padding(.top, 2)
+            // On-Screen Bar Chart with Interactive Scrubbing
+            HeroSpendBarChart(
+                dataPoints: barChartDataPoints,
+                scrubbedPoint: $scrubbedBarPoint,
+                isScrubbing: $isScrubbingChart
+            )
+            .padding(.top, 2)
         }
     }
     
@@ -900,5 +1018,15 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .center)
+    }
+}
+
+// MARK: - Profile Pill Press Style
+private struct ProfilePillPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
     }
 }
