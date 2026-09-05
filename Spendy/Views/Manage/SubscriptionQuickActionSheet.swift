@@ -52,7 +52,7 @@ struct SubscriptionQuickActionSheet: View {
     
     private var formattedDueDate: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, MMM d, yyyy"
+        formatter.dateFormat = "d MMM"
         return formatter.string(from: liveSub.nextBillingDate)
     }
     
@@ -63,24 +63,29 @@ struct SubscriptionQuickActionSheet: View {
         return calendar.dateComponents([.day], from: now, to: target).day ?? 0
     }
     
-    private var dueStatusText: String {
-        if liveSub.isTrial {
-            if daysUntilDue < 0 { return "Trial expired \(abs(daysUntilDue))d ago" }
-            if daysUntilDue == 0 { return "Trial ends today" }
-            if daysUntilDue == 1 { return "Trial ends tomorrow" }
-            return "\(daysUntilDue)d left"
+    private var relativeDueString: String {
+        if daysUntilDue == 0 {
+            return "today"
+        } else if daysUntilDue == 1 {
+            return "in 1 day"
+        } else if daysUntilDue > 1 {
+            return "in \(daysUntilDue) days"
         } else {
-            if daysUntilDue < 0 { return "\(abs(daysUntilDue))d overdue" }
-            if daysUntilDue == 0 { return "Due today" }
-            if daysUntilDue == 1 { return "Due tomorrow" }
-            return "\(daysUntilDue)d left"
+            return "\(abs(daysUntilDue)) days ago"
         }
     }
     
-    private var dueStatusColor: Color {
-        if daysUntilDue < 0 { return SpendyColors.expenseRed }
-        if daysUntilDue <= 3 { return SpendyColors.warningOrange }
-        return SpendyColors.incomeGreen
+    private var nextPaymentDisplay: String {
+        "\(formattedDueDate) (\(relativeDueString))"
+    }
+    
+    private var totalSpent: Double {
+        store.transactions
+            .filter {
+                ($0.subscriptionId?.lowercased() == liveSub.id.uuidString.lowercased()) ||
+                ($0.title.lowercased() == liveSub.name.lowercased() && $0.type == .expense)
+            }
+            .reduce(0.0) { $0 + $1.amount }
     }
     
     private var statusBadgeText: String {
@@ -93,14 +98,6 @@ struct SubscriptionQuickActionSheet: View {
         if liveSub.isPaused { return SpendyColors.textTertiary }
         if liveSub.isTrial { return SpendyColors.warningOrange }
         return SpendyColors.incomeGreen
-    }
-    
-    private var annualProjectedCost: Double {
-        switch liveSub.cycle {
-        case .monthly: return liveSub.amount * 12
-        case .yearly:  return liveSub.amount
-        case .weekly:  return liveSub.amount * 52
-        }
     }
     
     // MARK: - Capsule State Properties
@@ -169,7 +166,15 @@ struct SubscriptionQuickActionSheet: View {
         if liveSub.isPaused {
             return "Subscription is currently paused. No upcoming expenses will be charged or logged."
         } else if liveSub.isTrial {
-            return "Free trial active (\(daysUntilDue) days remaining). Convert to paid anytime to continue tracking."
+            if daysUntilDue < 0 {
+                return "Free trial ended \(abs(daysUntilDue)) days ago. Convert to paid anytime to continue tracking."
+            } else if daysUntilDue == 0 {
+                return "Free trial ends today. Convert to paid anytime to continue tracking."
+            } else if daysUntilDue == 1 {
+                return "Free trial active (1 day remaining). Convert to paid anytime to continue tracking."
+            } else {
+                return "Free trial active (\(daysUntilDue) days remaining). Convert to paid anytime to continue tracking."
+            }
         } else if liveSub.autoDeduct {
             return "Auto-log is active. Next payment of \(liveSub.amount.formattedCurrency(symbol: store.currencySymbol)) will be recorded from \(linkedAccount.label) on \(formattedDueDate)."
         } else {
@@ -184,28 +189,34 @@ struct SubscriptionQuickActionSheet: View {
             // MARK: - Scrollable Content
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
-                    // Spacer to clear pinned floating top bar (44pt button + 20pt top inset + 8pt gap)
-                    Spacer().frame(height: 64)
+                    // Spacer to clear pinned top bar
+                    Spacer().frame(height: 56)
                     
-                    // MARK: - Hero Section
+                    // MARK: - Hero Section (Standard Spendy Progress Ring Badge)
                     heroSection
+                        .padding(.top, 4)
+                        .padding(.bottom, 6)
                     
-                    // MARK: - Structured Details Card
+                    // MARK: - Grouped Details Card (Consistent with Edit Subscription Sheet)
                     detailsCard
+                    
+                    // MARK: - Action Capsule Button & Footnote (Image 2)
+                    actionSection
+                        .padding(.top, 4)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 28)
+                .padding(.bottom, 32)
             }
             
-            // MARK: - Floating Top Bar (✕ on Left, ••• on Right)
+            // MARK: - Pinned Top Action Bar (✕ on Left, Pen Icon on Right)
             topActionBar
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 16)
             
-            // MARK: - Floating Dynamic Toast Feedback Banner
+            // MARK: - Floating Toast Feedback
             if showToast, let toast = toastMessage {
                 feedbackToastView(message: toast, icon: toastIcon, color: toastColor)
-                    .padding(.top, 74)
+                    .padding(.top, 64)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(200)
             }
@@ -224,16 +235,16 @@ struct SubscriptionQuickActionSheet: View {
         .sheet(isPresented: $showEditSheet) {
             AddSubscriptionSheet(subscriptionToEdit: liveSub)
         }
-        .presentationDetents([.height(540), .large])
-        .presentationDragIndicator(.visible)
+        .presentationDetents([.height(640), .large])
+        .presentationDragIndicator(.hidden)
     }
     
-    // MARK: - Top Action Bar (✕ on Left, ••• Menu on Right)
+    // MARK: - Top Action Bar (✕ on Left, Pen Circle on Right)
     private var topActionBar: some View {
         HStack {
-            // Close Button ✕ (Left)
+            // Close Button ✕ (Left, 44pt GlassCircleButton)
             GlassCircleButton(
-                icon: "xmark",
+                icon: SFIcons.close,
                 size: 44,
                 iconSize: 16,
                 iconWeight: .bold,
@@ -248,129 +259,304 @@ struct SubscriptionQuickActionSheet: View {
             
             Spacer()
             
-            // More Options Menu ••• (Right)
-            Menu {
-                Button {
-                    showEditSheet = true
-                } label: {
-                    Label("Edit Subscription", systemImage: "pencil")
-                }
-                
-                Button {
-                    handleTogglePause()
-                } label: {
-                    Label(
-                        liveSub.isPaused ? "Resume Subscription" : "Pause Subscription",
-                        systemImage: liveSub.isPaused ? "play.fill" : "pause.fill"
-                    )
-                }
-                
-                Button {
-                    handleToggleAutoDeduct()
-                } label: {
-                    Label(
-                        liveSub.autoDeduct ? "Disable Auto-Log" : "Enable Auto-Log",
-                        systemImage: liveSub.autoDeduct ? "bolt.slash.fill" : "bolt.fill"
-                    )
-                }
-                
-                Divider()
-                
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    Label("Delete Subscription", systemImage: "trash")
-                }
-            } label: {
-                GlassCircleIcon(
-                    size: 44,
-                    tintColor: nil,
-                    isInteractive: true,
-                    morphID: "moreOptionsMenu",
-                    namespace: sheetNamespace
-                ) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
+            // Edit Circle Button with Pen Icon (Right, 44pt GlassCircleButton)
+            GlassCircleButton(
+                icon: SFIcons.edit,
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Edit Subscription",
+                morphID: "editButton",
+                namespace: sheetNamespace
+            ) {
+                showEditSheet = true
             }
         }
     }
     
-    // MARK: - Hero Section (Airy & Seamless)
+    // MARK: - Hero Section (Standard Spendy Progress Ring Badge, Title & Status Pill)
     private var heroSection: some View {
-        VStack(spacing: 12) {
-            // Subscription Avatar Icon Badge + Title
-            VStack(spacing: 6) {
-                SubscriptionProgressRingBadge(
-                    subscription: liveSub,
-                    size: .large
+        VStack(spacing: 8) {
+            // Existing SubscriptionProgressRingBadge with cycle progress ring
+            SubscriptionProgressRingBadge(
+                subscription: liveSub,
+                size: .large
+            )
+            .scaleEffect(heroPulseScale)
+            .padding(.bottom, 2)
+            
+            // Subscription Name
+            Text(liveSub.name)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+            
+            // Cycle • Price Subtitle
+            Text("\(liveSub.cycle.label) • \(liveSub.amount.formattedCurrency(symbol: store.currencySymbol))")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+            
+            // Status Menu Capsule Pill (Active / Free Trial / Paused) pushed to the body itself
+            statusPillMenu
+                .padding(.top, 2)
+        }
+    }
+    
+    // MARK: - Status Pill Menu (In Body)
+    private var statusPillMenu: some View {
+        Menu {
+            Button {
+                handleSetActive()
+            } label: {
+                Label("Active", systemImage: "checkmark.circle")
+            }
+            
+            Button {
+                handleSetTrial()
+            } label: {
+                Label("Free Trial", systemImage: "clock")
+            }
+            
+            Button {
+                handleTogglePause()
+            } label: {
+                Label(
+                    liveSub.isPaused ? "Resume Subscription" : "Pause Subscription",
+                    systemImage: liveSub.isPaused ? "play.fill" : "pause.fill"
                 )
-                .scaleEffect(heroPulseScale)
+            }
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete Subscription", systemImage: "trash")
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(statusBadgeColor)
+                    .frame(width: 8, height: 8)
                 
-                Text(liveSub.name)
-                    .font(.system(size: 18, weight: .bold))
+                Text(statusBadgeText)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-            }
-            
-            // Amount & Cycle Subtitle
-            VStack(spacing: 4) {
-                Text(liveSub.amount.formattedCurrency(symbol: store.currencySymbol))
-                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
-                    .foregroundStyle(liveSub.isPaused ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                    .contentTransition(.numericText())
                 
-                HStack(spacing: 6) {
-                    Image(systemName: liveSub.isPaused ? "pause.circle.fill" : "repeat")
-                        .font(.system(size: 11, weight: .bold))
-                    Text("Billed \(liveSub.cycle.label.lowercased()) • \(statusBadgeText)")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundStyle(statusBadgeColor)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .nativeLiquidGlassCapsule(isInteractive: true)
+            .contentShape(Capsule())
+        }
+    }
+    
+    // MARK: - Grouped Details Card (Consistent with Edit Subscription Sheet)
+    private var detailsCard: some View {
+        VStack(spacing: 0) {
+            // 1. Amount Row
+            HStack {
+                Text("Amount")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                Text(liveSub.amount.formattedCurrency(symbol: store.currencySymbol))
+                    .font(.system(size: 16, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            .padding(.vertical, 14)
             
-            // MARK: - Interactive Action Capsule Button (Compact & Integrated)
+            Divider().background(SpendyColors.separator)
+            
+            // 2. Next payment Row
+            HStack {
+                Text("Next payment")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                Text(nextPaymentDisplay)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            .padding(.vertical, 14)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // 3. Total spent Row
+            HStack {
+                Text("Total spent")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol))
+                    .font(.system(size: 16, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            .padding(.vertical, 14)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // 4. Notifications Row
+            HStack {
+                Text("Notifications")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                Menu {
+                    Button {
+                        handleToggleAutoDeduct(to: false)
+                    } label: {
+                        Label("Default (Reminders Only)", systemImage: "bell.fill")
+                    }
+                    Button {
+                        handleToggleAutoDeduct(to: true)
+                    } label: {
+                        Label("Auto-Log Payment", systemImage: "bolt.fill")
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(liveSub.autoDeduct ? "Auto-Log" : "Default")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                    }
+                    .frame(minHeight: 32)
+                    .contentShape(Rectangle())
+                }
+            }
+            .padding(.vertical, 12)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // 5. Category Row
+            HStack {
+                Text("Category")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    SpendyIconBadge(
+                        sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
+                        color: Color(hex: linkedCategory?.colorHex ?? "#5856D6"),
+                        size: .small,
+                        style: .rounded()
+                    )
+                    
+                    Text(linkedCategory?.label ?? "Subscriptions")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+            }
+            .padding(.vertical, 12)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // 6. Payment Account Row
+            HStack {
+                Text("Payment Account")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    let accountSymbol: String = {
+                        if !linkedAccount.sfSymbol.isEmpty {
+                            return linkedAccount.sfSymbol
+                        }
+                        return linkedAccount.type.defaultSymbol
+                    }()
+                    SpendyIconBadge(
+                        sfSymbol: accountSymbol,
+                        color: Color(hex: linkedAccount.colorHex),
+                        size: .small,
+                        style: .rounded()
+                    )
+                    
+                    Text(linkedAccount.label)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+            }
+            .padding(.vertical, 12)
+        }
+        .padding(.horizontal, 18)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
+    }
+
+    
+    // MARK: - Action Section (Image 2: Capsule Button & Contextual Note)
+    private var actionSection: some View {
+        VStack(spacing: 10) {
+            // Interactive Action Capsule Button
             Button {
                 handleCapsuleAction()
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     if isProcessing {
                         ProgressView()
                             .tint(capsuleContentColor)
-                            .scaleEffect(0.8)
+                            .scaleEffect(0.85)
                         Text("Processing...")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(capsuleContentColor)
                     } else if isPaidSuccess {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(SpendyColors.incomeGreen)
                             .contentTransition(.symbolEffect(.replace))
                         Text(liveSub.isTrial ? "Trial Converted to Paid!" : "Payment Recorded!")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(SpendyColors.incomeGreen)
                     } else {
                         Image(systemName: capsuleIcon)
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(capsuleContentColor)
                             .contentTransition(.symbolEffect(.replace))
                         
                         Text(capsuleTitle)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(capsuleContentColor)
                         
                         Spacer()
                         
                         Image(systemName: capsuleTrailingIcon)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(capsuleContentColor.opacity(0.75))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(capsuleContentColor.opacity(0.8))
                             .contentTransition(.symbolEffect(.replace))
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 18)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                .frame(height: 50)
                 .background(capsuleBackgroundColor, in: Capsule(style: .continuous))
                 .overlay(
                     Capsule(style: .continuous)
@@ -379,120 +565,16 @@ struct SubscriptionQuickActionSheet: View {
             }
             .buttonStyle(GlassCapsulePressStyle())
             .disabled(isProcessing || isPaidSuccess)
-            .padding(.horizontal, 8)
-            .padding(.top, 2)
             
-            // Contextual Explanatory Note
+            // Contextual Explanatory Note with Fixed Days Logic
             Text(contextualNoteText)
-                .font(.system(size: 11.5, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(SpendyColors.textTertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
-                .lineSpacing(1.5)
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 2)
-    }
-    
-    // MARK: - Structured Details Card Container
-    private var detailsCard: some View {
-        VStack(spacing: 0) {
-            // 1. Payment Method / Account Row
-            cardRow(icon: "creditcard.fill", label: "Payment Account") {
-                HStack(spacing: 8) {
-                    SpendyIconBadge(
-                        sfSymbol: linkedAccount.sfSymbol.isEmpty ? linkedAccount.type.defaultSymbol : linkedAccount.sfSymbol,
-                        color: Color(hex: linkedAccount.colorHex),
-                        size: .small,
-                        style: .rounded()
-                    )
-                    Text(linkedAccount.label)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-            }
-            
-            rowDivider
-            
-            // 2. Category Row
-            cardRow(icon: "tag.fill", label: "Category") {
-                HStack(spacing: 8) {
-                    SpendyIconBadge(
-                        sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
-                        color: Color(hex: linkedCategory?.colorHex ?? "#5856D6"),
-                        size: .small,
-                        style: .rounded()
-                    )
-                    Text(linkedCategory?.label ?? "Subscriptions")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-            }
-            
-            rowDivider
-            
-            // 3. Billing Cycle Row
-            cardRow(icon: "repeat", label: "Billing Cycle") {
-                HStack(spacing: 8) {
-                    Text(liveSub.cycle.label)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Text(dueStatusText)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(dueStatusColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(dueStatusColor.opacity(0.12), in: Capsule())
-                }
-            }
-            
-            rowDivider
-            
-            // 4. Next Billing Due Date Row
-            cardRow(icon: "calendar", label: "Next Billing") {
-                Text(formattedDueDate)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            
-            rowDivider
-            
-            // 5. Auto-Log Toggle Row
-            cardRow(icon: "bolt.fill", label: "Auto-Log Expense") {
-                Toggle("", isOn: Binding(
-                    get: { liveSub.autoDeduct },
-                    set: { newValue in
-                        handleToggleAutoDeduct(to: newValue)
-                    }
-                ))
-                .labelsHidden()
-                .tint(SpendyColors.incomeGreen)
-            }
-            
-            rowDivider
-            
-            // 6. Annual Projection Row
-            cardRow(icon: "chart.line.uptrend.xyaxis", label: "Annual Cost") {
-                Text("\(annualProjectedCost.formattedCurrency(symbol: store.currencySymbol)) / yr")
-                    .spendyNumberFont(size: 14, weight: .bold, tracking: -0.4)
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-        }
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
-    }
-    
-    private var rowDivider: some View {
-        Divider()
-            .overlay(SpendyColors.separator.opacity(0.6))
-            .padding(.leading, 48)
     }
     
     // MARK: - Action Handlers with Rich Spring Animation & Toast Feedback
@@ -505,6 +587,26 @@ struct SubscriptionQuickActionSheet: View {
         }
     }
     
+    private func handleSetActive() {
+        HapticsManager.shared.trigger(.selection)
+        var updated = liveSub
+        updated.isPaused = false
+        updated.isTrial = false
+        updated.status = "active"
+        store.updateSubscription(updated)
+        showFeedback(message: "Subscription Set to Active", icon: "checkmark.circle.fill", color: SpendyColors.incomeGreen)
+    }
+    
+    private func handleSetTrial() {
+        HapticsManager.shared.trigger(.selection)
+        var updated = liveSub
+        updated.isTrial = true
+        updated.isPaused = false
+        updated.status = "active"
+        store.updateSubscription(updated)
+        showFeedback(message: "Subscription Marked as Free Trial", icon: "clock.fill", color: SpendyColors.warningOrange)
+    }
+    
     private func handleTogglePause() {
         HapticsManager.shared.trigger(.medium)
         
@@ -515,10 +617,11 @@ struct SubscriptionQuickActionSheet: View {
                 heroPulseScale = 1.12
             }
             store.toggleSubscriptionPause(id: liveSub.id)
-            toastMessage = wasPaused ? "Subscription Resumed & Active!" : "Subscription Paused"
-            toastIcon = wasPaused ? "checkmark.circle.fill" : "pause.circle.fill"
-            toastColor = wasPaused ? SpendyColors.incomeGreen : SpendyColors.warningOrange
-            showToast = true
+            showFeedback(
+                message: wasPaused ? "Subscription Resumed & Active!" : "Subscription Paused",
+                icon: wasPaused ? "checkmark.circle.fill" : "pause.circle.fill",
+                color: wasPaused ? SpendyColors.incomeGreen : SpendyColors.warningOrange
+            )
         }
         
         if !reduceMotion {
@@ -526,12 +629,6 @@ struct SubscriptionQuickActionSheet: View {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                     heroPulseScale = 1.0
                 }
-            }
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                showToast = false
             }
         }
     }
@@ -544,16 +641,11 @@ struct SubscriptionQuickActionSheet: View {
         
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             store.updateSubscription(updated)
-            toastMessage = nextValue ? "Auto-Log Enabled" : "Auto-Log Disabled"
-            toastIcon = nextValue ? "bolt.fill" : "bolt.slash.fill"
-            toastColor = nextValue ? SpendyColors.incomeGreen : SpendyColors.textSecondary
-            showToast = true
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                showToast = false
-            }
+            showFeedback(
+                message: nextValue ? "Auto-Log Enabled" : "Auto-Log Disabled",
+                icon: nextValue ? "bolt.fill" : "bolt.slash.fill",
+                color: nextValue ? SpendyColors.incomeGreen : SpendyColors.textSecondary
+            )
         }
     }
     
@@ -575,14 +667,29 @@ struct SubscriptionQuickActionSheet: View {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                 isProcessing = false
                 isPaidSuccess = true
-                toastMessage = "Payment Logged for \(liveSub.name)!"
-                toastIcon = "checkmark.circle.fill"
-                toastColor = SpendyColors.incomeGreen
-                showToast = true
+                showFeedback(
+                    message: "Payment Logged for \(liveSub.name)!",
+                    icon: "checkmark.circle.fill",
+                    color: SpendyColors.incomeGreen
+                )
             }
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
                 dismiss()
+            }
+        }
+    }
+    
+    private func showFeedback(message: String, icon: String, color: Color) {
+        toastMessage = message
+        toastIcon = icon
+        toastColor = color
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showToast = false
             }
         }
     }
@@ -606,32 +713,6 @@ struct SubscriptionQuickActionSheet: View {
                 .overlay(Capsule().stroke(SpendyColors.separator, lineWidth: 0.8))
                 .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
         }
-    }
-    
-    // MARK: - Helper Views
-    @ViewBuilder
-    private func cardRow<V: View>(icon: String, label: String, @ViewBuilder valueView: () -> V) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(SpendyColors.chipBackground)
-                    .frame(width: 28, height: 28)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            
-            Text(label)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            
-            Spacer()
-            
-            valueView()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
     }
 }
 
