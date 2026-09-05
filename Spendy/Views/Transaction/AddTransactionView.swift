@@ -57,6 +57,7 @@ struct AddTransactionView: View {
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
     @State private var showDiscardConfirmation: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private var isEditing: Bool {
         transactionToEdit != nil
@@ -100,6 +101,40 @@ struct AddTransactionView: View {
     }
     
     // Date formatted string
+    private var sheetAccent: Color {
+        if type == .income { return SpendyColors.incomeGreen }
+        return selectedCategory?.color ?? SpendyColors.primaryBlue
+    }
+    
+    private var amountCaption: String {
+        let categoryName = (selectedCategory?.label ?? "").lowercased()
+        if currentAmountValue <= 0 {
+            return type == .income ? "how much came in?" : "how much?"
+        }
+        if type == .income {
+            return categoryName.isEmpty ? "received" : "to \(categoryName)"
+        }
+        return categoryName.isEmpty ? "spent" : "on \(categoryName)"
+    }
+    
+    private var amountDigitCount: Int {
+        amountString.filter(\.isNumber).count
+    }
+    
+    private var amountHeroSize: CGFloat {
+        switch amountDigitCount {
+        case ...4: return 72
+        case 5: return 62
+        case 6: return 52
+        case 7: return 44
+        default: return 38
+        }
+    }
+    
+    private var amountSymbolSize: CGFloat {
+        amountHeroSize * 0.54
+    }
+    
     private var formattedDateLabel: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
@@ -144,8 +179,16 @@ struct AddTransactionView: View {
     
     var body: some View {
         return ZStack(alignment: .bottom) {
-            Color.black
+            SpendyColors.appBackground
                 .ignoresSafeArea()
+            
+            SpendyAmbientHeaderBackground(
+                color: sheetAccent,
+                height: 460,
+                opacity: 0.22
+            )
+            .animation(.easeInOut(duration: reduceMotion ? 0 : 0.35), value: sheetAccent)
+            .allowsHitTesting(false)
             
             VStack(spacing: 0) {
                 // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
@@ -188,10 +231,10 @@ struct AddTransactionView: View {
                             ))
                     }
                     
-                    // MARK: - 5. Bottom Keypad & Actions
+                    // MARK: - 5. Bottom Keypad & Actions (dock card)
                     keypadAndActionsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 22)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
@@ -316,7 +359,7 @@ struct AddTransactionView: View {
     
     // MARK: - Expanding Type Switcher (Expense / Income / Transfer)
     private var liquidGlassTypeSwitcher: some View {
-        SpendyTransactionTypeToggle(
+        AddTransactionTypeSwitcher(
             selection: $type,
             availableTypes: availableTypes
         ) { newType in
@@ -372,7 +415,7 @@ struct AddTransactionView: View {
                 .padding(.trailing, 16)
             }
             .frame(height: 44)
-            .nativeLiquidGlassCapsule(isInteractive: true)
+            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
         }
         .buttonStyle(.plain)
         
@@ -385,25 +428,43 @@ struct AddTransactionView: View {
     
     // MARK: - 3. Standard Amount Section (Expense & Income Mode with Numeric Text Transitions)
     private var standardAmountSection: some View {
-        VStack(spacing: 4) {
-            Spacer()
+        ZStack {
+            Circle()
+                .fill(sheetAccent.opacity(reduceMotion ? 0.12 : 0.28))
+                .frame(width: 260, height: 260)
+                .blur(radius: reduceMotion ? 0 : 70)
+                .offset(y: 8)
+                .allowsHitTesting(false)
             
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(store.currencySymbol)
-                    .font(.system(size: 60, weight: .bold, design: .default))
-                    .foregroundStyle(Color(hex: "#8E8E93"))
+            VStack(spacing: 10) {
+                Spacer()
                 
-                Text(amountString)
-                    .font(.system(size: 76, weight: .heavy, design: .default))
-                    .monospacedDigit()
-                    .foregroundStyle(Color.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.4)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(store.currencySymbol)
+                        .font(.system(size: amountSymbolSize, weight: .bold, design: .rounded))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .fixedSize()
+                    
+                    Text(amountString)
+                        .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.6)
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
+                        .frame(minWidth: 0)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 32)
+                .clipped()
+                
+                Text(amountCaption)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .textCase(.lowercase)
+                
+                Spacer()
             }
-            
-            Spacer()
         }
         .frame(maxWidth: .infinity)
         .frame(maxHeight: .infinity)
@@ -495,21 +556,25 @@ struct AddTransactionView: View {
                 Spacer(minLength: 4)
                 
                 // Centered Large Amount Display ($0 with Numeric Transitions)
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(store.currencySymbol)
-                        .font(.system(size: 32, weight: .bold, design: .default))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(isActive ? SpendyColors.textTertiary : SpendyColors.textTertiary.opacity(0.5))
+                        .fixedSize()
                     
                     Text(amount.isEmpty ? "0" : amount)
-                        .font(.system(size: 48, weight: .heavy, design: .default))
+                        .font(.system(size: 44, weight: .heavy, design: .default))
                         .monospacedDigit()
                         .foregroundStyle(isActive ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.4)
+                        .minimumScaleFactor(0.35)
+                        .frame(minWidth: 0)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amount)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, 8)
+                .clipped()
                 
                 Spacer(minLength: 8)
             }
@@ -529,11 +594,11 @@ struct AddTransactionView: View {
     
     // MARK: - 5. Full-Width Keypad & Actions Section
     private var keypadAndActionsSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             // Action Buttons Row: [ 📅 Today ] on left, ( 🏷 ) on right
             SpendyGlassEffectContainer(spacing: 10) {
                 HStack(spacing: 10) {
-                    // Date Selector Pill (44pt height & iOS Liquid Glass Styling)
+                    // Date Selector (rounded-square to match category / account icons)
                     Button(action: {
                         activeSheet = .calendar
                         HapticsManager.shared.trigger(.light)
@@ -548,7 +613,7 @@ struct AddTransactionView: View {
                         .foregroundStyle(SpendyColors.textPrimary)
                         .padding(.horizontal, 16)
                         .frame(height: 44)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
+                        .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
                     }
                     .buttonStyle(.plain)
                     
@@ -591,7 +656,9 @@ struct AddTransactionView: View {
                             }
                         }
                     }
-                )
+                ),
+                maxDigits: 8,
+                useLiquidGlass: true
             )
             
             // Bottom Action Row: [ (🛒) Category ] + [ Save ]
@@ -620,28 +687,29 @@ struct AddTransactionView: View {
                                     .padding(.trailing, 16)
                             }
                             .frame(height: 44)
-                            .nativeLiquidGlassCapsule(isInteractive: true)
+                            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
                         }
                         .buttonStyle(.plain)
                         
                         Spacer()
                         
-                        // Save Button (44pt height with authentic Liquid Glass styling)
+                        // Save Button (rounded-square to pair with category selector)
                         Button(action: {
                             saveTransaction()
                         }) {
-                            Text(isEditing ? "Save" : "Save")
-                                .font(.system(size: 15.5, weight: .bold))
-                                .foregroundStyle(currentAmountValue > 0 ? Color.white : SpendyColors.textTertiary)
+                            Text("Save")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
                                 .padding(.horizontal, 32)
                                 .frame(height: 44)
-                                .nativeLiquidGlassCapsule(
-                                    isInteractive: currentAmountValue > 0,
-                                    tint: currentAmountValue > 0 ? Color.white.opacity(0.16) : nil
-                                )
+                                .background {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
+                                }
                         }
                         .buttonStyle(KeypadPressStyle())
                         .disabled(currentAmountValue <= 0)
+                        .accessibilityLabel("Save")
                     }
                 }
             } else {
@@ -654,8 +722,29 @@ struct AddTransactionView: View {
                 ) {
                     saveTransaction()
                 }
-                .padding(.top, 2)
+                .padding(.top, 4)
             }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color(hex: "#141416").opacity(0.88))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.14),
+                                    Color.white.opacity(0.04)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.8
+                        )
+                }
         }
     }
     
@@ -1293,6 +1382,86 @@ struct CustomCalendarDrawer: View {
     }
 }
 
+// MARK: - Capsule Type Switcher (Add Transaction)
+/// Same expanding Expense / Income / Transfer control as before (capsule + circles),
+/// restyled to sit with the glass close / more buttons.
+private struct AddTransactionTypeSwitcher: View {
+    @Binding var selection: TransactionType
+    var availableTypes: [TransactionType]
+    var onSelect: ((TransactionType) -> Void)? = nil
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(availableTypes) { item in
+                let isSelected = selection == item
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                        selection = item
+                        onSelect?(item)
+                    }
+                    HapticsManager.shared.trigger(.selection)
+                }) {
+                    if isSelected {
+                        HStack(spacing: 7) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.black.opacity(0.12))
+                                    .frame(width: 22, height: 22)
+                                
+                                Image(systemName: iconName(for: item))
+                                    .font(.system(size: 10.5, weight: .bold))
+                                    .foregroundStyle(Color.black)
+                                    .symbolEffect(.bounce.byLayer, value: isSelected)
+                            }
+                            
+                            Text(item.title)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.black)
+                                .lineLimit(1)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        }
+                        .padding(.leading, 5)
+                        .padding(.trailing, 12)
+                        .frame(height: 34)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(Color.white)
+                        }
+                    } else {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.14))
+                                .frame(width: 28, height: 28)
+                            
+                            Image(systemName: iconName(for: item))
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.72))
+                        }
+                        .frame(width: 34, height: 34)
+                        .contentShape(Circle())
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .frame(height: 44)
+        .nativeLiquidGlassCapsule(isInteractive: true)
+    }
+    
+    private func iconName(for type: TransactionType) -> String {
+        switch type {
+        case .expense: return "arrow.up.right"
+        case .income: return "arrow.down.left"
+        case .transfer: return "arrow.left.and.right"
+        }
+    }
+}
+
 // MARK: - iOS-Native "Slide to Transfer" Slider Control (Pure Apple Liquid Glass)
 struct SpendySlideToTransfer: View {
     var title: String = "slide to transfer"
@@ -1305,9 +1474,9 @@ struct SpendySlideToTransfer: View {
     @State private var isCompleted: Bool = false
     @State private var shimmerPhase: CGFloat = -0.5
     
-    private let trackHeight: CGFloat = 56
-    private let knobSize: CGFloat = 48
-    private let knobPadding: CGFloat = 4
+    private let trackHeight: CGFloat = 68
+    private let knobSize: CGFloat = 56
+    private let knobPadding: CGFloat = 6
     
     private var displayText: String {
         if !isEnabled {
@@ -1351,7 +1520,7 @@ struct SpendySlideToTransfer: View {
                     Spacer()
                     
                     Text(displayText)
-                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
                                 stops: [
@@ -1401,7 +1570,7 @@ struct SpendySlideToTransfer: View {
                     
                     // Knob Icon
                     Image(systemName: isCompleted ? "checkmark" : "arrow.right")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(isEnabled ? Color.white : Color(hex: "#636366"))
                         .rotationEffect(.degrees(isCompleted ? 0 : (progress * 45)))
                 }
