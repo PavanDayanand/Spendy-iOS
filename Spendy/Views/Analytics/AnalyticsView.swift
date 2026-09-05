@@ -101,78 +101,6 @@ struct AnalyticsView: View {
         return store.accounts.first(where: { $0.id == selectedAccountId })?.label ?? "Account"
     }
     
-    private var activeInsightPeriod: InsightPeriod {
-        switch granularity {
-        case .day, .week: return .week
-        case .month: return .month
-        case .year: return .year
-        }
-    }
-    
-    private var activeAnalyticsInsightContext: AnalyticsInsightContext {
-        let bounds = currentPeriodBounds
-        let priorBounds = priorPeriodBounds
-        let period = activeInsightPeriod
-        let scope: AnalyticsInsightContext.Scope = (selectedAccountId == "all") ? .global : .account(id: selectedAccountId)
-        
-        return AnalyticsInsightContext(
-            scope: scope,
-            period: period,
-            startDate: bounds.start,
-            endDate: bounds.end,
-            baselineStartDate: priorBounds.start,
-            baselineEndDate: priorBounds.end,
-            isCustomRange: false,
-            customRangeLabel: nil,
-            referenceDate: selectedDate
-        )
-    }
-    
-    private var analyticsInsightMoments: [InsightMoment] {
-        let context = activeAnalyticsInsightContext
-        let facts = InsightFactsExtractor.extractFacts(
-            transactions: store.transactions,
-            budget: store.budget,
-            categories: store.categories,
-            subscriptions: store.subscriptions,
-            context: context
-        )
-        return InsightDecisionEngine.shared.evaluate(
-            facts: facts,
-            surface: .analytics,
-            period: context.period,
-            currencySymbol: store.currencySymbol,
-            now: context.referenceDate
-        )
-    }
-    
-    private func handleInsightDestination(_ destination: InsightDestination) {
-        switch destination {
-        case .category(let id):
-            if let cat = store.categories.first(where: { $0.id == id }) {
-                selectedCategoryForSheet = cat
-            }
-        case .budget:
-            showEditBudgetSheet = true
-        case .subscriptions, .subscriptionDetail:
-            selectedCategoryForSheet = nil
-            selectedAccountForSheet = nil
-            if let selectedTab = selectedTab {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedTab.wrappedValue = .subscriptions
-                }
-            } else {
-                showSubscriptionSheet = true
-            }
-        case .transaction(let id):
-            if let tx = store.transactions.first(where: { $0.id == id }) {
-                inspectingTransaction = tx
-            }
-        case .analytics:
-            break
-        }
-    }
-    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -187,52 +115,18 @@ struct AnalyticsView: View {
                         
                         // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
-                            if filteredTransactions.isEmpty || (totalSpending == 0 && totalIncome == 0) {
-                                VStack(alignment: .leading, spacing: 14) {
-                                    Text("Insights")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                    
-                                    Text("Add more transactions to unlock personalised insights")
-                                        .font(.system(size: 14, weight: .regular))
-                                        .foregroundStyle(SpendyColors.textSecondary)
-                                        .lineSpacing(4)
-                                }
-                                .padding(20)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .fill(SpendyColors.cardBackground)
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                        }
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.top, 8)
-                                .padding(.bottom, 30)
-                            } else {
-                                VStack(spacing: 18) {
-                                    // Editorial Insight Rail for Analytics
-                                    EditorialInsightRailView(moments: analyticsInsightMoments) { destination in
-                                        handleInsightDestination(destination)
-                                    }
-                                    
-                                    // Card 1: Cashflow Overview Card
-                                    cashflowOverviewCard
-                                    
-                                    // Card 2: Spending Breakdown Card & List
-                                    spendingBreakdownCard
-                                    
-                                    // Card 3: Income Breakdown Card & List
-                                    incomeBreakdownCard
-                                    
-                                    // Card 4: Budget Ring & Pacing Card
-                                    budgetRingPacingCard
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 30)
+                            VStack(spacing: 18) {
+                                cashflowOverviewCard
+                                
+                                spendingBreakdownCard
+                                
+                                incomeBreakdownCard
+                                
+                                budgetRingPacingCard
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                            .padding(.bottom, 30)
                         } header: {
                             // Sticky Toolbar floating on top
                             compactHeader
@@ -1319,28 +1213,6 @@ struct AnalyticsView: View {
             return (selectedDate.startOfMonth, selectedDate.endOfMonth)
         case .year:
             return (selectedDate.startOfYear, selectedDate.endOfYear)
-        }
-    }
-    
-    private var priorPeriodBounds: (start: Date, end: Date) {
-        let bounds = currentPeriodBounds
-        switch granularity {
-        case .day:
-            let start = calendar.date(byAdding: .day, value: -1, to: bounds.start) ?? bounds.start
-            let end = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
-            return (start, end)
-        case .week:
-            let start = calendar.date(byAdding: .weekOfYear, value: -1, to: bounds.start) ?? bounds.start
-            let end = calendar.date(byAdding: .weekOfYear, value: -1, to: bounds.end) ?? bounds.end
-            return (start, end)
-        case .month:
-            let start = calendar.date(byAdding: .month, value: -1, to: bounds.start) ?? bounds.start
-            let end = calendar.date(byAdding: .month, value: -1, to: bounds.end) ?? bounds.end
-            return (start, end)
-        case .year:
-            let start = calendar.date(byAdding: .year, value: -1, to: bounds.start) ?? bounds.start
-            let end = calendar.date(byAdding: .year, value: -1, to: bounds.end) ?? bounds.end
-            return (start, end)
         }
     }
     
