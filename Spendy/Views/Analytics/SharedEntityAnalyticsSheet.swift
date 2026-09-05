@@ -2,22 +2,12 @@
 //  SharedEntityAnalyticsSheet.swift
 //  Spendy
 //
-//  Unified Analytics Sheet for Categories and Accounts.
-//  Features:
-//  - Clean solid background (no top ambient glow gradient), adaptive for both Light and Dark mode
-//  - Top iOS-style metric card: Left side total amount + clean trend number (no pill) + subtitle, Right side icon badge
-//  - Bottom row of top card: date range label without calendar icon + active days
-//  - High-fidelity Swift Chart: pure clean line curve with area fill, trailing Y-axis numbers, X-axis dates, interactive crosshair (no bar charts)
-//  - Standard index period scrubber strip (1W, 2W, 1M, 3M, 6M, 1Y, ALL) + calendar date-range picker
-//  - 3 full-width sections: Overview, Recent Activity, Insights
-//  - Overview section features:
-//      * Top 3-metric summary card (Expenses, Income, Net)
-//      * Full-width clean list with dividers (Money in, Money out, Net cash flow, Active days, Peak weekday, Daily outflow rate)
-//  - Tappable section buttons + natural horizontal swipe navigation
+//  Unified analytics sheet for categories and accounts.
+//  Uncarded hero amount + entity icon, home-style discrete bar chart,
+//  period scrubber, date range, then Overview / Recent Activity.
 //
 
 import SwiftUI
-import Charts
 
 // MARK: - Analytics Entity Enum
 enum AnalyticsEntity {
@@ -71,7 +61,6 @@ enum AnalyticsEntity {
 
 // MARK: - Section Tab Enum
 enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
-    case insights = "Insights"
     case overview = "Overview"
     case activity = "Recent Activity"
     
@@ -82,7 +71,6 @@ enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
 struct SharedEntityAnalyticsSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     
     let entity: AnalyticsEntity
     var initialType: TransactionType = .expense
@@ -100,8 +88,8 @@ struct SharedEntityAnalyticsSheet: View {
     @State private var customEndDate: Date = Date()
     
     // Interactive Chart Scrubbing State
-    @State private var scrubbedDate: Date? = nil
-    @State private var scrubbedPoint: CategoryChartPoint? = nil
+    @State private var scrubbedBarPoint: MinimalBarPoint? = nil
+    @State private var isScrubbingChart: Bool = false
     
     // Lower Section Navigation
     @State private var selectedSection: AnalyticsSheetSection = .overview
@@ -119,10 +107,6 @@ struct SharedEntityAnalyticsSheet: View {
     // MARK: - Colors & Theming (Apple HIG Luxury Graphite in Dark Mode, Crisp in Light Mode)
     private var themeColor: Color {
         entity.color
-    }
-    
-    private var chartThemeColor: Color {
-        SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : entity.color
     }
     
     /// Adaptive base background for sheets: #000000 in dark mode, #F6F6F6 in light mode
@@ -295,35 +279,31 @@ struct SharedEntityAnalyticsSheet: View {
         return nil
     }
     
-    private var chartPoints: [CategoryChartPoint] {
-        AnalyticsChartEngine.generateChartPoints(
+    private var barPoints: [AnalyticsBarPoint] {
+        let extractor: ([Transaction]) -> Double = { txs in
+            switch entity {
+            case .category(let cat):
+                return txs.filter { $0.type == cat.type }.reduce(0) { $0 + $1.amount }
+            case .account:
+                return txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+            }
+        }
+        return AnalyticsChartEngine.generateDiscreteBarPoints(
             transactions: allEntityTransactions,
+            bounds: periodBounds,
             period: selectedPeriod,
-            hasEnoughTxs: false
-        ).filter { !$0.isPredicted }
+            isCustomRange: customDateRange != nil,
+            valueForBucket: extractor
+        )
     }
     
-    private var periodHeaderLabel: String {
-        let bounds = periodBounds
-        if customDateRange != nil {
-            return "\(SpendyDateFormatterCache.dayMonth.string(from: bounds.start)) – \(SpendyDateFormatterCache.dayMonth.string(from: bounds.end))"
-        }
-        switch selectedPeriod {
-        case .week:
-            return "\(SpendyDateFormatterCache.monthDay.string(from: bounds.start)) – \(SpendyDateFormatterCache.monthDay.string(from: bounds.end))"
-        case .month:
-            return SpendyDateFormatterCache.monthYear.string(from: bounds.start)
-        case .threeMonths:
-            return "Last 3 Months"
-        case .sixMonths:
-            return "Last 6 Months"
-        case .year:
-            return SpendyDateFormatterCache.year.string(from: bounds.start)
-        }
+    private var chartDataPoints: [MinimalBarPoint] {
+        barPoints.map { MinimalBarPoint(id: $0.id, label: $0.label, amount: $0.amount) }
     }
     
-    private var dateGroupedTransactions: [(String, Double, [Transaction])] {
-        AnalyticsChartEngine.dateGroupedTransactions(from: filteredTransactions)
+    private var activeBarPoint: AnalyticsBarPoint? {
+        guard let scrubbed = scrubbedBarPoint else { return nil }
+        return barPoints.first(where: { $0.id == scrubbed.id })
     }
     
     // MARK: - Insights Context
@@ -397,12 +377,12 @@ struct SharedEntityAnalyticsSheet: View {
         )
     }
     
+    private var primaryInsight: InsightMoment? {
+        insightMoments.first(where: { !$0.isInsufficientData })
+    }
+    
     private var availableSections: [AnalyticsSheetSection] {
-        if insightMoments.isEmpty {
-            return [.overview, .activity]
-        } else {
-            return [.insights, .overview, .activity]
-        }
+        [.overview, .activity]
     }
     
     // MARK: - Body
@@ -417,27 +397,28 @@ struct SharedEntityAnalyticsSheet: View {
                 }
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        // 1. Top Rectangular iOS Metric Card (Amount on left, icon on right, no pill)
-                        topMetricCard
-                            .padding(.horizontal, 16)
-                            .padding(.top, isHomeOrigin ? 4 : 8)
+                    VStack(alignment: .leading, spacing: 20) {
+                        heroIdentityAndAmount
+                            .padding(.horizontal, 20)
+                            .padding(.top, isHomeOrigin ? 8 : 12)
                         
-                        // 2. High-Fidelity Swift Chart (Clean curve, trailing Y-axis numbers, no volume bars)
                         chartSection
                             .padding(.horizontal, 16)
                         
-                        // 3. Horizontal Scrubber Pill Strip + Calendar
                         scrubberAndCalendarRow
                             .padding(.horizontal, 16)
                         
-                        // 4. Three Sections Down: Buttons Switcher + Full-Width Swipeable Pages
+                        if let insight = primaryInsight, !isScrubbingChart {
+                            insightSentence(insight)
+                                .padding(.horizontal, 20)
+                        }
+                        
                         threeSectionsModule
                             .padding(.horizontal, 16)
-                            .padding(.top, 4)
                             .padding(.bottom, 40)
                     }
                 }
+                .scrollDisabled(isScrubbingChart)
             }
         }
         .presentationBackground(sheetBackgroundColor)
@@ -464,6 +445,8 @@ struct SharedEntityAnalyticsSheet: View {
         .sheet(isPresented: $showDatePicker) {
             DateRangePickerSheet(startDate: $customStartDate, endDate: $customEndDate) { start, end in
                 customDateRange = (start, end)
+                scrubbedBarPoint = nil
+                isScrubbingChart = false
             }
         }
         .fullScreenCover(isPresented: $showAddTransaction) {
@@ -494,11 +477,7 @@ struct SharedEntityAnalyticsSheet: View {
             AddTransactionView(transactionToEdit: tx)
         }
         .onAppear {
-            if !insightMoments.isEmpty {
-                selectedSection = .insights
-            } else {
-                selectedSection = .overview
-            }
+            selectedSection = .overview
         }
         .onChange(of: availableSections) { _, newSections in
             if !newSections.contains(selectedSection) {
@@ -573,304 +552,115 @@ struct SharedEntityAnalyticsSheet: View {
         }
     }
     
-    // MARK: - 2. Top Metric Card (Left: Total Amount + Trend, Right: Icon Badge, No Pill, No Calendar Icon)
-    private var topMetricCard: some View {
-        let displayAmount: Double = {
-            if let scrubbed = scrubbedPoint {
-                return scrubbed.amount
-            }
-            switch entity {
-            case .category:
-                return totalSpent
-            case .account:
-                return currentBalance
-            }
-        }()
-        
-        let isScrubbing = scrubbedPoint != nil
-        
-        return VStack(spacing: 12) {
-            // Row 1: Left = Total Amount & Trend text, Right = Category Icon Badge
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    // Amount and Trend number row (Number + arrow directly, no pill capsule background)
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .font(.system(size: 32, weight: .heavy, design: .monospaced))
-                            .monospacedDigit()
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        
-                        trendOrSecondaryText(isScrubbing: isScrubbing)
-                    }
-                    
-                    Text(cardPrimarySubtitle(isScrubbing: isScrubbing))
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                
-                Spacer()
-                
-                // Right side: Icon Badge of the category/account
-                SpendyIconBadge(
-                    sfSymbol: entity.sfSymbol,
-                    color: themeColor,
-                    size: .large,
-                    style: .rounded()
-                )
-            }
-            
-            Divider()
-                .overlay(SpendyColors.separator.opacity(0.6))
-            
-            // Row 2: Left = Date range (no calendar icon!), Right = Active days count
-            HStack {
-                Text(cardSecondaryDateLabel(isScrubbing: isScrubbing))
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Text(cardSecondaryRateLabel(isScrubbing: isScrubbing))
-                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
+    // MARK: - Hero Amount + Entity Icon (uncarded, matches Home)
+    private var heroDisplayAmount: Double {
+        if let bar = activeBarPoint {
+            return bar.amount
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(cardFillColor)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(cardBorderColor, lineWidth: 0.8)
-                }
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 8, y: 3)
-        }
+        return totalSpent
     }
     
-    private func cardPrimarySubtitle(isScrubbing: Bool) -> String {
-        if let scrubbed = scrubbedPoint {
-            return AnalyticsChartEngine.formattedPointDate(scrubbed.date, period: selectedPeriod)
+    private var heroCaption: String {
+        if let bar = activeBarPoint {
+            let dateLabel = AnalyticsChartEngine.formattedPointDate(bar.date, period: selectedPeriod)
+            return entity.defaultType == .income ? "Received · \(dateLabel)" : "Spent · \(dateLabel)"
         }
         switch entity {
         case .category(let cat):
-            return cat.type == .income ? "Total Inflow" : "Total Spent"
+            return cat.type == .income ? "Total received" : "Total spent"
         case .account:
-            return "Current Balance"
+            return "Spent"
         }
     }
     
-    private func cardSecondaryDateLabel(isScrubbing: Bool) -> String {
-        if isScrubbing {
-            return "Scrubbing timeline"
-        }
-        return periodHeaderLabel
-    }
-    
-    private func cardSecondaryRateLabel(isScrubbing: Bool) -> String {
-        if let scrubbed = scrubbedPoint {
-            if scrubbed.dayVolume > 0 {
-                return "Day: \(scrubbed.dayVolume.formattedCurrency(symbol: store.currencySymbol, decimals: 0))"
-            } else {
-                return "\(scrubbed.txCount) txs"
+    private var heroIdentityAndAmount: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(heroCaption)
+                    .font(AppTypography.itemTitle)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .animation(.easeInOut(duration: 0.15), value: activeBarPoint?.id)
+                
+                SpendyGradientText(
+                    heroDisplayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
+                    size: 38,
+                    weight: .heavy,
+                    tracking: -1.0,
+                    colors: SpendyGradientPresets.electricBlueToWhite
+                )
+                .animation(.spring(response: 0.25, dampingFraction: 0.8), value: activeBarPoint?.id)
+                
+                if activeBarPoint == nil {
+                    heroSecondaryLine
+                } else if let bar = activeBarPoint {
+                    Text(bar.txCount == 1 ? "1 transaction" : "\(bar.txCount) transactions")
+                        .font(AppTypography.footnoteMedium)
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
             }
+            
+            Spacer(minLength: 8)
+            
+            SpendyIconBadge(
+                sfSymbol: entity.sfSymbol,
+                color: themeColor,
+                size: .large,
+                style: .rounded()
+            )
+            .padding(.top, 2)
+            .accessibilityHidden(true)
         }
-        return "\(activeDaysCount) active days"
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(heroCaption), \(heroDisplayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
     }
     
     @ViewBuilder
-    private func trendOrSecondaryText(isScrubbing: Bool) -> some View {
-        if let scrubbed = scrubbedPoint {
-            Text(scrubbed.dayVolume.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(themeColor)
-        } else if case .account = entity {
-            let isPositive = netCashFlow >= 0
-            HStack(spacing: 2) {
-                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                    .font(.system(size: 12, weight: .bold))
-                Text("\(isPositive ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-            }
-            .foregroundStyle(isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
+    private var heroSecondaryLine: some View {
+        if case .account = entity {
+            Text("Balance \(currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                .font(AppTypography.footnoteMedium)
+                .foregroundStyle(SpendyColors.textSecondary)
         } else if let pct = comparisonPercentage {
             let isIncrease = pct > 0
             let isGood = entity.defaultType == .income ? isIncrease : !isIncrease
-            let color = isGood ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-            
-            HStack(spacing: 2) {
+            HStack(spacing: 4) {
                 Image(systemName: isIncrease ? "arrow.up.right" : "arrow.down.right")
-                    .font(.system(size: 12, weight: .bold))
-                Text("\(String(format: "%.0f", abs(pct)))%")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
+                    .font(.system(size: 11, weight: .bold))
+                Text("\(String(format: "%.0f", abs(pct)))% vs previous period")
+                    .font(AppTypography.footnoteMedium)
             }
-            .foregroundStyle(color)
+            .foregroundStyle(isGood ? SpendyColors.incomeGreen : SpendyColors.expenseRed)
         }
     }
     
-    // MARK: - 3. High-Fidelity Swift Chart (Clean Curve, No Bar Charts)
+    private func insightSentence(_ moment: InsightMoment) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ShinyHeadlineText(
+                headline: moment.headline,
+                emphasis: moment.emphasis,
+                font: .system(size: 15, weight: .semibold)
+            )
+            if let supporting = moment.supportingText, !supporting.isEmpty {
+                Text(supporting)
+                    .font(AppTypography.footnoteMedium)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+    
+    // MARK: - Home-style discrete bar chart
     private var chartSection: some View {
-        VStack(spacing: 6) {
-            if chartPoints.isEmpty || (totalSpent == 0 && currentBalance == 0) {
-                VStack(spacing: 8) {
-                    Image(systemName: "chart.line.flattrend.xyaxis")
-                        .font(.system(size: 28))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    Text("No transactions in this period")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-                .frame(height: 200)
-                .frame(maxWidth: .infinity)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(cardFillColor.opacity(0.5))
-                }
-            } else {
-                Chart {
-                    // 1. Area Gradient below curve
-                    ForEach(chartPoints) { point in
-                        AreaMark(
-                            x: .value("Date", point.date),
-                            y: .value("Amount", point.amount)
-                        )
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [chartThemeColor.opacity(0.28), chartThemeColor.opacity(0.0)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .interpolationMethod(.monotone)
-                    }
-                    
-                    // 2. Solid Smooth Line Curve
-                    ForEach(chartPoints) { point in
-                        LineMark(
-                            x: .value("Date", point.date),
-                            y: .value("Amount", point.amount)
-                        )
-                        .foregroundStyle(chartThemeColor)
-                        .lineStyle(StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
-                        .interpolationMethod(.monotone)
-                    }
-                    
-                    // 3. Default End Anchor Beacon (When not scrubbing)
-                    if scrubbedPoint == nil, let lastActual = chartPoints.last {
-                        PointMark(
-                            x: .value("Date", lastActual.date),
-                            y: .value("Amount", lastActual.amount)
-                        )
-                        .symbol {
-                            ZStack {
-                                Circle()
-                                    .fill(chartThemeColor.opacity(0.35))
-                                    .frame(width: 16, height: 16)
-                                Circle()
-                                    .fill(chartThemeColor)
-                                    .frame(width: 8, height: 8)
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 3.5, height: 3.5)
-                            }
-                        }
-                    }
-                    
-                    // 4. Interactive Scrub Crosshair & Anchor Beacon
-                    if let scrubbed = scrubbedPoint {
-                        RuleMark(x: .value("Date", scrubbed.date))
-                            .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
-                            .foregroundStyle(SpendyColors.textSecondary.opacity(0.6))
-                        
-                        PointMark(
-                            x: .value("Date", scrubbed.date),
-                            y: .value("Amount", scrubbed.amount)
-                        )
-                        .symbol {
-                            ZStack {
-                                Circle()
-                                    .fill(chartThemeColor.opacity(0.4))
-                                    .frame(width: 22, height: 22)
-                                Circle()
-                                    .fill(chartThemeColor)
-                                    .frame(width: 11, height: 11)
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 5, height: 5)
-                            }
-                        }
-                    }
-                }
-                .chartXScale(domain: periodBounds.start...periodBounds.end)
-                .chartXSelection(value: $scrubbedDate)
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 5)) { value in
-                        if let dateVal = value.as(Date.self) {
-                            AxisValueLabel {
-                                Text(AnalyticsChartEngine.axisLabel(for: dateVal, period: selectedPeriod))
-                                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                        }
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
-                            .foregroundStyle(SpendyColors.separator.opacity(0.4))
-                        if let doubleVal = value.as(Double.self) {
-                            AxisValueLabel {
-                                Text(formatYAxis(doubleVal))
-                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(SpendyColors.textTertiary)
-                            }
-                        }
-                    }
-                }
-                .frame(height: 205)
-                .id(chartTransitionID)
-                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-                .onChange(of: scrubbedDate) { _, newDate in
-                    handleScrub(date: newDate)
-                }
-            }
-        }
-    }
-    
-    private func formatYAxis(_ val: Double) -> String {
-        if val >= 1_000_000 {
-            return String(format: "%.1fM", val / 1_000_000)
-        } else if val >= 1_000 {
-            return String(format: "%.0fK", val / 1_000)
-        } else {
-            return String(format: "%.0f", val)
-        }
-    }
-    
-    private func handleScrub(date: Date?) {
-        guard let date = date, !chartPoints.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                scrubbedPoint = nil
-            }
-            return
-        }
-        
-        let closest = chartPoints.min(by: {
-            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
-        })
-        
-        if closest != scrubbedPoint {
-            HapticsManager.shared.trigger(.selection)
-            withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.85)) {
-                scrubbedPoint = closest
-            }
-        }
+        HeroSpendBarChart(
+            dataPoints: chartDataPoints,
+            scrubbedPoint: $scrubbedBarPoint,
+            isScrubbing: $isScrubbingChart,
+            barColor: SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : SpendyColors.textPrimary
+        )
+        .id(chartTransitionID)
+        .accessibilityLabel("Spending chart for \(entity.label)")
     }
     
     // MARK: - 4. Period Scrubber Strip & Calendar Row
@@ -884,8 +674,8 @@ struct SharedEntityAnalyticsSheet: View {
                 )
                 .onChange(of: selectedPeriod) { _, _ in
                     customDateRange = nil
-                    scrubbedDate = nil
-                    scrubbedPoint = nil
+                    scrubbedBarPoint = nil
+                    isScrubbingChart = false
                 }
                 .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
                 
@@ -935,24 +725,10 @@ struct SharedEntityAnalyticsSheet: View {
                         selectedSection = section
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        if section == .insights {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 11.5, weight: .bold))
-                                .foregroundStyle(isSelected ? themeColor : SpendyColors.textTertiary)
-                        }
-                        
-                        Text(section.rawValue)
-                            .font(.system(size: 13.5, weight: isSelected ? .bold : .medium, design: .rounded))
-                            .lineLimit(1)
-                        
-                        if section == .insights, !insightMoments.isEmpty {
-                            Circle()
-                                .fill(themeColor)
-                                .frame(width: 5.5, height: 5.5)
-                        }
-                    }
-                    .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
+                    Text(section.rawValue)
+                        .font(.system(size: 13.5, weight: isSelected ? .bold : .medium, design: .rounded))
+                        .lineLimit(1)
+                        .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                 }
                 .buttonStyle(.plain)
                 .nativeLiquidGlassPill(isSelected: isSelected, tint: isSelected ? cardFillColor : nil)
@@ -984,9 +760,6 @@ struct SharedEntityAnalyticsSheet: View {
     @ViewBuilder
     private var sectionContent: some View {
         switch selectedSection {
-        case .insights:
-            insightsSectionView
-                .transition(.opacity)
         case .overview:
             overviewSectionView
                 .transition(.opacity)
@@ -998,90 +771,136 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - Section: Overview (Clean List with Reusable Flow Indicators)
     private var overviewSectionView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Overview")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
-                .padding(.top, 4)
-                .padding(.bottom, 16)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
-                // Money in
-                overviewRow(
-                    flowType: .income,
-                    label: "Money in",
-                    value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                    valueColor: SpendyColors.incomeGreen
-                )
-                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                
-                // Money out
-                overviewRow(
-                    flowType: .expense,
-                    label: "Money out",
-                    value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                    valueColor: SpendyColors.textPrimary
-                )
-                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                
-                // Net cash flow
-                overviewRow(
-                    flowType: .net(isPositive: netCashFlow >= 0),
-                    label: "Net cash flow",
-                    value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                    valueColor: netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-                )
-                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                
-                // Budget Left / Over Budget (if budgeted)
-                if let budget = categoryBudgetAmount {
-                    let remaining = budget - totalOutflow
+                ForEach(Array(overviewRows.enumerated()), id: \.element.id) { index, row in
                     overviewRow(
-                        flowType: remaining >= 0 ? .income : .expense,
-                        label: remaining >= 0 ? "Budget left" : "Over budget",
-                        value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
-                        valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+                        flowType: row.flowType,
+                        label: row.label,
+                        value: row.value,
+                        valueColor: row.valueColor
                     )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                } else if case .account = entity {
-                    overviewRow(
-                        flowType: currentBalance >= 0 ? .income : .expense,
-                        label: "Current balance",
-                        value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                        valueColor: currentBalance >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
-                    )
-                    Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
+                    .padding(.vertical, 14)
+                    
+                    if index < overviewRows.count - 1 {
+                        Divider().overlay(SpendyColors.separator.opacity(0.7))
+                    }
                 }
-                
-                // Active days
-                overviewRow(
-                    flowType: nil,
-                    label: "Active days",
-                    value: "\(activeDaysCount) \(activeDaysCount == 1 ? "day" : "days")",
-                    valueColor: SpendyColors.textPrimary
-                )
-                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                
-                // Peak weekday
-                overviewRow(
-                    flowType: nil,
-                    label: "Peak weekday",
-                    value: topWeekday.name,
-                    valueColor: SpendyColors.textPrimary
-                )
-                Divider().overlay(SpendyColors.separator.opacity(0.7)).padding(.vertical, 14)
-                
-                // Daily outflow/inflow rate
-                overviewRow(
-                    flowType: nil,
-                    label: entity.defaultType == .income ? "Daily inflow rate" : "Daily outflow rate",
-                    value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
-                    valueColor: SpendyColors.textPrimary
-                )
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 16)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(cardFillColor)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(cardBorderColor, lineWidth: 0.8)
+                    }
+            }
         }
+    }
+    
+    private struct OverviewMetric: Identifiable {
+        let id: String
+        let flowType: SpendyFlowType?
+        let label: String
+        let value: String
+        let valueColor: Color
+    }
+    
+    private var overviewRows: [OverviewMetric] {
+        var rows: [OverviewMetric] = []
+        let showInflow: Bool = {
+            if case .category(let cat) = entity, cat.type == .expense, totalInflow == 0 {
+                return false
+            }
+            return true
+        }()
+        let showOutflow: Bool = {
+            if case .category(let cat) = entity, cat.type == .income, totalOutflow == 0 {
+                return false
+            }
+            return true
+        }()
+        
+        if showInflow {
+            rows.append(OverviewMetric(
+                id: "in",
+                flowType: .income,
+                label: "Money in",
+                value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                valueColor: SpendyColors.incomeGreen
+            ))
+        }
+        if showOutflow {
+            rows.append(OverviewMetric(
+                id: "out",
+                flowType: .expense,
+                label: "Money out",
+                value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                valueColor: SpendyColors.textPrimary
+            ))
+        }
+        if showInflow && showOutflow {
+            rows.append(OverviewMetric(
+                id: "net",
+                flowType: .net(isPositive: netCashFlow >= 0),
+                label: "Net cash flow",
+                value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                valueColor: netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+            ))
+        }
+        
+        if let budget = categoryBudgetAmount {
+            let remaining = budget - totalOutflow
+            rows.append(OverviewMetric(
+                id: "budget",
+                flowType: remaining >= 0 ? .income : .expense,
+                label: remaining >= 0 ? "Budget left" : "Over budget",
+                value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+            ))
+        } else if case .account = entity {
+            rows.append(OverviewMetric(
+                id: "balance",
+                flowType: currentBalance >= 0 ? .income : .expense,
+                label: "Current balance",
+                value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                valueColor: currentBalance >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+            ))
+        }
+        
+        rows.append(OverviewMetric(
+            id: "active",
+            flowType: nil,
+            label: "Active days",
+            value: "\(activeDaysCount) \(activeDaysCount == 1 ? "day" : "days")",
+            valueColor: SpendyColors.textPrimary
+        ))
+        
+        if !filteredTransactions.isEmpty {
+            rows.append(OverviewMetric(
+                id: "peak",
+                flowType: nil,
+                label: "Peak weekday",
+                value: topWeekday.name,
+                valueColor: SpendyColors.textPrimary
+            ))
+        }
+        
+        rows.append(OverviewMetric(
+            id: "rate",
+            flowType: nil,
+            label: entity.defaultType == .income ? "Daily inflow rate" : "Daily outflow rate",
+            value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
+            valueColor: SpendyColors.textPrimary
+        ))
+        
+        return rows
     }
     
     // MARK: - Overview List Row (Image 2 with Reusable Flow Indicators)
@@ -1261,15 +1080,5 @@ struct SharedEntityAnalyticsSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-    
-    // MARK: - Section 3: Insights (Smart Moments)
-    private var insightsSectionView: some View {
-        VStack(spacing: 12) {
-            EditorialInsightRailView(
-                moments: insightMoments,
-                showSectionHeader: false
-            )
-        }
     }
 }

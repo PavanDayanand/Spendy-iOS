@@ -66,14 +66,30 @@ struct HeroSpendBarChart: View {
         return [maxVal, maxVal * (2.0 / 3.0), maxVal * (1.0 / 3.0), 0]
     }
     
+    private func barLayout(chartWidth: CGFloat) -> (barWidth: CGFloat, spacing: CGFloat, cornerRadius: CGFloat) {
+        let count = CGFloat(max(1, dataPoints.count))
+        let spacing: CGFloat
+        if count >= 10 {
+            spacing = 3
+        } else if count >= 7 {
+            spacing = 6
+        } else {
+            spacing = max(4, chartWidth * 0.03)
+        }
+        let barWidth = min(48, max(4, (chartWidth - spacing * (count + 1)) / count))
+        let cornerRadius = min(12, max(2, barWidth * 0.42))
+        return (barWidth, spacing, cornerRadius)
+    }
+    
     var body: some View {
         VStack(spacing: 8) {
             GeometryReader { geo in
                 let chartWidth = max(10, geo.size.width - 65) // Reserve 65pt for Y-axis labels on right
                 let chartHeight = geo.size.height
-                let barCount = CGFloat(max(1, dataPoints.count))
-                let barWidth: CGFloat = min(48, max(28, (chartWidth / barCount) * 0.55))
-                let spacing = max(4, (chartWidth - (barWidth * barCount)) / (barCount + 1))
+                let layout = barLayout(chartWidth: chartWidth)
+                let barWidth = layout.barWidth
+                let spacing = layout.spacing
+                let cornerRadius = layout.cornerRadius
                 
                 ZStack(alignment: .topLeading) {
                     // 1. Horizontal Grid Lines & Right-aligned Y-Axis Labels
@@ -113,10 +129,10 @@ struct HeroSpendBarChart: View {
                             VStack {
                                 Spacer(minLength: 0)
                                 
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                     .fill(barColor)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                             .stroke(isSelected ? Color.white : Color.clear, lineWidth: 1.5)
                                     )
                                     .shadow(
@@ -182,9 +198,9 @@ struct HeroSpendBarChart: View {
     
     private func closestPoint(to locationX: CGFloat, chartWidth: CGFloat) -> MinimalBarPoint? {
         guard !dataPoints.isEmpty else { return nil }
-        let barCount = CGFloat(dataPoints.count)
-        let barWidth: CGFloat = min(48, max(28, (chartWidth / barCount) * 0.55))
-        let spacing = max(4, (chartWidth - (barWidth * barCount)) / (barCount + 1))
+        let layout = barLayout(chartWidth: chartWidth)
+        let barWidth = layout.barWidth
+        let spacing = layout.spacing
         
         var closest: MinimalBarPoint? = nil
         var minDistance: CGFloat = .infinity

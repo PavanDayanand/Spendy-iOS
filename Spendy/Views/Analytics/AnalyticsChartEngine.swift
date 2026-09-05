@@ -32,6 +32,22 @@ enum ChartPeriod: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Discrete Bar Point (Home-style histograms)
+struct AnalyticsBarPoint: Identifiable, Equatable {
+    let id: String
+    let date: Date
+    let endDate: Date
+    let label: String
+    let amount: Double
+    let txCount: Int
+}
+
+private enum AnalyticsBarBucket {
+    case day
+    case week
+    case month
+}
+
 // MARK: - Chart Data Point
 struct CategoryChartPoint: Identifiable, Equatable {
     let id: String
@@ -278,6 +294,93 @@ enum AnalyticsChartEngine {
             return SpendyDateFormatterCache.dayMonth.string(from: date)
         } else {
             return SpendyDateFormatterCache.monthYearShort.string(from: date)
+        }
+    }
+    
+    /// Discrete (non-cumulative) bars that match the home spend chart language.
+    static func generateDiscreteBarPoints(
+        transactions: [Transaction],
+        bounds: (start: Date, end: Date),
+        period: ChartPeriod,
+        isCustomRange: Bool = false,
+        valueForBucket: (([Transaction]) -> Double)? = nil
+    ) -> [AnalyticsBarPoint] {
+        let calendar = Calendar.current
+        let extractor = valueForBucket ?? { $0.reduce(0) { $0 + $1.amount } }
+        let start = calendar.startOfDay(for: bounds.start)
+        let end = calendar.startOfDay(for: bounds.end)
+        let rangeEnd = calendar.date(byAdding: .day, value: 1, to: end) ?? bounds.end
+        let txs = transactions.filter { $0.date >= start && $0.date < rangeEnd }
+        let bucket = barBucket(for: period, bounds: (start, end), isCustomRange: isCustomRange)
+        
+        var slices: [(start: Date, end: Date, label: String)] = []
+        var cursor = start
+        var guardCount = 0
+        
+        switch bucket {
+        case .day:
+            while cursor <= end && guardCount < 400 {
+                guardCount += 1
+                let next = calendar.date(byAdding: .day, value: 1, to: cursor) ?? cursor.addingTimeInterval(86_400)
+                let label = (!isCustomRange && period == .week)
+                    ? SpendyDateFormatterCache.shortWeekday.string(from: cursor)
+                    : SpendyDateFormatterCache.dayNumber.string(from: cursor)
+                slices.append((cursor, next, label))
+                guard next > cursor else { break }
+                cursor = next
+            }
+        case .week:
+            while cursor <= end && guardCount < 60 {
+                guardCount += 1
+                let next = calendar.date(byAdding: .day, value: 7, to: cursor) ?? cursor.addingTimeInterval(86_400 * 7)
+                let bucketEnd = min(next, rangeEnd)
+                slices.append((cursor, bucketEnd, SpendyDateFormatterCache.dayMonth.string(from: cursor)))
+                guard next > cursor else { break }
+                cursor = next
+            }
+        case .month:
+            cursor = calendar.date(from: calendar.dateComponents([.year, .month], from: start)) ?? start
+            let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: end)) ?? end
+            while cursor <= endMonth && guardCount < 36 {
+                guardCount += 1
+                guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: cursor), monthEnd > cursor else { break }
+                let bucketStart = max(cursor, start)
+                let bucketEnd = min(monthEnd, rangeEnd)
+                if bucketStart < bucketEnd {
+                    slices.append((bucketStart, bucketEnd, SpendyDateFormatterCache.shortMonth.string(from: cursor)))
+                }
+                cursor = monthEnd
+            }
+        }
+        
+        return slices.map { slice in
+            let sliceTxs = txs.filter { $0.date >= slice.start && $0.date < slice.end }
+            return AnalyticsBarPoint(
+                id: "bar_\(slice.start.timeIntervalSince1970)",
+                date: slice.start,
+                endDate: slice.end,
+                label: slice.label,
+                amount: extractor(sliceTxs),
+                txCount: sliceTxs.count
+            )
+        }
+    }
+    
+    private static func barBucket(
+        for period: ChartPeriod,
+        bounds: (start: Date, end: Date),
+        isCustomRange: Bool
+    ) -> AnalyticsBarBucket {
+        if isCustomRange {
+            let days = max(1, (Calendar.current.dateComponents([.day], from: bounds.start, to: bounds.end).day ?? 1) + 1)
+            if days <= 14 { return .day }
+            if days <= 80 { return .week }
+            return .month
+        }
+        switch period {
+        case .week: return .day
+        case .month: return .week
+        case .threeMonths, .sixMonths, .year: return .month
         }
     }
 }
