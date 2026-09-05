@@ -9,12 +9,13 @@
 import SwiftUI
 
 struct AnalyticsOverviewRow: Identifiable {
-    let id = UUID()
+    let id: String
     let label: String
     let value: String
     let valueColor: Color
     
     init(label: String, value: String, valueColor: Color = SpendyColors.textPrimary) {
+        self.id = label
         self.label = label
         self.value = value
         self.valueColor = valueColor

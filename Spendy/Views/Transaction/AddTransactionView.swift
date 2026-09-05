@@ -224,6 +224,15 @@ struct AddTransactionView: View {
             }
         }
         .onAppear {
+            if !store.accounts.contains(where: { $0.id == fromAccountId }) {
+                fromAccountId = store.accounts.first?.id ?? fromAccountId
+            }
+            if !store.accounts.contains(where: { $0.id == toAccountId }) {
+                toAccountId = store.accounts.first(where: { $0.id != fromAccountId })?.id ?? toAccountId
+            }
+            if !store.categories.contains(where: { $0.id == selectedCategoryId }) {
+                selectedCategoryId = availableCategories.first?.id ?? selectedCategoryId
+            }
             if store.accounts.count < 2 && type == .transfer {
                 type = .expense
             }
@@ -700,6 +709,7 @@ struct AddTransactionView: View {
     // MARK: - Save Transaction Action
     private func saveTransaction() {
         guard currentAmountValue > 0 else { return }
+        if type == .transfer, fromAccountId == toAccountId { return }
         HapticsManager.shared.trigger(.success)
         
         let txTitle = note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

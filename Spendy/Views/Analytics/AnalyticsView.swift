@@ -30,12 +30,21 @@ enum AnalyticsGroupingMode: String, CaseIterable, Identifiable {
 
 // MARK: - Interval Data Model for Multi-Charts
 struct PeriodIntervalData: Identifiable {
-    let id = UUID()
+    let id: String
     let label: String
     let startDate: Date
     let endDate: Date
     let spendingAmount: Double
     let incomeAmount: Double
+    
+    init(label: String, startDate: Date, endDate: Date, spendingAmount: Double, incomeAmount: Double) {
+        self.id = "\(label)-\(startDate.timeIntervalSince1970)"
+        self.label = label
+        self.startDate = startDate
+        self.endDate = endDate
+        self.spendingAmount = spendingAmount
+        self.incomeAmount = incomeAmount
+    }
 }
 
 // MARK: - Breakdown Item Model (Category or Account)
@@ -234,6 +243,7 @@ struct AnalyticsView: View {
                     }
                     .padding(.bottom, 140) // Full clearance for floating bottom GlassTabBar
                 }
+                
             }
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $showAddTransaction) {
@@ -1579,7 +1589,7 @@ struct AnalyticsView: View {
     
     // MARK: - Velocity & Pacing Data Model
     private struct VelocityPacingItem: Identifiable {
-        let id = UUID()
+        let id: String
         let label: String
         let date: Date
         let amount: Double
@@ -1618,6 +1628,7 @@ struct AnalyticsView: View {
             let isPeak = amount > 0 && amount >= (blockTarget * 0.85)
             
             return VelocityPacingItem(
+                id: item.id,
                 label: item.label,
                 date: item.startDate,
                 amount: amount,

@@ -25,7 +25,6 @@ struct CategoryIconPickerSheet: View {
     var isPhotoSet: Bool = false
     var onPhotoSelected: ((Data) -> Void)? = nil
     var onPhotoLibrarySelected: (() -> Void)? = nil
-    var onCameraSelected: (() -> Void)? = nil
     var onRemovePhotoSelected: (() -> Void)? = nil
     var onIconSelected: ((String) -> Void)? = nil
     

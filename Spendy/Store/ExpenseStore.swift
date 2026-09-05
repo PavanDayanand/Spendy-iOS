@@ -173,7 +173,7 @@ final class ExpenseStore {
     }
     
     var ratesLastUpdatedFormatted: String {
-        guard let date = ratesLastUpdated else { return "5h ago" }
+        guard let date = ratesLastUpdated else { return "Not updated yet" }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
@@ -406,7 +406,7 @@ final class ExpenseStore {
                 self.profileColorHex = payload.profileColorHex
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
-                self.appearanceMode = .dark
+                self.appearanceMode = payload.appearanceMode ?? .dark
                 self.isMonoIconMode = payload.isMonoIconMode ?? false
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
@@ -509,6 +509,8 @@ final class ExpenseStore {
         Task.detached(priority: .utility) {
             do {
                 let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
                 let data = try encoder.encode(payload)
                 try data.write(to: destinationURL, options: .atomic)
             } catch {
@@ -518,22 +520,22 @@ final class ExpenseStore {
     }
     
     private func seedInitialData() {
-        self.userName = SpendyDefaultData.userName
+        self.userName = ""
         self.soundEnabled = true
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
         self.selectedSticker = nil
-        self.appearanceMode = SpendyDefaultData.appearanceMode
+        self.appearanceMode = .dark
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
         self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
         self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
-        self.accounts = SpendyDefaultData.accounts
-        self.customFolders = SpendyDefaultData.customFolders
-        self.categories = SpendyDefaultData.categories
-        self.subscriptions = SpendyDefaultData.subscriptions
-        self.transactions = SpendyDefaultData.transactions
-        self.budget = SpendyDefaultData.budget
+        self.accounts = Account.defaultAccounts
+        self.customFolders = []
+        self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
+        self.subscriptions = []
+        self.transactions = []
+        self.budget = Budget()
         self.currencySymbol = SpendyDefaultData.currencySymbol
         self.currencyCode = SpendyDefaultData.currencyCode
         scheduleSave()
@@ -756,10 +758,19 @@ final class ExpenseStore {
     
     func deleteAccount(id: String, fallbackId: String? = nil) {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            if let fallbackId = fallbackId {
+            let resolvedFallback = fallbackId ?? accounts.first(where: { $0.id != id })?.id
+            if let fallbackId = resolvedFallback {
                 for i in 0..<transactions.count {
                     if transactions[i].accountId == id {
                         transactions[i].accountId = fallbackId
+                    }
+                    if transactions[i].toAccountId == id {
+                        transactions[i].toAccountId = fallbackId
+                    }
+                }
+                for i in 0..<subscriptions.count {
+                    if subscriptions[i].accountId == id {
+                        subscriptions[i].accountId = fallbackId
                     }
                 }
             }
@@ -1219,35 +1230,48 @@ final class ExpenseStore {
     func fetchLiveRates() {
         guard let url = URL(string: "https://open.er-api.com/v6/latest/USD") else { return }
         
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self else { return }
-            guard let data = data, error == nil else { return }
+        Task {
             do {
+                let (data, _) = try await URLSession.shared.data(from: url)
                 struct APIResponse: Codable {
                     let result: String
                     let rates: [String: Double]
                 }
                 let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
-                if decoded.result == "success" {
-                    DispatchQueue.main.async {
-                        var updatedRates = self.ratesToUSD
-                        for (code, rate) in decoded.rates {
-                            updatedRates[code] = rate
-                        }
-                        self.ratesToUSD = updatedRates
-                        self.ratesLastUpdated = Date()
-                        self.scheduleSave()
-                    }
+                guard decoded.result == "success" else { return }
+                var updatedRates = ratesToUSD
+                for (code, rate) in decoded.rates where rate.isFinite && rate > 0 {
+                    updatedRates[code] = rate
                 }
+                ratesToUSD = updatedRates
+                ratesLastUpdated = Date()
             } catch {
                 print("Failed to decode currency rates: \(error)")
             }
-        }.resume()
+        }
     }
 
     
     func resetToSampleData() {
-        seedInitialData()
+        self.userName = SpendyDefaultData.userName
+        self.soundEnabled = true
+        self.hapticsEnabled = true
+        self.hasCompletedOnboarding = true
+        self.selectedSticker = nil
+        self.appearanceMode = SpendyDefaultData.appearanceMode
+        self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
+        self.topGradientHue = SpendyDefaultData.topGradientHue
+        self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
+        self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
+        self.accounts = SpendyDefaultData.accounts
+        self.customFolders = SpendyDefaultData.customFolders
+        self.categories = SpendyDefaultData.categories
+        self.subscriptions = SpendyDefaultData.subscriptions
+        self.transactions = SpendyDefaultData.transactions
+        self.budget = SpendyDefaultData.budget
+        self.currencySymbol = SpendyDefaultData.currencySymbol
+        self.currencyCode = SpendyDefaultData.currencyCode
+        scheduleSave()
     }
     
     func eraseAllData() {
@@ -1286,9 +1310,17 @@ final class ExpenseStore {
             budget: budget,
             currencySymbol: currencySymbol,
             currencyCode: currencyCode,
+            showHomeSpendBarChart: isSectionVisible(.spendingChart),
+            showHomeBudgetCard: isSectionVisible(.budget),
+            showHomeSmartInsights: isSectionVisible(.spendingByCategory),
+            showHomeAccountsCard: isSectionVisible(.accounts),
+            dashboardSectionOrder: dashboardSectionOrder.map { $0.rawValue },
+            dashboardHiddenSections: dashboardHiddenSections,
             customFolders: customFolders,
             ratesToUSD: ratesToUSD,
-            ratesLastUpdated: ratesLastUpdated
+            ratesLastUpdated: ratesLastUpdated,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            selectedSticker: selectedSticker
         )
         return try? ExpenseStore.jsonEncoder.encode(payload)
     }
@@ -1300,6 +1332,9 @@ final class ExpenseStore {
                 self.userName = payload.userName ?? self.userName
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
                 self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
+                self.appearanceMode = payload.appearanceMode ?? self.appearanceMode
+                self.isMonoIconMode = payload.isMonoIconMode ?? self.isMonoIconMode
+                SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? self.isGradientBackgroundEnabled
                 self.topGradientHue = payload.topGradientHue ?? self.topGradientHue

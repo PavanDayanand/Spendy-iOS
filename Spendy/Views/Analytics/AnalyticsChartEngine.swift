@@ -127,12 +127,14 @@ enum AnalyticsChartEngine {
             
             var cumulativeValue: Double = 0
             
-            while current <= endDay {
+            var dayGuard = 0
+            while current <= endDay && dayGuard < 400 {
+                dayGuard += 1
                 let isActual = current <= today
                 
                 if isActual {
                     let dayStart = current
-                    let dayEnd = calendar.date(byAdding: .day, value: 1, to: current)!
+                    let dayEnd = calendar.date(byAdding: .day, value: 1, to: current) ?? current.addingTimeInterval(86_400)
                     let dayTxs = txs.filter { $0.date >= dayStart && $0.date < dayEnd }
                     let dayVol = extractor(dayTxs)
                     
@@ -159,14 +161,15 @@ enum AnalyticsChartEngine {
                         isPredicted: true
                     ))
                 }
-                current = calendar.date(byAdding: .day, value: 1, to: current)!
+                guard let next = calendar.date(byAdding: .day, value: 1, to: current), next > current else { break }
+                current = next
             }
             return points
             
         case .threeMonths, .sixMonths, .year:
             var points: [CategoryChartPoint] = []
-            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start))!
-            let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end))!
+            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.start)) ?? bounds.start
+            let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: bounds.end)) ?? bounds.end
             
             let monthsElapsed = max(1, calendar.dateComponents([.month], from: bounds.start, to: min(now, bounds.end)).month ?? 1)
             let actualTxs = txs.filter { $0.date >= bounds.start && $0.date <= min(now, bounds.end) }
@@ -177,9 +180,11 @@ enum AnalyticsChartEngine {
             
             var cumulativeValue: Double = 0
             
-            while current <= endMonth {
+            var monthGuard = 0
+            while current <= endMonth && monthGuard < 36 {
+                monthGuard += 1
                 let monthStart = current
-                let monthEnd = calendar.date(byAdding: .month, value: 1, to: current)!
+                guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: current), monthEnd > current else { break }
                 let isActual = current <= now
                 
                 if isActual {
@@ -196,7 +201,7 @@ enum AnalyticsChartEngine {
                         isPredicted: false
                     ))
                 } else if hasEnoughTxs {
-                    let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+                    let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now.startOfMonth
                     let monthOffset = max(1, calendar.dateComponents([.month], from: currentMonthStart, to: current).month ?? 1)
                     let predictedAmount = cumulativeValue + (monthlyRate * Double(monthOffset))
                     points.append(CategoryChartPoint(
@@ -234,7 +239,7 @@ enum AnalyticsChartEngine {
         }
         
         return groups.keys.sorted(by: >).map { day -> (label: String, dayTotal: Double, transactions: [Transaction]) in
-            let dayTxs = groups[day]!.sorted { $0.date > $1.date }
+            let dayTxs = (groups[day] ?? []).sorted { $0.date > $1.date }
             let dayTotal = dayTxs.reduce(0) { $0 + $1.amount }
             
             let label: String

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import PhotosUI
 
 struct EditProfileSheet: View {
     @Environment(ExpenseStore.self) private var store
@@ -17,10 +16,8 @@ struct EditProfileSheet: View {
     @State private var selectedIconSymbol: String = "person.fill"
     @State private var selectedColorHex: String = "#007AFF"
     
-    // Icon picker sheet & Photo dialog state
+    // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
-    @State private var showPhotoDialog: Bool = false
-    @State private var showCameraPicker: Bool = false
     
     // Color Palette & Sliders state matching AddCategorySheet
     @State private var showColorPalette: Bool = false
@@ -130,9 +127,6 @@ struct EditProfileSheet: View {
                 onPhotoSelected: { data in
                     selectedImageData = data
                 },
-                onCameraSelected: {
-                    showCameraPicker = true
-                },
                 onRemovePhotoSelected: {
                     selectedImageData = nil
                 },
@@ -140,15 +134,6 @@ struct EditProfileSheet: View {
                     selectedImageData = nil
                 }
             )
-        }
-        .sheet(isPresented: $showCameraPicker) {
-            CameraPickerView { capturedImage in
-                if let data = capturedImage.jpegData(compressionQuality: 0.8) {
-                    selectedImageData = data
-                    showIconPickerSheet = false
-                    HapticsManager.shared.trigger(.success)
-                }
-            }
         }
         .sheet(isPresented: $showCurrencyPicker) {
             CurrencyPickerSheet()
@@ -412,44 +397,6 @@ struct EditProfileSheet: View {
                 .shadow(color: Color.black.opacity(0.15), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Native Camera Picker UIViewControllerRepresentable Wrapper
-struct CameraPickerView: UIViewControllerRepresentable {
-    @Environment(\.dismiss) private var dismiss
-    var onImageCaptured: (UIImage) -> Void
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraPickerView
-        
-        init(_ parent: CameraPickerView) {
-            self.parent = parent
-        }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.onImageCaptured(image)
-            }
-            parent.dismiss()
-        }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
     }
 }
 

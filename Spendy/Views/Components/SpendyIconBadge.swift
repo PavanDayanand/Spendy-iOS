@@ -21,9 +21,15 @@ extension EnvironmentValues {
 
 // MARK: - Shared Badge Item Model
 struct BadgeItem: Identifiable {
-    let id = UUID()
+    let id: String
     let icon: String
     let color: Color
+    
+    init(icon: String, color: Color) {
+        self.id = icon
+        self.icon = icon
+        self.color = color
+    }
 }
 
 // MARK: - Overlapping Badge Cluster

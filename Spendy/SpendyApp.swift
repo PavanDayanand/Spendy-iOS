@@ -37,6 +37,7 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
     }
     
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === interactivePopGestureRecognizer else { return true }
         return viewControllers.count > 1
     }
 }
