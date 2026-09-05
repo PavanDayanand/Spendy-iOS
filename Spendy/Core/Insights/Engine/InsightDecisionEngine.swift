@@ -223,12 +223,11 @@ final class InsightDecisionEngine: Sendable {
                 }
             }
             
-            // Limit moments: 3 on Home, Analytics, and category/account sheets; 2 elsewhere
             let maxMoments: Int
             switch surface {
-            case .home, .analytics, .category:
+            case .home, .analytics, .category, .subscriptions:
                 maxMoments = 3
-            case .budget, .subscriptions:
+            case .budget:
                 maxMoments = 2
             }
             if moments.count >= maxMoments { break }
