@@ -87,22 +87,22 @@ enum SpendyColors {
         dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
-    // Card Surfaces (#1A1A1A in Dark Mode, #FFFFFF in Light Mode)
+    // Card Surfaces (#1A1A1A with subtle transparency in Dark Mode, #FFFFFF with subtle transparency in Light Mode)
     static let cardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 1.0)      // #1A1A1A
+        light: UIColor(white: 1.0, alpha: 0.82),                                               // #FFFFFF 82%
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.82)      // #1A1A1A 82%
     ))
 
     // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(red: 238.0/255.0, green: 238.0/255.0, blue: 238.0/255.0, alpha: 1.0), // #EEEEEE
-        dark: UIColor(red: 38.0/255.0, green: 38.0/255.0, blue: 38.0/255.0, alpha: 1.0)      // #262626
+        light: UIColor(red: 238.0/255.0, green: 238.0/255.0, blue: 238.0/255.0, alpha: 0.80), // #EEEEEE 80%
+        dark: UIColor(red: 38.0/255.0, green: 38.0/255.0, blue: 38.0/255.0, alpha: 0.80)      // #262626 80%
     ))
 
-    // Sheet Card Surfaces (#1A1A1A in Dark Mode, #FFFFFF in Light Mode)
+    // Sheet Card Surfaces (#1A1A1A with subtle transparency in Dark Mode, #FFFFFF in Light Mode)
     static let sheetCardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 1.0)      // #1A1A1A
+        light: UIColor(white: 1.0, alpha: 0.85),                                               // #FFFFFF 85%
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.82)      // #1A1A1A 82%
     ))
 
     // Settings Background (#000000 in Dark Mode, #F6F6F6 in Light Mode)
