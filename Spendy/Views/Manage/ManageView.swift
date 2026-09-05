@@ -492,7 +492,7 @@ struct SubscriptionsView: View {
             HapticsManager.shared.trigger(.selection)
             selectedSubscriptionForDetail = sub
         }) {
-            HStack(spacing: 14) {
+            HStack(alignment: .center, spacing: 14) {
                 SubscriptionProgressRingBadge(
                     subscription: sub,
                     size: .medium
@@ -520,23 +520,25 @@ struct SubscriptionsView: View {
                         Text(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
                             .font(AppTypography.footnoteMedium.weight(.semibold))
                             .foregroundStyle(dueColor(for: sub.nextBillingDate))
+                            .lineLimit(1)
+
+                        statusBadge(for: sub)
                     }
+                    .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                        .font(.system(size: 16.5, weight: .bold, design: .monospaced))
-                        .monospacedDigit()
-                        .foregroundStyle(
-                            sub.isPaused
-                                ? SpendyColors.textTertiary
-                                : SpendyColors.textPrimary
-                        )
-
-                    statusBadge(for: sub)
-                }
+                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .layoutPriority(1)
+                    .foregroundStyle(
+                        sub.isPaused
+                            ? SpendyColors.textTertiary
+                            : SpendyColors.textPrimary
+                    )
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
