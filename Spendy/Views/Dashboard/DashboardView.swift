@@ -124,7 +124,7 @@ struct HeroSpendBarChart: View {
                             let isSelected = scrubbedPoint?.id == point.id
                             let isAnySelected = scrubbedPoint != nil
                             let ratio = maxAmount > 0 ? CGFloat(min(1.0, max(0.0, point.amount / maxAmount))) : 0.0
-                            let barH = max(4, ratio * (chartHeight - 4))
+                            let barH = point.amount > 0 ? max(4, ratio * (chartHeight - 4)) : 0
                             
                             VStack {
                                 Spacer(minLength: 0)

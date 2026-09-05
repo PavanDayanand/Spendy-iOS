@@ -223,8 +223,14 @@ final class InsightDecisionEngine: Sendable {
                 }
             }
             
-            // Limit rail moments count: Maximum 3 moments for Home/Analytics, 2 for sub-surfaces
-            let maxMoments = (surface == .home || surface == .analytics) ? 3 : 2
+            // Limit moments: 3 on Home, Analytics, and category/account sheets; 2 elsewhere
+            let maxMoments: Int
+            switch surface {
+            case .home, .analytics, .category:
+                maxMoments = 3
+            case .budget, .subscriptions:
+                maxMoments = 2
+            }
             if moments.count >= maxMoments { break }
         }
         

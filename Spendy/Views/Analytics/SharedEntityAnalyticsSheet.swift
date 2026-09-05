@@ -377,8 +377,8 @@ struct SharedEntityAnalyticsSheet: View {
         )
     }
     
-    private var primaryInsight: InsightMoment? {
-        insightMoments.first(where: { !$0.isInsufficientData })
+    private var visibleInsights: [InsightMoment] {
+        Array(insightMoments.filter { !$0.isInsufficientData }.prefix(3))
     }
     
     private var availableSections: [AnalyticsSheetSection] {
@@ -388,8 +388,12 @@ struct SharedEntityAnalyticsSheet: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            // Adaptive Apple graphite background for dark mode, crisp light background for light mode
             sheetBackgroundColor.ignoresSafeArea()
+            SpendyAmbientHeaderBackground(
+                color: themeColor,
+                height: 440,
+                opacity: 0.24
+            )
             
             VStack(spacing: 0) {
                 if isHomeOrigin {
@@ -408,9 +412,17 @@ struct SharedEntityAnalyticsSheet: View {
                         scrubberAndCalendarRow
                             .padding(.horizontal, 16)
                         
-                        if let insight = primaryInsight, !isScrubbingChart {
-                            insightSentence(insight)
-                                .padding(.horizontal, 20)
+                        if !visibleInsights.isEmpty, !isScrubbingChart {
+                            VStack(alignment: .leading, spacing: 14) {
+                                ForEach(Array(visibleInsights.enumerated()), id: \.element.id) { index, moment in
+                                    insightSentence(moment)
+                                    if index < visibleInsights.count - 1 {
+                                        Divider()
+                                            .overlay(SpendyColors.separator.opacity(0.55))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
                         }
                         
                         threeSectionsModule

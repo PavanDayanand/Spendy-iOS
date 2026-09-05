@@ -353,7 +353,7 @@ enum AnalyticsChartEngine {
             }
         }
         
-        return slices.map { slice in
+        var points = slices.map { slice in
             let sliceTxs = txs.filter { $0.date >= slice.start && $0.date < slice.end }
             return AnalyticsBarPoint(
                 id: "bar_\(slice.start.timeIntervalSince1970)",
@@ -364,6 +364,40 @@ enum AnalyticsChartEngine {
                 txCount: sliceTxs.count
             )
         }
+        
+        let today = calendar.startOfDay(for: Date())
+        points = points.filter { $0.date <= today }
+        
+        if bucket == .month && !isCustomRange {
+            switch period {
+            case .threeMonths:
+                points = compactMonthlyBars(points, minCount: 3, maxCount: 3)
+            case .sixMonths:
+                points = compactMonthlyBars(points, minCount: 4, maxCount: 6)
+            case .year:
+                points = compactMonthlyBars(points, minCount: 4, maxCount: 6)
+            default:
+                break
+            }
+        }
+        
+        return points
+    }
+    
+    /// Keep a short, chunky window through the current month instead of a sparse full-year axis.
+    private static func compactMonthlyBars(
+        _ points: [AnalyticsBarPoint],
+        minCount: Int,
+        maxCount: Int
+    ) -> [AnalyticsBarPoint] {
+        guard !points.isEmpty else { return points }
+        let lastIndex = points.count - 1
+        let firstActive = points.firstIndex(where: { $0.amount > 0 }) ?? max(0, lastIndex - minCount + 1)
+        var start = min(firstActive, max(0, lastIndex - minCount + 1))
+        if lastIndex - start + 1 > maxCount {
+            start = max(0, lastIndex - maxCount + 1)
+        }
+        return Array(points[start...lastIndex])
     }
     
     private static func barBucket(
