@@ -17,6 +17,10 @@ struct TransactionDetailSheet: View {
     
     @State private var showEditSheet: Bool = false
     @State private var showDeleteConfirm: Bool = false
+    @State private var toastMessage: String? = nil
+    @State private var showToast: Bool = false
+    @State private var toastIcon: String = "checkmark.circle.fill"
+    @State private var toastColor: Color = SpendyColors.incomeGreen
     @Namespace private var sheetNamespace
     
     init(transaction: Transaction, onEdit: ((Transaction) -> Void)? = nil) {
@@ -69,40 +73,67 @@ struct TransactionDetailSheet: View {
         }
     }
     
-    private var typeBadgeIcon: String {
-        if subscription != nil { return "repeat" }
+    private var formattedAmountText: String {
+        let sym = store.currencySymbol
         switch transaction.type {
-        case .expense:  return "arrow.down.right"
-        case .income:   return "arrow.up.left"
-        case .transfer: return "arrow.left.arrow.right"
+        case .expense:
+            return transaction.amount.formattedCurrency(symbol: sym)
+        case .income:
+            return "+\(transaction.amount.formattedCurrency(symbol: sym))"
+        case .transfer:
+            return transaction.amount.formattedCurrency(symbol: sym)
         }
+    }
+    
+    private var accountSymbol: String {
+        if let sym = account?.sfSymbol, !sym.isEmpty {
+            return sym
+        }
+        return account?.type.defaultSymbol ?? "building.columns.fill"
+    }
+    
+    private var toAccountSymbol: String {
+        if let sym = toAccount?.sfSymbol, !sym.isEmpty {
+            return sym
+        }
+        return toAccount?.type.defaultSymbol ?? "building.columns.fill"
     }
     
     var body: some View {
         ZStack(alignment: .top) {
-            // MARK: - Ambient Theme Gradient Glow (At top of sheet, fades smoothly to base)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
-            
-            // MARK: - Scrollable Content (offset below the floating top bar)
+            // MARK: - Scrollable Content
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    // Spacer to clear the floating topActionBar (44pt button + 20pt top inset + 8pt gap)
-                    Spacer().frame(height: 64)
+                VStack(spacing: 16) {
+                    // Spacer to clear pinned top bar
+                    Spacer().frame(height: 56)
                     
-                    // MARK: - 1. Hero Section
+                    // MARK: - 1. Hero Section (Icon + Large Amount)
                     heroSection
+                        .padding(.top, 4)
+                        .padding(.bottom, 2)
                     
-                    // MARK: - 2. Structured Details Card
+                    // MARK: - 2. Standalone Category Card
+                    categoryCard
+                    
+                    // MARK: - 3. Structured Details Card (Date, Type, Account, Note)
                     detailsCard
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 28)
+                .padding(.bottom, 32)
             }
             
-            // MARK: - Pinned Floating Top Bar (✕, ✎, 🗑)
+            // MARK: - Pinned Top Action Bar (✕ on Left, ✎ and 🗑 on Right)
             topActionBar
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 16)
+            
+            // MARK: - Floating Toast Feedback
+            if showToast, let toast = toastMessage {
+                feedbackToastView(message: toast, icon: toastIcon, color: toastColor)
+                    .padding(.top, 64)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(200)
+            }
         }
         .background(Color.clear)
         .alert("Delete Transaction?", isPresented: $showDeleteConfirm) {
@@ -115,9 +146,8 @@ struct TransactionDetailSheet: View {
         } message: {
             Text("Are you sure you want to delete this transaction? This cannot be undone.")
         }
-        .presentationDetents([.height(500), .medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationBackground(SpendyColors.appBackground)
+        .presentationDetents([.height(540), .large])
+        .presentationDragIndicator(.hidden)
         .fullScreenCover(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction)
         }
@@ -127,13 +157,11 @@ struct TransactionDetailSheet: View {
             }
         }
     }
-
     
-    // MARK: - Top Action Bar
-    @ViewBuilder
+    // MARK: - Top Action Bar (✕ on Left, ✎ and 🗑 on Right)
     private var topActionBar: some View {
         HStack {
-            // Close Button ✕ (Left)
+            // Close Button ✕ (Left, 44pt GlassCircleButton)
             GlassCircleButton(
                 icon: SFIcons.close,
                 size: 44,
@@ -150,209 +178,349 @@ struct TransactionDetailSheet: View {
             
             Spacer()
             
-            // More Options Menu ••• (Right)
-            Menu {
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    if let onEdit = onEdit {
-                        onEdit(transaction)
-                    } else {
-                        showEditSheet = true
-                    }
-                } label: {
-                    Label("Edit Transaction", systemImage: "pencil")
-                }
-                
-                Button {
-                    HapticsManager.shared.trigger(.light)
-                    let copy = Transaction(
-                        id: UUID(),
-                        title: transaction.title,
-                        amount: transaction.amount,
-                        type: transaction.type,
-                        categoryId: transaction.categoryId,
-                        accountId: transaction.accountId,
-                        toAccountId: transaction.toAccountId,
-                        date: Date(),
-                        notes: transaction.notes,
-                        subscriptionId: transaction.subscriptionId
-                    )
-                    store.addTransaction(copy)
-                    dismiss()
-                } label: {
-                    Label("Duplicate", systemImage: "doc.on.doc")
-                }
-                
-                Button {
-                    HapticsManager.shared.trigger(.light)
-                    UIPasteboard.general.string = "\(transaction.amount)"
-                } label: {
-                    Label("Copy Amount", systemImage: "doc.on.clipboard")
-                }
-                
-                Divider()
-                
-                Button(role: .destructive) {
-                    HapticsManager.shared.trigger(.warning)
-                    showDeleteConfirm = true
-                } label: {
-                    Label("Delete Transaction", systemImage: "trash")
-                }
-            } label: {
+            HStack(spacing: 10) {
+                // Edit Circle Button with Pen Icon (Right, 44pt GlassCircleButton)
                 GlassCircleButton(
-                    icon: "ellipsis",
+                    icon: SFIcons.edit,
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
                     foregroundColor: SpendyColors.textPrimary,
-                    haptic: .light,
-                    accessibilityLabel: "Transaction Options",
-                    morphID: "moreButton",
+                    haptic: .selection,
+                    accessibilityLabel: "Edit Transaction",
+                    morphID: "editButton",
                     namespace: sheetNamespace
-                ) { }
-            }
-        }
-    }
-
-    // MARK: - Hero Section
-    @ViewBuilder
-    private var heroSection: some View {
-        VStack(spacing: 10) {
-            // Main Avatar Badge with soft ambient shadow
-            if let sub = subscription {
-                SpendyIconBadge(
-                    sfSymbol: sub.sfSymbol,
-                    color: Color(hex: sub.colorHex),
-                    size: .large,
-                    style: .circle
-                )
-                .shadow(color: Color(hex: sub.colorHex).opacity(0.35), radius: 12, y: 4)
-            } else {
-                let catColor = category.map { Color(hex: $0.colorHex) } ?? themeColor
-                SpendyIconBadge(
-                    sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
-                    color: catColor,
-                    size: .large,
-                    style: .rounded()
-                )
-                .shadow(color: catColor.opacity(0.35), radius: 12, y: 4)
-            }
-            
-            // Title
-            Text(transaction.title.isEmpty ? (category?.label ?? typeBadgeTitle) : transaction.title)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1)
-            
-            // Hero Formatted Amount & Type Pill
-            VStack(spacing: 6) {
-                Text(formattedAmountText)
-                    .spendyNumberFont(size: 38, weight: .heavy, tracking: -1.0)
-                    .foregroundStyle(amountColor)
-                    .contentTransition(.numericText())
-                
-                HStack(spacing: 5) {
-                    Image(systemName: typeBadgeIcon)
-                        .font(.system(size: 10, weight: .bold))
-                    Text(subscription.map { "Subscription • \($0.cycle.rawValue.capitalized)" } ?? typeBadgeTitle)
-                        .font(.system(size: 12, weight: .semibold))
+                ) {
+                    handleEdit()
                 }
-                .foregroundStyle(themeColor)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4.5)
-                .background(themeColor.opacity(0.14), in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(themeColor.opacity(0.24), lineWidth: 0.8)
-                )
+                
+                // Delete Circle Button with Trash Icon (Right, 44pt GlassCircleButton)
+                GlassCircleButton(
+                    icon: "trash",
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .semibold,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .warning,
+                    accessibilityLabel: "Delete Transaction",
+                    morphID: "deleteButton",
+                    namespace: sheetNamespace
+                ) {
+                    showDeleteConfirm = true
+                }
             }
-            .padding(.top, 2)
         }
-        .padding(.vertical, 2)
     }
     
-    // MARK: - Structured Details Card Container
+    // MARK: - Hero Section (Circular Badge with Ambient Glow + Large Bold Amount)
+    private var heroSection: some View {
+        VStack(spacing: 14) {
+            // Circular Avatar Badge with soft ambient glow
+            ZStack {
+                // Soft ambient diffused halo
+                Circle()
+                    .fill(themeColor.opacity(0.30))
+                    .frame(width: 82, height: 82)
+                    .blur(radius: 12)
+                
+                // Concentrated rim glow right outside the badge edge
+                Circle()
+                    .stroke(themeColor.opacity(0.40), lineWidth: 3.5)
+                    .frame(width: 70, height: 70)
+                    .blur(radius: 4.5)
+                
+                if let sub = subscription {
+                    SubscriptionProgressRingBadge(
+                        subscription: sub,
+                        size: .large
+                    )
+                } else {
+                    let catColor = category.map { Color(hex: $0.colorHex) } ?? themeColor
+                    SpendyIconBadge(
+                        sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
+                        color: catColor,
+                        size: .large,
+                        style: .circle
+                    )
+                }
+            }
+            
+            // Large Bold Amount
+            Text(formattedAmountText)
+                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(amountColor)
+                .contentTransition(.numericText())
+        }
+    }
+    
+    // MARK: - Standalone Category Card
     @ViewBuilder
-    private var detailsCard: some View {
-        VStack(spacing: 0) {
-            // Row 1: Category Row
-            cardRow(icon: "tag.fill", label: "Category") {
+    private var categoryCard: some View {
+        if transaction.type != .transfer {
+            HStack {
+                Text("Category")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                
+                Spacer()
+                
                 HStack(spacing: 8) {
                     SpendyIconBadge(
                         sfSymbol: category?.sfSymbol ?? "tag.fill",
                         color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
                         size: .small,
-                        style: .rounded()
+                        style: .circle
                     )
+                    
                     Text(category?.label ?? "General")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
-            
-            rowDivider
-            
-            // Row 2: Account / Route Row
-            if transaction.type == .transfer {
-                cardRow(icon: "arrow.up.arrow.down", label: "Route") {
-                    HStack(spacing: 6) {
-                        Text(account?.label ?? "Account")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Text(toAccount?.label ?? "Account")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
-                }
-            } else {
-                cardRow(icon: "creditcard.fill", label: "Account") {
-                    HStack(spacing: 8) {
-                        let symbol: String = {
-                            if let sym = account?.sfSymbol, !sym.isEmpty {
-                                return sym
-                            }
-                            return account?.type.defaultSymbol ?? "building.columns.fill"
-                        }()
-                        SpendyIconBadge(
-                            sfSymbol: symbol,
-                            color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
-                            size: .small,
-                            style: .rounded()
-                        )
-                        Text(account?.label ?? "Cash")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                }
-            }
-            
-            rowDivider
-            
-            // Row 3: Date & Time Row
-            cardRow(icon: "calendar", label: "Date & Time") {
-                Text(transaction.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            
-            // Row 4: Note Row (if present)
-            if let note = transaction.notes, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                rowDivider
-                
-                cardRow(icon: "text.alignleft", label: "Note") {
-                    Text(note)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .multilineTextAlignment(.trailing)
-                        .lineLimit(3)
-                }
             }
         }
+    }
+    
+    // MARK: - Grouped Details Card (Date, Type, Account, Note, Subscription)
+    private var detailsCard: some View {
+        VStack(spacing: 0) {
+            // Row 1: Date
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 22, alignment: .leading)
+                    
+                    Text("Date")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                
+                Spacer()
+                
+                Text(transaction.date.formatted(date: .long, time: .omitted))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            .padding(.vertical, 14)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // Row 2: Type
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(width: 22, alignment: .leading)
+                    
+                    Text("Type")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                
+                Spacer()
+                
+                Text(typeBadgeTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            .padding(.vertical, 14)
+            
+            Divider().background(SpendyColors.separator)
+            
+            // Row 3: Account (or Route for Transfer)
+            if transaction.type == .transfer {
+                HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "building.columns")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 22, alignment: .leading)
+                        
+                        Text("From Account")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        SpendyIconBadge(
+                            sfSymbol: accountSymbol,
+                            color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
+                            size: .small,
+                            style: .circle
+                        )
+                        
+                        Text(account?.label ?? "Cash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                }
+                .padding(.vertical, 12)
+                
+                if let to = toAccount {
+                    Divider().background(SpendyColors.separator)
+                    
+                    HStack {
+                        HStack(spacing: 12) {
+                            Image(systemName: "building.columns.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .frame(width: 22, alignment: .leading)
+                            
+                            Text("To Account")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            SpendyIconBadge(
+                                sfSymbol: toAccountSymbol,
+                                color: Color(hex: to.colorHex),
+                                size: .small,
+                                style: .circle
+                            )
+                            
+                            Text(to.label)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                }
+            } else {
+                HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "building.columns")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 22, alignment: .leading)
+                        
+                        Text("Account")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        SpendyIconBadge(
+                            sfSymbol: accountSymbol,
+                            color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
+                            size: .small,
+                            style: .circle
+                        )
+                        
+                        Text(account?.label ?? "Cash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                }
+                .padding(.vertical, 12)
+            }
+            
+            // Row 4: Subscription (if linked)
+            if let sub = subscription {
+                Divider().background(SpendyColors.separator)
+                
+                HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "repeat")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 22, alignment: .leading)
+                        
+                        Text("Subscription")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        SpendyIconBadge(
+                            sfSymbol: sub.sfSymbol,
+                            color: Color(hex: sub.colorHex),
+                            size: .small,
+                            style: .circle
+                        )
+                        
+                        Text(sub.name)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                }
+                .padding(.vertical, 12)
+            }
+            
+            // Row 5: Custom Title (if different from Category)
+            if !transaction.title.isEmpty && transaction.title.lowercased() != (category?.label ?? "").lowercased() {
+                Divider().background(SpendyColors.separator)
+                
+                HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "pencil.line")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 22, alignment: .leading)
+                        
+                        Text("Title")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text(transaction.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+                .padding(.vertical, 14)
+            }
+            
+            // Row 6: Note (if present)
+            if let note = transaction.notes, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Divider().background(SpendyColors.separator)
+                
+                HStack(alignment: .top) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "text.alignleft")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 22, alignment: .leading)
+                        
+                        Text("Note")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text(note)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(4)
+                }
+                .padding(.vertical, 14)
+            }
+        }
+        .padding(.horizontal, 18)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(SpendyColors.cardBackground)
@@ -363,46 +531,75 @@ struct TransactionDetailSheet: View {
         }
     }
     
-    private var rowDivider: some View {
-        Divider()
-            .overlay(SpendyColors.separator.opacity(0.6))
-            .padding(.leading, 48)
-    }
-    
-    private var formattedAmountText: String {
-        let sym = store.currencySymbol
-        switch transaction.type {
-        case .expense:
-            return "-\(transaction.amount.formattedCurrency(symbol: sym))"
-        case .income:
-            return "+\(transaction.amount.formattedCurrency(symbol: sym))"
-        case .transfer:
-            return "\(transaction.amount.formattedCurrency(symbol: sym))"
+    // MARK: - Actions & Feedback
+    private func handleEdit() {
+        HapticsManager.shared.trigger(.selection)
+        if let onEdit = onEdit {
+            dismiss()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                onEdit(transaction)
+            }
+        } else {
+            showEditSheet = true
         }
     }
     
-    @ViewBuilder
-    private func cardRow<V: View>(icon: String, label: String, @ViewBuilder valueView: () -> V) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(SpendyColors.chipBackground)
-                    .frame(width: 28, height: 28)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
+    private func handleDuplicate() {
+        HapticsManager.shared.trigger(.light)
+        let copy = Transaction(
+            id: UUID(),
+            title: transaction.title,
+            amount: transaction.amount,
+            type: transaction.type,
+            categoryId: transaction.categoryId,
+            accountId: transaction.accountId,
+            toAccountId: transaction.toAccountId,
+            date: Date(),
+            notes: transaction.notes,
+            subscriptionId: transaction.subscriptionId
+        )
+        store.addTransaction(copy)
+        showFeedback(message: "Transaction Duplicated", icon: "doc.on.doc.fill", color: SpendyColors.incomeGreen)
+    }
+    
+    private func handleCopyAmount() {
+        HapticsManager.shared.trigger(.light)
+        UIPasteboard.general.string = "\(transaction.amount)"
+        showFeedback(message: "Amount Copied", icon: "doc.on.clipboard.fill", color: SpendyColors.primaryBlue)
+    }
+    
+    private func showFeedback(message: String, icon: String, color: Color) {
+        toastMessage = message
+        toastIcon = icon
+        toastColor = color
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showToast = false
             }
+        }
+    }
+    
+    // MARK: - Toast Banner View
+    private func feedbackToastView(message: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(color)
             
-            Text(label)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            
-            Spacer()
-            
-            valueView()
+            Text(message)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.vertical, 10)
+        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(SpendyColors.separator, lineWidth: 0.8)
+        )
+        .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
     }
 }

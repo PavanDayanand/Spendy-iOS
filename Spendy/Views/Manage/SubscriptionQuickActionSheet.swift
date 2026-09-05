@@ -186,6 +186,9 @@ struct SubscriptionQuickActionSheet: View {
     
     var body: some View {
         ZStack(alignment: .top) {
+            // MARK: - Ambient Subscription Gradient Header Glow
+            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+            
             // MARK: - Scrollable Content
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
