@@ -37,123 +37,76 @@ struct DataManagementView: View {
         return SpendyBackupDocument(data: data, filename: "Spendy_Backup_\(dateStr).json")
     }
     
+    private var exportSummary: String {
+        "\(store.transactions.count) tx · \(store.accounts.count) accounts"
+    }
+    
     var body: some View {
         ZStack {
             SpendyColors.settingsBackground
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Backup & Export Section
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("BACKUP & EXPORT")
-                                .font(.system(size: 12, weight: .semibold))
-                                .tracking(0.6)
-                                .foregroundStyle(SpendyColors.textTertiary)
-                                .padding(.horizontal, 6)
-                            
-                            VStack(spacing: 0) {
-                                // Native SwiftUI ShareLink (Blueprint §53 & §54)
-                                if let doc = backupDocument {
-                                    ShareLink(
-                                        item: doc,
-                                        preview: SharePreview("Spendy Backup JSON", image: Image(systemName: "arrow.down.doc.fill"))
-                                    ) {
-                                        rowItem(
-                                            icon: "square.and.arrow.up.fill",
-                                            title: "Export JSON Backup",
-                                            subtitle: "\(store.transactions.count) transactions, \(store.accounts.count) accounts"
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .simultaneousGesture(TapGesture().onEnded {
-                                        HapticsManager.shared.trigger(.selection)
-                                    })
-                                } else {
-                                    Button(action: {}) {
-                                        rowItem(
-                                            icon: "square.and.arrow.up.fill",
-                                            title: "Export JSON Backup",
-                                            subtitle: "No data available to export"
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .disabled(true)
-                                }
-                                
-                                Divider().overlay(SpendyColors.separator).padding(.leading, 52)
-                                
-                                Button(action: {
-                                    HapticsManager.shared.trigger(.selection)
-                                    showFileImporter = true
-                                }) {
-                                    rowItem(
-                                        icon: "square.and.arrow.down.fill",
-                                        title: "Import JSON Backup",
-                                        subtitle: "Restore from a previous backup file"
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .background {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(SpendyColors.cardBackground)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                            }
-                        }
-                        
-                        // Danger Zone
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("DANGER ZONE")
-                                .font(.system(size: 11, weight: .bold))
-                                .tracking(1.0)
-                                .foregroundStyle(SpendyColors.expenseRed.opacity(0.8))
-                                .padding(.horizontal, 4)
-                            
-                            Button(action: {
-                                HapticsManager.shared.trigger(.warning)
-                                showClearConfirm = true
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "trash.fill")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(SpendyColors.expenseRed)
-                                        .frame(width: 32, height: 32)
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Erase All Data")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .foregroundStyle(SpendyColors.expenseRed)
-                                        Text("Permanently delete all local data")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundStyle(SpendyColors.textTertiary)
-                                    }
-                                    
-                                    Spacer()
-                                }
-                                .padding(16)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(SpendyColors.cardBackground)
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                                .stroke(SpendyColors.expenseRed.opacity(0.25), lineWidth: 0.8)
-                                        }
-                                }
+                VStack(alignment: .leading, spacing: 24) {
+                    settingsGroup(title: "Backup") {
+                        if let doc = backupDocument {
+                            ShareLink(
+                                item: doc,
+                                preview: SharePreview("Spendy backup", image: Image(systemName: "square.and.arrow.up"))
+                            ) {
+                                linkRow(icon: "square.and.arrow.up", title: "Export JSON", value: exportSummary)
                             }
                             .buttonStyle(.plain)
+                            .simultaneousGesture(TapGesture().onEnded {
+                                HapticsManager.shared.trigger(.selection)
+                            })
+                        } else {
+                            linkRow(icon: "square.and.arrow.up", title: "Export JSON", value: "No data")
+                                .opacity(0.45)
                         }
+                        
+                        groupDivider
+                        
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            showFileImporter = true
+                        } label: {
+                            linkRow(icon: "square.and.arrow.down", title: "Import JSON", value: nil)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 40)
+                    
+                    settingsGroup(title: "Danger") {
+                        Button {
+                            HapticsManager.shared.trigger(.warning)
+                            showClearConfirm = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(SpendyColors.expenseRed)
+                                    .frame(width: 28, height: 28)
+                                
+                                Text("Erase all data")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(SpendyColors.expenseRed)
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 52)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 40)
             }
-        .navigationTitle("Data Management")
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .navigationTitle("Backup & Restore")
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(
             isPresented: $showFileImporter,
@@ -198,29 +151,59 @@ struct DataManagementView: View {
         }
     }
     
-    private func rowItem(icon: String, title: String, subtitle: String) -> some View {
+    private func settingsGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                content()
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(SpendyColors.sheetCardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
+            }
+        }
+    }
+    
+    private var groupDivider: some View {
+        Divider()
+            .overlay(SpendyColors.separator)
+            .padding(.leading, 54)
+    }
+    
+    private func linkRow(icon: String, title: String, value: String?) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .frame(width: 26, height: 26)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .frame(width: 28, height: 28)
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-            }
+            Text(title)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
             
             Spacer()
             
+            if let value {
+                Text(value)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .lineLimit(1)
+            }
+            
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
     }
 }

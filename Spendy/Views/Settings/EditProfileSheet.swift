@@ -283,28 +283,6 @@ struct EditProfileSheet: View {
                 .onChange(of: sliderBrightness) { _, newValue in
                     updateHexFromHSB()
                 }
-            
-            Divider()
-                .overlay(SpendyColors.separator)
-            
-            // Gradient Background Toggle
-            HStack {
-                Text("Gradient background")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
-                
-                Toggle("", isOn: Binding(
-                    get: { store.isGradientBackgroundEnabled },
-                    set: {
-                        store.isGradientBackgroundEnabled = $0
-                        HapticsManager.shared.trigger(.selection)
-                    }
-                ))
-                .labelsHidden()
-                .tint(SpendyColors.incomeGreen)
-            }
         }
         .padding(16)
         .background {
