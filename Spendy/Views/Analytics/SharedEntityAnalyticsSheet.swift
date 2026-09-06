@@ -378,7 +378,7 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var visibleInsights: [InsightMoment] {
-        Array(insightMoments.filter { !$0.isInsufficientData }.prefix(3))
+        Array(insightMoments.filter { !$0.isInsufficientData }.prefix(5))
     }
     
     private var availableSections: [AnalyticsSheetSection] {
@@ -657,10 +657,7 @@ struct SharedEntityAnalyticsSheet: View {
                 font: .system(size: 15, weight: .semibold)
             )
             if let supporting = moment.supportingText, !supporting.isEmpty {
-                Text(supporting)
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                InsightSupportingText(text: supporting, emphasis: moment.emphasis)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

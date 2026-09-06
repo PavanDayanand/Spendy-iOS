@@ -223,15 +223,7 @@ final class InsightDecisionEngine: Sendable {
                 }
             }
             
-            let maxMoments: Int
-            switch surface {
-            case .home, .analytics:
-                maxMoments = 3
-            case .category, .subscriptions:
-                maxMoments = 2
-            case .budget:
-                maxMoments = 1
-            }
+            let maxMoments = 5
             if moments.count >= maxMoments { break }
         }
         

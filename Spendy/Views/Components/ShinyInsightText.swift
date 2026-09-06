@@ -37,58 +37,88 @@ struct ShinyInsightText: View {
     }
 }
 
-/// Renders a primary headline where only the emphasized tokens receive the subtle shiny gradient
+/// Headline with the important token in bold, plus the moving shine across the line.
 struct ShinyHeadlineText: View {
     let headline: String
     let emphasis: [InsightEmphasis]
-    var font: Font = .system(size: 15.5, weight: .bold)
+    var font: Font = .system(size: 15, weight: .semibold)
+    var emphasisFont: Font = .system(size: 15, weight: .bold)
+    var color: Color = Color(hex: "#b5b5b5")
+    var shineColor: Color = Color.white
+    var phaseOffset: Double = 0.55
     
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
-        let highlightTokens: [String] = emphasis.compactMap {
-            if case .highlight(let text) = $0 { return text }
+        let label = emphasizedLine(headline)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        
+        if reduceMotion {
+            label
+        } else {
+            label
+                .overlay {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                        InsightShineBand(
+                            color: color,
+                            shineColor: shineColor,
+                            progress: ShinyText.progress(at: context.date, direction: .right, phaseOffset: phaseOffset) / 100.0
+                        )
+                    }
+                    .mask(label)
+                }
+                .mask(label)
+        }
+    }
+    
+    private func emphasizedLine(_ text: String) -> Text {
+        let tokens: [String] = emphasis.compactMap {
+            if case .highlight(let value) = $0 { return value }
             return nil
         }
         
-        if highlightTokens.isEmpty || reduceMotion {
-            Text(headline)
-                .font(font)
-                .foregroundStyle(SpendyColors.textPrimary)
-                .multilineTextAlignment(.leading)
-        } else {
-            if let targetToken = highlightTokens.first(where: { headline.contains($0) }),
-               let range = headline.range(of: targetToken) {
-                let prefix = String(headline[..<range.lowerBound])
-                let match = String(headline[range])
-                let suffix = String(headline[range.upperBound...])
-                
-                (Text(prefix)
-                    .font(font)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                + Text(match)
-                    .font(font)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: "#00E5FF"),
-                                Color(hex: "#70D6FF"),
-                                Color(hex: "#00E5FF")
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                + Text(suffix)
-                    .font(font)
-                    .foregroundStyle(SpendyColors.textPrimary))
-                .multilineTextAlignment(.leading)
-            } else {
-                Text(headline)
-                    .font(font)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .multilineTextAlignment(.leading)
-            }
+        guard let token = tokens.first(where: { text.contains($0) }),
+              let range = text.range(of: token) else {
+            return Text(text).font(font).foregroundStyle(color)
         }
+        
+        let prefix = String(text[..<range.lowerBound])
+        let match = String(text[range])
+        let suffix = String(text[range.upperBound...])
+        
+        return Text(prefix).font(font).foregroundStyle(color)
+            + Text(match).font(emphasisFont).foregroundStyle(color)
+            + Text(suffix).font(font).foregroundStyle(color)
+    }
+}
+
+struct InsightSupportingText: View {
+    let text: String
+    let emphasis: [InsightEmphasis]
+    var font: Font = AppTypography.footnoteMedium
+    var color: Color = SpendyColors.textSecondary
+    
+    var body: some View {
+        emphasized
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+    
+    private var emphasized: Text {
+        let tokens: [String] = emphasis.compactMap {
+            if case .highlight(let value) = $0 { return value }
+            return nil
+        }
+        guard let token = tokens.first(where: { text.contains($0) }),
+              let range = text.range(of: token) else {
+            return Text(text).font(font).foregroundStyle(color)
+        }
+        let prefix = String(text[..<range.lowerBound])
+        let match = String(text[range])
+        let suffix = String(text[range.upperBound...])
+        return Text(prefix).font(font).foregroundStyle(color)
+            + Text(match).font(font).bold().foregroundStyle(color)
+            + Text(suffix).font(font).foregroundStyle(color)
     }
 }

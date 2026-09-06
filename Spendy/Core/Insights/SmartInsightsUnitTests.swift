@@ -396,13 +396,13 @@ enum SmartInsightsUnitTests {
         )
         
         let moments = engine.evaluate(facts: facts, surface: .home, period: .month, recordExposures: false)
-        assert(moments.count <= 3, "Home must NEVER return more than 3 moments")
+        assert(moments.count <= 5, "Home must NEVER return more than 5 moments")
         
         let categoryMoments = engine.evaluate(facts: facts, surface: .category(id: "c1"), period: .month, recordExposures: false)
-        assert(categoryMoments.count <= 2, "Category sheet must return at most 2 moments")
+        assert(categoryMoments.count <= 5, "Category sheet must return at most 5 moments")
         
         let budgetMoments = engine.evaluate(facts: facts, surface: .budget, period: .month, recordExposures: false)
-        assert(budgetMoments.count <= 1, "Budget must return at most 1 moment")
+        assert(budgetMoments.count <= 5, "Budget must return at most 5 moments")
     }
     
     // MARK: - 11. Realistic Family Support 24-Transactions Fixture (PART 18)

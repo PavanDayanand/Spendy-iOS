@@ -106,7 +106,7 @@ struct SubscriptionsView: View {
             surface: .subscriptions,
             currencySymbol: store.currencySymbol
         )
-        return Array(moments.filter { !$0.isInsufficientData }.prefix(3))
+        return Array(moments.filter { !$0.isInsufficientData }.prefix(5))
     }
     
     private var groupedCardBackground: some View {
@@ -398,17 +398,16 @@ struct SubscriptionsView: View {
                     .symbolRenderingMode(.monochrome)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(moment.headline)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                    ShinyHeadlineText(
+                        headline: moment.headline,
+                        emphasis: moment.emphasis,
+                        font: .system(size: 15, weight: .semibold),
+                        emphasisFont: .system(size: 15, weight: .bold)
+                    )
+                    .lineLimit(2)
 
                     if let supporting = moment.supportingText, !supporting.isEmpty {
-                        Text(supporting)
-                            .font(AppTypography.footnoteMedium)
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .multilineTextAlignment(.leading)
+                        InsightSupportingText(text: supporting, emphasis: moment.emphasis)
                             .lineLimit(1)
                     }
                 }

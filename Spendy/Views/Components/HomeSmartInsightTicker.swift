@@ -122,19 +122,14 @@ struct HomeSmartInsightTicker: View {
     
     private func insightSentence(_ moment: InsightMoment, tappable: Bool, showBadge: Bool) -> some View {
         let textBlock = VStack(alignment: .leading, spacing: 4) {
-            ShinyText(
-                text: moment.headline,
+            ShinyHeadlineText(
+                headline: moment.headline,
+                emphasis: moment.emphasis,
                 font: .system(size: 15, weight: .semibold),
-                color: Color(hex: "#b5b5b5"),
-                shineColor: Color.white,
-                direction: .right,
-                phaseOffset: 0.55
+                emphasisFont: .system(size: 15, weight: .bold)
             )
             if let supporting = moment.supportingText, !supporting.isEmpty {
-                Text(supporting)
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                InsightSupportingText(text: supporting, emphasis: moment.emphasis)
             }
         }
         

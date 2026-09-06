@@ -17,7 +17,7 @@ struct EditorialInsightRailView: View {
     
     // Filter to at most 3 non-empty moments
     private var validMoments: [InsightMoment] {
-        Array(moments.prefix(3))
+        Array(moments.prefix(5))
     }
     
     private var cardTransition: AnyTransition {

@@ -117,7 +117,12 @@ struct EditorialInsightMomentView: View {
             .padding(.bottom, 6)
             
             // 2. Primary Headline with selective shiny token emphasis
-            ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis)
+            ShinyHeadlineText(
+                headline: moment.headline,
+                emphasis: moment.emphasis,
+                font: .system(size: 15.5, weight: .semibold),
+                emphasisFont: .system(size: 15.5, weight: .bold)
+            )
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
             
@@ -125,9 +130,7 @@ struct EditorialInsightMomentView: View {
             
             // 3. Supporting Text
             if let supporting = moment.supportingText {
-                Text(supporting)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
+                InsightSupportingText(text: supporting, emphasis: moment.emphasis)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }

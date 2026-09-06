@@ -89,7 +89,7 @@ struct AccountsView: View {
             }
         }
         
-        return Array(items.prefix(2))
+        return Array(items.prefix(5))
     }
     
     private var groupedCardBackground: some View {
@@ -378,16 +378,15 @@ struct AccountsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(item.headline)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                    ShinyHeadlineText(
+                        headline: item.headline,
+                        emphasis: item.account.map { [.highlight($0.label)] } ?? [.highlight("ahead"), .highlight("behind")],
+                        font: .system(size: 15, weight: .semibold),
+                        emphasisFont: .system(size: 15, weight: .bold)
+                    )
+                    .lineLimit(2)
                     
-                    Text(item.supporting)
-                        .font(AppTypography.footnoteMedium)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .multilineTextAlignment(.leading)
+                    InsightSupportingText(text: item.supporting, emphasis: [])
                         .lineLimit(1)
                 }
                 

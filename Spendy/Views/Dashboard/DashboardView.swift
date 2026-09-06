@@ -708,7 +708,7 @@ struct DashboardView: View {
     }
     
     private var visibleHomeInsights: [InsightMoment] {
-        Array(homeInsightMoments.filter { !$0.isInsufficientData }.prefix(3))
+        Array(homeInsightMoments.filter { !$0.isInsufficientData }.prefix(5))
     }
     
     @ViewBuilder
