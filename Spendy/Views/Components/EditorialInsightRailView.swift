@@ -36,10 +36,7 @@ struct EditorialInsightRailView: View {
             // 1. Stable "Insights" Header Anchor (Always present and visually calm)
             if showSectionHeader {
                 HStack(alignment: .center) {
-                    Text("Insights")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
+                    SpendyInsightBrandMark(style: .header)
                     Spacer()
                 }
                 .padding(.horizontal, 4)

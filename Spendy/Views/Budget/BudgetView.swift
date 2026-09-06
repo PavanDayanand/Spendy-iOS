@@ -236,10 +236,13 @@ struct BudgetView: View {
             )
             
             // Integrated Semantic Budget Moment
-            EditorialInsightRailView(
-                moments: budgetInsightMoments,
-                showSectionHeader: false
-            )
+            VStack(alignment: .leading, spacing: 10) {
+                SpendyInsightBrandMark(style: .kicker)
+                EditorialInsightRailView(
+                    moments: budgetInsightMoments,
+                    showSectionHeader: false
+                )
+            }
             
             // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
             HStack(spacing: 10) {

@@ -33,9 +33,7 @@ struct HomeSmartInsightTicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
-                Text("Smart Insights")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
+                SpendyInsightBrandMark(style: .header)
                 
                 Spacer()
                 
@@ -123,10 +121,15 @@ struct HomeSmartInsightTicker: View {
     
     private func insightSentence(_ moment: InsightMoment, tappable: Bool) -> some View {
         let content = VStack(alignment: .leading, spacing: 4) {
-            ShinyHeadlineText(
-                headline: moment.headline,
-                emphasis: moment.emphasis,
-                font: .system(size: 15, weight: .semibold)
+            ShinyText(
+                text: moment.headline,
+                font: .system(size: 15, weight: .semibold),
+                color: Color(hex: "#b5b5b5"),
+                shineColor: Color.white,
+                speed: 2,
+                delay: 0,
+                spread: 120,
+                direction: .left
             )
             if let supporting = moment.supportingText, !supporting.isEmpty {
                 Text(supporting)

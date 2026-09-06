@@ -293,7 +293,8 @@ struct AccountsView: View {
     }
     
     private var insightCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
+            SpendyInsightBrandMark(style: .kicker)
             insightPager
         }
         .padding(.horizontal, 16)

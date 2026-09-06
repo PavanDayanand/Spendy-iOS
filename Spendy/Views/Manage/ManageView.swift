@@ -294,7 +294,10 @@ struct SubscriptionsView: View {
             if !cardInsights.isEmpty {
                 Divider()
                     .overlay(SpendyColors.separator.opacity(0.7))
-                insightPager
+                VStack(alignment: .leading, spacing: 8) {
+                    SpendyInsightBrandMark(style: .kicker)
+                    insightPager
+                }
             } else if let next = nextUpcomingSubscription {
                 Divider()
                     .overlay(SpendyColors.separator.opacity(0.7))

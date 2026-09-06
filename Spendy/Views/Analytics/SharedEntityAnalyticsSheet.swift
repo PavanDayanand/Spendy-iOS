@@ -413,12 +413,16 @@ struct SharedEntityAnalyticsSheet: View {
                             .padding(.horizontal, 16)
                         
                         if !visibleInsights.isEmpty, !isScrubbingChart {
-                            VStack(alignment: .leading, spacing: 14) {
-                                ForEach(Array(visibleInsights.enumerated()), id: \.element.id) { index, moment in
-                                    insightSentence(moment)
-                                    if index < visibleInsights.count - 1 {
-                                        Divider()
-                                            .overlay(SpendyColors.separator.opacity(0.55))
+                            VStack(alignment: .leading, spacing: 12) {
+                                SpendyInsightBrandMark(style: .kicker)
+                                
+                                VStack(alignment: .leading, spacing: 14) {
+                                    ForEach(Array(visibleInsights.enumerated()), id: \.element.id) { index, moment in
+                                        insightSentence(moment)
+                                        if index < visibleInsights.count - 1 {
+                                            Divider()
+                                                .overlay(SpendyColors.separator.opacity(0.55))
+                                        }
                                     }
                                 }
                             }
