@@ -707,10 +707,17 @@ struct DashboardView: View {
         )
     }
     
+    private var visibleHomeInsights: [InsightMoment] {
+        Array(homeInsightMoments.filter { !$0.isInsufficientData }.prefix(3))
+    }
+    
     @ViewBuilder
     private var smartInsightsSection: some View {
-        EditorialInsightRailView(moments: homeInsightMoments) { destination in
-            handleInsightDestination(destination)
+        if !visibleHomeInsights.isEmpty {
+            HomeSmartInsightTicker(
+                moments: visibleHomeInsights,
+                onSelectDestination: handleInsightDestination
+            )
         }
     }
     
@@ -1050,3 +1057,5 @@ private struct ProfilePillPressStyle: ButtonStyle {
             .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
     }
 }
+
+
