@@ -12,6 +12,7 @@ struct HomeSmartInsightTicker: View {
     let moments: [InsightMoment]
     var onSelectDestination: ((InsightDestination) -> Void)? = nil
     
+    @Environment(ExpenseStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var index: Int = 0
     @State private var scrollOffset: CGFloat = 0
@@ -93,12 +94,12 @@ struct HomeSmartInsightTicker: View {
     private var scrollWindow: some View {
         ZStack(alignment: .topLeading) {
             if let current {
-                insightSentence(current, tappable: false)
+                insightSentence(current, tappable: false, showBadge: false)
                     .frame(maxWidth: .infinity, minHeight: slotHeight, alignment: .topLeading)
                     .offset(y: scrollOffset)
             }
             if let next, moments.count > 1 {
-                insightSentence(next, tappable: false)
+                insightSentence(next, tappable: false, showBadge: false)
                     .frame(maxWidth: .infinity, minHeight: slotHeight, alignment: .topLeading)
                     .offset(y: scrollOffset + slotHeight)
             }
@@ -110,7 +111,7 @@ struct HomeSmartInsightTicker: View {
     private var stackedList: some View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach(Array(moments.enumerated()), id: \.element.id) { index, moment in
-                insightSentence(moment, tappable: true)
+                insightSentence(moment, tappable: true, showBadge: true)
                 if index < moments.count - 1 {
                     Divider()
                         .overlay(SpendyColors.separator.opacity(0.55))
@@ -119,17 +120,15 @@ struct HomeSmartInsightTicker: View {
         }
     }
     
-    private func insightSentence(_ moment: InsightMoment, tappable: Bool) -> some View {
-        let content = VStack(alignment: .leading, spacing: 4) {
+    private func insightSentence(_ moment: InsightMoment, tappable: Bool, showBadge: Bool) -> some View {
+        let textBlock = VStack(alignment: .leading, spacing: 4) {
             ShinyText(
                 text: moment.headline,
                 font: .system(size: 15, weight: .semibold),
                 color: Color(hex: "#b5b5b5"),
                 shineColor: Color.white,
-                speed: 2,
-                delay: 0,
-                spread: 120,
-                direction: .left
+                direction: .right,
+                phaseOffset: 0.55
             )
             if let supporting = moment.supportingText, !supporting.isEmpty {
                 Text(supporting)
@@ -137,6 +136,18 @@ struct HomeSmartInsightTicker: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        
+        let content = HStack(alignment: .top, spacing: 12) {
+            if let symbol = relatedSymbol(for: moment), showBadge {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .frame(width: 22, height: 22)
+                    .padding(.top, 1)
+                    .symbolRenderingMode(.monochrome)
+            }
+            textBlock
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -206,6 +217,35 @@ struct HomeSmartInsightTicker: View {
             
             index = (index + 1) % moments.count
             scrollOffset = 0
+        }
+    }
+    
+    private func relatedSymbol(for moment: InsightMoment) -> String? {
+        switch moment.destination {
+        case .category(let id):
+            return store.categories.first(where: { $0.id == id })?.sfSymbol ?? "square.grid.2x2"
+        case .subscriptionDetail(let id):
+            return store.subscriptions.first(where: {
+                $0.id.uuidString.lowercased() == id.lowercased()
+            })?.sfSymbol ?? SFIcons.subscriptions
+        case .subscriptions:
+            return SFIcons.subscriptions
+        case .budget:
+            return SFIcons.tabBudget
+        case .transaction(_):
+            return "receipt"
+        case .analytics, nil:
+            break
+        }
+        
+        switch moment.family {
+        case .income: return "arrow.down.left"
+        case .anomaly: return "exclamationmark.triangle"
+        case .budget: return SFIcons.tabBudget
+        case .spending: return "chart.bar"
+        case .behavior: return "calendar"
+        case .category: return "square.grid.2x2"
+        case .subscription: return SFIcons.subscriptions
         }
     }
 }

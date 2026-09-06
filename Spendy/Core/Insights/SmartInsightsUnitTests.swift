@@ -201,8 +201,8 @@ enum SmartInsightsUnitTests {
             currencySymbol: "₹"
         )
         
-        assert(compound.headline == "Spending is outpacing your budget timeline.")
-        assert(compound.supportingText == "Shopping is driving most of this month's increase.")
+        assert(compound.headline == "You're spending faster than this month's budget.")
+        assert(compound.supportingText == "Shopping is doing most of the extra spend this month.")
         assert(compound.actionTitle == "View Shopping →")
     }
     
@@ -228,9 +228,54 @@ enum SmartInsightsUnitTests {
         )
         
         let payload = InsightMessageBuilder.buildMessage(for: subDueCandidate, currencySymbol: "₹")
-        assert(payload.headline == "Spotify bill is due tomorrow.")
-        assert(payload.supportingText == "₹1,199 scheduled for renewal.")
+        assert(payload.headline == "Spotify is due tomorrow.")
+        assert(payload.supportingText == "₹1,199 comes out then.")
         assert(payload.actionTitle == "View Spotify →")
+        
+        let overdue = InsightCandidate(
+            id: "sub_overdue",
+            semanticKey: "sub_overdue",
+            family: .subscription,
+            kind: .warning,
+            surfaceAffinity: [.home],
+            confidence: 1.0,
+            severity: 0.9,
+            evidence: .subscriptionOverdue(subscriptionId: "sub_1", subscriptionName: "Apple Music", amount: 59.0, daysOverdue: 1),
+            destination: .subscriptionDetail(id: "sub_1")
+        )
+        let overduePayload = InsightMessageBuilder.buildMessage(for: overdue, currencySymbol: "₹")
+        assert(overduePayload.headline == "Apple Music is past due.")
+        assert(overduePayload.supportingText == "₹59 was due 1 day ago.")
+        assert(!overduePayload.supportingText!.contains("1 days"))
+        
+        let lessFood = InsightCandidate(
+            id: "food_less",
+            semanticKey: "cat_trend",
+            family: .category,
+            kind: .observation,
+            surfaceAffinity: [.home],
+            confidence: 0.9,
+            severity: 0.4,
+            evidence: .categoryTrend(
+                categoryId: "food",
+                categoryName: "Food",
+                currentAmount: 800,
+                baselineAmount: 1200,
+                deltaAmount: -400,
+                deltaPercent: -33.0,
+                period: .month
+            ),
+            destination: .category(id: "food")
+        )
+        let lessPayload = InsightMessageBuilder.buildMessage(for: lessFood, currencySymbol: "₹")
+        assert(lessPayload.headline == "You're spending less on Food.")
+        assert(lessPayload.headline.lowercased().contains("you"))
+        
+        let banned = ["discipline", "restraint", "detected", "allocation", "utilization"]
+        for word in banned {
+            assert(!lessPayload.headline.lowercased().contains(word))
+            assert(!(lessPayload.supportingText ?? "").lowercased().contains(word))
+        }
     }
     
     // MARK: - 7. Long-Term Multi-Month Pattern Rule
@@ -254,7 +299,7 @@ enum SmartInsightsUnitTests {
         )
         let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: "₹")
         assert(payload.headline == "December is usually your most expensive month.")
-        assert(payload.supportingText == "Historical spending averaged 1.8x higher than other months.")
+        assert(payload.supportingText == "Spending then runs about 1.8x the rest of the year.")
         assert(payload.actionTitle == nil, "Seasonality has no destination, so actionTitle must be nil")
     }
     
@@ -351,7 +396,13 @@ enum SmartInsightsUnitTests {
         )
         
         let moments = engine.evaluate(facts: facts, surface: .home, period: .month, recordExposures: false)
-        assert(moments.count <= 3, "Decision engine must NEVER return more than 3 moments on a surface")
+        assert(moments.count <= 3, "Home must NEVER return more than 3 moments")
+        
+        let categoryMoments = engine.evaluate(facts: facts, surface: .category(id: "c1"), period: .month, recordExposures: false)
+        assert(categoryMoments.count <= 2, "Category sheet must return at most 2 moments")
+        
+        let budgetMoments = engine.evaluate(facts: facts, surface: .budget, period: .month, recordExposures: false)
+        assert(budgetMoments.count <= 1, "Budget must return at most 1 moment")
     }
     
     // MARK: - 11. Realistic Family Support 24-Transactions Fixture (PART 18)

@@ -18,11 +18,12 @@ struct ShinyText: View {
     var font: Font = .body
     var color: Color = Color(hex: "#b5b5b5")
     var shineColor: Color = Color.white
-    var speed: Double = 2
-    var delay: Double = 0
-    var spread: Double = 120
-    var direction: Direction = .left
+    var speed: Double = 2.4
+    var delay: Double = 0.7
+    var spread: Double = 90
+    var direction: Direction = .right
     var yoyo: Bool = false
+    var phaseOffset: Double = 0
     var disabled: Bool = false
     var alignment: TextAlignment = .leading
     
@@ -68,9 +69,11 @@ struct ShinyText: View {
         return LinearGradient(
             stops: [
                 .init(color: color, location: 0),
-                .init(color: color, location: 0.35),
+                .init(color: color, location: 0.42),
+                .init(color: shineColor.opacity(0.35), location: 0.47),
                 .init(color: shineColor, location: 0.50),
-                .init(color: color, location: 0.65),
+                .init(color: shineColor.opacity(0.35), location: 0.53),
+                .init(color: color, location: 0.58),
                 .init(color: color, location: 1)
             ],
             startPoint: start,
@@ -79,7 +82,7 @@ struct ShinyText: View {
     }
     
     private func shineProgress(at date: Date) -> Double {
-        let elapsed = date.timeIntervalSinceReferenceDate * 1000
+        let elapsed = max(0, date.timeIntervalSinceReferenceDate - phaseOffset) * 1000
         let animationDuration = speed * 1000
         let delayDuration = delay * 1000
         let goingLeft = direction == .left
@@ -90,13 +93,13 @@ struct ShinyText: View {
             let cycleTime = elapsed.truncatingRemainder(dividingBy: fullCycle)
             
             if cycleTime < animationDuration {
-                let p = (cycleTime / animationDuration) * 100
+                let p = easeInOut((cycleTime / animationDuration) * 100)
                 return goingLeft ? p : 100 - p
             } else if cycleTime < cycleDuration {
                 return goingLeft ? 100 : 0
             } else if cycleTime < cycleDuration + animationDuration {
                 let reverseTime = cycleTime - cycleDuration
-                let p = 100 - (reverseTime / animationDuration) * 100
+                let p = easeInOut(100 - (reverseTime / animationDuration) * 100)
                 return goingLeft ? p : 100 - p
             } else {
                 return goingLeft ? 0 : 100
@@ -105,10 +108,16 @@ struct ShinyText: View {
             let cycleDuration = animationDuration + delayDuration
             let cycleTime = elapsed.truncatingRemainder(dividingBy: max(cycleDuration, 1))
             if cycleTime < animationDuration {
-                let p = (cycleTime / animationDuration) * 100
+                let p = easeInOut((cycleTime / animationDuration) * 100)
                 return goingLeft ? p : 100 - p
             }
             return goingLeft ? 100 : 0
         }
+    }
+    
+    private func easeInOut(_ percent: Double) -> Double {
+        let t = min(100, max(0, percent)) / 100.0
+        let eased = t * t * (3 - 2 * t)
+        return eased * 100
     }
 }

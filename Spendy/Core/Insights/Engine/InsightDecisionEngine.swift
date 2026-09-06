@@ -225,10 +225,12 @@ final class InsightDecisionEngine: Sendable {
             
             let maxMoments: Int
             switch surface {
-            case .home, .analytics, .category, .subscriptions:
+            case .home, .analytics:
                 maxMoments = 3
-            case .budget:
+            case .category, .subscriptions:
                 maxMoments = 2
+            case .budget:
+                maxMoments = 1
             }
             if moments.count >= maxMoments { break }
         }

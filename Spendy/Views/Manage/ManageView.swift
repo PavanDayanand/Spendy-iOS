@@ -374,8 +374,15 @@ struct SubscriptionsView: View {
         .minimumScaleFactor(0.8)
     }
 
+    private func subscriptionForMoment(_ moment: InsightMoment) -> Subscription? {
+        if case .subscriptionDetail(let id) = moment.destination {
+            return store.subscriptions.first { $0.id.uuidString.lowercased() == id.lowercased() }
+        }
+        return nil
+    }
+    
     private func insightRow(_ moment: InsightMoment) -> some View {
-        let isWarning = moment.kind == .warning || moment.kind == .anomaly
+        let sub = subscriptionForMoment(moment)
         return Button {
             HapticsManager.shared.trigger(.selection)
             if let destination = moment.destination {
@@ -383,11 +390,12 @@ struct SubscriptionsView: View {
             }
         } label: {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: isWarning ? "exclamationmark.circle.fill" : "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isWarning ? SpendyColors.expenseRed : SpendyColors.textTertiary)
+                Image(systemName: sub?.sfSymbol ?? SFIcons.subscriptions)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
                     .frame(width: 22, height: 22)
                     .padding(.top, 1)
+                    .symbolRenderingMode(.monochrome)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(moment.headline)

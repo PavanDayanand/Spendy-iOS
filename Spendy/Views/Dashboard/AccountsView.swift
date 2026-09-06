@@ -67,7 +67,7 @@ struct AccountsView: View {
         if flow.inflow > 0 || flow.outflow > 0 {
             items.append(AccountInsight(
                 id: "month_flow",
-                headline: net >= 0 ? "This month is net positive" : "This month is net negative",
+                headline: net >= 0 ? "You're ahead this month" : "You're behind this month",
                 supporting: "+\(flow.inflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) in · −\(flow.outflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) out",
                 isWarning: net < 0,
                 account: nil
@@ -89,7 +89,7 @@ struct AccountsView: View {
             }
         }
         
-        return Array(items.prefix(3))
+        return Array(items.prefix(2))
     }
     
     private var groupedCardBackground: some View {
@@ -368,11 +368,14 @@ struct AccountsView: View {
             }
         } label: {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: item.isWarning ? "exclamationmark.circle.fill" : "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(item.isWarning ? SpendyColors.expenseRed : SpendyColors.textTertiary)
-                    .frame(width: 22, height: 22)
-                    .padding(.top, 1)
+                if let account = item.account {
+                    Image(systemName: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                        .frame(width: 22, height: 22)
+                        .padding(.top, 1)
+                        .symbolRenderingMode(.monochrome)
+                }
                 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.headline)

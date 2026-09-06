@@ -57,10 +57,8 @@ struct SpendyInsightBrandMark: View {
                 font: wordFont,
                 color: Color(hex: "#b5b5b5"),
                 shineColor: Color.white,
-                speed: 2,
-                delay: 0,
-                spread: 120,
-                direction: .left
+                direction: .right,
+                phaseOffset: 0
             )
         }
         .accessibilityElement(children: .ignore)
