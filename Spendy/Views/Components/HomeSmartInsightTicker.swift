@@ -3,7 +3,7 @@
 //  Spendy
 //
 //  One insight at a time, scrolling up like a feed entry every 5 seconds.
-//  See all / Show less pins or restores the ticker. Body sits in a card.
+//  Chevron expands or collapses the ticker. Body sits in a card.
 //
 
 import SwiftUI
@@ -40,13 +40,11 @@ struct HomeSmartInsightTicker: View {
                 
                 if moments.count > 1 {
                     Button(action: toggleExpanded) {
-                        HStack(spacing: 4) {
-                            Text(isExpanded ? "Show less" : "See all")
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(SpendyColors.textSecondary)
+                        Image(systemName: isExpanded ? SFIcons.chevronUp : SFIcons.chevronDown)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(isExpanded ? "Show less insights" : "See all insights")

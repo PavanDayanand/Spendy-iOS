@@ -784,21 +784,14 @@ struct DashboardView: View {
                         HapticsManager.shared.trigger(.selection)
                         showAllTransactionsSheet = true
                     }) {
-                        HStack(spacing: 4) {
-                            Text("View all")
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background {
-                            Capsule(style: .continuous)
-                                .fill(SpendyColors.cardBackgroundSecondary)
-                        }
+                        Image(systemName: SFIcons.chevronRight)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("View all transactions")
                 }
             }
             
