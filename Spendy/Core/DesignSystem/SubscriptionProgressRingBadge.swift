@@ -64,6 +64,7 @@ struct SubscriptionProgressRingBadge: View {
     var monogramName: String = ""
     
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isMonoIconMode) private var isMonoMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     @State private var animatedProgress: Double = 0.0
@@ -106,24 +107,16 @@ struct SubscriptionProgressRingBadge: View {
         self.monogramName = subscription.name
     }
     
-    private var isLightColor: Bool {
-        let uiColor = UIColor(color)
-        var white: CGFloat = 0
-        var alpha: CGFloat = 0
-        if uiColor.getWhite(&white, alpha: &alpha) {
-            return white > 0.85
-        }
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &alpha) {
-            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-            return luminance > 0.82
-        }
-        return false
+    private var paint: SpendyIconPaint.Resolved {
+        SpendyIconPaint.resolve(
+            color,
+            scheme: colorScheme,
+            mono: isMonoMode,
+            prominent: size == .hero || size == .large
+        )
     }
     
-    private var symbolForeground: Color {
-        isLightColor ? Color.black : Color.white
-    }
+    private var ringColor: Color { paint.fill }
     
     var body: some View {
         ZStack {
@@ -132,7 +125,7 @@ struct SubscriptionProgressRingBadge: View {
                 // Background Track (subtle matching color)
                 Circle()
                     .stroke(
-                        color.opacity(isPaused ? 0.08 : (colorScheme == .dark ? 0.20 : 0.24)),
+                        ringColor.opacity(isPaused ? 0.10 : (colorScheme == .dark ? 0.22 : 0.28)),
                         lineWidth: size.strokeWidth
                     )
                     .frame(
@@ -145,7 +138,7 @@ struct SubscriptionProgressRingBadge: View {
                     Circle()
                         .trim(from: 0, to: CGFloat(min(max(animatedProgress, 0.0), 1.0)))
                         .stroke(
-                            color,
+                            ringColor,
                             style: StrokeStyle(
                                 lineWidth: size.strokeWidth,
                                 lineCap: .round
@@ -157,7 +150,7 @@ struct SubscriptionProgressRingBadge: View {
                             height: size.outerDimension - size.strokeWidth
                         )
                         .shadow(
-                            color: color.opacity(isDueSoon || isOverdue ? 0.40 : 0.20),
+                            color: ringColor.opacity(isDueSoon || isOverdue ? 0.40 : 0.20),
                             radius: isDueSoon || isOverdue ? 3 : 1.5,
                             x: 0,
                             y: 0
@@ -167,24 +160,19 @@ struct SubscriptionProgressRingBadge: View {
             
             // MARK: - Inner Icon Badge
             Circle()
-                .fill(color.opacity(isPaused ? 0.45 : 1.0))
+                .fill(paint.fill.opacity(isPaused ? 0.55 : 1.0))
                 .frame(width: size.innerDimension, height: size.innerDimension)
-                .shadow(
-                    color: isPaused ? Color.clear : color.opacity(0.30),
-                    radius: size == .hero ? 8 : 2.5,
-                    y: size == .hero ? 3 : 1
-                )
             
-            // Centered Symbol or Monogram
             if let letter = SpendyMonogram.displayLetter(symbol: sfSymbol, name: monogramName) {
                 Text(letter)
                     .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(symbolForeground)
+                    .foregroundStyle(paint.glyph)
                     .opacity(isPaused ? 0.65 : 1.0)
             } else {
                 Image(systemName: SFIcons.symbol(named: sfSymbol))
-                    .font(.system(size: size.iconSize, weight: .bold))
-                    .foregroundStyle(symbolForeground)
+                    .font(.system(size: size.iconSize, weight: .semibold))
+                    .foregroundStyle(paint.glyph)
+                    .symbolRenderingMode(.monochrome)
                     .contentTransition(.symbolEffect(.replace.byLayer))
                     .opacity(isPaused ? 0.65 : 1.0)
             }

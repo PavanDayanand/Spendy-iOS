@@ -57,7 +57,7 @@ struct SubscriptionsView: View {
             .sorted(by: { $0.amount > $1.amount })
             .prefix(5)
             .map { sub in
-                BadgeItem(icon: sub.sfSymbol, color: sub.color)
+                BadgeItem(id: sub.id.uuidString, icon: sub.sfSymbol, color: sub.color, name: sub.name)
             }
     }
 

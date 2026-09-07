@@ -1044,15 +1044,11 @@ struct SharedEntityAnalyticsSheet: View {
                     case .category:
                         if let acc = acc {
                             HStack(spacing: 5) {
-                                Image(systemName: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol)
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 14, height: 14)
-                                    .background(
-                                        acc.color,
-                                        in: RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                    )
-                                    .shadow(color: acc.color.opacity(0.35), radius: 1, x: 0, y: 0)
+                                SpendyMiniColorChip(
+                                    sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
+                                    color: acc.color,
+                                    monogramName: acc.label
+                                )
                                 
                                 Text("\(acc.label) • \(tx.date.formattedRelative)")
                                     .font(.system(size: 13, weight: .medium))
@@ -1067,15 +1063,11 @@ struct SharedEntityAnalyticsSheet: View {
                     case .account:
                         if let cat = cat {
                             HStack(spacing: 5) {
-                                Image(systemName: cat.sfSymbol)
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 14, height: 14)
-                                    .background(
-                                        cat.color,
-                                        in: RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                    )
-                                    .shadow(color: cat.color.opacity(0.35), radius: 1, x: 0, y: 0)
+                                SpendyMiniColorChip(
+                                    sfSymbol: cat.sfSymbol,
+                                    color: cat.color,
+                                    monogramName: cat.label
+                                )
                                 
                                 Text("\(cat.label) • \(tx.date.formattedRelative)")
                                     .font(.system(size: 13, weight: .medium))

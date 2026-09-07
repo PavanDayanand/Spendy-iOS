@@ -24,11 +24,13 @@ struct BadgeItem: Identifiable {
     let id: String
     let icon: String
     let color: Color
+    var name: String = ""
     
-    init(icon: String, color: Color) {
-        self.id = icon
+    init(id: String? = nil, icon: String, color: Color, name: String = "") {
+        self.id = id ?? "\(icon)-\(name)"
         self.icon = icon
         self.color = color
+        self.name = name
     }
 }
 
@@ -58,7 +60,8 @@ struct OverlappingBadgeCluster: View {
             color: item.color,
             size: .small,
             style: .circle,
-            showCutoutBorder: true
+            showCutoutBorder: true,
+            monogramName: item.name
         )
     }
     
@@ -66,6 +69,87 @@ struct OverlappingBadgeCluster: View {
         let count = min(items.count, 5)
         if count <= 1 { return badgeSize }
         return badgeSize + CGFloat(count - 1) * (badgeSize * 0.58)
+    }
+}
+
+/// How Spendy paints entity icons: chrome stays mono, color is identity.
+/// Every named thing (category, account, subscription) is a solid badge
+/// with a contrast glyph — the same language at 14pt and 80pt.
+enum SpendyIconPaint {
+    struct Resolved {
+        let fill: Color
+        let glyph: Color
+        let glow: Color
+    }
+    
+    static func resolve(
+        _ color: Color,
+        scheme: ColorScheme,
+        mono: Bool,
+        prominent: Bool
+    ) -> Resolved {
+        if mono {
+            return Resolved(
+                fill: SpendyColors.textPrimary,
+                glyph: SpendyColors.inverseText,
+                glow: .clear
+            )
+        }
+        
+        let uiColor = UIColor(color)
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        
+        // Near-white / washed greys can't carry a glyph. Fall back to paper.
+        let nearWhite = brightness > 0.90 && saturation < 0.14
+        if nearWhite {
+            return Resolved(
+                fill: SpendyColors.cardBackgroundSecondary,
+                glyph: SpendyColors.textPrimary,
+                glow: .clear
+            )
+        }
+        
+        // Keep the hue the user picked. Lift crushed darks, pull neon down
+        // just enough that yellows stay yellow and blues stay blue.
+        let fillSaturation = min(1.0, max(0.42, saturation * (scheme == .dark ? 1.06 : 1.0)))
+        let fillBrightness: CGFloat = scheme == .light
+            ? min(0.90, max(0.38, brightness))
+            : min(0.82, max(0.46, brightness))
+        let fill = Color(
+            hue: Double(hue),
+            saturation: Double(fillSaturation),
+            brightness: Double(fillBrightness)
+        )
+        
+        let glyph: Color = relativeLuminance(
+            hue: hue,
+            saturation: fillSaturation,
+            brightness: fillBrightness
+        ) > 0.55 ? Color.black.opacity(0.88) : Color.white
+        
+        let glow: Color = prominent
+            ? fill.opacity(scheme == .light ? 0.22 : 0.34)
+            : .clear
+        
+        return Resolved(fill: fill, glyph: glyph, glow: glow)
+    }
+    
+    private static func relativeLuminance(
+        hue: CGFloat,
+        saturation: CGFloat,
+        brightness: CGFloat
+    ) -> CGFloat {
+        let ui = UIColor(hue: hue, saturation: saturation, brightness: brightness, alpha: 1)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        func linear(_ channel: CGFloat) -> CGFloat {
+            channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
     }
 }
 
@@ -106,6 +190,39 @@ struct SpendyGlyph: View {
             Image(systemName: SFIcons.symbol(named: symbol))
                 .font(font)
         }
+    }
+}
+
+/// 14pt account/category chip used under row titles. Same paint as the badges.
+struct SpendyMiniColorChip: View {
+    var sfSymbol: String
+    var color: Color
+    var size: CGFloat = 14
+    var monogramName: String = ""
+    
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isMonoIconMode) private var isMonoMode
+    
+    var body: some View {
+        let paint = SpendyIconPaint.resolve(
+            color,
+            scheme: colorScheme,
+            mono: isMonoMode,
+            prominent: false
+        )
+        
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+                .fill(paint.fill)
+            SpendyGlyph(
+                symbol: sfSymbol,
+                name: monogramName,
+                font: .system(size: size * 0.57, weight: .bold)
+            )
+            .foregroundStyle(paint.glyph)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: paint.fill.opacity(isMonoMode ? 0 : 0.32), radius: 1, y: 0)
     }
 }
 
@@ -169,51 +286,13 @@ struct SpendyIconBadge: View {
     @Environment(\.isMonoIconMode) private var isMonoMode
     @Environment(\.colorScheme) private var colorScheme
     
-    private var isLightColor: Bool {
-        let uiColor = UIColor(color)
-        var white: CGFloat = 0
-        var alpha: CGFloat = 0
-        if uiColor.getWhite(&white, alpha: &alpha) {
-            return white > 0.85
-        }
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &alpha) {
-            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-            return luminance > 0.82
-        }
-        return false
-    }
-    
-    // Mono mode: fill is textPrimary (black in light, white in dark)
-    private var effectiveFillColor: Color {
-        if isMonoMode {
-            return SpendyColors.textPrimary
-        }
-        return color
-    }
-    
-    // Mono mode: symbol is always the inverse of the fill
-    private var symbolForeground: Color {
-        if isMonoMode {
-            return SpendyColors.inverseText
-        }
-        if isGradient {
-            return color
-        }
-        return isLightColor ? Color.black : Color.white
-    }
-    
-    // Mono mode: no colored shadow
-    private var effectiveShadowColor: Color {
-        if isMonoMode {
-            return Color.clear
-        }
-        return color.opacity(0.35)
-    }
-    
-    // Mono mode gradient: use textPrimary instead of entity color
-    private var monoGradientColor: Color {
-        SpendyColors.textPrimary
+    private var paint: SpendyIconPaint.Resolved {
+        SpendyIconPaint.resolve(
+            color,
+            scheme: colorScheme,
+            mono: isMonoMode,
+            prominent: size == .hero || size == .large
+        )
     }
     
     private var resolvedCornerRadius: CGFloat {
@@ -226,88 +305,35 @@ struct SpendyIconBadge: View {
     }
     
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous)
+        
         ZStack {
-            switch style {
-            case .circle:
-                if isGradient && !isMonoMode {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [color.opacity(0.35), color.opacity(0.18)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+            shape
+                .fill(paint.fill)
+                .overlay {
+                    if showCutoutBorder {
+                        shape.stroke(
+                            colorScheme == .dark ? Color.black.opacity(0.85) : Color.white,
+                            lineWidth: size.strokeWidth
                         )
-                        .overlay(Circle().stroke(color.opacity(0.35), lineWidth: 1))
-                        .shadow(color: color.opacity(0.20), radius: 5, y: 2)
-                } else if isGradient && isMonoMode {
-                    // Mono gradient mode: subtle monochrome gradient
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [monoGradientColor.opacity(0.35), monoGradientColor.opacity(0.18)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(Circle().stroke(monoGradientColor.opacity(0.35), lineWidth: 1))
-                } else {
-                    Circle()
-                        .fill(effectiveFillColor)
-                        .overlay {
-                            if showCutoutBorder {
-                                Circle()
-                                    .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
-                            }
-                        }
-                        .shadow(color: effectiveShadowColor.opacity(0.7), radius: size == .hero ? 10 : 4, y: size == .hero ? 3 : 1.5)
+                    }
                 }
-            case .rounded:
-                let cornerRadius = resolvedCornerRadius
-                if isGradient && !isMonoMode {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [color.opacity(0.35), color.opacity(0.18)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: color.opacity(0.25), radius: size == .hero ? 8 : 4, x: 0, y: 0)
-                        .shadow(color: color.opacity(0.20), radius: size == .hero ? 12 : 5, x: 0, y: 2)
-                } else if isGradient && isMonoMode {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [monoGradientColor.opacity(0.35), monoGradientColor.opacity(0.18)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                } else {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(effectiveFillColor)
-                        .overlay {
-                            if showCutoutBorder {
-                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                    .stroke(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white, lineWidth: size.strokeWidth)
-                            }
-                        }
-                        // All-sides shading: ambient 360-degree diffusion + subtle key depth
-                        .shadow(color: effectiveShadowColor.opacity(0.45), radius: size == .hero ? 8 : 3.5, x: 0, y: 0)
-                        .shadow(color: effectiveShadowColor.opacity(0.30), radius: size == .hero ? 12 : 4.5, x: 0, y: 1.5)
-                }
-            }
+                .shadow(
+                    color: paint.glow,
+                    radius: size == .hero ? 10 : (size == .large ? 6 : 0),
+                    y: size == .hero ? 3 : 2
+                )
             
             if let letter = SpendyMonogram.displayLetter(symbol: sfSymbol, name: monogramName) {
                 Text(letter)
                     .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(symbolForeground)
+                    .foregroundStyle(paint.glyph)
                     .contentTransition(.opacity)
             } else {
                 Image(systemName: SFIcons.symbol(named: sfSymbol))
-                    .font(.system(size: size.iconSize, weight: .bold))
-                    .foregroundStyle(symbolForeground)
+                    .font(.system(size: size.iconSize, weight: .semibold))
+                    .foregroundStyle(paint.glyph)
+                    .symbolRenderingMode(.monochrome)
                     .contentTransition(.symbolEffect(.replace.byLayer))
             }
         }

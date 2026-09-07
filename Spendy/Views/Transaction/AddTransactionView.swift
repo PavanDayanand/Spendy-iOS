@@ -27,6 +27,8 @@ enum TransactionActiveSheet: Identifiable {
 struct AddTransactionView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isMonoIconMode) private var isMonoMode
     
     var transactionToEdit: Transaction? = nil
     
@@ -384,22 +386,32 @@ struct AddTransactionView: View {
     private func accountPillButton(account: Account?, isDestination: Bool) -> some View {
         let accBalance = store.balance(for: account?.id ?? "")
         let initialLetter = String((account?.label.prefix(1) ?? "A")).uppercased()
+        let paint = SpendyIconPaint.resolve(
+            account?.color ?? SpendyColors.cardBackgroundSecondary,
+            scheme: colorScheme,
+            mono: isMonoMode,
+            prominent: false
+        )
         
         let button = Button(action: {
             activeSheet = .account(isDestination: isDestination)
             HapticsManager.shared.trigger(.selection)
         }) {
             HStack(spacing: 8) {
-                // Vibrant Account Avatar Rounded Square (32x32)
+                // Account letter badge — same solid paint as every other entity icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(account?.color ?? SpendyColors.cardBackgroundSecondary)
+                        .fill(account == nil ? SpendyColors.cardBackgroundSecondary : paint.fill)
                         .frame(width: 32, height: 32)
-                        .shadow(color: (account?.color ?? Color.black).opacity(0.35), radius: 3, x: 0, y: 0)
+                        .shadow(
+                            color: account == nil ? .clear : paint.fill.opacity(0.35),
+                            radius: 3,
+                            y: 0
+                        )
                     
                     Text(initialLetter)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(account != nil ? Color.white : SpendyColors.textPrimary)
+                        .foregroundStyle(account != nil ? paint.glyph : SpendyColors.textPrimary)
                 }
                 .padding(.leading, 6)
                 

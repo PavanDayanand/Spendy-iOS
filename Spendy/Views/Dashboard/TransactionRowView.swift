@@ -50,15 +50,11 @@ struct TransactionRowView: View {
                     .lineLimit(1)
                 
                 HStack(spacing: 5) {
-                    Image(systemName: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol)
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.inverseText : .white)
-                        .frame(width: 14, height: 14)
-                        .background(
-                            SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color,
-                            in: RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                        )
-                        .shadow(color: (SpendyColors.isMonoMode ? SpendyColors.textPrimary : account.color).opacity(0.35), radius: 1, x: 0, y: 0)
+                    SpendyMiniColorChip(
+                        sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
+                        color: account.color,
+                        monogramName: account.label
+                    )
                     
                     Text(account.label)
                         .font(.system(size: 13, weight: .medium))
