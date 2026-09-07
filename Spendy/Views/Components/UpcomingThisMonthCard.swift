@@ -99,6 +99,7 @@ struct UpcomingThisMonthCard: View {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
+                        .spendyCardLift()
                 }
             }
         }

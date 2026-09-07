@@ -76,6 +76,7 @@ struct HomeSmartInsightTicker: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
+                    .spendyCardLift()
             }
         }
         .gesture(expandGesture)

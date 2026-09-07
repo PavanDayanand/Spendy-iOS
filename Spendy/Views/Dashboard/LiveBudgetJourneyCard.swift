@@ -194,7 +194,7 @@ struct LiveBudgetJourneyCard: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 5)
+            .spendyCardLift()
     }
 }
 

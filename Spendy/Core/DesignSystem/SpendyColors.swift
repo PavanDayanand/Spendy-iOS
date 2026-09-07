@@ -81,38 +81,38 @@ enum SpendyColors {
     // to resolve to monochrome without changing any call sites across the app.
     static var isMonoMode: Bool = false
     
-    // Dynamic Base Backgrounds (#000000 in Dark Mode, #F6F6F6 in Light Mode for non-gradient surfaces & sheets)
+    // Dynamic Base Backgrounds (paper white in Light, pitch black in Dark)
     static let appBackground = Color(uiColor: .dynamic(
-        light: UIColor(red: 246.0/255.0, green: 246.0/255.0, blue: 246.0/255.0, alpha: 1.0), // #F6F6F6
+        light: UIColor(white: 1.0, alpha: 1.0),                                              // #FFFFFF
         dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
-    // Card Surfaces (#1A1A1A with subtle transparency in Dark Mode, #FFFFFF with subtle transparency in Light Mode)
+    // Card Surfaces — opaque white in Light so they sit on the paper canvas
     static let cardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 0.82),                                               // #FFFFFF 82%
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.82)      // #1A1A1A 82%
+        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.92)      // #1A1A1A
     ))
 
     // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(red: 238.0/255.0, green: 238.0/255.0, blue: 238.0/255.0, alpha: 0.80), // #EEEEEE 80%
+        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0), // #F5F6F8
         dark: UIColor(red: 38.0/255.0, green: 38.0/255.0, blue: 38.0/255.0, alpha: 0.80)      // #262626 80%
     ))
 
-    // Sheet Card Surfaces (#1A1A1A with subtle transparency in Dark Mode, #FFFFFF in Light Mode)
+    // Sheet Card Surfaces
     static let sheetCardBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 0.85),                                               // #FFFFFF 85%
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.82)      // #1A1A1A 82%
+        light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
+        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.92)      // #1A1A1A
     ))
 
-    // Settings Background (#000000 in Dark Mode, #F6F6F6 in Light Mode)
+    // Settings Background
     static let settingsBackground = Color(uiColor: .dynamic(
-        light: UIColor(red: 246.0/255.0, green: 246.0/255.0, blue: 246.0/255.0, alpha: 1.0), // #F6F6F6
+        light: UIColor(white: 1.0, alpha: 1.0),                                              // #FFFFFF
         dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
     static let separator = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.0, alpha: 0.08),
+        light: UIColor(white: 0.0, alpha: 0.10),
         dark: UIColor(white: 1.0, alpha: 0.08)
     ))
 
@@ -164,7 +164,7 @@ enum SpendyColors {
     ))
 
     static let glassFallbackFill = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.96, alpha: 0.78),
+        light: UIColor(white: 1.0, alpha: 0.78),
         dark: UIColor(white: 1.0, alpha: 0.08)
     ))
 
@@ -207,4 +207,26 @@ enum SpendyColors {
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759",
         "#00C7BE", "#007AFF", "#5856D6", "#AF52DE"
     ]
+}
+
+// MARK: - Light Mode Card Lift
+private struct SpendyCardLiftModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    
+    func body(content: Content) -> some View {
+        if colorScheme == .light {
+            content
+                .shadow(color: Color.black.opacity(0.045), radius: 2, y: 1)
+                .shadow(color: Color(red: 0.12, green: 0.22, blue: 0.45).opacity(0.10), radius: 18, y: 8)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Soft blue-gray elevation used so white cards separate from the paper canvas.
+    func spendyCardLift() -> some View {
+        modifier(SpendyCardLiftModifier())
+    }
 }

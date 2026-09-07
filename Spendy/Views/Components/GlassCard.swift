@@ -31,6 +31,7 @@ struct GlassCard<Content: View>: View {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
+                .spendyCardLift()
         }
     }
 }

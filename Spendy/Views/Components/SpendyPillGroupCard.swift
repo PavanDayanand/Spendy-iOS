@@ -184,6 +184,7 @@ struct SpendyPillGroupCard<HeaderLeading: View, Content: View>: View {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
+                .spendyCardLift()
         }
     }
 }

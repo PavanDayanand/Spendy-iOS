@@ -35,6 +35,7 @@ struct InsightCardShell<Content: View>: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
+                    .spendyCardLift()
             }
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }

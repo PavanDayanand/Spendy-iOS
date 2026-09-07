@@ -10,12 +10,23 @@ import SwiftUI
 
 // MARK: - Gradient Presets
 public enum SpendyGradientPresets {
-    /// Electric Blue fading to Crisp White (Reference Image 1: "8 429 Steps" style)
+    /// Electric Blue fading to Crisp White (Dark Mode, on the black canvas)
     public static let electricBlueToWhite: [Color] = [
         Color(hex: "#2563EB"), // Vibrant Royal/Electric Blue
         Color(hex: "#60A5FA"), // Lighter Sky Blue
         Color(hex: "#FFFFFF")  // Crisp White
     ]
+    
+    /// Electric Blue fading to ink (Light Mode, on the paper canvas)
+    public static let electricBlueToInk: [Color] = [
+        Color(hex: "#2F6BFF"),
+        Color(hex: "#1D4ED8"),
+        Color(hex: "#111827")
+    ]
+    
+    public static func heroAmount(for colorScheme: ColorScheme) -> [Color] {
+        colorScheme == .light ? electricBlueToInk : electricBlueToWhite
+    }
     
     /// Cyan to Icy White
     public static let cyanToWhite: [Color] = [
@@ -53,6 +64,14 @@ public struct SpendyGradientText: View {
     var colors: [Color] = SpendyGradientPresets.electricBlueToWhite
     var startPoint: UnitPoint = .top
     var endPoint: UnitPoint = .bottom
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var resolvedColors: [Color] {
+        if colors == SpendyGradientPresets.electricBlueToWhite {
+            return SpendyGradientPresets.heroAmount(for: colorScheme)
+        }
+        return colors
+    }
     
     public init(
         _ text: String,
@@ -81,7 +100,7 @@ public struct SpendyGradientText: View {
             .minimumScaleFactor(0.7)
             .foregroundStyle(
                 LinearGradient(
-                    colors: colors,
+                    colors: resolvedColors,
                     startPoint: startPoint,
                     endPoint: endPoint
                 )
@@ -95,6 +114,14 @@ public struct SpendyGradientNumberModifier: ViewModifier {
     var colors: [Color]
     var startPoint: UnitPoint
     var endPoint: UnitPoint
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var resolvedColors: [Color] {
+        if colors == SpendyGradientPresets.electricBlueToWhite {
+            return SpendyGradientPresets.heroAmount(for: colorScheme)
+        }
+        return colors
+    }
     
     public init(
         colors: [Color] = SpendyGradientPresets.electricBlueToWhite,
@@ -110,7 +137,7 @@ public struct SpendyGradientNumberModifier: ViewModifier {
         content
             .foregroundStyle(
                 LinearGradient(
-                    colors: colors,
+                    colors: resolvedColors,
                     startPoint: startPoint,
                     endPoint: endPoint
                 )
