@@ -986,7 +986,8 @@ struct DashboardView: View {
     
     private var emptyRecentActivityView: some View {
         SpendyEmptyCardView(
-            message: "Log your first expense or income transaction to start tracking daily activity.",
+            message: SpendySticker(rawValue: store.selectedSticker ?? "")?.firstLogLine
+                ?? "Log your first expense or income transaction to start tracking daily activity.",
             actionTitle: "Add transaction",
             isEnclosedInCard: true
         ) {
