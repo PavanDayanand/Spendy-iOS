@@ -30,14 +30,16 @@ struct TransactionRowView: View {
                     sfSymbol: sub.sfSymbol,
                     color: Color(hex: sub.colorHex),
                     size: .medium,
-                    style: .circle
+                    style: .circle,
+                    monogramName: sub.name
                 )
             } else {
                 SpendyIconBadge(
                     sfSymbol: category.sfSymbol,
                     color: category.color,
                     size: .medium,
-                    style: .rounded()
+                    style: .rounded(),
+                    monogramName: category.label
                 )
             }
         } titleContent: {

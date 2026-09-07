@@ -336,6 +336,7 @@ struct AllTransactionsView: View {
         
         let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
         let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#FF5924"))
+        let iconName = subscription?.name ?? cat?.label ?? tx.title
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
@@ -347,7 +348,8 @@ struct AllTransactionsView: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: subscription != nil ? .circle : .rounded()
+                    style: subscription != nil ? .circle : .rounded(),
+                    monogramName: iconName
                 )
                 
                 // Title and Account Pill Indicator

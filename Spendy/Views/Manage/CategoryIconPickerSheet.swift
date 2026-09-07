@@ -57,14 +57,7 @@ struct CategoryIconPickerSheet: View {
         Color(uiColor: .secondarySystemGroupedBackground)
     }
     
-    // User name initial monogram or "Aa"
-    private var monogramText: String {
-        let trimmed = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let first = trimmed.first {
-            return String(first).uppercased()
-        }
-        return "Aa"
-    }
+    // "Aa" is a mode: the entity's name initial is shown on the icon, not the letters Aa.
     
     // MARK: - Curated System SF Symbols matching reference order
     private let defaultSymbols: [String] = [
@@ -358,11 +351,11 @@ struct CategoryIconPickerSheet: View {
     // MARK: - "Aa" Monogram Slot
     @ViewBuilder
     private var monogramSlot: some View {
-        let isSelected = selectedSymbol == "Aa" || selectedSymbol == monogramText
+        let isSelected = SpendyMonogram.isMonogram(selectedSymbol)
         
         Button {
-            selectedSymbol = "Aa"
-            onIconSelected?("Aa")
+            selectedSymbol = SpendyMonogram.token
+            onIconSelected?(SpendyMonogram.token)
             HapticsManager.shared.trigger(.selection)
             dismiss()
         } label: {
@@ -393,6 +386,8 @@ struct CategoryIconPickerSheet: View {
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Use first letter of the name")
+        .accessibilityAddTraits(isSelected ? .isSelected : AccessibilityTraits())
     }
     
     // MARK: - Icon Grid Item Button

@@ -44,6 +44,13 @@ enum AnalyticsEntity {
         }
     }
     
+    var monogramName: String {
+        switch self {
+        case .category(let cat): return cat.label
+        case .account(let acc): return acc.label
+        }
+    }
+    
     var color: Color {
         switch self {
         case .category(let cat): return cat.color
@@ -621,7 +628,8 @@ struct SharedEntityAnalyticsSheet: View {
                 sfSymbol: entity.sfSymbol,
                 color: themeColor,
                 size: .large,
-                style: .rounded()
+                style: .rounded(),
+                monogramName: entity.monogramName
             )
             .padding(.top, 2)
             .accessibilityHidden(true)
@@ -1009,6 +1017,7 @@ struct SharedEntityAnalyticsSheet: View {
         
         let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? entity.sfSymbol)
         let iconColor = subscription?.color ?? (cat?.color ?? entity.color)
+        let iconName = subscription?.name ?? cat?.label ?? entity.monogramName
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
@@ -1020,7 +1029,8 @@ struct SharedEntityAnalyticsSheet: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: subscription != nil ? .circle : .rounded()
+                    style: subscription != nil ? .circle : .rounded(),
+                    monogramName: iconName
                 )
                 
                 // Middle: Title + Subtitle

@@ -57,7 +57,8 @@ struct SharedInsightCard<MiddleContent: View>: View {
                         sfSymbol: icon,
                         color: color,
                         size: .small,
-                        style: .rounded()
+                        style: .rounded(),
+                        monogramName: title
                     )
                     
                     Spacer(minLength: 4)

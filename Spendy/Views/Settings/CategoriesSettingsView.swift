@@ -221,7 +221,8 @@ struct CategoriesSettingsView: View {
                                     sfSymbol: cat.sfSymbol,
                                     color: cat.color,
                                     size: .medium,
-                                    style: .rounded()
+                                    style: .rounded(),
+                                    monogramName: cat.label
                                 )
                                 
                                 Text(cat.label)
@@ -258,7 +259,8 @@ struct CategoriesSettingsView: View {
                                     sfSymbol: cat.sfSymbol,
                                     color: cat.color,
                                     size: .small,
-                                    style: .rounded()
+                                    style: .rounded(),
+                                    monogramName: cat.label
                                 )
                                 Text(cat.label)
                                     .font(.system(size: 15, weight: .bold))

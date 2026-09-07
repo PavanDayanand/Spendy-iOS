@@ -676,7 +676,8 @@ struct AddTransactionView: View {
                                     sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
                                     color: selectedCategory?.color ?? Color(hex: "#34C759"),
                                     size: .small,
-                                    style: .rounded()
+                                    style: .rounded(),
+                                    monogramName: selectedCategory?.label ?? ""
                                 )
                                 .padding(.leading, 6)
                                 
@@ -1018,7 +1019,8 @@ struct CategoryPickerDrawer: View {
                                 sfSymbol: cat.sfSymbol,
                                 color: cat.color,
                                 size: .small,
-                                style: .rounded()
+                                style: .rounded(),
+                                monogramName: cat.label
                             )
                             
                             Text(cat.label)
@@ -1137,7 +1139,8 @@ struct AccountPickerDrawer: View {
                                         SpendyIconBadge(
                                             sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
                                             color: acc.color,
-                                            size: .medium
+                                            size: .medium,
+                                            monogramName: acc.label
                                         )
                                         
                                         VStack(alignment: .leading, spacing: 2) {

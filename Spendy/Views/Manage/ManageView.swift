@@ -687,7 +687,8 @@ struct SubscriptionsView: View {
                 sfSymbol: sub.sfSymbol,
                 color: SpendyColors.separator,
                 size: .small,
-                style: .circle
+                style: .circle,
+                monogramName: sub.name
             )
 
             VStack(alignment: .leading, spacing: 2) {

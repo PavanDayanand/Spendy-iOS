@@ -180,56 +180,26 @@ struct EditProfileSheet: View {
     // MARK: - Avatar Hero Section (Matching AddCategorySheet)
     private var avatarHeroSection: some View {
         VStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                // Large Circular Avatar
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    ZStack {
-                        if let imgData = selectedImageData, let uiImage = UIImage(data: imgData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 88, height: 88)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 2))
-                                .shadow(color: Color(hex: selectedColorHex).opacity(0.4), radius: 10, y: 4)
-                        } else {
-                            SpendyIconBadge(
-                                sfSymbol: selectedIconSymbol.isEmpty ? "person.fill" : selectedIconSymbol,
-                                color: Color(hex: selectedColorHex),
-                                size: .hero,
-                                style: .rounded()
-                            )
-                        }
-                    }
+            SpendyEditableHeroIcon(accessibilityLabel: "Edit profile photo or icon") {
+                showIconPickerSheet = true
+            } icon: {
+                if let imgData = selectedImageData, let uiImage = UIImage(data: imgData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 2))
+                        .shadow(color: Color(hex: selectedColorHex).opacity(0.4), radius: 10, y: 4)
+                } else {
+                    SpendyIconBadge(
+                        sfSymbol: selectedIconSymbol.isEmpty ? "person.fill" : selectedIconSymbol,
+                        color: Color(hex: selectedColorHex),
+                        size: .hero,
+                        style: .rounded(),
+                        monogramName: tempName
+                    )
                 }
-                .buttonStyle(.plain)
-                
-                // Small Pencil Edit Badge
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(SpendyColors.cardBackground)
-                            .frame(width: 26, height: 26)
-                            .overlay {
-                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
-                            }
-                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
-                        
-                        Image(systemName: "pencil")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .offset(x: 2, y: -2)
             }
             
             Text(tempName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Personal" : tempName)

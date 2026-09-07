@@ -226,44 +226,17 @@ struct AddSubscriptionSheet: View {
 
     private var avatarHeroSection: some View {
         VStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    SubscriptionProgressRingBadge(
-                        sfSymbol: selectedSymbol,
-                        color: Color(hex: selectedColorHex),
-                        progress: previewProgress,
-                        isPaused: false,
-                        size: .hero
-                    )
-                }
-                .buttonStyle(.plain)
-
-                // Small Pencil Edit Badge
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(SpendyColors.cardBackground)
-                            .frame(width: 26, height: 26)
-                            .overlay {
-                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
-                            }
-                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
-
-                        Image(systemName: "pencil")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .offset(x: 2, y: -2)
+            SpendyEditableHeroIcon(accessibilityLabel: "Edit subscription icon") {
+                showIconPickerSheet = true
+            } icon: {
+                SubscriptionProgressRingBadge(
+                    sfSymbol: selectedSymbol,
+                    color: Color(hex: selectedColorHex),
+                    progress: previewProgress,
+                    isPaused: false,
+                    size: .hero,
+                    monogramName: name
+                )
             }
 
             Text(name.isEmpty ? "Subscription Name" : name)

@@ -80,44 +80,156 @@ struct AddAccountSheet: View {
         _showColorPalette = State(initialValue: false)
     }
     
+    private var canSave: Bool {
+        isEditing || !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    private var canDelete: Bool {
+        isEditing && accountToEdit?.id != "cash" && store.accounts.count > 1
+    }
+    
     var body: some View {
         ZStack(alignment: .bottom) {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Dynamic Account Top Ambient Gradient Glow based on selected account color
-            let themeColor = Color(hex: selectedColorHex)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
+            SpendyAmbientHeaderBackground(color: Color(hex: selectedColorHex), height: 280, opacity: 0.28)
             
             VStack(spacing: 0) {
-                // Top Header Bar (Sticky at top!)
-                topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
-                    .zIndex(10)
+                SpendyCreateSheetHeader(
+                    title: isEditing ? "Edit Account" : "New Account",
+                    showDelete: canDelete,
+                    deleteLabel: "Delete Account",
+                    onClose: {
+                        if hasUnsavedChanges {
+                            showDiscardConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    },
+                    onDelete: { showDeleteConfirm = true }
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Hero Circle Avatar
+                    VStack(spacing: 20) {
                         avatarHeroSection
-                            .padding(.top, 24)
+                            .padding(.top, 20)
                         
-                        // Form Content
-                        formContentSection
+                        SpendyCreateFormCard {
+                            SpendyCreateFormRow {
+                                Group {
+                                    if isEditing && accountToEdit?.id == "cash" {
+                                        Text("Cash")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textSecondary)
+                                    } else {
+                                        TextField("Account name", text: $label)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textPrimary)
+                                            .autocorrectionDisabled()
+                                            .textInputAutocapitalization(.words)
+                                    }
+                                }
+                            } trailing: {
+                                if !store.isMonoIconMode {
+                                    SpendyColorSwatchButton(hex: selectedColorHex) {
+                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                            showColorPalette.toggle()
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            SpendyCreateFormDivider()
+                            
+                            Menu {
+                                ForEach(AccountType.allCases) { type in
+                                    Button {
+                                        selectedType = type
+                                        selectedSymbol = type.defaultSymbol
+                                        HapticsManager.shared.trigger(.selection)
+                                    } label: {
+                                        Label(type.rawValue, systemImage: type.defaultSymbol)
+                                    }
+                                }
+                            } label: {
+                                SpendyCreateFormRow {
+                                    Text("Type")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                } trailing: {
+                                    HStack(spacing: 6) {
+                                        Text(selectedType.rawValue)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textSecondary)
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            
+                            SpendyCreateFormDivider()
+                            
+                            Button {
+                                HapticsManager.shared.trigger(.selection)
+                                showBalanceKeypadSheet = true
+                            } label: {
+                                SpendyCreateFormRow {
+                                    Text("Balance")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                } trailing: {
+                                    HStack(spacing: 6) {
+                                        Text("\(store.currencySymbol)\(formattedBalanceDisplay)")
+                                            .font(.system(size: 16, weight: .semibold).monospacedDigit())
+                                            .foregroundStyle(SpendyColors.textPrimary)
+                                        Image(systemName: SFIcons.chevronRight)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        
+                        if showColorPalette && !store.isMonoIconMode {
+                            SpendyCreateColorPalette(
+                                selectedHex: $selectedColorHex,
+                                hue: $sliderHue,
+                                brightness: $sliderBrightness
+                            )
+                            .onChange(of: selectedColorHex) { _, newHex in
+                                syncSlidersFromHex(newHex)
+                            }
+                            .onChange(of: sliderHue) { _, _ in
+                                updateHexFromHSB()
+                            }
+                            .onChange(of: sliderBrightness) { _, _ in
+                                updateHexFromHSB()
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom button
+                    .padding(.bottom, 120)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
             
-            // Bottom Action Button Container (Full Width)
             VStack(spacing: 0) {
-                bottomActionButton
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .padding(.top, 16)
+                SpendyCreatePrimaryButton(
+                    title: isEditing ? "Save" : "Create",
+                    isEnabled: canSave
+                ) {
+                    saveAccount()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+                .padding(.top, 12)
             }
         }
         .onAppear {
@@ -168,294 +280,49 @@ struct AddAccountSheet: View {
         }
     }
     
-    // MARK: - Components
-    @Namespace private var headerNamespace
-    
-    private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: headerNamespace
-            ) {
-                if hasUnsavedChanges {
-                    showDiscardConfirm = true
-                } else {
-                    dismiss()
-                }
-            }
-            
-            Spacer()
-            
-            Text(isEditing ? "Edit Account" : "New Account")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            // Delete button (visible in Edit Mode, except for Cash account)
-            if isEditing && accountToEdit?.id != "cash" && store.accounts.count > 1 {
-                GlassCircleButton(
-                    icon: "trash.fill",
-                    size: 44,
-                    iconSize: 14,
-                    tintColor: SpendyColors.expenseRed.opacity(0.18),
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Account",
-                    morphID: "deleteButton",
-                    namespace: headerNamespace
-                ) {
-                    showDeleteConfirm = true
-                }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
-            }
-        }
-    }
-    
     private var avatarHeroSection: some View {
-        VStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    SpendyIconBadge(
-                        sfSymbol: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol,
-                        color: Color(hex: selectedColorHex),
-                        size: .hero,
-                        style: .rounded()
-                    )
-                }
-                .buttonStyle(.plain)
-                
-                // Small Pencil Edit Badge
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(SpendyColors.cardBackground)
-                            .frame(width: 28, height: 28)
-                            .overlay {
-                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
-                            }
-                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
-                        
-                        Image(systemName: "pencil")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .offset(x: 8, y: -8)
-            }
-            
-            Text(label.isEmpty ? "Account Name" : label)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+        SpendyEditableHeroIcon(
+            sfSymbol: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol,
+            color: Color(hex: selectedColorHex),
+            style: .rounded(),
+            monogramName: label,
+            accessibilityLabel: "Edit account icon"
+        ) {
+            showIconPickerSheet = true
         }
     }
     
-    private var formContentSection: some View {
-        VStack(spacing: 16) {
-            // Row 1: Unified Account Name & Color Swatch Capsule (80/20 Split)
-            HStack {
-                if isEditing && accountToEdit?.id == "cash" {
-                    Text("Cash")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                } else {
-                    TextField("Account Name", text: $label)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .autocorrectionDisabled()
-                }
-                
-                Spacer()
-                
-                // Hide color picker in Mono Icon Mode
-                if !store.isMonoIconMode {
-                    // Integrated Color Picker Swatch Button
-                    Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            showColorPalette.toggle()
-                        }
-                        HapticsManager.shared.trigger(.light)
-                    }) {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color(hex: selectedColorHex))
-                            .frame(width: 24, height: 24)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                            }
-                            .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 2, x: 0, y: 0)
-                    }
-                    .buttonStyle(.plain)
-                }
+    private func saveAccount() {
+        let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBalance = openingBalanceString.replacingOccurrences(of: ",", with: "")
+        let parsedBalance = Double(cleanBalance) ?? 0.0
+        
+        if isEditing, let acc = accountToEdit {
+            var updated = acc
+            if acc.id != "cash" {
+                updated.label = trimmedLabel.isEmpty ? acc.label : trimmedLabel
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-            
-            // Hue & Brightness Custom sliders
-            if showColorPalette && !store.isMonoIconMode {
-                colorSlidersCard
-            }
-            
-            // Row 2: Account Type Selector Capsule
-            HStack {
-                Text("Type")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Menu {
-                    ForEach(AccountType.allCases) { type in
-                        Button(action: {
-                            selectedType = type
-                            selectedSymbol = type.defaultSymbol
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            HStack {
-                                Text(type.rawValue)
-                                Spacer()
-                                Image(systemName: type.defaultSymbol)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(selectedType.rawValue)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-            
-            // Row 3: Interactive Balance Field (Opens Numeric Keypad Drawer Sheet)
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
-                showBalanceKeypadSheet = true
-            }) {
-                HStack {
-                    Text("Balance")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 6) {
-                        Text(store.currencySymbol)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                        
-                        Text(formattedBalanceDisplay)
-                            .font(Font.system(size: 16, weight: .bold, design: .default).monospacedDigit())
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-            }
-            .buttonStyle(.plain)
+            updated.sfSymbol = selectedSymbol
+            updated.colorHex = selectedColorHex
+            updated.type = selectedType
+            store.updateAccount(updated)
+            store.updateAccountBalance(id: acc.id, newBalance: parsedBalance)
+        } else {
+            let newId = UUID().uuidString.lowercased()
+            let finalLabel = trimmedLabel.isEmpty ? "New Account" : trimmedLabel
+            let newAcc = Account(
+                id: newId,
+                label: finalLabel,
+                sfSymbol: selectedSymbol,
+                colorHex: selectedColorHex,
+                openingBalance: parsedBalance,
+                order: store.accounts.count,
+                type: selectedType
+            )
+            store.addAccount(newAcc)
         }
-    }
-    
-    private var colorSlidersCard: some View {
-        VStack(spacing: 16) {
-            SpendyColorPresetSwatches(selectedHex: $selectedColorHex, hue: $sliderHue, brightness: $sliderBrightness)
-                .onChange(of: selectedColorHex) { _, newHex in
-                    syncSlidersFromHex(newHex)
-                }
-                .onChange(of: sliderHue) { _, _ in
-                    updateHexFromHSB()
-                }
-                .onChange(of: sliderBrightness) { _, _ in
-                    updateHexFromHSB()
-                }
-        }
-        .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(hex: "#141416"))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                }
-        }
-    }
-    
-    private var bottomActionButton: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.success)
-            let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleanBalance = openingBalanceString.replacingOccurrences(of: ",", with: "")
-            let parsedBalance = Double(cleanBalance) ?? 0.0
-            
-            if isEditing, let acc = accountToEdit {
-                var updated = acc
-                if acc.id != "cash" {
-                    updated.label = trimmedLabel.isEmpty ? acc.label : trimmedLabel
-                }
-                updated.sfSymbol = selectedSymbol
-                updated.colorHex = selectedColorHex
-                updated.type = selectedType
-                store.updateAccount(updated)
-                store.updateAccountBalance(id: acc.id, newBalance: parsedBalance)
-            } else {
-                let newId = UUID().uuidString.lowercased()
-                let finalLabel = trimmedLabel.isEmpty ? "New Account" : trimmedLabel
-                let newAcc = Account(
-                    id: newId,
-                    label: finalLabel,
-                    sfSymbol: selectedSymbol,
-                    colorHex: selectedColorHex,
-                    openingBalance: parsedBalance,
-                    order: store.accounts.count,
-                    type: selectedType
-                )
-                store.addAccount(newAcc)
-            }
-            
-            dismiss()
-        }) {
-            let isLightColor = selectedColorHex.uppercased() == "#FFFFFF" || selectedColorHex.uppercased() == "FFFFFF" || selectedColorHex.uppercased() == "#E4E4E7" || selectedColorHex.uppercased() == "#D4D4D8"
-            
-            Text("Save")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(isLightColor ? Color.black : Color.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color(hex: selectedColorHex), in: Capsule())
-                .shadow(color: Color(hex: selectedColorHex).opacity(0.2), radius: 10, y: 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEditing && label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .opacity((!isEditing && label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.5 : 1.0)
+        
+        dismiss()
     }
     
     // MARK: - Color Methods

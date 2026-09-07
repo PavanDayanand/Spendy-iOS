@@ -69,6 +69,46 @@ struct OverlappingBadgeCluster: View {
     }
 }
 
+enum SpendyMonogram {
+    static let token = "Aa"
+    
+    static func isMonogram(_ symbol: String) -> Bool {
+        symbol == token
+    }
+    
+    static func letter(from name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmed.first else { return "A" }
+        return String(first).uppercased()
+    }
+    
+    static func displayLetter(symbol: String, name: String) -> String? {
+        if isMonogram(symbol) {
+            return letter(from: name)
+        }
+        if symbol.count <= 2 && !symbol.contains(".") {
+            return symbol.uppercased()
+        }
+        return nil
+    }
+}
+
+struct SpendyGlyph: View {
+    let symbol: String
+    var name: String = ""
+    var font: Font = .body
+    
+    var body: some View {
+        if let letter = SpendyMonogram.displayLetter(symbol: symbol, name: name) {
+            Text(letter)
+                .font(font)
+        } else {
+            Image(systemName: SFIcons.symbol(named: symbol))
+                .font(font)
+        }
+    }
+}
+
 struct SpendyIconBadge: View {
     enum Style: Equatable {
         case circle
@@ -124,6 +164,7 @@ struct SpendyIconBadge: View {
     var style: Style = .rounded()
     var isGradient: Bool = false
     var showCutoutBorder: Bool = false
+    var monogramName: String = ""
     
     @Environment(\.isMonoIconMode) private var isMonoMode
     @Environment(\.colorScheme) private var colorScheme
@@ -258,10 +299,11 @@ struct SpendyIconBadge: View {
                 }
             }
             
-            if sfSymbol == "Aa" || sfSymbol.count <= 2 && !sfSymbol.contains(".") {
-                Text(sfSymbol)
+            if let letter = SpendyMonogram.displayLetter(symbol: sfSymbol, name: monogramName) {
+                Text(letter)
                     .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
                     .foregroundStyle(symbolForeground)
+                    .contentTransition(.opacity)
             } else {
                 Image(systemName: SFIcons.symbol(named: sfSymbol))
                     .font(.system(size: size.iconSize, weight: .bold))

@@ -29,7 +29,8 @@ struct CategoryCard: View {
                     sfSymbol: icon,
                     color: color,
                     size: .small,
-                    style: .rounded()
+                    style: .rounded(),
+                    monogramName: title
                 )
                 
                 Spacer().frame(height: 10)

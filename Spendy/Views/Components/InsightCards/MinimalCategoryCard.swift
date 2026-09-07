@@ -28,7 +28,8 @@ struct MinimalCategoryCard: View {
                     sfSymbol: icon,
                     color: color,
                     size: .medium,
-                    style: .rounded()
+                    style: .rounded(),
+                    monogramName: title
                 )
                 
                 Spacer().frame(height: 10)

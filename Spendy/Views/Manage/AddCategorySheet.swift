@@ -48,7 +48,7 @@ struct AddCategorySheet: View {
         if let cat = categoryToEdit {
             return label != cat.label || type != cat.type || selectedFolder != (cat.folder.isEmpty ? "Uncategorized" : cat.folder) || selectedSymbol != cat.sfSymbol || selectedColorHex != cat.colorHex
         } else {
-            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSymbol != "tag.fill" || selectedColorHex != "#FFFFFF"
+            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSymbol != "tag.fill" || selectedColorHex != "#007AFF"
         }
     }
     
@@ -67,9 +67,13 @@ struct AddCategorySheet: View {
         } else {
             _type = State(initialValue: defaultType)
             _selectedFolder = State(initialValue: defaultFolder ?? (defaultType == .expense ? "Everyday Spending" : "Salary & Career"))
-            _selectedColorHex = State(initialValue: "#FFFFFF")
+            _selectedColorHex = State(initialValue: "#007AFF")
             _showColorPalette = State(initialValue: false)
         }
+    }
+    
+    private var canSave: Bool {
+        !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     var body: some View {
@@ -77,38 +81,108 @@ struct AddCategorySheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            // Dynamic Category Full-Width Ambient Header Glow based on selected category color
-            let themeColor = Color(hex: selectedColorHex)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
+            SpendyAmbientHeaderBackground(color: Color(hex: selectedColorHex), height: 280, opacity: 0.28)
             
             VStack(spacing: 0) {
-                // Top Header: Close, Type Toggle Switcher, Delete (Sticky at top!)
-                topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
-                    .zIndex(10)
+                SpendyCreateSheetHeader(
+                    showDelete: isEditing,
+                    deleteLabel: "Delete Category",
+                    onClose: {
+                        if hasUnsavedChanges {
+                            showDiscardConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    },
+                    onDelete: { showDeleteConfirm = true }
+                ) {
+                    SpendyTransactionTypeToggle(
+                        selection: $type,
+                        availableTypes: [.expense, .income]
+                    )
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Hero Circle Avatar
+                    VStack(spacing: 20) {
                         avatarHeroSection
-                            .padding(.top, 32)
+                            .padding(.top, 20)
                         
-                        // Category Name Field & Color Circle button
-                        nameAndColorCard
-                        
-                        // Color Palette / Sliders Card (Settings style)
-                        if showColorPalette && !store.isMonoIconMode {
-                            colorPickerCard
+                        SpendyCreateFormCard {
+                            SpendyCreateFormRow {
+                                TextField("Category name", text: $label)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.words)
+                            } trailing: {
+                                if !store.isMonoIconMode {
+                                    SpendyColorSwatchButton(hex: selectedColorHex) {
+                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                            showColorPalette.toggle()
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            SpendyCreateFormDivider()
+                            
+                            Menu {
+                                ForEach(availableFolders, id: \.self) { folder in
+                                    Button {
+                                        selectedFolder = folder
+                                        HapticsManager.shared.trigger(.selection)
+                                    } label: {
+                                        if selectedFolder == folder {
+                                            Label(folder, systemImage: "checkmark")
+                                        } else {
+                                            Text(folder)
+                                        }
+                                    }
+                                }
+                            } label: {
+                                SpendyCreateFormRow {
+                                    Text("Folder")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(SpendyColors.textPrimary)
+                                } trailing: {
+                                    HStack(spacing: 6) {
+                                        Text(selectedFolder)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundStyle(SpendyColors.textSecondary)
+                                            .lineLimit(1)
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
                         
-                        // Folder Selector Card
-                        folderSelectionCard
+                        if showColorPalette && !store.isMonoIconMode {
+                            SpendyCreateColorPalette(
+                                selectedHex: $selectedColorHex,
+                                hue: $sliderHue,
+                                brightness: $sliderBrightness
+                            )
+                            .onChange(of: selectedColorHex) { _, newHex in
+                                syncSlidersFromHex(newHex)
+                            }
+                            .onChange(of: sliderHue) { _, _ in
+                                updateHexFromHSB()
+                            }
+                            .onChange(of: sliderBrightness) { _, _ in
+                                updateHexFromHSB()
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom button
+                    .padding(.bottom, 120)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .onAppear {
                 syncSlidersFromHex(selectedColorHex)
@@ -122,20 +196,16 @@ struct AddCategorySheet: View {
                 }
             }
             
-            // Bottom Fixed Action Button Container (Full Width)
             VStack(spacing: 0) {
-                bottomActionButton
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .padding(.top, 16)
-            }
-            .background {
-                LinearGradient(
-                    colors: [Color.clear, SpendyColors.appBackground.opacity(0.95), SpendyColors.appBackground],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea(edges: .bottom)
+                SpendyCreatePrimaryButton(
+                    title: isEditing ? "Save" : "Create",
+                    isEnabled: canSave
+                ) {
+                    saveCategory()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+                .padding(.top, 12)
             }
         }
         .presentationBackground(SpendyColors.appBackground)
@@ -168,173 +238,43 @@ struct AddCategorySheet: View {
         }
     }
     
-    // MARK: - Top Header Bar
-    @Namespace private var headerNamespace
-    
-    private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: headerNamespace
-            ) {
-                if hasUnsavedChanges {
-                    showDiscardConfirm = true
-                } else {
-                    dismiss()
-                }
-            }
-            
-            Spacer()
-            
-            // Type toggleSwitcher (Expense / Income)
-            typeToggleCapsule
-            
-            Spacer()
-            
-            // Delete Button (if editing)
-            if isEditing {
-                GlassCircleButton(
-                    icon: "trash.fill",
-                    size: 44,
-                    iconSize: 14,
-                    tintColor: SpendyColors.expenseRed.opacity(0.18),
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Category",
-                    morphID: "deleteButton",
-                    namespace: headerNamespace
-                ) {
-                    showDeleteConfirm = true
-                }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
-            }
-        }
-    }
-    
-    // MARK: - Type Toggle Capsule (Expanding Reusable Segmented Control)
-    private var typeToggleCapsule: some View {
-        SpendyTransactionTypeToggle(
-            selection: $type,
-            availableTypes: [.expense, .income]
-        )
-    }
-    
-    // MARK: - Avatar Hero Section
     private var avatarHeroSection: some View {
-        VStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                // Large Rounded Squircle Avatar using unified SpendyIconBadge
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    SpendyIconBadge(
-                        sfSymbol: selectedSymbol,
-                        color: Color(hex: selectedColorHex),
-                        size: .hero,
-                        style: .rounded()
-                    )
-                }
-                .buttonStyle(.plain)
-                
-                // Small Pencil Edit Badge
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    showIconPickerSheet = true
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(SpendyColors.cardBackground)
-                            .frame(width: 26, height: 26)
-                            .overlay {
-                                Circle().stroke(SpendyColors.separator, lineWidth: 1)
-                            }
-                            .shadow(color: Color.black.opacity(0.12), radius: 3, y: 1)
-                        
-                        Image(systemName: "pencil")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .offset(x: 2, y: -2)
-            }
-            
-            Text(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Category Name" : label)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+        SpendyEditableHeroIcon(
+            sfSymbol: selectedSymbol,
+            color: Color(hex: selectedColorHex),
+            style: .rounded(),
+            monogramName: label,
+            accessibilityLabel: "Edit category icon"
+        ) {
+            showIconPickerSheet = true
         }
     }
     
-    // MARK: - Name & Color Card
-    private var nameAndColorCard: some View {
-        HStack {
-            TextField("Category Name", text: $label)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .autocorrectionDisabled()
-            
-            Spacer()
-            
-            // Hide color picker in Mono Icon Mode
-            if !store.isMonoIconMode {
-                // Rounded Color Picker button
-                Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        showColorPalette.toggle()
-                    }
-                    HapticsManager.shared.trigger(.light)
-                }) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color(hex: selectedColorHex))
-                        .frame(width: 24, height: 24)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                        }
-                        .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 2, x: 0, y: 0)
-                }
-                .buttonStyle(.plain)
-            }
+    private func saveCategory() {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        if let existing = categoryToEdit {
+            var updated = existing
+            updated.label = trimmed
+            updated.sfSymbol = selectedSymbol
+            updated.colorHex = selectedColorHex
+            updated.type = type
+            updated.folder = selectedFolder
+            store.updateCategory(updated)
+        } else {
+            let newCat = Category(
+                id: UUID().uuidString.lowercased(),
+                label: trimmed,
+                sfSymbol: selectedSymbol,
+                colorHex: selectedColorHex,
+                type: type,
+                folder: selectedFolder,
+                order: store.categories.count
+            )
+            store.addCategory(newCat)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-    }
-    
-    // MARK: - Custom Color Picker (Image 2 style)
-    private var colorPickerCard: some View {
-        VStack(spacing: 16) {
-            SpendyColorPresetSwatches(selectedHex: $selectedColorHex, hue: $sliderHue, brightness: $sliderBrightness)
-                .onChange(of: selectedColorHex) { _, newHex in
-                    syncSlidersFromHex(newHex)
-                }
-                .onChange(of: sliderHue) { _, newValue in
-                    updateHexFromHSB()
-                }
-                .onChange(of: sliderBrightness) { _, newValue in
-                    updateHexFromHSB()
-                }
-        }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(hex: "#141416"))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                }
-        }
+        dismiss()
     }
     
     private func syncSlidersFromHex(_ hex: String) {
@@ -350,106 +290,6 @@ struct AddCategorySheet: View {
     private func updateHexFromHSB() {
         let color = Color(hue: sliderHue, saturation: 0.85, brightness: min(sliderBrightness, 0.95))
         selectedColorHex = color.toHex()
-    }
-    
-    // MARK: - Folder Selection Card
-    private var folderSelectionCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Menu {
-                ForEach(availableFolders, id: \.self) { folder in
-                    Button(action: {
-                        selectedFolder = folder
-                        HapticsManager.shared.trigger(.selection)
-                    }) {
-                        if selectedFolder == folder {
-                            Label(folder, systemImage: "checkmark")
-                        } else {
-                            Text(folder)
-                        }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text("Folder")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 6) {
-                        Text(selectedFolder)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                        }
-                }
-            }
-            .buttonStyle(.plain)
-            
-            Text("Assign this category to a folder for better organization")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 6)
-        }
-    }
-    
-    // MARK: - Bottom Action Button
-    private var bottomActionButton: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.success)
-            let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            if let existing = categoryToEdit {
-                var updated = existing
-                updated.label = trimmed
-                updated.sfSymbol = selectedSymbol
-                updated.colorHex = selectedColorHex
-                updated.type = type
-                updated.folder = selectedFolder
-                store.updateCategory(updated)
-            } else {
-                let newCat = Category(
-                    id: UUID().uuidString.lowercased(),
-                    label: trimmed,
-                    sfSymbol: selectedSymbol,
-                    colorHex: selectedColorHex,
-                    type: type,
-                    folder: selectedFolder,
-                    order: store.categories.count
-                )
-                store.addCategory(newCat)
-            }
-            dismiss()
-        }) {
-            Text(isEditing ? "Save Changes" : "Create")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(SpendyColors.inverseText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(SpendyColors.primaryBlue, in: Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .opacity(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1.0)
-    }
-    
-    private var avatarLetter: String {
-        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "C" : String(trimmed.prefix(1)).uppercased()
     }
 }
 

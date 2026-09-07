@@ -451,7 +451,8 @@ struct AccountsView: View {
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                     color: account.color,
                     size: .medium,
-                    style: .rounded()
+                    style: .rounded(),
+                    monogramName: account.label
                 )
                 
                 VStack(alignment: .leading, spacing: 3) {

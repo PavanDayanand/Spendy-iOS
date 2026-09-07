@@ -858,6 +858,7 @@ struct DashboardView: View {
         
         let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
         let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#34C759"))
+        let iconName = subscription?.name ?? cat?.label ?? tx.title
         
         return Button(action: {
             HapticsManager.shared.trigger(.selection)
@@ -869,7 +870,8 @@ struct DashboardView: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: subscription != nil ? .circle : .rounded()
+                    style: subscription != nil ? .circle : .rounded(),
+                    monogramName: iconName
                 )
                 
                 // Middle: Category / Title + Subtitle

@@ -656,7 +656,8 @@ struct AnalyticsView: View {
                                 sfSymbol: item.sfSymbol,
                                 color: Color(hex: item.colorHex),
                                 size: .medium,
-                                style: .rounded()
+                                style: .rounded(),
+                                monogramName: item.label
                             )
                             
                             VStack(alignment: .leading, spacing: 2) {
@@ -876,7 +877,8 @@ struct AnalyticsView: View {
                                 sfSymbol: item.sfSymbol,
                                 color: Color(hex: item.colorHex),
                                 size: .medium,
-                                style: .rounded()
+                                style: .rounded(),
+                                monogramName: item.label
                             )
                             
                             VStack(alignment: .leading, spacing: 2) {

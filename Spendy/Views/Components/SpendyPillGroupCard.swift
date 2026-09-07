@@ -258,7 +258,8 @@ struct SpendyPillRow: View {
                     color: item.iconColor ?? SpendyColors.textPrimary,
                     size: .small,
                     style: .rounded(),
-                    showCutoutBorder: false
+                    showCutoutBorder: false,
+                    monogramName: item.title
                 )
                 
                 // Middle Titles & Subtitles

@@ -61,6 +61,7 @@ struct SubscriptionProgressRingBadge: View {
     var isOverdue: Bool
     var size: Size
     var showRing: Bool
+    var monogramName: String = ""
     
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -75,7 +76,8 @@ struct SubscriptionProgressRingBadge: View {
         isDueSoon: Bool = false,
         isOverdue: Bool = false,
         size: Size = .medium,
-        showRing: Bool = true
+        showRing: Bool = true,
+        monogramName: String = ""
     ) {
         self.sfSymbol = sfSymbol
         self.color = color
@@ -85,6 +87,7 @@ struct SubscriptionProgressRingBadge: View {
         self.isOverdue = isOverdue
         self.size = size
         self.showRing = showRing
+        self.monogramName = monogramName
     }
     
     init(
@@ -100,6 +103,7 @@ struct SubscriptionProgressRingBadge: View {
         self.isOverdue = subscription.isOverdue
         self.size = size
         self.showRing = showRing
+        self.monogramName = subscription.name
     }
     
     private var isLightColor: Bool {
@@ -172,8 +176,8 @@ struct SubscriptionProgressRingBadge: View {
                 )
             
             // Centered Symbol or Monogram
-            if sfSymbol == "Aa" || sfSymbol.count <= 2 && !sfSymbol.contains(".") {
-                Text(sfSymbol)
+            if let letter = SpendyMonogram.displayLetter(symbol: sfSymbol, name: monogramName) {
+                Text(letter)
                     .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
                     .foregroundStyle(symbolForeground)
                     .opacity(isPaused ? 0.65 : 1.0)

@@ -39,7 +39,8 @@ struct AccountCardRow: View {
                                         color: account.color,
                                         size: .small,
                                         style: .rounded(),
-                                        showCutoutBorder: false
+                                        showCutoutBorder: false,
+                                        monogramName: account.label
                                     )
                                     
                                     Spacer()

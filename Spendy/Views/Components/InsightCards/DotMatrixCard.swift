@@ -31,7 +31,8 @@ struct DotMatrixCard: View {
                             sfSymbol: icon,
                             color: color,
                             size: .small,
-                            style: .rounded()
+                            style: .rounded(),
+                            monogramName: title
                         )
                     }
                     
