@@ -55,11 +55,12 @@ struct AddTransactionView: View {
     @State private var isEditingNote: Bool = false
     @FocusState private var isNoteFocused: Bool
     @Namespace private var transactionNamespace
+    @AppStorage("addTransactionInputMode") private var inputMode: AmountInputMode = .keypad
+    @AppStorage("addTransactionRulerStep") private var rulerStep: AmountRulerStep = .one
     
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
     @State private var showDiscardConfirmation: Bool = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private var isEditing: Bool {
         transactionToEdit != nil
@@ -137,6 +138,28 @@ struct AddTransactionView: View {
         amountHeroSize * 0.54
     }
     
+    private var activeAmountBinding: Binding<String> {
+        Binding(
+            get: {
+                if type == .transfer && transferActiveField == .destination {
+                    return destinationAmountString
+                }
+                return amountString
+            },
+            set: { newValue in
+                if type == .transfer && transferActiveField == .destination {
+                    destinationAmountString = newValue
+                    isDestinationAmountManuallyEdited = true
+                } else {
+                    amountString = newValue
+                    if type == .transfer && !isDestinationAmountManuallyEdited {
+                        destinationAmountString = newValue
+                    }
+                }
+            }
+        )
+    }
+    
     private var formattedDateLabel: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
@@ -183,14 +206,6 @@ struct AddTransactionView: View {
         return ZStack(alignment: .bottom) {
             SpendyColors.appBackground
                 .ignoresSafeArea()
-            
-            SpendyAmbientHeaderBackground(
-                color: sheetAccent,
-                height: 460,
-                opacity: 0.22
-            )
-            .animation(.easeInOut(duration: reduceMotion ? 0 : 0.35), value: sheetAccent)
-            .allowsHitTesting(false)
             
             VStack(spacing: 0) {
                 // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
@@ -440,43 +455,34 @@ struct AddTransactionView: View {
     
     // MARK: - 3. Standard Amount Section (Expense & Income Mode with Numeric Text Transitions)
     private var standardAmountSection: some View {
-        ZStack {
-            Circle()
-                .fill(sheetAccent.opacity(reduceMotion ? 0.12 : 0.28))
-                .frame(width: 260, height: 260)
-                .blur(radius: reduceMotion ? 0 : 70)
-                .offset(y: 8)
-                .allowsHitTesting(false)
+        VStack(spacing: 10) {
+            Spacer()
             
-            VStack(spacing: 10) {
-                Spacer()
-                
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(store.currencySymbol)
-                        .font(.system(size: amountSymbolSize, weight: .bold, design: .rounded))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .fixedSize()
-                    
-                    Text(amountString)
-                        .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.6)
-                        .foregroundStyle(Color.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .frame(minWidth: 0)
-                        .contentTransition(.numericText())
-                        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 32)
-                .clipped()
-                
-                Text(amountCaption)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(store.currencySymbol)
+                    .font(.system(size: amountSymbolSize, weight: .bold, design: .rounded))
                     .foregroundStyle(SpendyColors.textSecondary)
-                    .textCase(.lowercase)
+                    .fixedSize()
                 
-                Spacer()
+                Text(amountString)
+                    .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.6)
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
+                    .frame(minWidth: 0)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 32)
+            .clipped()
+            
+            Text(amountCaption)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .textCase(.lowercase)
+            
+            Spacer()
         }
         .frame(maxWidth: .infinity)
         .frame(maxHeight: .infinity)
@@ -629,6 +635,8 @@ struct AddTransactionView: View {
                     }
                     .buttonStyle(.plain)
                     
+                    AmountInputModeSwitcher(selection: $inputMode)
+                    
                     Spacer()
                     
                     // Note / Tag Button (44x44 Circular Button)
@@ -647,31 +655,32 @@ struct AddTransactionView: View {
                 }
             }
             
-            // Full-Width 3-Column Calculator Grid (Directs to source or destination amount dynamically)
-            SpendyKeypad(
-                amountString: Binding(
-                    get: {
-                        if type == .transfer && transferActiveField == .destination {
-                            return destinationAmountString
-                        } else {
-                            return amountString
-                        }
-                    },
-                    set: { newValue in
-                        if type == .transfer && transferActiveField == .destination {
-                            destinationAmountString = newValue
-                            isDestinationAmountManuallyEdited = true
-                        } else {
-                            amountString = newValue
-                            if type == .transfer && !isDestinationAmountManuallyEdited {
-                                destinationAmountString = newValue
-                            }
-                        }
-                    }
-                ),
-                maxDigits: 8,
-                useLiquidGlass: true
-            )
+            SpendyGlassEffectContainer(spacing: 12) {
+                if inputMode == .keypad {
+                    SpendyKeypad(
+                        amountString: activeAmountBinding,
+                        maxDigits: 8,
+                        useLiquidGlass: true
+                    )
+                    .glassMorphID("amountEntrySurface", in: transactionNamespace)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)),
+                        removal: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom))
+                    ))
+                } else {
+                    SpendyAmountRuler(
+                        amountString: activeAmountBinding,
+                        step: $rulerStep,
+                        maxDigits: 8
+                    )
+                    .glassMorphID("amountEntrySurface", in: transactionNamespace)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)),
+                        removal: .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom))
+                    ))
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: inputMode)
             
             // Bottom Action Row: [ (🛒) Category ] + [ Save ]
             if type != .transfer {

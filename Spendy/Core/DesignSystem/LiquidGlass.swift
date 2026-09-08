@@ -321,7 +321,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     .frame(height: 36)
                     .foregroundStyle(
                         isSelected
-                            ? SpendyColors.elevatedControlForeground
+                            ? (selectedForegroundColor ?? SpendyColors.elevatedControlForeground)
                             : SpendyColors.textSecondary
                     )
                     .background {

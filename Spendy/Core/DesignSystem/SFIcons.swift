@@ -113,6 +113,8 @@ enum SFIcons {
     static let eyeCircle = "eye.circle.fill"
     static let eyeSlashCircle = "eye.slash.circle.fill"
     static let calendar = "calendar"
+    static let amountKeypad = "circle.grid.3x3.fill"
+    static let amountRuler = "ruler"
     static let repeatIcon = "arrow.triangle.2.circlepath"
     static let checkmark = "checkmark"
     static let checkmarkCircle = "checkmark.circle.fill"
