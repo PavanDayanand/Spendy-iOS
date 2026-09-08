@@ -11,10 +11,10 @@ import SwiftUI
 
 struct SubscriptionProgressRingBadge: View {
     enum Size {
-        case small    // 38x38 outer, 26x26 inner, 2.4pt stroke
-        case medium   // 48x48 outer, 34x34 inner, 3.0pt stroke
-        case large    // 68x68 outer, 48x48 inner, 3.8pt stroke
-        case hero     // 96x96 outer, 68x68 inner, 4.8pt stroke
+        case small
+        case medium
+        case large
+        case hero
         
         var outerDimension: CGFloat {
             switch self {
@@ -25,30 +25,26 @@ struct SubscriptionProgressRingBadge: View {
             }
         }
         
-        var innerDimension: CGFloat {
+        var strokeWidth: CGFloat {
             switch self {
-            case .small:  return 26
-            case .medium: return 34
-            case .large:  return 48
-            case .hero:   return 68
+            case .small:  return 1.6
+            case .medium: return 2.0
+            case .large:  return 2.4
+            case .hero:   return 3.0
             }
+        }
+        
+        /// Tight inset so the icon fill sits just inside the ring, like Fitness.
+        var innerDimension: CGFloat {
+            outerDimension - (strokeWidth * 2) - 3
         }
         
         var iconSize: CGFloat {
             switch self {
-            case .small:  return 13
-            case .medium: return 17
-            case .large:  return 24
-            case .hero:   return 34
-            }
-        }
-        
-        var strokeWidth: CGFloat {
-            switch self {
-            case .small:  return 2.4
-            case .medium: return 3.0
-            case .large:  return 3.8
-            case .hero:   return 4.8
+            case .small:  return 16
+            case .medium: return 21
+            case .large:  return 30
+            case .hero:   return 42
             }
         }
     }
@@ -150,8 +146,8 @@ struct SubscriptionProgressRingBadge: View {
                             height: size.outerDimension - size.strokeWidth
                         )
                         .shadow(
-                            color: ringColor.opacity(isDueSoon || isOverdue ? 0.40 : 0.20),
-                            radius: isDueSoon || isOverdue ? 3 : 1.5,
+                            color: ringColor.opacity(isDueSoon || isOverdue ? 0.28 : 0.0),
+                            radius: isDueSoon || isOverdue ? 2 : 0,
                             x: 0,
                             y: 0
                         )

@@ -31,6 +31,10 @@ struct EditBudgetSheet: View {
     let isEditing: Bool
     var onSave: (() -> Void)? = nil
     
+    private var currentAmountValue: Double {
+        Double(amountString) ?? 0
+    }
+    
     private var hasUnsavedChanges: Bool {
         let currentAmt = Double(amountString) ?? 0.0
         if isEditing && store.budget.isActive {
@@ -52,21 +56,6 @@ struct EditBudgetSheet: View {
         WeekdayItem(id: 1, name: "Sun")
     ]
     
-    private var formattedAmountDisplay: String {
-        if amountString == "0" || amountString.isEmpty { return "0" }
-        let parts = amountString.split(separator: ".")
-        if let intVal = Int(parts[0]) {
-            let formattedInt = NumberFormatter.localizedString(from: NSNumber(value: intVal), number: .decimal)
-            if amountString.hasSuffix(".") {
-                return formattedInt + "."
-            } else if parts.count > 1 {
-                return formattedInt + "." + parts[1]
-            }
-            return formattedInt
-        }
-        return amountString
-    }
-    
     private func ordinalSuffix(for day: Int) -> String {
         let n = day % 100
         if (11...13).contains(n) { return "\(day)th" }
@@ -87,154 +76,27 @@ struct EditBudgetSheet: View {
     }
     
     var body: some View {
-        ZStack {
-            // Adaptive Base Background
+        ZStack(alignment: .bottom) {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header Bar
-                SpendyGlassEffectContainer(spacing: 0) {
-                    HStack {
-                        GlassCircleButton(
-                            icon: "xmark",
-                            size: 44,
-                            iconSize: 15,
-                            foregroundColor: SpendyColors.textPrimary,
-                            haptic: .selection,
-                            accessibilityLabel: "Close",
-                            morphID: "closeButton",
-                            namespace: budgetSheetNamespace
-                        ) {
-                            if hasUnsavedChanges {
-                                showDiscardConfirm = true
-                            } else {
-                                dismiss()
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        Text("Edit Budget")
-                            .font(AppTypography.bodyBold)
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Spacer()
-                        
-                        Color.clear.frame(width: 44, height: 44)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                headerBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
                 
-                Spacer()
+                amountHero
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
-                // Amount Display Area
-                VStack(spacing: 6) {
-                    Text("Budget Limit")
-                        .font(AppTypography.subheadlineSemibold)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    
-                    Text("\(store.currencySymbol)\(formattedAmountDisplay)")
-                        .spendyNumberFont(size: 44, weight: .heavy, tracking: -1.2)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                }
-                .padding(.horizontal, 24)
-                
-                Spacer()
-                
-                // Mode Selectors Row: [ Monthly / Weekly ] + [ Starts: 1st ⌄ ]
-                SpendyGlassEffectContainer(spacing: 12) {
-                    HStack(spacing: 12) {
-                        // Monthly / Weekly Expanding Toggle Capsule (44pt height, M / W icons)
-                        SpendyBudgetPeriodToggle(
-                            selection: $selectedPeriod
-                        )
-                        
-                        Spacer()
-                        
-                        // Start Day Dropdown (44pt height, changes dynamically)
-                        Menu {
-                            if selectedPeriod == .weekly {
-                                ForEach(weekdays) { day in
-                                    Button(action: {
-                                        HapticsManager.shared.trigger(.selection)
-                                        selectedStartDay = day.id
-                                    }) {
-                                        HStack {
-                                            Text(day.name)
-                                            if selectedStartDay == day.id {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                ForEach(1...28, id: \.self) { day in
-                                    Button(action: {
-                                        HapticsManager.shared.trigger(.selection)
-                                        selectedStartDay = day
-                                    }) {
-                                        HStack {
-                                            Text(ordinalSuffix(for: day))
-                                            if selectedStartDay == day {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 14))
-                                
-                                Text("Starts: \(startDayLabel)")
-                                    .font(.system(size: 13, weight: .bold))
-                            }
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
-                            .nativeLiquidGlassCapsule(isInteractive: true)
-                            .glassMorphID("startDayDropdown", in: budgetSheetNamespace)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                
-                // Shared 3x4 Numpad Grid
-                SpendyKeypad(amountString: $amountString, maxDigits: 8)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                
-                // Save Button (Adaptive Apple styling)
-                Button(action: handleSave) {
-                    Text("Save Budget")
-                        .font(AppTypography.bodyBold)
-                        .foregroundStyle((Double(amountString) ?? 0) > 0 ? SpendyColors.inverseText : SpendyColors.textTertiary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill((Double(amountString) ?? 0) > 0 ? SpendyColors.primaryBlue : SpendyColors.cardBackgroundSecondary)
-                                .overlay {
-                                    if (Double(amountString) ?? 0) <= 0 {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                    }
-                                }
-                        }
-                }
-                .disabled((Double(amountString) ?? 0) <= 0)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
+                dockCard
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 0)
+                    .ignoresSafeArea(.container, edges: .bottom)
             }
         }
         .presentationDetents([.fraction(0.85), .large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .presentationBackground(SpendyColors.appBackground)
@@ -268,6 +130,183 @@ struct EditBudgetSheet: View {
     }
     
     
+    
+    private var headerBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "xmark",
+                size: 44,
+                iconSize: 15,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close",
+                morphID: "closeButton",
+                namespace: budgetSheetNamespace
+            ) {
+                if hasUnsavedChanges {
+                    showDiscardConfirm = true
+                } else {
+                    dismiss()
+                }
+            }
+            
+            Spacer()
+            
+            Text(isEditing ? "Edit Budget" : "Set Budget")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            
+            Spacer()
+            
+            Color.clear.frame(width: 44, height: 44)
+        }
+    }
+    
+    private var amountHero: some View {
+        VStack(spacing: 10) {
+            Spacer()
+            
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(store.currencySymbol)
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .fixedSize()
+                
+                Text(amountString)
+                    .spendyNumberFont(size: 72, weight: .heavy, tracking: -1.2)
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .layoutPriority(1)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            
+            if currentAmountValue > 0 {
+                Text(selectedPeriod == .weekly ? "weekly limit" : "monthly limit")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .textCase(.lowercase)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private var dockCard: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                SpendyBudgetPeriodToggle(selection: $selectedPeriod)
+                
+                Spacer(minLength: 0)
+                
+                startDayMenu
+            }
+            
+            SpendyKeypad(
+                amountString: $amountString,
+                maxDigits: 8,
+                useLiquidGlass: false
+            )
+            
+            HStack {
+                Spacer()
+                
+                Button(action: handleSave) {
+                    Text("Save")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
+                        .padding(.horizontal, 32)
+                        .frame(height: 44)
+                        .background {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
+                        }
+                }
+                .buttonStyle(KeypadPressStyle())
+                .disabled(currentAmountValue <= 0)
+                .accessibilityLabel("Save")
+            }
+            .padding(.top, 8)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 22)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color(hex: "#141416").opacity(0.88))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.14),
+                                    Color.white.opacity(0.04)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.8
+                        )
+                }
+        }
+    }
+    
+    private var startDayMenu: some View {
+        Menu {
+            if selectedPeriod == .weekly {
+                ForEach(weekdays) { day in
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        selectedStartDay = day.id
+                    } label: {
+                        HStack {
+                            Text(day.name)
+                            if selectedStartDay == day.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } else {
+                ForEach(1...28, id: \.self) { day in
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        selectedStartDay = day
+                    } label: {
+                        HStack {
+                            Text(ordinalSuffix(for: day))
+                            if selectedStartDay == day {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Text(startDayLabel)
+                    .font(.system(size: 13, weight: .bold))
+            }
+            .foregroundStyle(SpendyColors.textPrimary)
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(hex: "#1C1C1E"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                    }
+            }
+        }
+        .accessibilityLabel("Starts \(startDayLabel)")
+    }
     
     private func handleSave() {
         guard let amt = Double(amountString), amt > 0 else { return }
