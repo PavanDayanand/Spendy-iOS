@@ -293,6 +293,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     var activeTint: Color? = nil
     var selectedForegroundColor: Color? = nil
     var expandsToFillWidth: Bool = true
+    var useLiquidGlass: Bool = true
     
     @Namespace private var segmentNamespace
     
@@ -343,7 +344,17 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         }
         .padding(4)
         .frame(height: 44)
-        .nativeLiquidGlassCapsule(isInteractive: true)
+        .background {
+            if !useLiquidGlass {
+                Capsule(style: .continuous)
+                    .fill(Color(hex: "#1C1C1E"))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                    }
+            }
+        }
+        .modifier(ConditionalLiquidGlassCapsule(enabled: useLiquidGlass))
     }
     
     private var activeSegmentFill: Color {
@@ -351,6 +362,18 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
             return tint
         }
         return SpendyColors.elevatedControlFill
+    }
+}
+
+private struct ConditionalLiquidGlassCapsule: ViewModifier {
+    var enabled: Bool
+    
+    func body(content: Content) -> some View {
+        if enabled {
+            content.nativeLiquidGlassCapsule(isInteractive: true)
+        } else {
+            content
+        }
     }
 }
 

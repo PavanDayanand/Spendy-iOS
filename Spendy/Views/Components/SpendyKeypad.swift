@@ -80,17 +80,19 @@ struct SpendyKeypad: View {
         HapticsManager.shared.trigger(.tick)
         if amountString == "0" {
             amountString = key
-        } else {
-            // Enforce decimal limit
-            if let dotIndex = amountString.firstIndex(of: ".") {
-                let decimals = amountString[dotIndex...].count - 1
-                if decimals >= maxDecimals { return }
-            }
-            // Enforce max digits
-            let digitCount = amountString.replacingOccurrences(of: ".", with: "").count
-            if digitCount >= maxDigits { return }
-            amountString += key
+            return
         }
+        
+        if let dotIndex = amountString.firstIndex(of: ".") {
+            let decimals = amountString.distance(from: amountString.index(after: dotIndex), to: amountString.endIndex)
+            if decimals >= maxDecimals { return }
+            amountString += key
+            return
+        }
+        
+        let integerDigits = amountString.filter(\.isNumber).count
+        if integerDigits >= maxDigits { return }
+        amountString += key
     }
 }
 

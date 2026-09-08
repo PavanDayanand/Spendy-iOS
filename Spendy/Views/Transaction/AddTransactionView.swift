@@ -109,34 +109,22 @@ struct AddTransactionView: View {
         return selectedCategory?.color ?? SpendyColors.primaryBlue
     }
     
-    private var amountCaption: String {
+    private var trimmedNote: String {
+        note.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private var amountCaption: String? {
+        guard currentAmountValue > 0 else { return nil }
         let categoryName = (selectedCategory?.label ?? "").lowercased()
-        if currentAmountValue <= 0 {
-            return type == .income ? "how much came in?" : "how much?"
-        }
         if type == .income {
             return categoryName.isEmpty ? "received" : "to \(categoryName)"
         }
         return categoryName.isEmpty ? "spent" : "on \(categoryName)"
     }
     
-    private var amountDigitCount: Int {
-        amountString.filter(\.isNumber).count
-    }
+    private var amountHeroSize: CGFloat { 72 }
     
-    private var amountHeroSize: CGFloat {
-        switch amountDigitCount {
-        case ...4: return 72
-        case 5: return 62
-        case 6: return 52
-        case 7: return 44
-        default: return 38
-        }
-    }
-    
-    private var amountSymbolSize: CGFloat {
-        amountHeroSize * 0.54
-    }
+    private var amountSymbolSize: CGFloat { 38 }
     
     private var activeAmountBinding: Binding<String> {
         Binding(
@@ -251,7 +239,8 @@ struct AddTransactionView: View {
                     // MARK: - 5. Bottom Keypad & Actions (dock card)
                     keypadAndActionsSection
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 6)
+                        .padding(.bottom, 0)
+                        .ignoresSafeArea(.container, edges: .bottom)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
@@ -327,8 +316,14 @@ struct AddTransactionView: View {
             
             Spacer()
             
-            // Standard 44pt Height Liquid Glass Type Switcher
-            liquidGlassTypeSwitcher
+            SpendyTransactionTypeToggle(
+                selection: $type,
+                availableTypes: availableTypes
+            ) { newType in
+                if let first = store.categories.filter({ $0.type == newType }).first {
+                    selectedCategoryId = first.id
+                }
+            }
             
             Spacer()
             
@@ -372,18 +367,6 @@ struct AddTransactionView: View {
     
     private var availableTypes: [TransactionType] {
         store.accounts.count >= 2 ? [.expense, .income, .transfer] : [.expense, .income]
-    }
-    
-    // MARK: - Expanding Type Switcher (Expense / Income / Transfer)
-    private var liquidGlassTypeSwitcher: some View {
-        AddTransactionTypeSwitcher(
-            selection: $type,
-            availableTypes: availableTypes
-        ) { newType in
-            if let first = store.categories.filter({ $0.type == newType }).first {
-                selectedCategoryId = first.id
-            }
-        }
     }
     
     // MARK: - 2. Subheader Row (Account Pill on Left)
@@ -442,7 +425,14 @@ struct AddTransactionView: View {
                 .padding(.trailing, 16)
             }
             .frame(height: 44)
-            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(hex: "#1C1C1E"))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                    }
+            }
         }
         .buttonStyle(.plain)
         
@@ -458,29 +448,49 @@ struct AddTransactionView: View {
         VStack(spacing: 10) {
             Spacer()
             
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(store.currencySymbol)
                     .font(.system(size: amountSymbolSize, weight: .bold, design: .rounded))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .fixedSize()
                 
                 Text(amountString)
-                    .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.6)
+                    .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.2)
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.4)
-                    .frame(minWidth: 0)
+                    .minimumScaleFactor(0.5)
+                    .layoutPriority(1)
                     .contentTransition(.numericText())
                     .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 32)
-            .clipped()
+            .padding(.horizontal, 16)
             
-            Text(amountCaption)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .textCase(.lowercase)
+            if let amountCaption {
+                Text(amountCaption)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .textCase(.lowercase)
+            }
+            
+            if !trimmedNote.isEmpty {
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        isEditingNote = true
+                    }
+                    HapticsManager.shared.trigger(.light)
+                } label: {
+                    Text(trimmedNote)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Note, \(trimmedNote)")
+            }
             
             Spacer()
         }
@@ -612,47 +622,59 @@ struct AddTransactionView: View {
     
     // MARK: - 5. Full-Width Keypad & Actions Section
     private var keypadAndActionsSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
             // Action Buttons Row: [ 📅 Today ] on left, ( 🏷 ) on right
-            SpendyGlassEffectContainer(spacing: 10) {
-                HStack(spacing: 10) {
-                    // Date Selector (rounded-square to match category / account icons)
-                    Button(action: {
-                        activeSheet = .calendar
-                        HapticsManager.shared.trigger(.light)
-                    }) {
-                        HStack(spacing: 7) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 15, weight: .semibold))
-                            
-                            Text(formattedDateLabel)
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .padding(.horizontal, 16)
-                        .frame(height: 44)
-                        .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
+            HStack(spacing: 10) {
+                Button(action: {
+                    activeSheet = .calendar
+                    HapticsManager.shared.trigger(.light)
+                }) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .semibold))
+                        
+                        Text(formattedDateLabel)
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-                    
-                    AmountInputModeSwitcher(selection: $inputMode)
-                    
-                    Spacer()
-                    
-                    // Note / Tag Button (44x44 Circular Button)
-                    GlassCircleButton(
-                        icon: note.isEmpty ? "tag" : "tag.fill",
-                        size: 44,
-                        iconSize: 15,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .light,
-                        accessibilityLabel: "Add Note"
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            isEditingNote = true
-                        }
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .background {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(hex: "#1C1C1E"))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                            }
                     }
                 }
+                .buttonStyle(.plain)
+                
+                AmountInputModeSwitcher(selection: $inputMode)
+                
+                Spacer()
+                
+                Button {
+                    HapticsManager.shared.trigger(.light)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        isEditingNote = true
+                    }
+                } label: {
+                    Image(systemName: note.isEmpty ? "tag" : "tag.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            Circle()
+                                .fill(Color(hex: "#1C1C1E"))
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add Note")
             }
             
             SpendyGlassEffectContainer(spacing: 12) {
@@ -660,7 +682,7 @@ struct AddTransactionView: View {
                     SpendyKeypad(
                         amountString: activeAmountBinding,
                         maxDigits: 8,
-                        useLiquidGlass: true
+                        useLiquidGlass: false
                     )
                     .glassMorphID("amountEntrySurface", in: transactionNamespace)
                     .transition(.asymmetric(
@@ -684,56 +706,59 @@ struct AddTransactionView: View {
             
             // Bottom Action Row: [ (🛒) Category ] + [ Save ]
             if type != .transfer {
-                SpendyGlassEffectContainer(spacing: 12) {
-                    HStack(spacing: 12) {
-                        // Category Selector Pill (44pt height, iOS Liquid Glass, and perfect padding)
-                        Button(action: {
-                            activeSheet = .category
-                            HapticsManager.shared.trigger(.selection)
-                        }) {
-                            HStack(spacing: 8) {
-                                // Vibrant Category Rounded Square Badge
-                                SpendyIconBadge(
-                                    sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
-                                    color: selectedCategory?.color ?? Color(hex: "#34C759"),
-                                    size: .small,
-                                    style: .rounded(),
-                                    monogramName: selectedCategory?.label ?? ""
-                                )
-                                .padding(.leading, 6)
-                                
-                                Text(selectedCategory?.label ?? "Groceries")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                    .lineLimit(1)
-                                    .padding(.trailing, 16)
-                            }
-                            .frame(height: 44)
-                            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
+                HStack(spacing: 12) {
+                    Button(action: {
+                        activeSheet = .category
+                        HapticsManager.shared.trigger(.selection)
+                    }) {
+                        HStack(spacing: 8) {
+                            SpendyIconBadge(
+                                sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
+                                color: selectedCategory?.color ?? Color(hex: "#34C759"),
+                                size: .small,
+                                style: .rounded(),
+                                monogramName: selectedCategory?.label ?? ""
+                            )
+                            .padding(.leading, 6)
+                            
+                            Text(selectedCategory?.label ?? "Groceries")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .lineLimit(1)
+                                .padding(.trailing, 16)
                         }
-                        .buttonStyle(.plain)
-                        
-                        Spacer()
-                        
-                        // Save Button (rounded-square to pair with category selector)
-                        Button(action: {
-                            saveTransaction()
-                        }) {
-                            Text("Save")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
-                                .padding(.horizontal, 32)
-                                .frame(height: 44)
-                                .background {
+                        .frame(height: 44)
+                        .background {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(hex: "#1C1C1E"))
+                                .overlay {
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
+                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
                                 }
                         }
-                        .buttonStyle(KeypadPressStyle())
-                        .disabled(currentAmountValue <= 0)
-                        .accessibilityLabel("Save")
                     }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        saveTransaction()
+                    }) {
+                        Text("Save")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
+                            .padding(.horizontal, 32)
+                            .frame(height: 44)
+                            .background {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
+                            }
+                    }
+                    .buttonStyle(KeypadPressStyle())
+                    .disabled(currentAmountValue <= 0)
+                    .accessibilityLabel("Save")
                 }
+                .padding(.top, 8)
             } else {
                 // Transfer Mode: iOS "Slide to Transfer" Liquid Glass Slider
                 SpendySlideToTransfer(
@@ -748,8 +773,8 @@ struct AddTransactionView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 22)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Color(hex: "#141416").opacity(0.88))
@@ -1217,9 +1242,11 @@ struct CustomCalendarDrawer: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedDate: Date
     @State private var displayedMonth: Date = Date()
+    @State private var isPickingMonthYear: Bool = false
     
     private let calendar = Calendar.current
     private let weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    private let monthSymbols = Calendar.current.shortMonthSymbols
     
     private var monthYearString: String {
         let formatter = DateFormatter()
@@ -1286,32 +1313,32 @@ struct CustomCalendarDrawer: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 
-                // Month Selector Header (< August 2026 >)
                 HStack {
-                    Button(action: {
-                        // Month selector dropdown
-                    }) {
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            isPickingMonthYear.toggle()
+                        }
+                        HapticsManager.shared.trigger(.selection)
+                    } label: {
                         HStack(spacing: 6) {
-                            Text(monthYearString)
+                            Text(isPickingMonthYear ? displayedYearTitle : monthYearString)
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundStyle(SpendyColors.textPrimary)
                             
-                            Image(systemName: "chevron.right")
+                            Image(systemName: isPickingMonthYear ? "chevron.down" : "chevron.right")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(SpendyColors.textTertiary)
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isPickingMonthYear ? "Choose year and month" : "Choose month")
                     
                     Spacer()
                     
                     HStack(spacing: 16) {
-                        Button(action: {
-                            if let prev = calendar.date(byAdding: .month, value: -1, to: displayedMonth) {
-                                displayedMonth = prev
-                            }
-                            HapticsManager.shared.trigger(.light)
-                        }) {
+                        Button {
+                            shiftDisplayed(by: isPickingMonthYear ? -1 : -1, unit: isPickingMonthYear ? .year : .month)
+                        } label: {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(SpendyColors.textPrimary)
@@ -1320,12 +1347,9 @@ struct CustomCalendarDrawer: View {
                         }
                         .buttonStyle(.plain)
                         
-                        Button(action: {
-                            if let next = calendar.date(byAdding: .month, value: 1, to: displayedMonth) {
-                                displayedMonth = next
-                            }
-                            HapticsManager.shared.trigger(.light)
-                        }) {
+                        Button {
+                            shiftDisplayed(by: 1, unit: isPickingMonthYear ? .year : .month)
+                        } label: {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(SpendyColors.textPrimary)
@@ -1338,65 +1362,21 @@ struct CustomCalendarDrawer: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 6)
                 
-                // Weekday Column Headers
-                HStack {
-                    ForEach(weekdays, id: \.self) { day in
-                        Text(day)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .frame(maxWidth: .infinity)
-                    }
+                if isPickingMonthYear {
+                    monthYearPicker
+                } else {
+                    weekdayHeader
+                    daysGrid
                 }
-                .padding(.horizontal, 14)
-                
-                // Calendar Days Grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, dayDate in
-                        if let day = dayDate {
-                            let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
-                            let dayNumber = calendar.component(.day, from: day)
-                            
-                            Button(action: {
-                                selectedDate = day
-                                HapticsManager.shared.trigger(.selection)
-                                dismiss()
-                            }) {
-                                VStack(spacing: 2) {
-                                    ZStack {
-                                        if isSelected {
-                                            Circle()
-                                                .fill(Color.white)
-                                                .frame(width: 38, height: 38)
-                                        }
-                                        
-                                        Text("\(dayNumber)")
-                                            .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                                            .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
-                                    }
-                                    .frame(width: 44, height: 44)
-                                    
-                                    if isSelected {
-                                        Circle()
-                                            .fill(Color.white)
-                                            .frame(width: 4, height: 4)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            Color.clear
-                                .frame(width: 44, height: 44)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
                 
                 Spacer()
             }
         }
         .presentationDetents([.fraction(0.68)])
         .presentationDragIndicator(.visible)
+        .onAppear {
+            displayedMonth = selectedDate
+        }
     }
     
     private var formattedDateTitle: String {
@@ -1404,85 +1384,170 @@ struct CustomCalendarDrawer: View {
         formatter.dateFormat = "d MMM"
         return formatter.string(from: selectedDate)
     }
-}
-
-// MARK: - Capsule Type Switcher (Add Transaction)
-/// Same expanding Expense / Income / Transfer control as before (capsule + circles),
-/// restyled to sit with the glass close / more buttons.
-private struct AddTransactionTypeSwitcher: View {
-    @Binding var selection: TransactionType
-    var availableTypes: [TransactionType]
-    var onSelect: ((TransactionType) -> Void)? = nil
     
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(availableTypes) { item in
-                let isSelected = selection == item
-                
-                Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-                        selection = item
-                        onSelect?(item)
-                    }
-                    HapticsManager.shared.trigger(.selection)
-                }) {
-                    if isSelected {
-                        HStack(spacing: 7) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.black.opacity(0.12))
-                                    .frame(width: 22, height: 22)
-                                
-                                Image(systemName: iconName(for: item))
-                                    .font(.system(size: 10.5, weight: .bold))
-                                    .foregroundStyle(Color.black)
-                                    .symbolEffect(.bounce.byLayer, value: isSelected)
-                            }
-                            
-                            Text(item.title)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.black)
-                                .lineLimit(1)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
-                        }
-                        .padding(.leading, 5)
-                        .padding(.trailing, 12)
-                        .frame(height: 34)
-                        .background {
-                            Capsule(style: .continuous)
-                                .fill(Color.white)
-                        }
-                    } else {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white.opacity(0.14))
-                                .frame(width: 28, height: 28)
-                            
-                            Image(systemName: iconName(for: item))
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.72))
-                        }
-                        .frame(width: 34, height: 34)
-                        .contentShape(Circle())
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .frame(height: 44)
-        .nativeLiquidGlassCapsule(isInteractive: true)
+    private var displayedYearTitle: String {
+        String(calendar.component(.year, from: displayedMonth))
     }
     
-    private func iconName(for type: TransactionType) -> String {
-        switch type {
-        case .expense: return "arrow.up.right"
-        case .income: return "arrow.down.left"
-        case .transfer: return "arrow.left.and.right"
+    private var displayedYear: Int {
+        calendar.component(.year, from: displayedMonth)
+    }
+    
+    private var displayedMonthIndex: Int {
+        calendar.component(.month, from: displayedMonth)
+    }
+    
+    private func shiftDisplayed(by value: Int, unit: Calendar.Component) {
+        if let next = calendar.date(byAdding: unit, value: value, to: displayedMonth) {
+            displayedMonth = next
         }
+        HapticsManager.shared.trigger(.light)
+    }
+    
+    private var weekdayHeader: some View {
+        HStack {
+            ForEach(weekdays, id: \.self) { day in
+                Text(day)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+    
+    private var daysGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+            ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, dayDate in
+                if let day = dayDate {
+                    let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
+                    let dayNumber = calendar.component(.day, from: day)
+                    
+                    Button {
+                        selectedDate = day
+                        HapticsManager.shared.trigger(.selection)
+                        dismiss()
+                    } label: {
+                        VStack(spacing: 2) {
+                            ZStack {
+                                if isSelected {
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 38, height: 38)
+                                }
+                                
+                                Text("\(dayNumber)")
+                                    .font(.system(size: 16, weight: isSelected ? .bold : .medium))
+                                    .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                            }
+                            .frame(width: 44, height: 44)
+                            
+                            if isSelected {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 4, height: 4)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+    
+    private var monthYearPicker: some View {
+        VStack(spacing: 18) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                ForEach(1...12, id: \.self) { month in
+                    let isSelected = month == displayedMonthIndex
+                    Button {
+                        selectMonth(month)
+                    } label: {
+                        Text(monthSymbols[month - 1])
+                            .font(.system(size: 15, weight: isSelected ? .bold : .medium))
+                            .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background {
+                                if isSelected {
+                                    Capsule(style: .continuous)
+                                        .fill(Color.white)
+                                }
+                            }
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(monthSymbols[month - 1])
+                }
+            }
+            .padding(.horizontal, 18)
+            
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(yearRange, id: \.self) { year in
+                            let isSelected = year == displayedYear
+                            Button {
+                                selectYear(year)
+                            } label: {
+                                Text(String(year))
+                                    .font(.system(size: 15, weight: isSelected ? .bold : .medium))
+                                    .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                                    .padding(.horizontal, 16)
+                                    .frame(height: 40)
+                                    .background {
+                                        Capsule(style: .continuous)
+                                            .fill(isSelected ? Color.white : SpendyColors.cardBackgroundSecondary)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .id(year)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .onAppear {
+                    proxy.scrollTo(displayedYear, anchor: .center)
+                }
+                .onChange(of: displayedYear) { _, year in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(year, anchor: .center)
+                    }
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+    
+    private var yearRange: [Int] {
+        let current = calendar.component(.year, from: Date())
+        return Array((current - 15)...(current + 2))
+    }
+    
+    private func selectMonth(_ month: Int) {
+        var components = calendar.dateComponents([.year, .month], from: displayedMonth)
+        components.month = month
+        if let next = calendar.date(from: components) {
+            displayedMonth = next
+        }
+        HapticsManager.shared.trigger(.selection)
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            isPickingMonthYear = false
+        }
+    }
+    
+    private func selectYear(_ year: Int) {
+        var components = calendar.dateComponents([.year, .month], from: displayedMonth)
+        components.year = year
+        if let next = calendar.date(from: components) {
+            displayedMonth = next
+        }
+        HapticsManager.shared.trigger(.selection)
     }
 }
 

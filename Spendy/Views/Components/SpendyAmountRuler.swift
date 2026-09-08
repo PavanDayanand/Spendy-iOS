@@ -115,7 +115,14 @@ struct AmountInputModeSwitcher: View {
         }
         .padding(4)
         .frame(height: 44)
-        .nativeLiquidGlassCapsule(isInteractive: true)
+        .background {
+            Capsule(style: .continuous)
+                .fill(Color(hex: "#1C1C1E"))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                }
+        }
         .accessibilityElement(children: .contain)
     }
 }
@@ -127,20 +134,22 @@ struct SpendyAmountRuler: View {
     @Binding var step: AmountRulerStep
     var maxDigits: Int = 8
     
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    
     @State private var rawAmount: Double = 0
     @State private var dragOrigin: Double = 0
     @State private var isDragging = false
+    @State private var motionGlow: CGFloat = 0
     @State private var lastHapticTick: Double = .nan
     @State private var lastHapticAt: Date = .distantPast
     
-    private let tickSpacing: CGFloat = 11
-    private let rulerHeight: CGFloat = 92
-    private let tickColor = Color(hex: "#E8B86D")
+    private let tickSpacing: CGFloat = 12
+    private let rulerHeight: CGFloat = 112
+    private let restGold = Color(hex: "#E08A2C")
+    private let liveGold = Color(hex: "#FFC14D")
+    private let restSelected = Color(hex: "#F4A83A")
+    private let liveSelected = Color(hex: "#FFF3B0")
     
     private var maxValue: Double {
-        pow(10, Double(maxDigits)) - (step == .cents ? 0.01 : 1)
+        pow(10, Double(maxDigits)) - 0.01
     }
     
     private var snappedAmount: Double {
@@ -155,7 +164,8 @@ struct SpendyAmountRuler: View {
             GlassSegmentedPicker(
                 selection: $step,
                 items: AmountRulerStep.allCases,
-                titleFor: { $0.title }
+                titleFor: { $0.title },
+                useLiquidGlass: false
             )
             .onChange(of: step) { _, newStep in
                 let next = snap(rawAmount, using: newStep)
@@ -185,8 +195,8 @@ struct SpendyAmountRuler: View {
                 .padding(.bottom, 16)
             
             Image(systemName: "arrowtriangle.up.fill")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(tickColor)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(mix(restSelected, liveSelected, motionGlow))
                 .padding(.bottom, 6)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -222,6 +232,10 @@ struct SpendyAmountRuler: View {
             let centerX = size.width / 2
             let baseline = size.height - 4
             let ticksEachSide = Int(size.width / spacing) + 6
+            let glow = motionGlow
+            let labelInterval = stepValue * Double(labelEvery)
+            var lastLabelX: CGFloat = -1_000
+            var lastLabelText = ""
             
             for index in -ticksEachSide...ticksEachSide {
                 let tickValue = snapped + Double(index) * stepValue
@@ -229,41 +243,53 @@ struct SpendyAmountRuler: View {
                 if tickValue > maxValue + stepValue { continue }
                 
                 let x = centerX + CGFloat(index) * spacing - pixelOffset
-                guard x > -12 && x < size.width + 12 else { continue }
+                guard x > -16 && x < size.width + 16 else { continue }
                 
                 let isMajor = isNearMultiple(tickValue, of: stepValue * Double(majorEvery))
-                let isLabeled = isNearMultiple(tickValue, of: stepValue * Double(labelEvery))
-                let edgeFade = 1 - min(abs(x - centerX) / (size.width * 0.52), 1) * 0.55
-                let opacity = max(0.28, edgeFade)
+                let isSelected = abs(x - centerX) < spacing * 0.5
+                let isLabeled = isNearMultiple(tickValue, of: labelInterval)
+                let edgeFade = 1 - min(abs(x - centerX) / (size.width * 0.48), 1)
+                let opacity = max(0.16, pow(edgeFade, 1.35) * (0.72 + 0.28 * glow))
                 
-                let height: CGFloat = isMajor ? 36 : 22
-                var path = Path()
-                path.move(to: CGPoint(x: x, y: baseline))
-                path.addLine(to: CGPoint(x: x, y: baseline - height))
+                let color = isSelected
+                    ? mix(restSelected, liveSelected, glow)
+                    : mix(restGold, liveGold, glow)
                 
-                context.stroke(
-                    path,
-                    with: .color(tickColor.opacity(opacity)),
-                    style: StrokeStyle(lineWidth: isMajor ? 2.4 : 1.5, lineCap: .round)
+                let barWidth: CGFloat = isSelected ? 4.8 : (isMajor ? 4.0 : 3.4)
+                let barHeight: CGFloat = isSelected ? 48 : 44
+                let barRect = CGRect(
+                    x: x - barWidth / 2,
+                    y: baseline - barHeight,
+                    width: barWidth,
+                    height: barHeight
+                )
+                context.fill(
+                    Path(roundedRect: barRect, cornerRadius: barWidth / 2),
+                    with: .color(color.opacity(opacity))
                 )
                 
-                if isLabeled && tickValue >= -0.0001 {
-                    let label = tickLabel(tickValue)
-                    let resolved = context.resolve(
-                        Text(label)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundColor(tickColor.opacity(min(1, opacity + 0.2)))
-                    )
-                    context.draw(
-                        resolved,
-                        at: CGPoint(x: x, y: baseline - height - 12),
-                        anchor: .center
-                    )
+                if isLabeled {
+                    let label = compactTickLabel(tickValue)
+                    if !label.isEmpty,
+                       label != lastLabelText,
+                       abs(x - lastLabelX) > 36 {
+                        let resolved = context.resolve(
+                            Text(label)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundColor(color.opacity(min(1, opacity + 0.18)))
+                        )
+                        context.draw(
+                            resolved,
+                            at: CGPoint(x: x, y: baseline - barHeight - 13),
+                            anchor: .center
+                        )
+                        lastLabelX = x
+                        lastLabelText = label
+                    }
                 }
             }
         }
-        .animation(isDragging || reduceMotion ? nil : AppMotion.snappySpring, value: snappedAmount)
     }
     
     // MARK: Gesture
@@ -274,6 +300,9 @@ struct SpendyAmountRuler: View {
                 if !isDragging {
                     isDragging = true
                     dragOrigin = rawAmount
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        motionGlow = 1
+                    }
                 }
                 let deltaSteps = Double(-value.translation.width / tickSpacing)
                 var next = dragOrigin + deltaSteps * step.value
@@ -284,23 +313,15 @@ struct SpendyAmountRuler: View {
                 hapticIfNeeded(for: snapped)
             }
             .onEnded { value in
-                let projected = reduceMotion
-                    ? value.translation.width
-                    : value.predictedEndTranslation.width
-                let deltaSteps = Double(-projected / tickSpacing)
-                var next = dragOrigin + deltaSteps * step.value
-                next = snap(clamp(next))
-                
-                if reduceMotion {
-                    rawAmount = next
-                } else {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                        rawAmount = next
-                    }
-                }
+                let deltaSteps = Double(-value.translation.width / tickSpacing)
+                let next = snap(clamp(dragOrigin + deltaSteps * step.value))
+                rawAmount = next
                 commit(next)
                 hapticIfNeeded(for: next, force: true)
                 isDragging = false
+                withAnimation(.easeInOut(duration: 0.38)) {
+                    motionGlow = 0
+                }
             }
     }
     
@@ -334,15 +355,25 @@ struct SpendyAmountRuler: View {
     
     private func applyDelta(_ delta: Double) {
         let next = snap(rawAmount + delta)
-        if reduceMotion {
-            rawAmount = next
-        } else {
-            withAnimation(AppMotion.snappySpring) {
-                rawAmount = next
-            }
-        }
+        rawAmount = next
         commit(next)
         HapticsManager.shared.trigger(.tick)
+    }
+    
+    private func mix(_ a: Color, _ b: Color, _ t: CGFloat) -> Color {
+        let clamped = min(max(t, 0), 1)
+        let uiA = UIColor(a)
+        let uiB = UIColor(b)
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        uiA.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        uiB.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        return Color(
+            red: Double(ar + (br - ar) * clamped),
+            green: Double(ag + (bg - ag) * clamped),
+            blue: Double(ab + (bb - ab) * clamped),
+            opacity: Double(aa + (ba - aa) * clamped)
+        )
     }
     
     private func commit(_ value: Double) {
@@ -368,15 +399,41 @@ struct SpendyAmountRuler: View {
         return abs(quotient - quotient.rounded()) < 0.001
     }
     
-    private func tickLabel(_ value: Double) -> String {
-        let safe = max(0, value)
-        if step == .cents {
-            return String(format: "%.2f", safe)
+    /// Short tape labels that scroll with the ticks: 0, 5, 10, 1k, 12L.
+    private func compactTickLabel(_ value: Double) -> String {
+        let mag = max(0, value)
+        if mag < 0.0001 { return "0" }
+        
+        if step == .cents || mag < 1 {
+            var text = String(format: "%.2f", mag)
+            if text.hasSuffix("0") { text.removeLast() }
+            if text.hasSuffix("0") { text.removeLast() }
+            if text.hasSuffix(".") { text.removeLast() }
+            return text
         }
-        if safe >= 1000 {
-            return safe.formattedNumber(decimals: 0)
+        
+        if mag >= 10_000_000 {
+            let crores = mag / 10_000_000
+            return crores == floor(crores)
+                ? String(format: "%.0fCr", crores)
+                : String(format: "%.2fCr", crores)
         }
-        return String(format: "%.0f", safe)
+        
+        if mag >= 100_000 {
+            let lakhs = mag / 100_000
+            return lakhs == floor(lakhs)
+                ? String(format: "%.0fL", lakhs)
+                : String(format: "%.1fL", lakhs)
+        }
+        
+        if mag >= 1000 {
+            let thousands = mag / 1000
+            return thousands == floor(thousands)
+                ? String(format: "%.0fk", thousands)
+                : String(format: "%.1fk", thousands)
+        }
+        
+        return String(format: "%.0f", mag.rounded())
     }
     
     private var accessibilityValue: String {
