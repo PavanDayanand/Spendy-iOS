@@ -54,6 +54,8 @@ enum DashboardSectionId: String, Codable, CaseIterable, Identifiable {
 @Observable
 @MainActor
 final class ExpenseStore {
+    static let shared = ExpenseStore()
+    
     // MARK: - App State
     
     @ObservationIgnored private var _saveTask: Task<Void, Never>?
@@ -461,6 +463,7 @@ final class ExpenseStore {
                         self.accounts[i].type = .cash
                     }
                 }
+                WidgetDataManager.shared.publish(from: self)
                 return
             } catch {
                 print("Failed to load local store: \(error.localizedDescription)")
@@ -469,9 +472,11 @@ final class ExpenseStore {
         
         // Seed initial default user state for first run
         seedInitialData()
+        WidgetDataManager.shared.publish(from: self)
     }
     
     private func saveToDisk() {
+        WidgetDataManager.shared.publish(from: self)
         let payload = StoragePayload(
             userName: userName,
             hapticsEnabled: hapticsEnabled,
@@ -702,6 +707,45 @@ final class ExpenseStore {
             transactions.insert(transaction, at: 0)
         }
         HapticsManager.shared.trigger(.success)
+    }
+
+    func addTransactionFromIntent(_ transaction: Transaction) {
+        transactions.insert(transaction, at: 0)
+    }
+
+    func ingestPendingWidgetTransactions() {
+        let pending = WidgetDataManager.shared.consumePendingTransactions()
+        guard !pending.isEmpty else { return }
+
+        var didInsert = false
+        for item in pending {
+            let id = UUID(uuidString: item.id) ?? UUID()
+            if transactions.contains(where: { $0.id == id }) { continue }
+            let accountId = accounts.contains(where: { $0.id == item.accountId })
+                ? item.accountId
+                : (accounts.first(where: { $0.id == "cash" })?.id ?? accounts.first?.id ?? "cash")
+            let txType: TransactionType = item.isTransfer ? .transfer : (item.isExpense ? .expense : .income)
+            let toId = item.isTransfer ? item.toAccountId : nil
+            transactions.insert(
+                Transaction(
+                    id: id,
+                    title: item.title,
+                    amount: item.amount,
+                    type: txType,
+                    categoryId: item.categoryId,
+                    accountId: accountId,
+                    toAccountId: toId,
+                    date: item.date,
+                    notes: item.notes
+                ),
+                at: 0
+            )
+            didInsert = true
+        }
+
+        if didInsert {
+            HapticsManager.shared.trigger(.success)
+        }
     }
     
     func deleteTransaction(id: UUID) {
@@ -1323,6 +1367,49 @@ final class ExpenseStore {
             selectedSticker: selectedSticker
         )
         return try? ExpenseStore.jsonEncoder.encode(payload)
+    }
+    
+    func exportCSVData() -> Data? {
+        var csv = "Date,Time,Title,Type,Amount,Currency,Category,Account,To Account,Notes\r\n"
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = Locale(identifier: "en_US_POSIX")
+        timeFormatter.dateFormat = "HH:mm:ss"
+        
+        let categoryLookup = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.label) })
+        let accountLookup = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.label) })
+        
+        func escapeCSV(_ string: String) -> String {
+            let escaped = string.replacingOccurrences(of: "\"", with: "\"\"")
+            if escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n") || escaped.contains("\r") {
+                return "\"\(escaped)\""
+            }
+            return escaped
+        }
+        
+        let sortedTransactions = transactions.sorted { $0.date > $1.date }
+        
+        for tx in sortedTransactions {
+            let dateStr = dateFormatter.string(from: tx.date)
+            let timeStr = timeFormatter.string(from: tx.date)
+            let titleStr = escapeCSV(tx.title)
+            let typeStr = tx.type.rawValue.capitalized
+            let amountStr = String(format: "%.2f", tx.amount)
+            let currencyStr = currencyCode
+            let catName = escapeCSV(categoryLookup[tx.categoryId] ?? tx.categoryId)
+            let accName = escapeCSV(accountLookup[tx.accountId] ?? tx.accountId)
+            let toAccName = tx.toAccountId.flatMap { escapeCSV(accountLookup[$0] ?? $0) } ?? ""
+            let notesStr = escapeCSV(tx.notes ?? "")
+            
+            let row = "\(dateStr),\(timeStr),\(titleStr),\(typeStr),\(amountStr),\(currencyStr),\(catName),\(accName),\(toAccName),\(notesStr)\r\n"
+            csv.append(row)
+        }
+        
+        return csv.data(using: .utf8)
     }
     
     func importJSONData(data: Data) -> Bool {

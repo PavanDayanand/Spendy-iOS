@@ -23,6 +23,21 @@ struct SpendyBackupDocument: Transferable {
     }
 }
 
+// MARK: - Spendy CSV Transferable Document
+struct SpendyCSVDocument: Transferable {
+    let data: Data
+    let filename: String
+    
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .commaSeparatedText) { doc in
+            doc.data
+        }
+        .suggestedFileName { doc in
+            doc.filename
+        }
+    }
+}
+
 struct DataManagementView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -37,8 +52,18 @@ struct DataManagementView: View {
         return SpendyBackupDocument(data: data, filename: "Spendy_Backup_\(dateStr).json")
     }
     
+    private var csvDocument: SpendyCSVDocument? {
+        guard let data = store.exportCSVData() else { return nil }
+        let dateStr = Date().formatted(.dateTime.year().month().day())
+        return SpendyCSVDocument(data: data, filename: "Spendy_Transactions_\(dateStr).csv")
+    }
+    
     private var exportSummary: String {
         "\(store.transactions.count) tx · \(store.accounts.count) accounts"
+    }
+    
+    private var csvSummary: String {
+        "\(store.transactions.count) rows · Spreadsheet"
     }
     
     var body: some View {
@@ -48,7 +73,25 @@ struct DataManagementView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
-                    settingsGroup(title: "Backup") {
+                    settingsGroup(title: "Backup & Export") {
+                        if let csvDoc = csvDocument {
+                            ShareLink(
+                                item: csvDoc,
+                                preview: SharePreview("Spendy CSV Export", image: Image(systemName: "tablecells"))
+                            ) {
+                                linkRow(icon: "tablecells", title: "Export CSV", value: csvSummary)
+                            }
+                            .buttonStyle(.plain)
+                            .simultaneousGesture(TapGesture().onEnded {
+                                HapticsManager.shared.trigger(.selection)
+                            })
+                        } else {
+                            linkRow(icon: "tablecells", title: "Export CSV", value: "No data")
+                                .opacity(0.45)
+                        }
+                        
+                        groupDivider
+                        
                         if let doc = backupDocument {
                             ShareLink(
                                 item: doc,
