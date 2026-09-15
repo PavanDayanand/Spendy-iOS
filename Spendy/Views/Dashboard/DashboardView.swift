@@ -259,9 +259,128 @@ struct DashboardView: View {
     @State private var scrubbedBarPoint: MinimalBarPoint? = nil
     @State private var isScrubbingChart: Bool = false
     
-    // MARK: - Dynamic Filtered Transactions
+    // MARK: - Interactive Split Dashboard Drawer & Filter State
+    @State private var isSheetExpanded: Bool = false
+    @State private var sheetDragOffsetY: CGFloat = 0
+    @State private var drawerFilterCategoryId: String? = nil
+    @State private var drawerFilterAccountId: String? = nil
+    @State private var drawerFilterType: TransactionType? = nil
+    
+    private var hasActiveFilters: Bool {
+        drawerFilterCategoryId != nil || drawerFilterAccountId != nil || drawerFilterType != nil
+    }
+    
+    private func clearDrawerFilters() {
+        drawerFilterCategoryId = nil
+        drawerFilterAccountId = nil
+        drawerFilterType = nil
+    }
+    
+    private var drawerCategoryButtonLabel: String {
+        if let catId = drawerFilterCategoryId, let cat = store.categories.first(where: { $0.id == catId }) {
+            return cat.label
+        }
+        return "Categories"
+    }
+    
+    private var drawerAccountButtonLabel: String {
+        if let accId = drawerFilterAccountId, let acc = store.accounts.first(where: { $0.id == accId }) {
+            return acc.label
+        }
+        return "Accounts"
+    }
+    
+    private var drawerTypeButtonLabel: String {
+        switch drawerFilterType {
+        case .expense: return "Expenses"
+        case .income: return "Income"
+        case .transfer: return "Transfers"
+        case .none: return "All Types"
+        }
+    }
+    
+    // MARK: - Dynamic Filtered Transactions (Unified with Integrated Drawer Filters)
     private var displayedTransactions: [Transaction] {
-        store.filteredTransactions(for: selectedAccountId)
+        var txs = store.filteredTransactions(for: selectedAccountId)
+        
+        if let catId = drawerFilterCategoryId {
+            txs = txs.filter { $0.categoryId == catId }
+        }
+        
+        if let accId = drawerFilterAccountId {
+            txs = txs.filter { $0.accountId == accId || $0.toAccountId == accId }
+        }
+        
+        if let type = drawerFilterType {
+            txs = txs.filter { $0.type == type }
+        }
+        
+        return txs.sorted(by: { $0.date > $1.date })
+    }
+    
+    // MARK: - Date Grouped Tuples: (DateTitle, GroupNetTotal, [Transaction])
+    private var drawerGroupedTransactions: [(String, Double, [Transaction])] {
+        let calendar = Calendar.current
+        var groups: [String: [Transaction]] = [:]
+        var order: [String] = []
+        
+        for tx in displayedTransactions {
+            let key: String
+            if calendar.isDateInToday(tx.date) {
+                key = "Today"
+            } else if calendar.isDateInYesterday(tx.date) {
+                key = "Yesterday"
+            } else {
+                key = SpendyDateFormatterCache.dayMonth.string(from: tx.date)
+            }
+            
+            if groups[key] == nil {
+                order.append(key)
+            }
+            groups[key, default: []].append(tx)
+        }
+        
+        return order.map { key in
+            let txs = groups[key] ?? []
+            let netTotal = txs.reduce(0.0) { sum, tx in
+                switch tx.type {
+                case .expense: return sum - tx.amount
+                case .income: return sum + tx.amount
+                case .transfer: return sum
+                }
+            }
+            return (key, netTotal, txs)
+        }
+    }
+    
+    private func formattedGroupNetTotal(_ net: Double) -> String {
+        if hideBalance { return "••••" }
+        let sym = store.currencySymbol
+        let absFormatted = abs(net).formattedCurrency(symbol: sym)
+        if net > 0 {
+            return "+\(absFormatted)"
+        } else if net < 0 {
+            return "-\(absFormatted)"
+        } else {
+            return absFormatted
+        }
+    }
+    
+    private var todayTransactionsCount: Int {
+        let calendar = Calendar.current
+        return displayedTransactions.filter { calendar.isDateInToday($0.date) }.count
+    }
+    
+    private var drawerHeaderTitle: String {
+        let calendar = Calendar.current
+        let hasTodayTxs = displayedTransactions.contains { calendar.isDateInToday($0.date) }
+        if hasTodayTxs {
+            return "Today"
+        } else if isSheetExpanded {
+            return "Transactions"
+        } else {
+            return "Recent"
+        }
     }
     
     private var visibleTransactions: [Transaction] {
@@ -318,61 +437,67 @@ struct DashboardView: View {
     // MARK: - Body
     var body: some View {
         NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
+            GeometryReader { geometry in
+                let totalHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                let topInset = geometry.safeAreaInsets.top
+                let bottomInset = geometry.safeAreaInsets.bottom
                 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // 1. Top Bar: Profile (Left) + 3 Action Toggles (Right)
+                ZStack(alignment: .topLeading) {
+                    LiquidMeshBackground()
+                        .ignoresSafeArea()
+                    
+                    // 1. Fixed Top Canvas (50% Screen Area)
+                    VStack(alignment: .leading, spacing: 14) {
+                        // Top Bar: Profile (Left) + 3 Action Toggles (Right: Converter, Eye, Budget)
                         headerBar
-                            .padding(.top, 4)
+                            .padding(.top, topInset + 4)
                         
-                        // 2. Account Dropdown Selector (Below Top Toggles)
+                        // Account Dropdown Selector (Below Top Toggles)
                         accountDropdownSelector
                         
-                        // 3. Dynamic Configured Dashboard Sections in User Defined Order
-                        ForEach(store.dashboardSectionOrder) { section in
-                            if store.isSectionVisible(section) {
-                                dashboardSectionView(for: section)
+                        // Hero Spend Section with On-Screen Bar Chart
+                        heroSpendBarSection
+                            .padding(.top, 2)
+                        
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    
+                    if showCurrencyConverter {
+                        Color(uiColor: .dynamic(
+                            light: UIColor(white: 0.0, alpha: 0.25),
+                            dark: UIColor(white: 0.0, alpha: 0.55)
+                        ))
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                        .onTapGesture {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+                                showCurrencyConverter = false
                             }
                         }
                         
-                        // 4. Modify Dashboard Button (Apple Wallet / Payment Sheet Style)
-                        modifyDashboardButton
-                            .padding(.top, 14)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom floating tab bar
-                }
-                .scrollDisabled(isScrubbingChart)
-                
-                if showCurrencyConverter {
-                    Color(uiColor: .dynamic(
-                        light: UIColor(white: 0.0, alpha: 0.25),
-                        dark: UIColor(white: 0.0, alpha: 0.55)
-                    ))
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                    .onTapGesture {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                            showCurrencyConverter = false
-                        }
-                    }
-                    
-                    GeometryReader { geometry in
                         VStack {
                             FloatingCurrencyConverterView(isPresented: $showCurrencyConverter)
                                 .padding(.horizontal, 20)
-                                .padding(.top, geometry.safeAreaInsets.top + 60)
+                                .padding(.top, topInset + 60)
                             Spacer()
                         }
+                        .ignoresSafeArea(.keyboard, edges: .bottom)
+                        .ignoresSafeArea(edges: .top)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(10)
                     }
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
-                    .ignoresSafeArea(edges: .top)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(10)
+                    
+                    // 2. Interactive Bottom Transactions Drawer (50% resting, fills screen when dragged up)
+                    recentTransactionsDrawer(
+                        totalHeight: totalHeight,
+                        topInset: topInset,
+                        bottomInset: bottomInset
+                    )
                 }
+                .ignoresSafeArea()
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSettings, onDismiss: {
@@ -767,6 +892,335 @@ struct DashboardView: View {
                 selectedAccountForSheet = acc
             }
         )
+    }
+    
+    // MARK: - Interactive Bottom Transactions Drawer (60/40 Split -> Full Screen Expanded)
+    private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
+        let restingOffset = totalHeight * 0.60
+        let expandedOffset = max(topInset + 10, 56)
+        let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
+        let drawerAvailableHeight = max(100, totalHeight - expandedOffset)
+        
+        return VStack(spacing: 0) {
+            // Drag Indicator & Header Zone (Always draggable & tappable)
+            VStack(spacing: 0) {
+                // Centered Capsule Grab Handle
+                Capsule()
+                    .fill(Color.secondary.opacity(0.40))
+                    .frame(width: 38, height: 5)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
+                
+                // Header Row (Structured like reference: Large 28pt Bold Title + Sticker Badge on Right)
+                HStack(alignment: .center) {
+                    Text(drawerHeaderTitle)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        if isSheetExpanded && hasActiveFilters {
+                            Button(action: {
+                                HapticsManager.shared.trigger(.selection)
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                    clearDrawerFilters()
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text("Clear")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .padding(.horizontal, 10)
+                                .frame(height: 34)
+                                .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                        
+                        // Reference-style transaction count badge
+                        HStack(spacing: 4) {
+                            Text("\(todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count)")
+                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            Text(todayTransactionsCount > 0 ? "today" : "txns")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .textCase(.uppercase)
+                        }
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .padding(.horizontal, 11)
+                        .frame(height: 34)
+                        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        )
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, isSheetExpanded ? 10 : 8)
+                
+                // Integrated 44pt Standard Filter Bar (Revealed on Drag / Expand)
+                if isSheetExpanded {
+                    drawerFilterBar
+                        .padding(.bottom, 12)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                HapticsManager.shared.trigger(.selection)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    isSheetExpanded.toggle()
+                }
+            }
+            .gesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
+            
+            // Transaction List Content
+            if displayedTransactions.isEmpty {
+                emptyRecentActivityView
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                Spacer(minLength: 0)
+            } else {
+                ScrollView(showsIndicators: isSheetExpanded) {
+                    LazyVStack(spacing: 0) {
+                        // Section Structure (matching reference layout: Uppercase tracked section label + rows)
+                        ForEach(drawerGroupedTransactions, id: \.0) { groupTitle, groupNet, txs in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(groupTitle.uppercased())
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(SpendyColors.textTertiary)
+                                        .tracking(1.2)
+                                    
+                                    Spacer()
+                                    
+                                    Text(formattedGroupNetTotal(groupNet))
+                                        .spendyNumberFont(size: 13, weight: .semibold, tracking: -0.2)
+                                        .foregroundStyle(SpendyColors.textSecondary)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 12)
+                                .padding(.bottom, 4)
+                                
+                                ForEach(Array(txs.enumerated()), id: \.element.id) { index, tx in
+                                    transactionRow(tx)
+                                    
+                                    if index < txs.count - 1 {
+                                        Rectangle()
+                                            .fill(SpendyColors.separator.opacity(0.6))
+                                            .frame(height: 0.5)
+                                            .padding(.leading, 58)
+                                            .padding(.trailing, 16)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, bottomInset + 90) // Clearance for floating bottom navigation bar
+                }
+                .scrollDisabled(!isSheetExpanded)
+                .simultaneousGesture(
+                    !isSheetExpanded ? sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset) : nil
+                )
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: drawerAvailableHeight)
+        .background {
+            // Elegant Dark Grey Card Surface (Provides clear differentiation from background)
+            UnevenRoundedRectangle(
+                topLeadingRadius: 32,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 32,
+                style: .continuous
+            )
+            .fill(SpendyColors.cardBackground)
+            .overlay(alignment: .top) {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 32,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 32,
+                    style: .continuous
+                )
+                .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
+            }
+            .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
+        }
+        .offset(y: currentOffset)
+    }
+    
+    // MARK: - Drawer Horizontal Filter Bar (Categories, Accounts, Types) - Apple HIG 44pt Standard
+    private var drawerFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // 1. [Categories] Menu - 44pt Touch Target
+                Menu {
+                    Button("All Categories") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterCategoryId = nil
+                        }
+                    }
+                    Divider()
+                    ForEach(store.categories) { cat in
+                        Button(cat.label) {
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                drawerFilterCategoryId = cat.id
+                            }
+                        }
+                    }
+                } label: {
+                    let isCatSelected = drawerFilterCategoryId != nil
+                    HStack(spacing: 8) {
+                        Image(systemName: isCatSelected ? (store.category(for: drawerFilterCategoryId ?? "").sfSymbol) : "circle.grid.2x2")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(drawerCategoryButtonLabel)
+                            .font(.system(size: 14, weight: .semibold))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(isCatSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                    }
+                    .foregroundStyle(isCatSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.primaryBlue : nil)
+                }
+                .buttonStyle(.plain)
+                
+                // 2. [Accounts] Menu - 44pt Touch Target
+                Menu {
+                    Button("All Accounts") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterAccountId = nil
+                        }
+                    }
+                    Divider()
+                    ForEach(store.accounts) { acc in
+                        Button(acc.label) {
+                            HapticsManager.shared.trigger(.selection)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                drawerFilterAccountId = acc.id
+                            }
+                        }
+                    }
+                } label: {
+                    let isAccSelected = drawerFilterAccountId != nil
+                    HStack(spacing: 8) {
+                        Image(systemName: isAccSelected ? (store.account(for: drawerFilterAccountId ?? "").sfSymbol.isEmpty ? "building.columns" : store.account(for: drawerFilterAccountId ?? "").sfSymbol) : "building.columns")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(drawerAccountButtonLabel)
+                            .font(.system(size: 14, weight: .semibold))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(isAccSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                    }
+                    .foregroundStyle(isAccSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.primaryBlue : nil)
+                }
+                .buttonStyle(.plain)
+                
+                // 3. [Type] Menu (Expenses, Income, Transfers) - 44pt Touch Target
+                Menu {
+                    Button("All Types") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterType = nil
+                        }
+                    }
+                    Button("Expenses") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterType = .expense
+                        }
+                    }
+                    Button("Income") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterType = .income
+                        }
+                    }
+                    Button("Transfers") {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            drawerFilterType = .transfer
+                        }
+                    }
+                } label: {
+                    let isTypeSelected = drawerFilterType != nil
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(drawerTypeButtonLabel)
+                            .font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(isTypeSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                    }
+                    .foregroundStyle(isTypeSelected ? .white : SpendyColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.primaryBlue : nil)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 5)
+            .onChanged { value in
+                sheetDragOffsetY = value.translation.height
+            }
+            .onEnded { value in
+                let translation = value.translation.height
+                let velocity = value.velocity.height
+                
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    if isSheetExpanded {
+                        if translation > 60 || velocity > 300 {
+                            isSheetExpanded = false
+                            HapticsManager.shared.trigger(.selection)
+                        }
+                    } else {
+                        if translation < -60 || velocity < -300 {
+                            isSheetExpanded = true
+                            HapticsManager.shared.trigger(.selection)
+                        }
+                    }
+                    sheetDragOffsetY = 0
+                }
+            }
+    }
+    
+    private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat) -> CGFloat {
+        let restingOffset = totalHeight * 0.60
+        let expandedOffset = max(topInset + 10, 56)
+        let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
+        let rawOffset = baseOffset + sheetDragOffsetY
+        
+        if rawOffset < expandedOffset {
+            let overshoot = expandedOffset - rawOffset
+            return expandedOffset - sqrt(max(0, overshoot)) * 2.5
+        } else if rawOffset > restingOffset {
+            let overshoot = rawOffset - restingOffset
+            return restingOffset + sqrt(max(0, overshoot)) * 2.5
+        }
+        return rawOffset
     }
     
     // MARK: - 7. Unified Grouped Recent Transactions Section
