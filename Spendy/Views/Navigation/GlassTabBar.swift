@@ -2,7 +2,7 @@
 //  LiquidGlassNavigation.swift
 //  Spendy
 //
-//  iOS 26 & iOS 27 Bottom Navigation with Dynamic Matched Gliding and Touch Feedback
+//  iOS 26 Bottom Navigation with Dynamic Matched Gliding and Touch Feedback
 //
 
 import SwiftUI
@@ -101,6 +101,8 @@ struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
     let onQuickAdd: () -> Void
 
+    @GestureState private var isDragging: Bool = false
+    @State private var dragX: CGFloat? = nil
     @Namespace private var tabBarNamespace
 
     private let barHeight: CGFloat = 64
@@ -116,7 +118,7 @@ struct GlassTabBar: View {
                         .glassEffectID("tabBarPill", in: tabBarNamespace)
                         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
 
-                    // Quick Add Floating Button (1 Separated Plus on Right)
+                    // Quick Add Floating Button
                     Button {
                         HapticsManager.shared.trigger(.cardSnap)
                         onQuickAdd()
@@ -150,6 +152,7 @@ struct GlassTabBar: View {
                 HapticsManager.shared.trigger(.cardSnap)
                 onQuickAdd()
             } label: {
+
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color.primary)
@@ -178,9 +181,20 @@ private extension GlassTabBar {
             let itemWidth = count > 0 ? totalWidth / count : 0
             let activeIndex = CGFloat(mainTabs.firstIndex(of: selectedTab) ?? 0)
 
-            let pillWidth = max(24, itemWidth - 8)
-            let pillHeight: CGFloat = 44
-            let currentOffset: CGFloat = (activeIndex * itemWidth) + 4
+            let pillWidth = max(24, isDragging ? itemWidth + 4 : itemWidth - 8)
+            let pillHeight: CGFloat = isDragging ? 52 : 44
+
+            let currentOffset: CGFloat = {
+                if let dragX = dragX, !dragX.isNaN, !dragX.isInfinite {
+                    let halfWidth = pillWidth / 2
+                    let rawX = dragX - halfWidth
+                    let minOffset: CGFloat = isDragging ? -2 : 4
+                    let maxOffset = max(minOffset, totalWidth - pillWidth - minOffset)
+                    return min(max(rawX, minOffset), maxOffset)
+                } else {
+                    return (activeIndex * itemWidth) + (isDragging ? -2 : 4)
+                }
+            }()
 
             ZStack(alignment: .leading) {
                 // Background Shell for Non-Glass Fallback
@@ -193,19 +207,21 @@ private extension GlassTabBar {
                         )
                 }
 
-                // Dynamic Gliding Pill Indicator (Sticky & Anchored to Selected Tab)
+                // Dynamic Gliding Pill Indicator (Expanded bubble when dragging/holding)
                 Capsule(style: .continuous)
                     .fill(SpendyColors.elevatedControlFill)
                     .overlay(
                         Capsule(style: .continuous)
                             .strokeBorder(SpendyColors.separator, lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.10), radius: 8, y: 2)
+                    .shadow(color: Color.black.opacity(isDragging ? 0.18 : 0.10), radius: 8, y: 2)
                     .frame(width: pillWidth, height: pillHeight)
                     .offset(x: currentOffset)
                     .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selectedTab)
+                    .animation(.spring(response: 0.20, dampingFraction: 0.60), value: isDragging)
+                    .animation(.interactiveSpring(response: 0.15, dampingFraction: 0.80, blendDuration: 0), value: dragX)
 
-                // Interactive Tab Elements (3 Tabs on the left)
+                // Interactive Tab Elements
                 HStack(spacing: 0) {
                     ForEach(mainTabs) { tab in
                         let isSelected = selectedTab == tab
@@ -214,7 +230,7 @@ private extension GlassTabBar {
                             Image(systemName: isSelected ? tab.activeSfSymbol : tab.sfSymbol)
                                 .font(.system(size: 19, weight: isSelected ? .bold : .regular))
                                 .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
-                                .scaleEffect(isSelected ? 1.05 : 1.0)
+                                .scaleEffect(isSelected && isDragging ? 1.15 : (isSelected ? 1.05 : 1.0))
                                 .contentTransition(.symbolEffect(.replace.downUp))
                                 .symbolEffect(.bounce.byLayer, value: isSelected)
 
@@ -224,12 +240,32 @@ private extension GlassTabBar {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectWithHaptic(tab)
-                        }
                     }
                 }
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .updating($isDragging) { _, state, _ in
+                        state = true
+                    }
+                    .onChanged { value in
+                        let x = value.location.x
+                        guard itemWidth > 0, !x.isNaN, !x.isInfinite else { return }
+                        dragX = x
+                        
+                        let targetIndex = min(max(Int(x / itemWidth), 0), mainTabs.count - 1)
+                        let newTab = mainTabs[targetIndex]
+
+                        if newTab != selectedTab {
+                            selectWithHaptic(newTab)
+                        }
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                            dragX = nil
+                        }
+                    }
+            )
         }
     }
 
@@ -241,6 +277,7 @@ private extension GlassTabBar {
         }
     }
 }
+
 
 // MARK: - Scale Animation Style
 
