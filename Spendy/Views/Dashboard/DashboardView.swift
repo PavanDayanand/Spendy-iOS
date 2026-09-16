@@ -810,23 +810,24 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 4. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
+    // MARK: - 4. Interactive Bottom Transactions Drawer (Commit 35d94b75 Behaviour)
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        let restingOffset = totalHeight * 0.58
-        let expandedOffset = max(topInset + 8, 52)
+        let restingOffset = totalHeight * 0.60
+        let expandedOffset = max(topInset + 10, 56)
         let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
+        let drawerAvailableHeight = max(100, totalHeight - expandedOffset)
         
         return VStack(spacing: 0) {
-            // Header & Grab Area (120Hz Direct Drag Handling)
+            // Drag Indicator & Header Zone (Always draggable & tappable)
             VStack(spacing: 0) {
                 // Centered Capsule Grab Handle
                 Capsule()
-                    .fill(Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.25), dark: UIColor(white: 1.0, alpha: 0.35))))
+                    .fill(Color.secondary.opacity(0.40))
                     .frame(width: 38, height: 5)
                     .padding(.top, 10)
                     .padding(.bottom, 8)
                 
-                // Header Row: Large Title + Badge
+                // Header Row (Structured like reference: Large 28pt Bold Title + Badge on Right)
                 HStack(alignment: .center) {
                     Text(drawerHeaderTitle)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -857,7 +858,7 @@ struct DashboardView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                         
-                        // Transaction count badge
+                        // Reference-style transaction count badge
                         HStack(spacing: 4) {
                             Text("\(todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count)")
                                 .font(.system(size: 16, weight: .heavy, design: .rounded))
@@ -878,7 +879,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, isSheetExpanded ? 10 : 8)
                 
-                // Integrated 44pt Standard Filter Bar (Revealed when expanded)
+                // Integrated 44pt Standard Filter Bar (Revealed on Drag / Expand)
                 if isSheetExpanded {
                     drawerFilterBar
                         .padding(.bottom, 12)
@@ -886,6 +887,12 @@ struct DashboardView: View {
                 }
             }
             .contentShape(Rectangle())
+            .onTapGesture {
+                HapticsManager.shared.trigger(.selection)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    isSheetExpanded.toggle()
+                }
+            }
             .gesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
             
             // Transaction List Content
@@ -922,7 +929,7 @@ struct DashboardView: View {
                                         Rectangle()
                                             .fill(SpendyColors.separator.opacity(0.6))
                                             .frame(height: 0.5)
-                                            .padding(.leading, 58)
+                                            .padding(.leading, 64)
                                             .padding(.trailing, 16)
                                     }
                                 }
@@ -933,40 +940,44 @@ struct DashboardView: View {
                     .padding(.bottom, bottomInset + 90) // Clearance for floating dock
                 }
                 .scrollDisabled(!isSheetExpanded)
-                .simultaneousGesture(
-                    !isSheetExpanded ? sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset) : nil
-                )
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: totalHeight)
+        .frame(height: drawerAvailableHeight)
         .background {
-            // 100% Solid Opaque Pitch Black / Charcoal Surface
-            UnevenRoundedRectangle(
-                topLeadingRadius: 32,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 32,
-                style: .continuous
-            )
-            .fill(
-                Color(uiColor: .dynamic(
-                    light: UIColor(white: 1.0, alpha: 1.0),
-                    dark: UIColor(red: 16.0/255.0, green: 16.0/255.0, blue: 18.0/255.0, alpha: 1.0)
-                ))
-            )
-            .overlay(alignment: .top) {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 32,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 32,
-                    style: .continuous
-                )
-                .stroke(SpendyColors.separator.opacity(0.9), lineWidth: 0.8)
+            // Elegant Dark Card Surface
+            Group {
+                if isSheetExpanded {
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 32,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 32,
+                        style: .continuous
+                    )
+                    .fill(SpendyColors.cardBackground)
+                    .overlay(alignment: .top) {
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 32,
+                            bottomLeadingRadius: 0,
+                            bottomTrailingRadius: 0,
+                            topTrailingRadius: 32,
+                            style: .continuous
+                        )
+                        .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(SpendyColors.cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
+                        }
+                }
             }
-            .shadow(color: Color.black.opacity(0.45), radius: 24, x: 0, y: -6)
+            .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
         }
+        .padding(.horizontal, isSheetExpanded ? 0 : 8)
         .offset(y: currentOffset)
     }
     
@@ -1094,9 +1105,8 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - Drag Gesture Implementation with Zero-Stutter Direct Tracking
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: 5)
             .updating($sheetDragOffsetY) { value, state, _ in
                 state = value.translation.height
             }
@@ -1104,23 +1114,14 @@ struct DashboardView: View {
                 let translation = value.translation.height
                 let velocity = value.velocity.height
                 
-                // Clean tap detection on header
-                if abs(translation) < 6 && abs(velocity) < 60 {
-                    HapticsManager.shared.trigger(.selection)
-                    withAnimation(AppMotion.snappySpring) {
-                        isSheetExpanded.toggle()
-                    }
-                    return
-                }
-                
-                withAnimation(AppMotion.snappySpring) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                     if isSheetExpanded {
-                        if translation > 50 || velocity > 250 {
+                        if translation > 60 || velocity > 300 {
                             isSheetExpanded = false
                             HapticsManager.shared.trigger(.selection)
                         }
                     } else {
-                        if translation < -50 || velocity < -250 {
+                        if translation < -60 || velocity < -300 {
                             isSheetExpanded = true
                             HapticsManager.shared.trigger(.selection)
                         }
@@ -1130,22 +1131,22 @@ struct DashboardView: View {
     }
     
     private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat) -> CGFloat {
-        let restingOffset = totalHeight * 0.58
-        let expandedOffset = max(topInset + 8, 52)
+        let restingOffset = totalHeight * 0.60
+        let expandedOffset = max(topInset + 10, 56)
         let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
         let rawOffset = baseOffset + sheetDragOffsetY
         
         if rawOffset < expandedOffset {
             let overshoot = expandedOffset - rawOffset
-            return expandedOffset - sqrt(max(0, overshoot)) * 1.5
+            return expandedOffset - sqrt(max(0, overshoot)) * 2.5
         } else if rawOffset > restingOffset {
             let overshoot = rawOffset - restingOffset
-            return restingOffset + sqrt(max(0, overshoot)) * 1.5
+            return restingOffset + sqrt(max(0, overshoot)) * 2.5
         }
         return rawOffset
     }
     
-    // MARK: - Transaction Row Item
+    // MARK: - Transaction Row Item (Matches Exact Visual Design)
     private func transactionRow(_ tx: Transaction) -> some View {
         let cat = store.category(for: tx.categoryId)
         let acc = store.account(for: tx.accountId)
@@ -1155,32 +1156,30 @@ struct DashboardView: View {
             inspectingTransaction = tx
         }) {
             HStack(spacing: 12) {
-                // Category Icon Badge
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(cat.color.opacity(0.18))
-                        .frame(width: 42, height: 42)
-                    
-                    Image(systemName: cat.sfSymbol)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(cat.color)
-                }
+                // Category Icon Badge matching exact reference design
+                SpendyIconBadge(
+                    sfSymbol: cat.sfSymbol,
+                    color: cat.color,
+                    size: .medium,
+                    style: .rounded(cornerRadius: 13),
+                    monogramName: cat.label
+                )
                 
                 // Title & Subtitle
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tx.title.isEmpty ? cat.label : tx.title)
-                        .font(.system(size: 15.5, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                     
                     HStack(spacing: 6) {
                         Text(acc.label)
-                            .font(.system(size: 12.5, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(SpendyColors.textSecondary)
                         
                         if let notes = tx.notes, !notes.isEmpty {
                             Text("• \(notes)")
-                                .font(.system(size: 12.5, weight: .regular))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundStyle(SpendyColors.textTertiary)
                                 .lineLimit(1)
                         }
@@ -1192,17 +1191,17 @@ struct DashboardView: View {
                 // Amount Value
                 if hideBalance {
                     Text("••••")
-                        .spendyNumberFont(size: 15.5, weight: .semibold, tracking: -0.2)
+                        .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
                         .foregroundStyle(SpendyColors.textSecondary)
                 } else {
                     let formatted = tx.amount.formattedCurrency(symbol: store.currencySymbol)
                     Text(tx.type == .income ? "+\(formatted)" : formatted)
-                        .spendyNumberFont(size: 15.5, weight: .semibold, tracking: -0.2)
+                        .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
                         .foregroundStyle(rowAmountColor(tx))
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

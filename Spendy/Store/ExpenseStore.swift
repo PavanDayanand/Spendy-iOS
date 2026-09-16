@@ -463,6 +463,13 @@ final class ExpenseStore {
                         self.accounts[i].type = .cash
                     }
                 }
+                // Migration: Ensure default category icons match design
+                for i in 0..<self.categories.count {
+                    if self.categories[i].id == "groceries" && (self.categories[i].sfSymbol == "basket.fill" || self.categories[i].colorHex == "#03DBFF") {
+                        self.categories[i].sfSymbol = SFIcons.groceries
+                        self.categories[i].colorHex = "#34C759"
+                    }
+                }
                 WidgetDataManager.shared.publish(from: self)
                 return
             } catch {

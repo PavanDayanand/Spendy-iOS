@@ -49,7 +49,7 @@ enum SpendyDefaultData {
         Category(id: "amma_fbe39d49-fe39-4ee5-8ccc-8c3cbe1af1d7", label: "Amma", sfSymbol: "figure.2.and.child.holdinghands", colorHex: "#FFD60A", type: .income, folder: "Family", isHidden: false, order: 7),
         Category(id: "food", label: "Food", sfSymbol: "fork.knife.circle.fill", colorHex: "#3478F6", type: .expense, folder: "Everyday Spending", isHidden: false, order: 0),
         Category(id: "transport", label: "Fuel", sfSymbol: "fuelpump.circle.fill", colorHex: "#FFD60A", type: .expense, folder: "Transport", isHidden: false, order: 1),
-        Category(id: "groceries", label: "Groceries", sfSymbol: "basket.fill", colorHex: "#03DBFF", type: .expense, folder: "Everyday Spending", isHidden: false, order: 2),
+        Category(id: "groceries", label: "Groceries", sfSymbol: SFIcons.groceries, colorHex: "#34C759", type: .expense, folder: "Everyday Spending", isHidden: false, order: 2),
         Category(id: "entertainment", label: "Entertainment", sfSymbol: "popcorn.circle.fill", colorHex: "#FF453A", type: .expense, folder: "Personal & Wellness", isHidden: false, order: 3),
         Category(id: "savings", label: "Savings", sfSymbol: "piggybank.fill", colorHex: "#30D158", type: .expense, folder: "Living", isHidden: false, order: 4),
         Category(id: "subscriptions", label: "Subscriptions", sfSymbol: "receipt", colorHex: "#FF2D55", type: .expense, folder: "Living", isHidden: false, order: 5),
