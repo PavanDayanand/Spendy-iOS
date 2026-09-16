@@ -38,7 +38,7 @@ struct TransactionRowView: View {
                     sfSymbol: category.sfSymbol,
                     color: category.color,
                     size: .medium,
-                    style: .rounded(),
+                    style: .circle,
                     monogramName: category.label
                 )
             }

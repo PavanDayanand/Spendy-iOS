@@ -155,14 +155,17 @@ struct HeroSpendBarChart: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 0)
+                    DragGesture(minimumDistance: 8)
                         .onChanged { value in
-                            isScrubbing = true
-                            if let closest = closestPoint(to: value.location.x, chartWidth: chartWidth) {
-                                if closest.id != scrubbedPoint?.id {
-                                    HapticsManager.shared.trigger(.selection)
-                                    withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.85)) {
-                                        scrubbedPoint = closest
+                            // Only scrub horizontally if not dragging vertically
+                            if abs(value.translation.width) >= abs(value.translation.height) {
+                                isScrubbing = true
+                                if let closest = closestPoint(to: value.location.x, chartWidth: chartWidth) {
+                                    if closest.id != scrubbedPoint?.id {
+                                        HapticsManager.shared.trigger(.selection)
+                                        withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.85)) {
+                                            scrubbedPoint = closest
+                                        }
                                     }
                                 }
                             }
@@ -234,6 +237,7 @@ struct DashboardView: View {
     @Environment(ExpenseStore.self) private var store
     @Binding var showAddTransaction: Bool
     var selectedTab: Binding<AppTab>? = nil
+    var isSheetExpandedBinding: Binding<Bool>? = nil
     
     // Sheets & Navigation State
     @State private var showSettings: Bool = false
@@ -261,8 +265,19 @@ struct DashboardView: View {
     @State private var isScrubbingChart: Bool = false
     
     // MARK: - Interactive Split Dashboard Drawer State
-    @State private var isSheetExpanded: Bool = false
-    @GestureState private var sheetDragOffsetY: CGFloat = 0
+    @State private var internalSheetExpanded: Bool = false
+    @State private var sheetDragOffsetY: CGFloat = 0
+    
+    private var isSheetExpanded: Bool {
+        isSheetExpandedBinding?.wrappedValue ?? internalSheetExpanded
+    }
+    
+    private func setExpandedState(_ expanded: Bool) {
+        if let binding = isSheetExpandedBinding {
+            binding.wrappedValue = expanded
+        }
+        internalSheetExpanded = expanded
+    }
     @State private var drawerFilterCategoryId: String? = nil
     @State private var drawerFilterAccountId: String? = nil
     @State private var drawerFilterType: TransactionType? = nil
@@ -887,13 +902,7 @@ struct DashboardView: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                HapticsManager.shared.trigger(.selection)
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    isSheetExpanded.toggle()
-                }
-            }
-            .gesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
+            .highPriorityGesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
             
             // Transaction List Content
             if displayedTransactions.isEmpty {
@@ -945,37 +954,14 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity)
         .frame(height: drawerAvailableHeight)
         .background {
-            // Elegant Dark Card Surface
-            Group {
-                if isSheetExpanded {
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 32,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 32,
-                        style: .continuous
-                    )
-                    .fill(SpendyColors.cardBackground)
-                    .overlay(alignment: .top) {
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 32,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: 32,
-                            style: .continuous
-                        )
-                        .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
-                    }
-                } else {
+            // Smooth Stable Rounded Surface with dynamic top/bottom corner radii
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
-                        }
+                        .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
                 }
-            }
-            .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
+                .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
         }
         .padding(.horizontal, isSheetExpanded ? 0 : 8)
         .offset(y: currentOffset)
@@ -1106,26 +1092,45 @@ struct DashboardView: View {
     }
     
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 5)
-            .updating($sheetDragOffsetY) { value, state, _ in
-                state = value.translation.height
+        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+            .onChanged { value in
+                // Only track vertical movement to prevent hijacking horizontal chart scrubbing
+                if abs(value.translation.width) > abs(value.translation.height) && abs(value.translation.height) < 8 {
+                    return
+                }
+                sheetDragOffsetY = value.translation.height
             }
             .onEnded { value in
                 let translation = value.translation.height
                 let velocity = value.velocity.height
                 
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    if isSheetExpanded {
-                        if translation > 60 || velocity > 300 {
-                            isSheetExpanded = false
-                            HapticsManager.shared.trigger(.selection)
-                        }
-                    } else {
-                        if translation < -60 || velocity < -300 {
-                            isSheetExpanded = true
-                            HapticsManager.shared.trigger(.selection)
-                        }
+                // Tap detection if dragged less than 5pt
+                if abs(translation) < 5 {
+                    HapticsManager.shared.trigger(.selection)
+                    withAnimation(AppMotion.fluidSpring) {
+                        setExpandedState(!isSheetExpanded)
+                        sheetDragOffsetY = 0
                     }
+                    return
+                }
+                
+                let startBase = isSheetExpanded ? expandedOffset : restingOffset
+                let currentPos = startBase + translation
+                let midpoint = (restingOffset + expandedOffset) / 2
+                
+                let targetExpanded: Bool
+                if velocity < -350 {
+                    targetExpanded = true
+                } else if velocity > 350 {
+                    targetExpanded = false
+                } else {
+                    targetExpanded = currentPos < midpoint
+                }
+                
+                HapticsManager.shared.trigger(.selection)
+                withAnimation(AppMotion.fluidSpring) {
+                    setExpandedState(targetExpanded)
+                    sheetDragOffsetY = 0
                 }
             }
     }
@@ -1161,7 +1166,7 @@ struct DashboardView: View {
                     sfSymbol: cat.sfSymbol,
                     color: cat.color,
                     size: .medium,
-                    style: .rounded(cornerRadius: 13),
+                    style: .circle,
                     monogramName: cat.label
                 )
                 

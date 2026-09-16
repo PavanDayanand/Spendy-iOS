@@ -202,7 +202,7 @@ struct TransactionDetailSheet: View {
                     sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
                     color: category.map { Color(hex: $0.colorHex) } ?? themeColor,
                     size: .large,
-                    style: .rounded(),
+                    style: .circle,
                     monogramName: category?.label ?? heroTitle
                 )
             }
@@ -238,7 +238,8 @@ struct TransactionDetailSheet: View {
                     entityValue(
                         symbol: category?.sfSymbol ?? "tag.fill",
                         color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
-                        name: category?.label ?? "General"
+                        name: category?.label ?? "General",
+                        isCircle: true
                     )
                 }
             }
@@ -279,7 +280,8 @@ struct TransactionDetailSheet: View {
                     entityValue(
                         symbol: sub.sfSymbol,
                         color: Color(hex: sub.colorHex),
-                        name: sub.name
+                        name: sub.name,
+                        isCircle: true
                     )
                 }
             }
@@ -323,13 +325,13 @@ struct TransactionDetailSheet: View {
         .padding(.vertical, 14)
     }
     
-    private func entityValue(symbol: String, color: Color, name: String) -> some View {
+    private func entityValue(symbol: String, color: Color, name: String, isCircle: Bool = false) -> some View {
         HStack(spacing: 8) {
             SpendyIconBadge(
                 sfSymbol: symbol,
                 color: color,
                 size: .small,
-                style: .rounded(),
+                style: isCircle ? .circle : .rounded(),
                 monogramName: name
             )
             Text(name)

@@ -348,7 +348,7 @@ struct AllTransactionsView: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: subscription != nil ? .circle : .rounded(),
+                    style: .circle,
                     monogramName: iconName
                 )
                 

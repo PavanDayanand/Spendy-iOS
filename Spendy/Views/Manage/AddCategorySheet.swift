@@ -242,7 +242,7 @@ struct AddCategorySheet: View {
         SpendyEditableHeroIcon(
             sfSymbol: selectedSymbol,
             color: Color(hex: selectedColorHex),
-            style: .rounded(),
+            style: .circle,
             monogramName: label,
             accessibilityLabel: "Edit category icon"
         ) {

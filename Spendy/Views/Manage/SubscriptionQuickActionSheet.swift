@@ -463,7 +463,7 @@ struct SubscriptionQuickActionSheet: View {
                         sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
                         color: Color(hex: linkedCategory?.colorHex ?? "#5856D6"),
                         size: .small,
-                        style: .rounded(),
+                        style: .circle,
                         monogramName: linkedCategory?.label ?? ""
                     )
                     

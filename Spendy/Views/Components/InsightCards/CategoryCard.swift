@@ -29,7 +29,7 @@ struct CategoryCard: View {
                     sfSymbol: icon,
                     color: color,
                     size: .small,
-                    style: .rounded(),
+                    style: .circle,
                     monogramName: title
                 )
                 

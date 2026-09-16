@@ -198,6 +198,7 @@ struct SpendyMiniColorChip: View {
     var sfSymbol: String
     var color: Color
     var size: CGFloat = 14
+    var isCircle: Bool = false
     var monogramName: String = ""
     
     @Environment(\.colorScheme) private var colorScheme
@@ -211,8 +212,9 @@ struct SpendyMiniColorChip: View {
             prominent: false
         )
         
+        let radius = isCircle ? size / 2 : size * 0.25
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(paint.fill)
             SpendyGlyph(
                 symbol: sfSymbol,
@@ -278,7 +280,7 @@ struct SpendyIconBadge: View {
     var sfSymbol: String
     var color: Color
     var size: Size = .medium
-    var style: Style = .rounded()
+    var style: Style = .circle
     var isGradient: Bool = false
     var showCutoutBorder: Bool = false
     var monogramName: String = ""

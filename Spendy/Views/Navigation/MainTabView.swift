@@ -10,6 +10,7 @@ import SwiftUI
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .home
     @State private var showAddTransaction: Bool = false
+    @State private var isHomeDrawerExpanded: Bool = false
     @State private var quickActionManager = QuickActionManager.shared
     @Namespace private var composeNamespace
 
@@ -17,9 +18,13 @@ struct MainTabView: View {
         ZStack(alignment: .bottom) {
             // Main Screen Content
             ZStack {
-                DashboardView(showAddTransaction: $showAddTransaction, selectedTab: $selectedTab)
-                    .opacity(selectedTab == .home ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .home)
+                DashboardView(
+                    showAddTransaction: $showAddTransaction,
+                    selectedTab: $selectedTab,
+                    isSheetExpandedBinding: $isHomeDrawerExpanded
+                )
+                .opacity(selectedTab == .home ? 1 : 0)
+                .allowsHitTesting(selectedTab == .home)
 
                 NavigationStack {
                     SubscriptionsView()
@@ -35,9 +40,10 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Floating Bottom Dock (Home + Subscriptions + Hero Blue Spend Pill)
+            // Adaptive Bottom Dock (Home + Subscriptions + Hero Blue Spend Pill)
             GlassTabBar(
                 selectedTab: $selectedTab,
+                isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
                 onQuickAdd: {
                     showAddTransaction = true
                 }

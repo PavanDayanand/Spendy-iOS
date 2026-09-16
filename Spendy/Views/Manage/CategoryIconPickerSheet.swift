@@ -322,15 +322,15 @@ struct CategoryIconPickerSheet: View {
     private var photoPickerSlot: some View {
         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(isPhotoSet ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isPhotoSet {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
@@ -344,7 +344,7 @@ struct CategoryIconPickerSheet: View {
                             : SpendyColors.textPrimary
                     )
             }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
     }
     
@@ -360,15 +360,15 @@ struct CategoryIconPickerSheet: View {
             dismiss()
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(isSelected ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isSelected {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
@@ -383,7 +383,7 @@ struct CategoryIconPickerSheet: View {
                     )
                     .symbolEffect(.bounce.byLayer, value: isSelected)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Use first letter of the name")
@@ -402,15 +402,15 @@ struct CategoryIconPickerSheet: View {
             dismiss()
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(isSelected ? SpendyColors.primaryBlue : iconItemBackgroundColor)
                     .frame(width: 52, height: 52)
                     .overlay {
                         if isSelected {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.textPrimary, lineWidth: 2)
                         } else {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                     }
@@ -425,7 +425,7 @@ struct CategoryIconPickerSheet: View {
                     )
                     .symbolEffect(.bounce.byLayer, value: isSelected)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
         .buttonStyle(.plain)
     }

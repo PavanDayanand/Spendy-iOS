@@ -31,7 +31,7 @@ struct BudgetView: View {
     
     var body: some View {
         ZStack {
-            LiquidMeshBackground()
+            SpendyColors.appBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 topHeaderBar

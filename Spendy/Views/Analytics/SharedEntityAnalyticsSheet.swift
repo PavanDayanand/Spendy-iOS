@@ -64,6 +64,11 @@ enum AnalyticsEntity {
         case .account: return .expense
         }
     }
+    
+    var isAccount: Bool {
+        if case .account = self { return true }
+        return false
+    }
 }
 
 // MARK: - Section Tab Enum
@@ -628,7 +633,7 @@ struct SharedEntityAnalyticsSheet: View {
                 sfSymbol: entity.sfSymbol,
                 color: themeColor,
                 size: .large,
-                style: .rounded(),
+                style: entity.isAccount ? .rounded() : .circle,
                 monogramName: entity.monogramName
             )
             .padding(.top, 2)
@@ -1029,7 +1034,7 @@ struct SharedEntityAnalyticsSheet: View {
                     sfSymbol: iconSymbol,
                     color: iconColor,
                     size: .medium,
-                    style: subscription != nil ? .circle : .rounded(),
+                    style: .circle,
                     monogramName: iconName
                 )
                 
@@ -1066,6 +1071,7 @@ struct SharedEntityAnalyticsSheet: View {
                                 SpendyMiniColorChip(
                                     sfSymbol: cat.sfSymbol,
                                     color: cat.color,
+                                    isCircle: true,
                                     monogramName: cat.label
                                 )
                                 

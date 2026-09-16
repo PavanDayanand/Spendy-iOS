@@ -716,7 +716,7 @@ struct AddTransactionView: View {
                                 sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
                                 color: selectedCategory?.color ?? Color(hex: "#34C759"),
                                 size: .small,
-                                style: .rounded(),
+                                style: .circle,
                                 monogramName: selectedCategory?.label ?? ""
                             )
                             .padding(.leading, 6)
@@ -1065,7 +1065,7 @@ struct CategoryPickerDrawer: View {
                                 sfSymbol: cat.sfSymbol,
                                 color: cat.color,
                                 size: .small,
-                                style: .rounded(),
+                                style: .circle,
                                 monogramName: cat.label
                             )
                             

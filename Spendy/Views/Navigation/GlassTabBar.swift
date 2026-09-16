@@ -52,19 +52,24 @@ enum AppTab: String, CaseIterable, Identifiable {
 
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
+    var isExpanded: Bool = true
     let onQuickAdd: () -> Void
     @Namespace private var dockNamespace
 
-    private let circleButtonSize: CGFloat = 56
-    private let pillHeight: CGFloat = 56
+    private var circleButtonSize: CGFloat {
+        isExpanded ? 56 : 50
+    }
+    private var pillHeight: CGFloat {
+        isExpanded ? 56 : 50
+    }
     private let primaryBlue = Color(hex: "#007AFF")
     private let electricAzure = Color(hex: "#0A84FF")
 
     var body: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                // Navigation Circle Buttons with breathing room
-                HStack(spacing: 12) {
+        SpendyGlassEffectContainer(spacing: isExpanded ? 12 : 8) {
+            HStack(spacing: isExpanded ? 12 : 8) {
+                // Navigation Circle Buttons with adaptive responsive spacing
+                HStack(spacing: isExpanded ? 12 : 8) {
                     // 1. Home Circle Liquid Glass Button
                     navLiquidGlassButton(
                         tab: .home,
@@ -79,23 +84,23 @@ struct GlassTabBar: View {
                         label: "Subscriptions"
                     )
                 }
-                .padding(.leading, 6)
+                .padding(.leading, isExpanded ? 6 : 4)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: isExpanded ? 12 : 8)
 
                 // 3. Hero Blue Liquid Glass "+ Add" Capsule Pill
                 Button {
                     HapticsManager.shared.trigger(.cardSnap)
                     onQuickAdd()
                 } label: {
-                    HStack(spacing: 7) {
+                    HStack(spacing: isExpanded ? 7 : 5) {
                         Image(systemName: "plus")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
                         Text("Add")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, isExpanded ? 24 : 18)
                     .frame(height: pillHeight)
                     .contentShape(Capsule())
                 }
@@ -104,7 +109,8 @@ struct GlassTabBar: View {
                 .accessibilityLabel("Add Transaction")
                 .accessibilityAddTraits(.isButton)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, isExpanded ? 16 : 22)
+            .animation(AppMotion.fluidSpring, value: isExpanded)
         }
     }
 
