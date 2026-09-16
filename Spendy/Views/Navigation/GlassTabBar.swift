@@ -1,8 +1,11 @@
 //
-//  LiquidGlassNavigation.swift
+//  GlassTabBar.swift
 //  Spendy
 //
-//  iOS 26 Bottom Navigation with Dynamic Matched Gliding and Touch Feedback
+//  Bottom Floating Liquid Glass Dock Navigation:
+//  - Left: Home circle button with native Apple Liquid Glass (.glassEffect in .circle)
+//  - Next: Subscriptions circle button with native Apple Liquid Glass (.glassEffect in .circle)
+//  - Right: Hero Blue "+ Spend" capsule button with native Apple Liquid Glass (.glassEffect in .capsule with blue tint)
 //
 
 import SwiftUI
@@ -22,251 +25,104 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "Home"
         case .analytics: return "Stats"
         case .subscriptions: return "Subscriptions"
-        case .quickAdd: return "Add"
+        case .quickAdd: return "Spend"
         }
     }
 
     var sfSymbol: String {
         switch self {
-        case .home: return SFIcons.tabDashboardOutline
+        case .home: return "house"
         case .analytics: return SFIcons.tabAnalyticsOutline
         case .subscriptions: return SFIcons.subscriptions
-        case .quickAdd: return SFIcons.quickAdd
+        case .quickAdd: return "plus"
         }
     }
 
     var activeSfSymbol: String {
         switch self {
-        case .home: return SFIcons.tabDashboard
+        case .home: return "house.fill"
         case .analytics: return SFIcons.tabAnalytics
         case .subscriptions: return SFIcons.subscriptions
-        case .quickAdd: return SFIcons.quickAdd
+        case .quickAdd: return "plus"
         }
     }
 }
 
-// MARK: - Main Adaptive Container
-
-struct LiquidGlassRootView: View {
-    @State private var selectedTab: AppTab = .home
-    @State private var sidebarSelection: AppTab? = .home
-    @State private var showQuickAdd: Bool = false
-
-    var body: some View {
-        NavigationSplitView {
-            List(AppTab.allCases, selection: $sidebarSelection) { tab in
-                Label(tab.label, systemImage: tab.sfSymbol)
-                    .tag(tab as AppTab?)
-            }
-            .navigationTitle("Spendy")
-        } detail: {
-            ZStack(alignment: .bottom) {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        ForEach(0..<20) { _ in
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.primary.opacity(0.05))
-                                .frame(height: 100)
-                                .padding(.horizontal)
-                        }
-                    }
-                    .padding(.top)
-                    .padding(.bottom, 100)
-                }
-                .ignoresSafeArea(edges: .bottom)
-
-                GlassTabBar(selectedTab: Binding(
-                    get: { sidebarSelection ?? selectedTab },
-                    set: { newValue in
-                        selectedTab = newValue
-                        sidebarSelection = newValue
-                    }
-                )) {
-                    showQuickAdd = true
-                }
-                .padding(.bottom, 8)
-            }
-        }
-        .onChange(of: sidebarSelection) { oldValue, newValue in
-            if let newValue {
-                selectedTab = newValue
-            }
-        }
-    }
-}
-
-// MARK: - Liquid Glass Tab Bar
+// MARK: - Liquid Glass Dock Navigation Bar
 
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
     let onQuickAdd: () -> Void
+    @Namespace private var dockNamespace
 
-    @GestureState private var isDragging: Bool = false
-    @State private var dragX: CGFloat? = nil
-    @Namespace private var tabBarNamespace
-
-    private let barHeight: CGFloat = 64
-    private let quickAddSize: CGFloat = 60
+    private let circleButtonSize: CGFloat = 52
+    private let pillHeight: CGFloat = 52
+    private let primaryBlue = Color(hex: "#007AFF")
+    private let electricAzure = Color(hex: "#0A84FF")
 
     var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 12) {
-                HStack(spacing: 12) {
-                    tabBarContent(isGlass: true)
-                        .frame(height: barHeight)
-                        .glassEffect(.regular.interactive(), in: .capsule)
-                        .glassEffectID("tabBarPill", in: tabBarNamespace)
-                        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+        SpendyGlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                // 1. Home Circle Liquid Glass Button
+                navLiquidGlassButton(
+                    tab: .home,
+                    symbol: selectedTab == .home ? "house.fill" : "house",
+                    label: "Home"
+                )
 
-                    // Quick Add Floating Button
-                    Button {
-                        HapticsManager.shared.trigger(.cardSnap)
-                        onQuickAdd()
-                    } label: {
+                // 2. Subscriptions Circle Liquid Glass Button (SF Symbol: arrow.triangle.2.circlepath)
+                navLiquidGlassButton(
+                    tab: .subscriptions,
+                    symbol: SFIcons.subscriptions,
+                    label: "Subscriptions"
+                )
+
+                Spacer(minLength: 8)
+
+                // 3. Hero Blue Liquid Glass "+ Spend" Capsule Pill
+                Button {
+                    HapticsManager.shared.trigger(.cardSnap)
+                    onQuickAdd()
+                } label: {
+                    HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(Color.primary)
-                            .frame(width: quickAddSize, height: quickAddSize)
-                            .glassEffect(.regular.interactive(), in: .circle)
-                            .glassEffectID("quickAddButton", in: tabBarNamespace)
-                            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+                            .font(.system(size: 17, weight: .bold))
+                        Text("Spend")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
-                    .buttonStyle(LiquidScaleButtonStyle())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .frame(height: pillHeight)
+                    .contentShape(Capsule())
                 }
-                .padding(.horizontal, 20)
+                .buttonStyle(LiquidScaleButtonStyle())
+                .modifier(HeroSpendLiquidGlassModifier(tint: primaryBlue))
+                .accessibilityLabel("Add Expense")
+                .accessibilityAddTraits(.isButton)
             }
-        } else {
-            fallbackContent
+            .padding(.horizontal, 20)
         }
     }
 
-    @ViewBuilder
-    var fallbackContent: some View {
-        HStack(spacing: 12) {
-            tabBarContent(isGlass: false)
-                .frame(height: barHeight)
-                .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
+    // MARK: - Navigation Circle Glass Button
+    private func navLiquidGlassButton(tab: AppTab, symbol: String, label: String) -> some View {
+        let isSelected = selectedTab == tab
 
-            // Quick Add Floating Button (Fallback)
-            Button {
-                HapticsManager.shared.trigger(.cardSnap)
-                onQuickAdd()
-            } label: {
-
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.primary)
-                    .frame(width: quickAddSize, height: quickAddSize)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(
-                        Circle().strokeBorder(SpendyColors.separator, lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-            }
-            .buttonStyle(LiquidScaleButtonStyle())
+        return Button {
+            selectWithHaptic(tab)
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
+                .frame(width: circleButtonSize, height: circleButtonSize)
+                .contentShape(Circle())
+                .contentTransition(.symbolEffect(.replace.downUp))
+                .symbolEffect(.bounce.byLayer, value: isSelected)
         }
-        .padding(.horizontal, 20)
-    }
-}
-
-// MARK: - Interactive Tab Bar Layout Content
-
-private extension GlassTabBar {
-
-    func tabBarContent(isGlass: Bool) -> some View {
-        let mainTabs: [AppTab] = [.home, .analytics, .subscriptions]
-        return GeometryReader { geometry in
-            let totalWidth = geometry.size.width
-            let count = CGFloat(mainTabs.count)
-            let itemWidth = count > 0 ? totalWidth / count : 0
-            let activeIndex = CGFloat(mainTabs.firstIndex(of: selectedTab) ?? 0)
-
-            let pillWidth = max(24, isDragging ? itemWidth + 4 : itemWidth - 8)
-            let pillHeight: CGFloat = isDragging ? 52 : 44
-
-            let currentOffset: CGFloat = {
-                if let dragX = dragX, !dragX.isNaN, !dragX.isInfinite {
-                    let halfWidth = pillWidth / 2
-                    let rawX = dragX - halfWidth
-                    let minOffset: CGFloat = isDragging ? -2 : 4
-                    let maxOffset = max(minOffset, totalWidth - pillWidth - minOffset)
-                    return min(max(rawX, minOffset), maxOffset)
-                } else {
-                    return (activeIndex * itemWidth) + (isDragging ? -2 : 4)
-                }
-            }()
-
-            ZStack(alignment: .leading) {
-                // Background Shell for Non-Glass Fallback
-                if !isGlass {
-                    Capsule(style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .strokeBorder(SpendyColors.separator, lineWidth: 1)
-                        )
-                }
-
-                // Dynamic Gliding Pill Indicator (Expanded bubble when dragging/holding)
-                Capsule(style: .continuous)
-                    .fill(SpendyColors.elevatedControlFill)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(SpendyColors.separator, lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(isDragging ? 0.18 : 0.10), radius: 8, y: 2)
-                    .frame(width: pillWidth, height: pillHeight)
-                    .offset(x: currentOffset)
-                    .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selectedTab)
-                    .animation(.spring(response: 0.20, dampingFraction: 0.60), value: isDragging)
-                    .animation(.interactiveSpring(response: 0.15, dampingFraction: 0.80, blendDuration: 0), value: dragX)
-
-                // Interactive Tab Elements
-                HStack(spacing: 0) {
-                    ForEach(mainTabs) { tab in
-                        let isSelected = selectedTab == tab
-
-                        VStack(spacing: 3) {
-                            Image(systemName: isSelected ? tab.activeSfSymbol : tab.sfSymbol)
-                                .font(.system(size: 19, weight: isSelected ? .bold : .regular))
-                                .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
-                                .scaleEffect(isSelected && isDragging ? 1.15 : (isSelected ? 1.05 : 1.0))
-                                .contentTransition(.symbolEffect(.replace.downUp))
-                                .symbolEffect(.bounce.byLayer, value: isSelected)
-
-                            Text(tab.label)
-                                .font(.system(size: 10, weight: isSelected ? .bold : .medium, design: .default))
-                                .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                }
-            }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    .updating($isDragging) { _, state, _ in
-                        state = true
-                    }
-                    .onChanged { value in
-                        let x = value.location.x
-                        guard itemWidth > 0, !x.isNaN, !x.isInfinite else { return }
-                        dragX = x
-                        
-                        let targetIndex = min(max(Int(x / itemWidth), 0), mainTabs.count - 1)
-                        let newTab = mainTabs[targetIndex]
-
-                        if newTab != selectedTab {
-                            selectWithHaptic(newTab)
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                            dragX = nil
-                        }
-                    }
-            )
-        }
+        .buttonStyle(LiquidScaleButtonStyle())
+        .modifier(CircleLiquidGlassModifier(isSelected: isSelected))
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
     }
 
     private func selectWithHaptic(_ tab: AppTab) {
@@ -278,13 +134,118 @@ private extension GlassTabBar {
     }
 }
 
+// MARK: - Circle Liquid Glass Modifier
 
-// MARK: - Scale Animation Style
+private struct CircleLiquidGlassModifier: ViewModifier {
+    var isSelected: Bool
 
-struct LiquidScaleButtonStyle: ButtonStyle {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .glassEffect(
+                    .regular.interactive(),
+                    in: .circle
+                )
+                .overlay {
+                    if isSelected {
+                        Circle()
+                            .fill(Color(uiColor: .dynamic(
+                                light: UIColor(white: 0.0, alpha: 0.08),
+                                dark: UIColor(white: 1.0, alpha: 0.16)
+                            )))
+                            .allowsHitTesting(false)
+
+                        Circle()
+                            .stroke(
+                                Color(uiColor: .dynamic(
+                                    light: UIColor(white: 0.0, alpha: 0.20),
+                                    dark: UIColor(white: 1.0, alpha: 0.32)
+                                )),
+                                lineWidth: 1.2
+                            )
+                            .allowsHitTesting(false)
+                    }
+                }
+                .shadow(color: Color.black.opacity(isSelected ? 0.18 : 0.10), radius: 10, x: 0, y: 4)
+        } else {
+            content
+                .background {
+                    Circle()
+                        .fill(isSelected
+                            ? Color(uiColor: .dynamic(
+                                light: UIColor(white: 0.0, alpha: 0.10),
+                                dark: UIColor(white: 1.0, alpha: 0.20)
+                            ))
+                            : SpendyColors.glassFallbackFill
+                        )
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    isSelected
+                                        ? Color(uiColor: .dynamic(
+                                            light: UIColor(white: 0.0, alpha: 0.22),
+                                            dark: UIColor(white: 1.0, alpha: 0.35)
+                                        ))
+                                        : SpendyColors.separator,
+                                    lineWidth: isSelected ? 1.2 : 0.8
+                                )
+                        }
+                }
+                .shadow(color: Color.black.opacity(isSelected ? 0.16 : 0.08), radius: 10, x: 0, y: 4)
+        }
+    }
+}
+
+// MARK: - Hero Spend Liquid Glass Modifier
+
+private struct HeroSpendLiquidGlassModifier: ViewModifier {
+    var tint: Color
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .background {
+                    LinearGradient(
+                        colors: [tint, Color(hex: "#0A84FF")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(Capsule())
+                }
+                .glassEffect(
+                    .regular.tint(tint.opacity(0.40)).interactive(),
+                    in: .capsule
+                )
+                .shadow(color: tint.opacity(0.45), radius: 14, x: 0, y: 6)
+        } else {
+            content
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [tint, Color(hex: "#0A84FF")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                        }
+                }
+                .shadow(color: tint.opacity(0.40), radius: 12, x: 0, y: 5)
+        }
+    }
+}
+
+// MARK: - Interactive Scale Button Style
+
+private struct LiquidScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }

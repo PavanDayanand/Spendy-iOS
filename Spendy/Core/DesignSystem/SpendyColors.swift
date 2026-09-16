@@ -25,7 +25,6 @@ extension Color {
         default:
             (a, r, g, b) = (255, 0, 0, 0)
         }
-
         self.init(
             .sRGB,
             red: Double(r) / 255,
@@ -36,17 +35,18 @@ extension Color {
     }
 
     func toHex() -> String {
-        let uiColor = UIColor(self)
+        let uic = UIColor(self)
         var r: CGFloat = 0
         var g: CGFloat = 0
         var b: CGFloat = 0
         var a: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+        if uic.getRed(&r, green: &g, blue: &b, alpha: &a) {
             return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
         }
         return "#4F46E5"
     }
 
+    /// Automatically darkens/saturates light colors in dark mode so they never look washed out or invisible
     func clampedToDarkModeAccent() -> Color {
         let uiColor = UIColor(self)
         var hue: CGFloat = 0
@@ -87,22 +87,22 @@ enum SpendyColors {
         dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
     ))
 
-    // Card Surfaces — opaque white in Light so they sit on the paper canvas
+    // Card Surfaces — opaque white in Light, solid opaque charcoal black in Dark
     static let cardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.92)      // #1A1A1A
+        dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
     // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
         light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0), // #F5F6F8
-        dark: UIColor(red: 38.0/255.0, green: 38.0/255.0, blue: 38.0/255.0, alpha: 0.80)      // #262626 80%
+        dark: UIColor(red: 30.0/255.0, green: 30.0/255.0, blue: 34.0/255.0, alpha: 1.0)       // #1E1E22 Solid
     ))
 
     // Sheet Card Surfaces
     static let sheetCardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 26.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 0.92)      // #1A1A1A
+        dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
     // Settings Background
@@ -179,6 +179,9 @@ enum SpendyColors {
     static var statusBeaconCoral: Color { isMonoMode ? textPrimary : Color(hex: "#FF5959") }
     static var statusBeaconGreen: Color { isMonoMode ? textPrimary : Color(hex: "#30D158") }
     static var statusBeaconAmber: Color { isMonoMode ? textPrimary : Color(hex: "#FF9F0A") }
+    static var statusBeaconBlue: Color { isMonoMode ? textPrimary : Color(hex: "#007AFF") }
+    static var statusBeaconYellow: Color { isMonoMode ? textPrimary : Color(hex: "#FFCC00") }
+    
     static let chipBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.05),
         dark: UIColor(white: 1.0, alpha: 0.08)
@@ -193,6 +196,7 @@ enum SpendyColors {
     static var incomeGreen: Color { isMonoMode ? textPrimary : Color(uiColor: .systemGreen) }
     static var transferBlue: Color { isMonoMode ? textPrimary : Color(uiColor: .systemBlue) }
     static var warningOrange: Color { isMonoMode ? textPrimary : Color(uiColor: .systemOrange) }
+    static var dangerRed: Color { isMonoMode ? textPrimary : Color(uiColor: .systemRed) }
     static var goldYellow: Color { isMonoMode ? textPrimary : Color(uiColor: .systemYellow) }
     static var pinkSubscription: Color { isMonoMode ? textPrimary : Color(uiColor: .systemPink) }
     static var tealSavings: Color { isMonoMode ? textPrimary : Color(uiColor: .systemTeal) }
@@ -207,6 +211,12 @@ enum SpendyColors {
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759",
         "#00C7BE", "#007AFF", "#5856D6", "#AF52DE"
     ]
+
+    // Interactive Pressed States
+    static let pressedOverlay = Color(uiColor: .dynamic(
+        light: UIColor(white: 0.0, alpha: 0.04),
+        dark: UIColor(white: 1.0, alpha: 0.06)
+    ))
 }
 
 // MARK: - Light Mode Card Lift

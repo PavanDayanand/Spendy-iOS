@@ -60,7 +60,10 @@ struct AnalyticsBreakdownItem: Identifiable {
 
 struct AnalyticsView: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     var selectedTab: Binding<AppTab>? = nil
+    var topControlsNamespace: Namespace.ID? = nil
+    var onDismiss: (() -> Void)? = nil
     
     // View Filters & Navigation State
     @State private var groupingMode: AnalyticsGroupingMode = .categories
@@ -102,16 +105,15 @@ struct AnalyticsView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                LiquidMeshBackground()
-                
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                        // 1. Unpinned Header Bar: Large Title "Analytics"
-                        headerBar
-                            .padding(.horizontal, 20)
-                            .padding(.top, 10)
+        ZStack {
+            LiquidMeshBackground()
+            
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
+                    // 1. Unpinned Header Bar: Top Control / Title
+                    headerBar
+                        .padding(.horizontal, 20)
+                        .padding(.top, topControlsNamespace != nil ? 4 : 10)
                         
                         // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
@@ -184,21 +186,53 @@ struct AnalyticsView: View {
                 resetSelections()
                 chartProgress = 1.0
             }
-        }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
     }
     
     private func triggerEntranceAnimation() {
         chartProgress = 1.0
     }
     
-    // MARK: - Header Bar (Large Title)
+    // MARK: - Header Bar
     private var headerBar: some View {
         HStack(alignment: .center) {
-            Text("Analytics")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
+            if topControlsNamespace != nil || onDismiss != nil {
+                GlassCircleButton(
+                    icon: "chevron.left",
+                    size: 44,
+                    iconSize: 15,
+                    iconWeight: .bold,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Back",
+                    morphID: "topControl_left",
+                    namespace: topControlsNamespace
+                ) {
+                    if let onDismiss = onDismiss {
+                        onDismiss()
+                    } else {
+                        dismiss()
+                    }
+                }
+                
+                Spacer()
+                
+                Text("Analytics")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+                
+                Color.clear
+                    .frame(width: 44, height: 44)
+            } else {
+                Text("Analytics")
+                    .font(.system(size: 32, weight: .heavy))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                
+                Spacer()
+            }
         }
     }
     

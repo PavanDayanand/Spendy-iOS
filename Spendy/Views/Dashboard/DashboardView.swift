@@ -3,10 +3,10 @@
 //  Spendy
 //
 //  Clean Minimal Home Dashboard:
-//  - Top Bar: Profile Avatar (Left) + 3 Action Toggles (Right: Currency, Privacy, Subscriptions)
+//  - Top Bar: Profile Avatar (Left) + Top Action Toggles (Stats, Currency, Privacy, Budget)
 //  - Account Dropdown Selector (Below Top Toggles)
 //  - Hero Spend Section: Spend Total + On-Screen Bar Chart with Gridlines & Y/X-Axes
-//  - Classic Recent Transactions Section: Category Badges, Account Tags, Amounts & Details
+//  - Interactive Bottom Transactions Drawer: Solid Opaque Surface with High-Performance Drag
 //
 
 import SwiftUI
@@ -238,6 +238,7 @@ struct DashboardView: View {
     // Sheets & Navigation State
     @State private var showSettings: Bool = false
     @State private var settingsInitialDestination: SettingsDestination? = nil
+    @State private var showAnalyticsView: Bool = false
     @State private var showCurrencyConverter: Bool = false
     @State private var showBudgetHub: Bool = false
     @State private var showSubscriptionsHub: Bool = false
@@ -259,9 +260,9 @@ struct DashboardView: View {
     @State private var scrubbedBarPoint: MinimalBarPoint? = nil
     @State private var isScrubbingChart: Bool = false
     
-    // MARK: - Interactive Split Dashboard Drawer & Filter State
+    // MARK: - Interactive Split Dashboard Drawer State
     @State private var isSheetExpanded: Bool = false
-    @State private var sheetDragOffsetY: CGFloat = 0
+    @GestureState private var sheetDragOffsetY: CGFloat = 0
     @State private var drawerFilterCategoryId: String? = nil
     @State private var drawerFilterAccountId: String? = nil
     @State private var drawerFilterType: TransactionType? = nil
@@ -299,7 +300,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - Dynamic Filtered Transactions (Unified with Integrated Drawer Filters)
+    // MARK: - Dynamic Filtered Transactions
     private var displayedTransactions: [Transaction] {
         var txs = store.filteredTransactions(for: selectedAccountId)
         
@@ -448,7 +449,7 @@ struct DashboardView: View {
                     
                     // 1. Fixed Top Canvas (50% Screen Area)
                     VStack(alignment: .leading, spacing: 14) {
-                        // Top Bar: Profile (Left) + 3 Action Toggles (Right: Converter, Eye, Budget)
+                        // Top Bar: Profile (Left) + Action Toggles (Right: Stats, Converter, Eye, Budget)
                         headerBar
                             .padding(.top, topInset + 4)
                         
@@ -490,7 +491,7 @@ struct DashboardView: View {
                         .zIndex(10)
                     }
                     
-                    // 2. Interactive Bottom Transactions Drawer (50% resting, fills screen when dragged up)
+                    // 2. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
                     recentTransactionsDrawer(
                         totalHeight: totalHeight,
                         topInset: topInset,
@@ -523,6 +524,12 @@ struct DashboardView: View {
                         editingTransaction = txToEdit
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showAnalyticsView) {
+                AnalyticsView(
+                    selectedTab: selectedTab,
+                    topControlsNamespace: topControlsNamespace
+                )
             }
             .navigationDestination(isPresented: $showBudgetHub) {
                 BudgetView(topControlsNamespace: topControlsNamespace)
@@ -558,7 +565,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 1. Top Header Bar (Profile Left + 3 Action Toggles Right)
+    // MARK: - 1. Top Header Bar (Profile Left + Action Toggles Right)
     private var profileDisplayName: String {
         let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? "Personal" : name
@@ -634,9 +641,20 @@ struct DashboardView: View {
             
             Spacer()
             
-            // Top Right 3 Action Toggles (Currency, Privacy, Subscriptions)
+            // Top Right Action Toggles (Stats, Currency, Privacy, Budget)
             GlassButtonGroup(spacing: 10) {
-                // 1. Currency Converter Button
+                // 1. Stats / Analytics Button (Slides in like Budget)
+                GlassCircleButton(
+                    icon: SFIcons.tabAnalytics,
+                    size: 44,
+                    iconSize: 16,
+                    accessibilityLabel: "Analytics and statistics"
+                ) {
+                    HapticsManager.shared.trigger(.selection)
+                    showAnalyticsView = true
+                }
+                
+                // 2. Currency Converter Button
                 GlassCircleButton(
                     icon: "arrow.left.arrow.right",
                     size: 44,
@@ -649,7 +667,7 @@ struct DashboardView: View {
                     }
                 }
                 
-                // 2. Privacy Eye Toggle Button
+                // 3. Privacy Eye Toggle Button
                 GlassCircleButton(
                     icon: hideBalance ? SFIcons.eyeSlash : SFIcons.eye,
                     size: 44,
@@ -662,7 +680,7 @@ struct DashboardView: View {
                     }
                 }
                 
-                // 3. Budget Hub Button
+                // 4. Budget Hub Button
                 GlassCircleButton(
                     icon: "target",
                     size: 44,
@@ -677,7 +695,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 2. Account Selector Dropdown Menu Chip (Below Top Toggles)
+    // MARK: - 2. Account Selector Dropdown Menu Chip
     private var accountDropdownSelector: some View {
         SpendyGlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
@@ -745,10 +763,10 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 3. Hero Spend Section with On-Screen Bar Chart (Matching Screenshot, Uncarded)
+    // MARK: - 3. Hero Spend Section with On-Screen Bar Chart
     private var heroSpendBarSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header Label: "Spent all time" or "Spent in <Year> • Drag to inspect"
+            // Header Label
             Group {
                 if let scrubbed = scrubbedBarPoint {
                     Text("Spent in \(scrubbed.label) • Drag to inspect")
@@ -792,126 +810,23 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 4. Smart Insights Section (Above Recent Transactions)
-    private var currentMonthExpenseTxs: [Transaction] {
-        let calendar = Calendar.current
-        let now = Date()
-        return displayedTransactions.filter {
-            $0.type == .expense &&
-            calendar.isDate($0.date, equalTo: now, toGranularity: .month) &&
-            calendar.isDate($0.date, equalTo: now, toGranularity: .year)
-        }
-    }
-    
-    private var currentMonthExpenseTotal: Double {
-        currentMonthExpenseTxs.reduce(0) { $0 + $1.amount }
-    }
-    
-    // MARK: - 4. Live Dynamic Island Liquid Glass Budget Journey Card
-    private var liveBudgetJourneyCard: some View {
-        LiveBudgetJourneyCard(
-            hideBalance: hideBalance,
-            onViewDetails: {
-                showBudgetHub = true
-            }
-        )
-    }
-    
-    // MARK: - 5. Smart Insights Moments (Apple HIG Editorial Observation)
-    private var homeInsightMoments: [InsightMoment] {
-        let facts = InsightFactsExtractor.extractFacts(
-            transactions: displayedTransactions,
-            budget: store.budget,
-            categories: store.categories,
-            subscriptions: store.subscriptions
-        )
-        return InsightDecisionEngine.shared.evaluate(
-            facts: facts,
-            surface: .home,
-            currencySymbol: store.currencySymbol
-        )
-    }
-    
-    private var visibleHomeInsights: [InsightMoment] {
-        Array(homeInsightMoments.filter { !$0.isInsufficientData }.prefix(5))
-    }
-    
-    @ViewBuilder
-    private var smartInsightsSection: some View {
-        if !visibleHomeInsights.isEmpty {
-            HomeSmartInsightTicker(
-                moments: visibleHomeInsights,
-                onSelectDestination: handleInsightDestination
-            )
-        }
-    }
-    
-    private func handleInsightDestination(_ destination: InsightDestination) {
-        switch destination {
-        case .category(let id):
-            if let cat = store.categories.first(where: { $0.id == id }) {
-                selectedCategoryForSheet = cat
-            }
-        case .budget:
-            showBudgetHub = true
-        case .subscriptions:
-            initialSubscriptionIdForHub = nil
-            if let selectedTab = selectedTab {
-                selectedTab.wrappedValue = .subscriptions
-            } else {
-                showSubscriptionsHub = true
-            }
-        case .subscriptionDetail(let id):
-            initialSubscriptionIdForHub = id
-            if let selectedTab = selectedTab {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedTab.wrappedValue = .subscriptions
-                }
-            } else {
-                showSubscriptionsHub = true
-            }
-        case .analytics:
-            if let selectedTab = selectedTab {
-                selectedTab.wrappedValue = .analytics
-            }
-        case .transaction(let id):
-            if let tx = store.transactions.first(where: { $0.id == id }) {
-                inspectingTransaction = tx
-            }
-        }
-    }
-    
-    // MARK: - 6. Accounts Section (Redesigned Master Apple HIG Card)
-    private var accountsUnifiedCardSection: some View {
-        AccountsDashboardCard(
-            hideBalance: hideBalance,
-            onOpenAccounts: {
-                showAccounts = true
-            },
-            onSelectAccount: { acc in
-                selectedAccountForSheet = acc
-            }
-        )
-    }
-    
-    // MARK: - Interactive Bottom Transactions Drawer (60/40 Split -> Full Screen Expanded)
+    // MARK: - 4. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        let restingOffset = totalHeight * 0.60
-        let expandedOffset = max(topInset + 10, 56)
+        let restingOffset = totalHeight * 0.58
+        let expandedOffset = max(topInset + 8, 52)
         let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
-        let drawerAvailableHeight = max(100, totalHeight - expandedOffset)
         
         return VStack(spacing: 0) {
-            // Drag Indicator & Header Zone (Always draggable & tappable)
+            // Header & Grab Area (120Hz Direct Drag Handling)
             VStack(spacing: 0) {
                 // Centered Capsule Grab Handle
                 Capsule()
-                    .fill(Color.secondary.opacity(0.40))
+                    .fill(Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.25), dark: UIColor(white: 1.0, alpha: 0.35))))
                     .frame(width: 38, height: 5)
                     .padding(.top, 10)
                     .padding(.bottom, 8)
                 
-                // Header Row (Structured like reference: Large 28pt Bold Title + Sticker Badge on Right)
+                // Header Row: Large Title + Badge
                 HStack(alignment: .center) {
                     Text(drawerHeaderTitle)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -942,7 +857,7 @@ struct DashboardView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                         
-                        // Reference-style transaction count badge
+                        // Transaction count badge
                         HStack(spacing: 4) {
                             Text("\(todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count)")
                                 .font(.system(size: 16, weight: .heavy, design: .rounded))
@@ -963,7 +878,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, isSheetExpanded ? 10 : 8)
                 
-                // Integrated 44pt Standard Filter Bar (Revealed on Drag / Expand)
+                // Integrated 44pt Standard Filter Bar (Revealed when expanded)
                 if isSheetExpanded {
                     drawerFilterBar
                         .padding(.bottom, 12)
@@ -971,12 +886,6 @@ struct DashboardView: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                HapticsManager.shared.trigger(.selection)
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    isSheetExpanded.toggle()
-                }
-            }
             .gesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
             
             // Transaction List Content
@@ -988,7 +897,6 @@ struct DashboardView: View {
             } else {
                 ScrollView(showsIndicators: isSheetExpanded) {
                     LazyVStack(spacing: 0) {
-                        // Section Structure (matching reference layout: Uppercase tracked section label + rows)
                         ForEach(drawerGroupedTransactions, id: \.0) { groupTitle, groupNet, txs in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(alignment: .firstTextBaseline) {
@@ -1022,7 +930,7 @@ struct DashboardView: View {
                         }
                     }
                     .padding(.horizontal, 4)
-                    .padding(.bottom, bottomInset + 90) // Clearance for floating bottom navigation bar
+                    .padding(.bottom, bottomInset + 90) // Clearance for floating dock
                 }
                 .scrollDisabled(!isSheetExpanded)
                 .simultaneousGesture(
@@ -1031,9 +939,9 @@ struct DashboardView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: drawerAvailableHeight)
+        .frame(height: totalHeight)
         .background {
-            // Elegant Dark Grey Card Surface (Provides clear differentiation from background)
+            // 100% Solid Opaque Pitch Black / Charcoal Surface
             UnevenRoundedRectangle(
                 topLeadingRadius: 32,
                 bottomLeadingRadius: 0,
@@ -1041,7 +949,12 @@ struct DashboardView: View {
                 topTrailingRadius: 32,
                 style: .continuous
             )
-            .fill(SpendyColors.cardBackground)
+            .fill(
+                Color(uiColor: .dynamic(
+                    light: UIColor(white: 1.0, alpha: 1.0),
+                    dark: UIColor(red: 16.0/255.0, green: 16.0/255.0, blue: 18.0/255.0, alpha: 1.0)
+                ))
+            )
             .overlay(alignment: .top) {
                 UnevenRoundedRectangle(
                     topLeadingRadius: 32,
@@ -1050,18 +963,18 @@ struct DashboardView: View {
                     topTrailingRadius: 32,
                     style: .continuous
                 )
-                .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
+                .stroke(SpendyColors.separator.opacity(0.9), lineWidth: 0.8)
             }
-            .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
+            .shadow(color: Color.black.opacity(0.45), radius: 24, x: 0, y: -6)
         }
         .offset(y: currentOffset)
     }
     
-    // MARK: - Drawer Horizontal Filter Bar (Categories, Accounts, Types) - Apple HIG 44pt Standard
+    // MARK: - Drawer Horizontal Filter Bar
     private var drawerFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                // 1. [Categories] Menu - 44pt Touch Target
+                // 1. [Categories] Menu
                 Menu {
                     Button("All Categories") {
                         HapticsManager.shared.trigger(.selection)
@@ -1097,7 +1010,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // 2. [Accounts] Menu - 44pt Touch Target
+                // 2. [Accounts] Menu
                 Menu {
                     Button("All Accounts") {
                         HapticsManager.shared.trigger(.selection)
@@ -1133,7 +1046,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // 3. [Type] Menu (Expenses, Income, Transfers) - 44pt Touch Target
+                // 3. [Type] Menu (Expenses, Income, Transfers)
                 Menu {
                     Button("All Types") {
                         HapticsManager.shared.trigger(.selection)
@@ -1181,318 +1094,157 @@ struct DashboardView: View {
         }
     }
     
+    // MARK: - Drag Gesture Implementation with Zero-Stutter Direct Tracking
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 5)
-            .onChanged { value in
-                sheetDragOffsetY = value.translation.height
+        DragGesture(minimumDistance: 2)
+            .updating($sheetDragOffsetY) { value, state, _ in
+                state = value.translation.height
             }
             .onEnded { value in
                 let translation = value.translation.height
                 let velocity = value.velocity.height
                 
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                // Clean tap detection on header
+                if abs(translation) < 6 && abs(velocity) < 60 {
+                    HapticsManager.shared.trigger(.selection)
+                    withAnimation(AppMotion.snappySpring) {
+                        isSheetExpanded.toggle()
+                    }
+                    return
+                }
+                
+                withAnimation(AppMotion.snappySpring) {
                     if isSheetExpanded {
-                        if translation > 60 || velocity > 300 {
+                        if translation > 50 || velocity > 250 {
                             isSheetExpanded = false
                             HapticsManager.shared.trigger(.selection)
                         }
                     } else {
-                        if translation < -60 || velocity < -300 {
+                        if translation < -50 || velocity < -250 {
                             isSheetExpanded = true
                             HapticsManager.shared.trigger(.selection)
                         }
                     }
-                    sheetDragOffsetY = 0
                 }
             }
     }
     
     private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat) -> CGFloat {
-        let restingOffset = totalHeight * 0.60
-        let expandedOffset = max(topInset + 10, 56)
+        let restingOffset = totalHeight * 0.58
+        let expandedOffset = max(topInset + 8, 52)
         let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
         let rawOffset = baseOffset + sheetDragOffsetY
         
         if rawOffset < expandedOffset {
             let overshoot = expandedOffset - rawOffset
-            return expandedOffset - sqrt(max(0, overshoot)) * 2.5
+            return expandedOffset - sqrt(max(0, overshoot)) * 1.5
         } else if rawOffset > restingOffset {
             let overshoot = rawOffset - restingOffset
-            return restingOffset + sqrt(max(0, overshoot)) * 2.5
+            return restingOffset + sqrt(max(0, overshoot)) * 1.5
         }
         return rawOffset
     }
     
-    // MARK: - 7. Unified Grouped Recent Transactions Section
-    private var recentTransactionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center) {
-                Text("Recent transactions")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
-                
-                if !visibleTransactions.isEmpty {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        showAllTransactionsSheet = true
-                    }) {
-                        Image(systemName: SFIcons.chevronRight)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("View all transactions")
-                }
-            }
-            
-            if visibleTransactions.isEmpty {
-                emptyRecentActivityView
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(visibleTransactions.enumerated()), id: \.element.id) { index, tx in
-                        transactionRow(tx)
-                        
-                        if index < visibleTransactions.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 58)
-                                .padding(.trailing, 16)
-                        }
-                    }
-                    
-                    // Wide Divider before All Transactions link
-                    Rectangle()
-                        .fill(SpendyColors.separator)
-                        .frame(height: 0.8)
-                    
-                    // Bottom "All transactions" link button inside the card
-                    Button(action: {
-                        HapticsManager.shared.trigger(.selection)
-                        showAllTransactionsSheet = true
-                    }) {
-                        HStack {
-                            Text("All transactions")
-                                .font(.system(size: 15.5, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                        .spendyCardLift()
-                }
-            }
-        }
-    }
-    
+    // MARK: - Transaction Row Item
     private func transactionRow(_ tx: Transaction) -> some View {
-        let cat = store.categories.first(where: { $0.id == tx.categoryId })
-        let acc = store.accounts.first(where: { $0.id == tx.accountId })
-        let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
-        
-        let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
-        let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#34C759"))
-        let iconName = subscription?.name ?? cat?.label ?? tx.title
+        let cat = store.category(for: tx.categoryId)
+        let acc = store.account(for: tx.accountId)
         
         return Button(action: {
-            HapticsManager.shared.trigger(.selection)
+            HapticsManager.shared.trigger(.light)
             inspectingTransaction = tx
         }) {
-            HStack(spacing: 14) {
-                // Category / Subscription Icon Badge
-                SpendyIconBadge(
-                    sfSymbol: iconSymbol,
-                    color: iconColor,
-                    size: .medium,
-                    style: subscription != nil ? .circle : .rounded(),
-                    monogramName: iconName
-                )
+            HStack(spacing: 12) {
+                // Category Icon Badge
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(cat.color.opacity(0.18))
+                        .frame(width: 42, height: 42)
+                    
+                    Image(systemName: cat.sfSymbol)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(cat.color)
+                }
                 
-                // Middle: Category / Title + Subtitle
+                // Title & Subtitle
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                        .font(.system(size: 16, weight: .medium))
+                    Text(tx.title.isEmpty ? cat.label : tx.title)
+                        .font(.system(size: 15.5, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                     
-                    if let acc = acc {
-                        HStack(spacing: 5) {
-                            SpendyMiniColorChip(
-                                sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
-                                color: acc.color,
-                                monogramName: acc.label
-                            )
-                            
-                            Text(acc.label)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
+                    HStack(spacing: 6) {
+                        Text(acc.label)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                        
+                        if let notes = tx.notes, !notes.isEmpty {
+                            Text("• \(notes)")
+                                .font(.system(size: 12.5, weight: .regular))
+                                .foregroundStyle(SpendyColors.textTertiary)
                                 .lineLimit(1)
                         }
-                    } else {
-                        Text(tx.date.formattedRelative)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
                 
                 Spacer()
                 
-                // Right: Amount
-                Text(formattedRowAmount(tx))
-                    .spendyNumberFont(size: 16.5, weight: .bold, tracking: -0.5)
-                    .foregroundStyle(rowAmountColor(tx))
+                // Amount Value
+                if hideBalance {
+                    Text("••••")
+                        .spendyNumberFont(size: 15.5, weight: .semibold, tracking: -0.2)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                } else {
+                    let formatted = tx.amount.formattedCurrency(symbol: store.currencySymbol)
+                    Text(tx.type == .income ? "+\(formatted)" : formatted)
+                        .spendyNumberFont(size: 15.5, weight: .semibold, tracking: -0.2)
+                        .foregroundStyle(rowAmountColor(tx))
+                }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
-        .contextMenu {
-            Button {
-                HapticsManager.shared.trigger(.light)
-                editingTransaction = tx
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            
-            Button {
-                HapticsManager.shared.trigger(.light)
-                let copy = Transaction(
-                    id: UUID(),
-                    title: tx.title,
-                    amount: tx.amount,
-                    type: tx.type,
-                    categoryId: tx.categoryId,
-                    accountId: tx.accountId,
-                    toAccountId: tx.toAccountId,
-                    date: Date(),
-                    notes: tx.notes,
-                    subscriptionId: tx.subscriptionId
-                )
-                store.addTransaction(copy)
-            } label: {
-                Label("Duplicate", systemImage: "doc.on.doc")
-            }
-            
-            Button {
-                HapticsManager.shared.trigger(.light)
-                UIPasteboard.general.string = "\(tx.amount)"
-            } label: {
-                Label("Copy Amount", systemImage: "doc.on.clipboard")
-            }
-            
-            Divider()
-            
-            Button(role: .destructive) {
-                HapticsManager.shared.trigger(.warning)
-                withAnimation(AppMotion.snappySpring) {
-                    store.deleteTransaction(id: tx.id)
-                }
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
     }
     
     private func rowAmountColor(_ tx: Transaction) -> Color {
         switch tx.type {
-        case .expense: return SpendyColors.textPrimary
-        case .income: return SpendyColors.incomeGreen
-        case .transfer: return SpendyColors.primaryBlue
+        case .expense:
+            return SpendyColors.textPrimary
+        case .income:
+            return SpendyColors.incomeGreen
+        case .transfer:
+            return SpendyColors.textSecondary
         }
     }
     
-    private func formattedRowAmount(_ tx: Transaction) -> String {
-        if hideBalance { return "••••" }
-        let sym = store.currencySymbol
-        return tx.amount.formattedCurrency(symbol: sym)
-    }
-    
+    // MARK: - Empty State View
     private var emptyRecentActivityView: some View {
-        SpendyEmptyCardView(
-            message: SpendySticker(rawValue: store.selectedSticker ?? "")?.firstLogLine
-                ?? "Log your first expense or income transaction to start tracking daily activity.",
-            actionTitle: "Add transaction",
-            isEnclosedInCard: true
-        ) {
-            showAddTransaction = true
-        }
-    }
-    
-    // MARK: - Dynamic Dashboard Section Dispatcher
-    @ViewBuilder
-    private func dashboardSectionView(for section: DashboardSectionId) -> some View {
-        switch section {
-        case .spendingChart:
-            heroSpendBarSection
-                .padding(.top, 6)
-        case .budget:
-            liveBudgetJourneyCard
-                .padding(.top, 2)
-        case .spendingByCategory:
-            smartInsightsSection
-                .padding(.top, 6)
-        case .upcoming:
-            UpcomingThisMonthCard(showOnlyWhenRelevant: false)
-                .padding(.top, 6)
-        case .accounts:
-            accountsUnifiedCardSection
-                .padding(.top, 6)
-        case .recentTransactions:
-            recentTransactionsSection
-                .padding(.top, 6)
-        }
-    }
-    
-    // MARK: - 8. Modify Dashboard Button
-    private var modifyDashboardButton: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.selection)
-            showHomeConfigSheet = true
-        }) {
-            HStack(spacing: 7) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 13, weight: .bold))
-                Text("Modify dashboard")
-                    .font(.system(size: 13.5, weight: .semibold))
-            }
-            .foregroundStyle(SpendyColors.textSecondary)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .background {
-                Capsule(style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+        VStack(spacing: 12) {
+            Image(systemName: "tray")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.top, 24)
+            
+            Text("No transactions found")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+            
+            if hasActiveFilters {
+                Button("Reset Filters") {
+                    HapticsManager.shared.trigger(.selection)
+                    withAnimation(AppMotion.snappySpring) {
+                        clearDrawerFilters()
                     }
-                    .spendyCardLift()
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(SpendyColors.primaryBlue)
+                .padding(.top, 4)
             }
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
     }
 }
 
@@ -1501,9 +1253,7 @@ private struct ProfilePillPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.70), value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
-
-
