@@ -93,33 +93,38 @@ public struct LiquidMeshBackground: View {
     }
     
     public var body: some View {
-        ZStack {
-            canvasColor
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            let totalScreenHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+            let calculatedHeight = height ?? (style == .sheet ? totalScreenHeight * 0.55 : totalScreenHeight * 0.80)
             
-            if style == .sheet {
-                // Sheet Ambient Multi-Blue Header Glow
-                sheetAmbientHeader
-            } else if store.isGradientBackgroundEnabled {
-                // Main App Screen Fluid Multi-Blue Animated Liquid Mesh
-                screenFluidMesh
+            ZStack {
+                canvasColor
+                    .ignoresSafeArea()
+                
+                if style == .sheet {
+                    // Sheet Ambient Multi-Blue Header Glow
+                    sheetAmbientHeader(effectiveHeight: calculatedHeight)
+                } else if store.isGradientBackgroundEnabled {
+                    // Main App Screen Fluid Multi-Blue Animated Liquid Mesh (Covers 80% of screen, 20% black base)
+                    screenFluidMesh(effectiveHeight: calculatedHeight)
+                }
             }
+            .animation(.easeInOut(duration: 0.35), value: store.isGradientBackgroundEnabled)
+            .animation(.easeInOut(duration: 0.28), value: colorScheme)
+            .ignoresSafeArea()
         }
-        .animation(.easeInOut(duration: 0.35), value: store.isGradientBackgroundEnabled)
-        .animation(.easeInOut(duration: 0.28), value: colorScheme)
-        .ignoresSafeArea()
     }
     
     // MARK: - Screen Fluid Multi-Blue Mesh Background
-    private var screenFluidMesh: some View {
+    private func screenFluidMesh(effectiveHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
                 LinearGradient(
                     stops: [
                         .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.72 : 0.90)), location: 0.0),
-                        .init(color: baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.88 : 1.05)), location: 0.18),
-                        .init(color: (isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.70 : 1.15)), location: 0.38),
-                        .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.28 : 0.55)), location: 0.65),
+                        .init(color: baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.88 : 1.05)), location: 0.20),
+                        .init(color: (isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.70 : 1.15)), location: 0.45),
+                        .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.28 : 0.60)), location: 0.72),
                         .init(color: canvasColor.opacity(0.0), location: 1.0)
                     ],
                     startPoint: (isDrifting && !reduceMotion) ? .topTrailing : .topLeading,
@@ -128,33 +133,33 @@ public struct LiquidMeshBackground: View {
                 
                 Circle()
                     .fill((isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.55 : 1.0)))
-                    .frame(width: 350, height: 350)
+                    .frame(width: 420, height: 420)
                     .offset(
-                        x: (isDrifting && !reduceMotion) ? 30 : -50,
-                        y: (isDrifting && !reduceMotion) ? -10 : -60
+                        x: (isDrifting && !reduceMotion) ? 35 : -55,
+                        y: (isDrifting && !reduceMotion) ? 20 : -30
                     )
                     .scaleEffect((isDrifting && !reduceMotion) ? 1.10 : 0.94)
-                    .blur(radius: isLight ? 82 : 70)
+                    .blur(radius: isLight ? 88 : 78)
                 
                 Circle()
                     .fill(baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.42 : 0.85)))
-                    .frame(width: 290, height: 290)
+                    .frame(width: 360, height: 360)
                     .offset(
-                        x: (isDrifting && !reduceMotion) ? -55 : 45,
-                        y: (isDrifting && !reduceMotion) ? -45 : -15
+                        x: (isDrifting && !reduceMotion) ? -60 : 50,
+                        y: (isDrifting && !reduceMotion) ? 80 : 40
                     )
                     .scaleEffect((isDrifting && !reduceMotion) ? 0.95 : 1.14)
-                    .blur(radius: isLight ? 72 : 60)
+                    .blur(radius: isLight ? 78 : 68)
                 
                 Circle()
                     .fill((isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.38 : 0.70)))
-                    .frame(width: 230, height: 230)
+                    .frame(width: 280, height: 280)
                     .offset(
-                        x: (isDrifting && !reduceMotion) ? 60 : -30,
-                        y: (isDrifting && !reduceMotion) ? -75 : -35
+                        x: (isDrifting && !reduceMotion) ? 70 : -35,
+                        y: (isDrifting && !reduceMotion) ? -40 : -10
                     )
                     .scaleEffect((isDrifting && !reduceMotion) ? 1.15 : 0.90)
-                    .blur(radius: isLight ? 58 : 48)
+                    .blur(radius: isLight ? 64 : 54)
             }
             .frame(height: effectiveHeight)
             .mask(
@@ -162,18 +167,18 @@ public struct LiquidMeshBackground: View {
                     stops: isLight
                         ? [
                             .init(color: .white, location: 0.0),
-                            .init(color: .white, location: 0.22),
-                            .init(color: .white.opacity(0.72), location: 0.46),
-                            .init(color: .white.opacity(0.28), location: 0.68),
-                            .init(color: .white.opacity(0.06), location: 0.86),
+                            .init(color: .white, location: 0.30),
+                            .init(color: .white.opacity(0.85), location: 0.55),
+                            .init(color: .white.opacity(0.45), location: 0.75),
+                            .init(color: .white.opacity(0.12), location: 0.90),
                             .init(color: .clear, location: 1.0)
                         ]
                         : [
                             .init(color: .white, location: 0.0),
-                            .init(color: .white, location: 0.35),
-                            .init(color: .white.opacity(0.85), location: 0.55),
-                            .init(color: .white.opacity(0.40), location: 0.78),
-                            .init(color: .white.opacity(0.10), location: 0.92),
+                            .init(color: .white, location: 0.40),
+                            .init(color: .white.opacity(0.90), location: 0.65),
+                            .init(color: .white.opacity(0.50), location: 0.82),
+                            .init(color: .white.opacity(0.15), location: 0.94),
                             .init(color: .clear, location: 1.0)
                         ],
                     startPoint: .top,
@@ -200,7 +205,7 @@ public struct LiquidMeshBackground: View {
     }
     
     // MARK: - Sheet Ambient Multi-Blue Header Glow
-    private var sheetAmbientHeader: some View {
+    private func sheetAmbientHeader(effectiveHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
                 // Multi-Stop Blend: Neon -> Royal -> Deep Electric -> Sheet Base

@@ -812,7 +812,7 @@ struct DashboardView: View {
     
     // MARK: - 4. Interactive Bottom Transactions Drawer (Commit 35d94b75 Behaviour)
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        let restingOffset = totalHeight * 0.60
+        let restingOffset = totalHeight * 0.55
         let expandedOffset = max(topInset + 10, 56)
         let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
         let drawerAvailableHeight = max(100, totalHeight - expandedOffset)
@@ -1131,7 +1131,7 @@ struct DashboardView: View {
     }
     
     private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat) -> CGFloat {
-        let restingOffset = totalHeight * 0.60
+        let restingOffset = totalHeight * 0.55
         let expandedOffset = max(topInset + 10, 56)
         let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
         let rawOffset = baseOffset + sheetDragOffsetY
