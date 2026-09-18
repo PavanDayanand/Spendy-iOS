@@ -33,6 +33,7 @@ struct SettingsView: View {
     }
 
     @State private var showProfileEdit: Bool = false
+    @State private var showMascotPicker: Bool = false
     @State private var showCurrencyPicker: Bool = false
     @State private var showReceiptPrinter: Bool = false
     @State private var showCoffeeSheet: Bool = false
@@ -76,6 +77,18 @@ struct SettingsView: View {
                         }
 
                         settingsGroup(title: "Display") {
+                            Button {
+                                HapticsManager.shared.trigger(.selection)
+                                showMascotPicker = true
+                            } label: {
+                                linkRow(
+                                    icon: "theatermasks",
+                                    title: "Companion Mascot",
+                                    value: store.activeCompanionSticker.title
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            groupDivider
                             appearanceRow
                             groupDivider
                             toggleRow(
@@ -234,6 +247,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showProfileEdit) {
                 EditProfileSheet()
+            }
+            .sheet(isPresented: $showMascotPicker) {
+                MascotCompanionPickerSheet(initialSticker: store.activeCompanionSticker)
             }
             .sheet(isPresented: $showCurrencyPicker) {
                 CurrencyPickerSheet()

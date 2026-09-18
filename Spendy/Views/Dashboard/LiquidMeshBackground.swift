@@ -80,8 +80,8 @@ public struct LiquidMeshBackground: View {
         SpendySignatureTheme.royalBlue
     }
     
-    private var baseNeonBlue: Color {
-        SpendySignatureTheme.neonBlue
+    private var baseTopColor: Color {
+        isLight ? SpendySignatureTheme.skyBlue : SpendySignatureTheme.pitchBlack
     }
     
     private var canvasColor: Color {
@@ -121,7 +121,7 @@ public struct LiquidMeshBackground: View {
             ZStack(alignment: .top) {
                 LinearGradient(
                     stops: [
-                        .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.72 : 0.90)), location: 0.0),
+                        .init(color: baseTopColor.opacity(opacity * meshStrength * (isLight ? 0.72 : 1.0)), location: 0.0),
                         .init(color: baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.88 : 1.05)), location: 0.20),
                         .init(color: (isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.70 : 1.15)), location: 0.45),
                         .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.28 : 0.60)), location: 0.72),
@@ -152,7 +152,7 @@ public struct LiquidMeshBackground: View {
                     .blur(radius: isLight ? 78 : 68)
                 
                 Circle()
-                    .fill((isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.38 : 0.70)))
+                    .fill((isLight ? SpendySignatureTheme.skyBlue : baseRoyalBlue).opacity(opacity * meshStrength * (isLight ? 0.38 : 0.65)))
                     .frame(width: 280, height: 280)
                     .offset(
                         x: (isDrifting && !reduceMotion) ? 70 : -35,
@@ -208,10 +208,10 @@ public struct LiquidMeshBackground: View {
     private func sheetAmbientHeader(effectiveHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                // Multi-Stop Blend: Neon -> Royal -> Deep Electric -> Sheet Base
+                // Multi-Stop Blend: Top -> Royal -> Deep Electric -> Sheet Base
                 LinearGradient(
                     stops: [
-                        .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.55 : 0.75)), location: 0.0),
+                        .init(color: baseTopColor.opacity(opacity * meshStrength * (isLight ? 0.55 : 0.85)), location: 0.0),
                         .init(color: baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.70 : 0.90)), location: 0.20),
                         .init(color: (isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.48 : 1.0)), location: 0.42),
                         .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.18 : 0.35)), location: 0.65),
@@ -221,9 +221,9 @@ public struct LiquidMeshBackground: View {
                     endPoint: .bottomLeading
                 )
                 
-                // Floating subtle neon specular orb
+                // Floating subtle royal specular orb
                 Circle()
-                    .fill((isLight ? SpendySignatureTheme.skyBlue : baseNeonBlue).opacity(opacity * meshStrength * (isLight ? 0.28 : 0.45)))
+                    .fill(baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.28 : 0.45)))
                     .frame(width: 180, height: 180)
                     .offset(x: 50, y: -40)
                     .blur(radius: isLight ? 48 : 40)

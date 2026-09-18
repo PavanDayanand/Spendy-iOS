@@ -560,23 +560,18 @@ struct AllTransactionsView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Spacer().frame(height: 40)
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 38))
-                .foregroundStyle(SpendyColors.textTertiary)
-            
-            Text("No transactions found")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Text("Try searching for a different keyword or filter")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            Spacer().frame(height: 40)
+        VStack(spacing: 16) {
+            Spacer().frame(height: 20)
+            SpendyCharacterMomentCard(
+                sticker: store.activeCompanionSticker,
+                speechText: "Nothing found here! Try adjusting your search query or filters.",
+                kicker: store.activeCompanionSticker.title,
+                stickerSize: 85
+            )
+            Spacer().frame(height: 20)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, 20)
     }
 }
 

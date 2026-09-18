@@ -11,8 +11,21 @@ struct MainTabView: View {
     @State private var selectedTab: AppTab = .home
     @State private var showAddTransaction: Bool = false
     @State private var isHomeDrawerExpanded: Bool = false
+    @State private var isHomeSubpageActive: Bool = false
+    @State private var isAnalyticsSubpageActive: Bool = false
     @State private var quickActionManager = QuickActionManager.shared
     @Namespace private var composeNamespace
+
+    private var isDockVisible: Bool {
+        switch selectedTab {
+        case .home:
+            return !isHomeSubpageActive
+        case .analytics:
+            return !isAnalyticsSubpageActive
+        case .subscriptions, .quickAdd:
+            return true
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -21,7 +34,8 @@ struct MainTabView: View {
                 DashboardView(
                     showAddTransaction: $showAddTransaction,
                     selectedTab: $selectedTab,
-                    isSheetExpandedBinding: $isHomeDrawerExpanded
+                    isSheetExpandedBinding: $isHomeDrawerExpanded,
+                    isSubpageActiveBinding: $isHomeSubpageActive
                 )
                 .opacity(selectedTab == .home ? 1 : 0)
                 .allowsHitTesting(selectedTab == .home)
@@ -33,7 +47,10 @@ struct MainTabView: View {
                 .allowsHitTesting(selectedTab == .subscriptions)
 
                 NavigationStack {
-                    AnalyticsView(selectedTab: $selectedTab)
+                    AnalyticsView(
+                        selectedTab: $selectedTab,
+                        isSubpageActiveBinding: $isAnalyticsSubpageActive
+                    )
                 }
                 .opacity(selectedTab == .analytics ? 1 : 0)
                 .allowsHitTesting(selectedTab == .analytics)
@@ -49,6 +66,10 @@ struct MainTabView: View {
                 }
             )
             .padding(.bottom, 6)
+            .offset(y: isDockVisible ? 0 : 120)
+            .opacity(isDockVisible ? 1 : 0)
+            .allowsHitTesting(isDockVisible)
+            .animation(AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .fullScreenCover(isPresented: $showAddTransaction) {

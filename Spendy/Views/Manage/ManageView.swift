@@ -259,6 +259,7 @@ struct SubscriptionsView: View {
     }
 
     // Typealias for backwards compatibility
+
     typealias ManageView = SubscriptionsView
 
     // MARK: - Summary card (amount + icons on one row, insight in the card)
@@ -430,7 +431,14 @@ struct SubscriptionsView: View {
     }
 
     private func nextBillRow(_ sub: Subscription) -> some View {
-        Button {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let billDay = calendar.startOfDay(for: sub.nextBillingDate)
+        let daysUntil = calendar.dateComponents([.day], from: today, to: billDay).day ?? 0
+        let daysText = daysUntil <= 0 ? "TODAY" : (daysUntil == 1 ? "1d" : "\(daysUntil)d")
+        let palette: SpendyComicPalette = daysUntil <= 3 ? .fire : .cyberGold
+        
+        return Button {
             HapticsManager.shared.trigger(.selection)
             selectedSubscriptionForDetail = sub
         } label: {
@@ -451,6 +459,8 @@ struct SubscriptionsView: View {
                 }
 
                 Spacer(minLength: 8)
+                
+                SpendyComicBadge(daysText, palette: palette, size: .small, rotationAngle: -4)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
@@ -621,16 +631,31 @@ struct SubscriptionsView: View {
 
     // MARK: - Empty State
     private var emptyState: some View {
-        SpendyEmptyCardView(
-            icon: "repeat.circle",
-            iconColor: SpendyColors.vibrantPurple,
-            title: "No subscriptions found",
-            subtitle: "Track recurring payments, bills, and monthly memberships",
-            actionTitle: "Add Subscription",
-            isEnclosedInCard: true
-        ) {
-            showAddSubscription = true
+        VStack(spacing: 20) {
+            SpendyCharacterMomentCard(
+                sticker: .billDue,
+                speechText: "That bill does not get to surprise you! Add recurring subscriptions and memberships to stay ahead.",
+                kicker: "The Bill Hawk",
+                stickerSize: 100
+            )
+            
+            Button(action: {
+                HapticsManager.shared.trigger(.selection)
+                showAddSubscription = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Add Subscription")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(SpendyColors.inverseText)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(SpendyColors.primaryBlue, in: Capsule())
+            }
         }
+        .padding(.vertical, 24)
     }
 
     // MARK: - Past & Cancelled Section

@@ -110,6 +110,17 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var activeCompanionSticker: SpendySticker {
+        if let saved = selectedSticker, let s = SpendySticker(rawValue: saved) {
+            return s
+        }
+        return .moneyHug
+    }
+    
+    var isHomeMascotEnabled: Bool = true {
+        didSet { scheduleSave() }
+    }
+    
     var notificationsEnabled: Bool = true {
         didSet { scheduleSave() }
     }
@@ -389,6 +400,7 @@ final class ExpenseStore {
         var ratesLastUpdated: Date?
         var hasCompletedOnboarding: Bool?
         var selectedSticker: String?
+        var isHomeMascotEnabled: Bool?
     }
     
     private var storageURL: URL {
@@ -457,6 +469,7 @@ final class ExpenseStore {
                 ]
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
                 self.selectedSticker = payload.selectedSticker
+                self.isHomeMascotEnabled = payload.isHomeMascotEnabled ?? true
                 // Migration: Ensure seeded accounts are typed
                 for i in 0..<self.accounts.count {
                     if self.accounts[i].id == "cash" {
@@ -515,7 +528,8 @@ final class ExpenseStore {
             ratesToUSD: ratesToUSD,
             ratesLastUpdated: ratesLastUpdated,
             hasCompletedOnboarding: hasCompletedOnboarding,
-            selectedSticker: selectedSticker
+            selectedSticker: selectedSticker,
+            isHomeMascotEnabled: isHomeMascotEnabled
         )
         let destinationURL = storageURL
         Task.detached(priority: .utility) {

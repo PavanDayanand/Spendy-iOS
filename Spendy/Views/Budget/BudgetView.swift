@@ -61,7 +61,7 @@ struct BudgetView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 36)
                 }
             }
         }
@@ -159,30 +159,15 @@ struct BudgetView: View {
     
     // MARK: - Empty State View
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Spacer().frame(height: 40)
+        VStack(spacing: 24) {
+            Spacer().frame(height: 20)
             
-            ZStack {
-                Circle()
-                    .fill(SpendyColors.primaryBlue.opacity(0.12))
-                    .frame(width: 90, height: 90)
-                
-                Image(systemName: SFIcons.wallet)
-                    .font(.system(size: 38, weight: .semibold))
-                    .foregroundStyle(SpendyColors.primaryBlue)
-            }
-            
-            VStack(spacing: 8) {
-                Text("No budget set")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Text("Create a budget to track your spending and stay on top of your finances.")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
+            SpendyCharacterMomentCard(
+                sticker: store.activeCompanionSticker,
+                speechText: "Someone has to sit with the budget. That’s you and me! Set a limit so nothing surprises us.",
+                kicker: store.activeCompanionSticker.title,
+                stickerSize: 110
+            )
             
             Button(action: {
                 HapticsManager.shared.trigger(.medium)
@@ -190,13 +175,13 @@ struct BudgetView: View {
                 showEditBudgetSheet = true
             }) {
                 Text("Create budget")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(SpendyColors.inverseText)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 13)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 14)
                     .background(SpendyColors.primaryBlue, in: Capsule())
             }
-            .padding(.top, 4)
+            .padding(.top, 8)
             
             Spacer()
         }
@@ -217,6 +202,7 @@ struct BudgetView: View {
         )
     }
     
+
     private var activeBudgetContent: some View {
         VStack(spacing: 20) {
             // Main Analytics-Style Circular Ring Budget Card

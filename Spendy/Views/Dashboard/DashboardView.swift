@@ -5,8 +5,8 @@
 //  Clean Minimal Home Dashboard:
 //  - Top Bar: Profile Avatar (Left) + Top Action Toggles (Stats, Currency, Privacy, Budget)
 //  - Account Dropdown Selector (Below Top Toggles)
-//  - Hero Spend Section: Spend Total + On-Screen Bar Chart with Gridlines & Y/X-Axes
-//  - Interactive Bottom Transactions Drawer: Solid Opaque Surface with High-Performance Drag
+//  - Hero Spend Section: Monthly Spend Card + On-Screen 6-Month Bar Chart with Interactive Scrubbing
+//  - Interactive Bottom Transactions Drawer: Comic Sticker Count Badge, High-Performance Drag & Character Moments
 //
 
 import SwiftUI
@@ -71,7 +71,7 @@ struct HeroSpendBarChart: View {
         let spacing: CGFloat
         if count >= 10 {
             spacing = 3
-        } else if count >= 7 {
+        } else if count >= 6 {
             spacing = 6
         } else {
             spacing = max(4, chartWidth * 0.03)
@@ -238,6 +238,7 @@ struct DashboardView: View {
     @Binding var showAddTransaction: Bool
     var selectedTab: Binding<AppTab>? = nil
     var isSheetExpandedBinding: Binding<Bool>? = nil
+    var isSubpageActiveBinding: Binding<Bool>? = nil
     
     // Sheets & Navigation State
     @State private var showSettings: Bool = false
@@ -267,6 +268,16 @@ struct DashboardView: View {
     // MARK: - Interactive Split Dashboard Drawer State
     @State private var internalSheetExpanded: Bool = false
     @State private var sheetDragOffsetY: CGFloat = 0
+    
+    private var isSubpageActive: Bool {
+        showBudgetHub ||
+        showAccounts ||
+        showAllTransactionsSheet ||
+        showSubscriptionsHub ||
+        showAnalyticsView ||
+        selectedCategoryForSheet != nil ||
+        selectedAccountForSheet != nil
+    }
     
     private var isSheetExpanded: Bool {
         isSheetExpandedBinding?.wrappedValue ?? internalSheetExpanded
@@ -417,22 +428,34 @@ struct DashboardView: View {
         return store.accounts.first(where: { $0.id == selectedAccountId })?.sfSymbol ?? "creditcard.fill"
     }
     
-    private var totalSpentAllTime: Double {
-        displayedTransactions
-            .filter { $0.type == .expense }
+    private var currentMonthSpent: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        return displayedTransactions
+            .filter { $0.type == .expense && calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
             .reduce(0) { $0 + $1.amount }
     }
     
-    // 4-Year Historical Spend Points for Bar Chart
+    // Last 6 Months Historical Spend Points for Bar Chart
     private var barChartDataPoints: [MinimalBarPoint] {
         let calendar = Calendar.current
+        let now = Date()
         let expenses = displayedTransactions.filter { $0.type == .expense }
-        let currentYear = calendar.component(.year, from: Date())
-        let years = (currentYear - 3...currentYear).map { $0 }
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMM"
         
-        return years.map { year in
-            let sum = expenses.filter { calendar.component(.year, from: $0.date) == year }.reduce(0) { $0 + $1.amount }
-            return MinimalBarPoint(id: "\(year)", label: "\(year)", amount: sum)
+        return (0..<6).reversed().compactMap { offset -> MinimalBarPoint? in
+            guard let targetDate = calendar.date(byAdding: .month, value: -offset, to: now) else { return nil }
+            let year = calendar.component(.year, from: targetDate)
+            let month = calendar.component(.month, from: targetDate)
+            
+            let sum = expenses.filter {
+                calendar.component(.year, from: $0.date) == year &&
+                calendar.component(.month, from: $0.date) == month
+            }.reduce(0) { $0 + $1.amount }
+            
+            let label = monthFormatter.string(from: targetDate)
+            return MinimalBarPoint(id: "\(year)-\(month)", label: label, amount: sum)
         }
     }
     
@@ -471,7 +494,7 @@ struct DashboardView: View {
                         // Account Dropdown Selector (Below Top Toggles)
                         accountDropdownSelector
                         
-                        // Hero Spend Section with On-Screen Bar Chart
+                        // Hero Spend Section with On-Screen Month Bar Chart
                         heroSpendBarSection
                             .padding(.top, 2)
                         
@@ -576,6 +599,14 @@ struct DashboardView: View {
                     backButtonMorphID: "topControl_left",
                     periodControlMorphID: "accountDropdownCapsule"
                 )
+            }
+            .onChange(of: isSubpageActive) { _, active in
+                withAnimation(AppMotion.fluidSpring) {
+                    isSubpageActiveBinding?.wrappedValue = active
+                }
+            }
+            .onAppear {
+                isSubpageActiveBinding?.wrappedValue = isSubpageActive
             }
         }
     }
@@ -778,7 +809,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 3. Hero Spend Section with On-Screen Bar Chart
+    // MARK: - 3. Hero Spend Section with On-Screen Month Bar Chart
     private var heroSpendBarSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Header Label
@@ -788,7 +819,7 @@ struct DashboardView: View {
                         .font(AppTypography.itemTitle)
                         .foregroundStyle(SpendyColors.textPrimary)
                 } else {
-                    Text("Spent all time")
+                    Text("Spent this month")
                         .font(AppTypography.itemTitle)
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
@@ -796,7 +827,7 @@ struct DashboardView: View {
             .animation(.easeInOut(duration: 0.15), value: scrubbedBarPoint?.id)
             
             // Large Amount Text with Vertical Gradient
-            let displayAmount = scrubbedBarPoint?.amount ?? totalSpentAllTime
+            let displayAmount = scrubbedBarPoint?.amount ?? currentMonthSpent
             
             if hideBalance {
                 Text("••••••")
@@ -815,7 +846,7 @@ struct DashboardView: View {
                 .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scrubbedBarPoint?.id)
             }
             
-            // On-Screen Bar Chart with Interactive Scrubbing
+            // On-Screen Bar Chart with Interactive Scrubbing (Last 6 Months)
             HeroSpendBarChart(
                 dataPoints: barChartDataPoints,
                 scrubbedPoint: $scrubbedBarPoint,
@@ -825,7 +856,7 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - 4. Interactive Bottom Transactions Drawer (Commit 35d94b75 Behaviour)
+    // MARK: - 4. Interactive Bottom Transactions Drawer
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
         let restingOffset = totalHeight * 0.55
         let expandedOffset = max(topInset + 10, 56)
@@ -842,7 +873,7 @@ struct DashboardView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
                 
-                // Header Row (Structured like reference: Large 28pt Bold Title + Badge on Right)
+                // Header Row (Large 28pt Bold Title + Die-Cut Sticker Badge on Right)
                 HStack(alignment: .center) {
                     Text(drawerHeaderTitle)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -873,21 +904,15 @@ struct DashboardView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                         
-                        // Reference-style transaction count badge
-                        HStack(spacing: 4) {
-                            Text("\(todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count)")
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            Text(todayTransactionsCount > 0 ? "today" : "txns")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .textCase(.uppercase)
-                        }
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .padding(.horizontal, 11)
-                        .frame(height: 34)
-                        .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
+                        // Large Die-Cut Cartoon Sticker Badge
+                        let count = todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count
+                        let badgePalette: SpendyComicPalette = todayTransactionsCount > 0 ? .cyberGold : .fire
+                        
+                        SpendyComicBadge(
+                            "\(count)",
+                            palette: badgePalette,
+                            size: .medium,
+                            rotationAngle: -6
                         )
                     }
                 }
@@ -910,8 +935,29 @@ struct DashboardView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
                 Spacer(minLength: 0)
+            } else if !isSheetExpanded {
+                // Collapsed Solid State: Show only the transactions that fit cleanly ABOVE the floating dock
+                let collapsedTxs = Array(displayedTransactions.prefix(3))
+                VStack(spacing: 0) {
+                    ForEach(Array(collapsedTxs.enumerated()), id: \.element.id) { index, tx in
+                        transactionRow(tx)
+                        
+                        if index < collapsedTxs.count - 1 {
+                            Rectangle()
+                                .fill(SpendyColors.separator.opacity(0.6))
+                                .frame(height: 0.5)
+                                .padding(.leading, 64)
+                                .padding(.trailing, 16)
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.top, 4)
+                
+                Spacer(minLength: 0)
             } else {
-                ScrollView(showsIndicators: isSheetExpanded) {
+                // Expanded Full State: Scrollable view with all categorized/date-grouped transactions
+                ScrollView(showsIndicators: true) {
                     LazyVStack(spacing: 0) {
                         ForEach(drawerGroupedTransactions, id: \.0) { groupTitle, groupNet, txs in
                             VStack(alignment: .leading, spacing: 4) {
@@ -946,9 +992,8 @@ struct DashboardView: View {
                         }
                     }
                     .padding(.horizontal, 4)
-                    .padding(.bottom, bottomInset + 90) // Clearance for floating dock
+                    .padding(.bottom, bottomInset + 100) // Clearance for floating dock when scrolled
                 }
-                .scrollDisabled(!isSheetExpanded)
             }
         }
         .frame(maxWidth: .infinity)
@@ -1225,15 +1270,14 @@ struct DashboardView: View {
     
     // MARK: - Empty State View
     private var emptyRecentActivityView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "tray")
-                .font(.system(size: 36, weight: .light))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 24)
-            
-            Text("No transactions found")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
+        VStack(spacing: 16) {
+            SpendyCharacterMomentCard(
+                sticker: store.activeCompanionSticker,
+                speechText: hasActiveFilters ? "Nothing matches these filters. Clear them to see your spends!" : "Oh, the thrill of staring at zero expenses. Tap + to log your first spend.",
+                kicker: store.activeCompanionSticker.title,
+                stickerSize: 92
+            )
+            .padding(.top, 12)
             
             if hasActiveFilters {
                 Button("Reset Filters") {
@@ -1242,13 +1286,13 @@ struct DashboardView: View {
                         clearDrawerFilters()
                     }
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(SpendyColors.primaryBlue)
                 .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
+        .padding(.vertical, 20)
     }
 }
 

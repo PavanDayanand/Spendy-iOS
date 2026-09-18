@@ -64,6 +64,7 @@ struct AnalyticsView: View {
     var selectedTab: Binding<AppTab>? = nil
     var topControlsNamespace: Namespace.ID? = nil
     var onDismiss: (() -> Void)? = nil
+    var isSubpageActiveBinding: Binding<Bool>? = nil
     
     // View Filters & Navigation State
     @State private var groupingMode: AnalyticsGroupingMode = .categories
@@ -95,6 +96,12 @@ struct AnalyticsView: View {
     
     @Namespace private var analyticsControlsNamespace
     
+    private var isSubpageActive: Bool {
+        showSubscriptionSheet ||
+        selectedAccountForSheet != nil ||
+        selectedCategoryForSheet != nil
+    }
+    
     private let calendar = Calendar.current
     
     // Computed helpers for account dropdown
@@ -104,7 +111,7 @@ struct AnalyticsView: View {
     }
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             SpendyColors.appBackground.ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -138,7 +145,7 @@ struct AnalyticsView: View {
                     }
                     .padding(.bottom, 140) // Full clearance for floating bottom GlassTabBar
                 }
-                
+
             }
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $showAddTransaction) {
@@ -170,8 +177,13 @@ struct AnalyticsView: View {
             }
 
             .onAppear {
-
+                isSubpageActiveBinding?.wrappedValue = isSubpageActive
                 chartProgress = 1.0
+            }
+            .onChange(of: isSubpageActive) { _, active in
+                withAnimation(AppMotion.fluidSpring) {
+                    isSubpageActiveBinding?.wrappedValue = active
+                }
             }
             .onChange(of: selectedDate) { _, _ in
                 resetSelections()
@@ -347,6 +359,8 @@ struct AnalyticsView: View {
             }
         }
     }
+
+
 
     // MARK: - Card 1: Cashflow Overview Card (Clean Gray & Green)
     private var cashflowOverviewCard: some View {

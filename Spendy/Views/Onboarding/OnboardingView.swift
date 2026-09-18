@@ -364,17 +364,20 @@ public struct OnboardingView: View {
                     .zIndex(40)
                 } else if isCompanionCentered, let active = chosenSticker {
                     if showPickedDetails {
-                        VStack(spacing: 8) {
-                            Text(active.title)
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color.white)
-
-                            Text(active.subtitle)
-                                .font(.system(size: 15, weight: .regular, design: .rounded))
-                                .foregroundStyle(Color.white.opacity(0.65))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
-                                .lineSpacing(2)
+                        VStack(spacing: 12) {
+                            SpendyComicSpeechBubble(
+                                active.subtitle,
+                                tailDirection: .topTrailing,
+                                fontSize: 14,
+                                maxWidth: 260
+                            )
+                            
+                            SpendyComicBadge(
+                                active.title,
+                                palette: .cyberGold,
+                                size: .small,
+                                rotationAngle: -5
+                            )
 
                             Button {
                                 withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
@@ -386,12 +389,12 @@ public struct OnboardingView: View {
                                 }
                             } label: {
                                 Text("choose another companion")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(Color.white.opacity(0.65))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 6)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Color.white.opacity(0.75))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
                                     .nativeLiquidGlassCapsule(isInteractive: true)
-                                    .padding(.top, 6)
+                                    .padding(.top, 4)
                             }
                             .buttonStyle(.plain)
                         }
