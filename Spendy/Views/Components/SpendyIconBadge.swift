@@ -88,7 +88,7 @@ enum SpendyIconPaint {
         mono: Bool,
         prominent: Bool
     ) -> Resolved {
-        if mono {
+        if mono || SpendyColors.isMonoMode {
             return Resolved(
                 fill: SpendyColors.textPrimary,
                 glyph: SpendyColors.inverseText,
@@ -204,11 +204,15 @@ struct SpendyMiniColorChip: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isMonoIconMode) private var isMonoMode
     
+    private var isEffectivelyMono: Bool {
+        isMonoMode || SpendyColors.isMonoMode
+    }
+    
     var body: some View {
         let paint = SpendyIconPaint.resolve(
             color,
             scheme: colorScheme,
-            mono: isMonoMode,
+            mono: isEffectivelyMono,
             prominent: false
         )
         
@@ -224,7 +228,7 @@ struct SpendyMiniColorChip: View {
             .foregroundStyle(paint.glyph)
         }
         .frame(width: size, height: size)
-        .shadow(color: paint.fill.opacity(isMonoMode ? 0 : 0.32), radius: 1, y: 0)
+        .shadow(color: paint.fill.opacity(isEffectivelyMono ? 0 : 0.32), radius: 1, y: 0)
     }
 }
 
@@ -288,11 +292,15 @@ struct SpendyIconBadge: View {
     @Environment(\.isMonoIconMode) private var isMonoMode
     @Environment(\.colorScheme) private var colorScheme
     
+    private var isEffectivelyMono: Bool {
+        isMonoMode || SpendyColors.isMonoMode
+    }
+    
     private var paint: SpendyIconPaint.Resolved {
         SpendyIconPaint.resolve(
             color,
             scheme: colorScheme,
-            mono: isMonoMode,
+            mono: isEffectivelyMono,
             prominent: size == .hero || size == .large
         )
     }

@@ -17,8 +17,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
     case catCompanion = "Sticker6"
     case piggySavings = "Sticker7"
     case moneyHug = "Sticker8"
-    case icedBoba = "Sticker9"
-    case rocketWealth = "Sticker10"
 
     public var id: String { rawValue }
     public var assetName: String { rawValue }
@@ -33,8 +31,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
         case .catCompanion: return "The Cat Whisperer"
         case .piggySavings: return "The Saver"
         case .moneyHug: return "The Wealth Keeper"
-        case .icedBoba: return "The Daily Logger"
-        case .rocketWealth: return "The Moonshot"
         }
     }
 
@@ -48,8 +44,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
         case .catCompanion: return "someone has to sit with the budget. that’s you two."
         case .piggySavings: return "one more coin. then another."
         case .moneyHug: return "protect it. then spend it on purpose."
-        case .icedBoba: return "sip. log. done."
-        case .rocketWealth: return "aim high, track clean, launch your goals."
         }
     }
 
@@ -63,8 +57,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
         case .catCompanion: return "i’m on the laptop. let’s go."
         case .piggySavings: return "coins ready. let’s go."
         case .moneyHug: return "bag’s coming with us. let’s go."
-        case .icedBoba: return "one more sip. let’s go."
-        case .rocketWealth: return "thrusters engaged. let’s go."
         }
     }
 
@@ -78,8 +70,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
         case .catCompanion: return "drop one expense. i’ll sit on the rest."
         case .piggySavings: return "first coin in. the jar is listening."
         case .moneyHug: return "one honest spend. i’ll keep the rest close."
-        case .icedBoba: return "one drink. that’s a start."
-        case .rocketWealth: return "fuel up with your first transaction entry."
         }
     }
     
@@ -142,20 +132,6 @@ public enum SpendySticker: String, CaseIterable, Identifiable, Sendable {
                 "Your money loves being organized and valued.",
                 "Wrapped in security and financial freedom.",
                 "Safe, sound, and ready for future adventures."
-            ]
-        case .icedBoba:
-            quotes = [
-                "Sip. Log. Done. That’s how Spendy rolls.",
-                "Sweet drinks, sweeter balance sheets!",
-                "Refreshing simplicity in every single tap.",
-                "Treat yourself, track yourself, enjoy the day."
-            ]
-        case .rocketWealth:
-            quotes = [
-                "3, 2, 1... Launching your financial goals to the stars!",
-                "Rocketing past your savings milestones!",
-                "Orbital velocity achieved on budget tracking.",
-                "To the moon and beyond with mindful spending."
             ]
         }
         return quotes[abs(tapIndex) % quotes.count]

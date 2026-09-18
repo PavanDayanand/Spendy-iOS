@@ -133,6 +133,9 @@ struct SubscriptionQuickActionSheet: View {
     }
     
     private var capsuleBackgroundColor: Color {
+        if SpendyColors.isMonoMode {
+            return SpendyColors.cardBackgroundSecondary
+        }
         if liveSub.isPaused {
             return SpendyColors.incomeGreen.opacity(0.14)
         } else if liveSub.isTrial {
@@ -143,6 +146,9 @@ struct SubscriptionQuickActionSheet: View {
     }
     
     private var capsuleContentColor: Color {
+        if SpendyColors.isMonoMode {
+            return SpendyColors.textPrimary
+        }
         if liveSub.isPaused {
             return SpendyColors.incomeGreen
         } else if liveSub.isTrial {
@@ -153,6 +159,9 @@ struct SubscriptionQuickActionSheet: View {
     }
     
     private var capsuleStrokeColor: Color {
+        if SpendyColors.isMonoMode {
+            return SpendyColors.separator
+        }
         if liveSub.isPaused {
             return SpendyColors.incomeGreen.opacity(0.32)
         } else if liveSub.isTrial {
@@ -730,4 +739,3 @@ struct GlassCapsulePressStyle: ButtonStyle {
             .animation(.spring(response: 0.25, dampingFraction: 0.65), value: configuration.isPressed)
     }
 }
-

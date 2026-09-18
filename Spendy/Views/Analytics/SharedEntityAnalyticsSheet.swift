@@ -645,8 +645,8 @@ struct SharedEntityAnalyticsSheet: View {
     
     @ViewBuilder
     private var heroSecondaryLine: some View {
-        if case .account = entity {
-            Text("Balance \(currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+        if let custom = customDateRange {
+            Text("\(custom.start.formatted(date: .abbreviated, time: .omitted)) – \(custom.end.formatted(date: .abbreviated, time: .omitted))")
                 .font(AppTypography.footnoteMedium)
                 .foregroundStyle(SpendyColors.textSecondary)
         } else if let pct = comparisonPercentage {
@@ -711,8 +711,8 @@ struct SharedEntityAnalyticsSheet: View {
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
-                    tintColor: customDateRange != nil ? themeColor.opacity(0.3) : nil,
-                    foregroundColor: customDateRange != nil ? themeColor : SpendyColors.textPrimary,
+                    tintColor: customDateRange != nil ? (SpendyColors.isMonoMode ? SpendyColors.cardBackgroundSecondary : themeColor.opacity(0.3)) : nil,
+                    foregroundColor: customDateRange != nil ? (SpendyColors.isMonoMode ? SpendyColors.textPrimary : themeColor) : SpendyColors.textPrimary,
                     haptic: .selection,
                     accessibilityLabel: "Select Date Range",
                     morphID: pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"),
@@ -752,34 +752,21 @@ struct SharedEntityAnalyticsSheet: View {
                     }
                 } label: {
                     Text(section.rawValue)
-                        .font(.system(size: 13.5, weight: isSelected ? .bold : .medium, design: .rounded))
-                        .lineLimit(1)
+                        .font(.system(size: 15, weight: isSelected ? .bold : .medium))
                         .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background {
+                            if isSelected {
+                                Capsule()
+                                    .fill(SpendyColors.cardBackgroundSecondary)
+                                    .overlay(Capsule().stroke(cardBorderColor, lineWidth: 0.8))
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
-                .nativeLiquidGlassPill(isSelected: isSelected, tint: isSelected ? cardFillColor : nil)
             }
             Spacer()
-        }
-        .padding(.horizontal, 4)
-    }
-    
-    private func handleHorizontalSwipe(translation: CGFloat) {
-        let sections = availableSections
-        guard let currentIndex = sections.firstIndex(of: selectedSection) else { return }
-        
-        if translation < -40 && currentIndex < sections.count - 1 {
-            // Swiped left -> move to next section
-            HapticsManager.shared.trigger(.selection)
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                selectedSection = sections[currentIndex + 1]
-            }
-        } else if translation > 40 && currentIndex > 0 {
-            // Swiped right -> move to previous section
-            HapticsManager.shared.trigger(.selection)
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                selectedSection = sections[currentIndex - 1]
-            }
         }
     }
     
@@ -788,14 +775,39 @@ struct SharedEntityAnalyticsSheet: View {
         switch selectedSection {
         case .overview:
             overviewSectionView
-                .transition(.opacity)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .leading)),
+                    removal: .opacity.combined(with: .move(edge: .trailing))
+                ))
         case .activity:
             recentActivitySectionView
-                .transition(.opacity)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .trailing)),
+                    removal: .opacity.combined(with: .move(edge: .leading))
+                ))
         }
     }
     
-    // MARK: - Section: Overview (Clean List with Reusable Flow Indicators)
+    private func handleHorizontalSwipe(translation: CGFloat) {
+        let threshold: CGFloat = 40
+        if translation < -threshold {
+            // Swiped Left -> Move forward
+            if selectedSection == .overview {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                    selectedSection = .activity
+                }
+            }
+        } else if translation > threshold {
+            // Swiped Right -> Move back
+            if selectedSection == .activity {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                    selectedSection = .overview
+                }
+            }
+        }
+    }
+    
+    // MARK: - Section 1: Overview (Unified Metrics)
     private var overviewSectionView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Overview")

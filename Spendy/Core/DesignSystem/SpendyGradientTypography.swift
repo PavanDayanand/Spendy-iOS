@@ -25,7 +25,10 @@ public enum SpendyGradientPresets {
     ]
     
     public static func heroAmount(for colorScheme: ColorScheme) -> [Color] {
-        colorScheme == .light ? electricBlueToInk : electricBlueToWhite
+        if SpendyColors.isMonoMode {
+            return [SpendyColors.textPrimary, SpendyColors.textPrimary]
+        }
+        return colorScheme == .light ? electricBlueToInk : electricBlueToWhite
     }
     
     /// Cyan to Icy White
@@ -44,6 +47,9 @@ public enum SpendyGradientPresets {
     
     /// Dynamic Hero Gradient (Adapts to light/dark)
     public static func dynamicHero(for color: Color? = nil) -> [Color] {
+        if SpendyColors.isMonoMode {
+            return [SpendyColors.textPrimary, SpendyColors.textPrimary]
+        }
         if let color = color {
             return [
                 color,
@@ -65,8 +71,16 @@ public struct SpendyGradientText: View {
     var startPoint: UnitPoint = .top
     var endPoint: UnitPoint = .bottom
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isMonoIconMode) private var isMonoMode
+    
+    private var isEffectivelyMono: Bool {
+        isMonoMode || SpendyColors.isMonoMode
+    }
     
     private var resolvedColors: [Color] {
+        if isEffectivelyMono {
+            return [SpendyColors.textPrimary, SpendyColors.textPrimary]
+        }
         if colors == SpendyGradientPresets.electricBlueToWhite {
             return SpendyGradientPresets.heroAmount(for: colorScheme)
         }
@@ -115,8 +129,16 @@ public struct SpendyGradientNumberModifier: ViewModifier {
     var startPoint: UnitPoint
     var endPoint: UnitPoint
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isMonoIconMode) private var isMonoMode
+    
+    private var isEffectivelyMono: Bool {
+        isMonoMode || SpendyColors.isMonoMode
+    }
     
     private var resolvedColors: [Color] {
+        if isEffectivelyMono {
+            return [SpendyColors.textPrimary, SpendyColors.textPrimary]
+        }
         if colors == SpendyGradientPresets.electricBlueToWhite {
             return SpendyGradientPresets.heroAmount(for: colorScheme)
         }

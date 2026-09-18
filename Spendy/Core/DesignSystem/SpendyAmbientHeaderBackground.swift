@@ -10,6 +10,8 @@
 import SwiftUI
 
 public struct SpendyAmbientHeaderBackground: View {
+    @Environment(\.isMonoIconMode) private var isMonoMode
+    
     public var color: Color
     public var height: CGFloat = 360
     public var opacity: Double = 0.32
@@ -27,28 +29,34 @@ public struct SpendyAmbientHeaderBackground: View {
         self.blurRadius = blurRadius
     }
     
+    private var isEffectivelyMono: Bool {
+        isMonoMode || SpendyColors.isMonoMode
+    }
+    
     public var body: some View {
-        VStack(spacing: 0) {
-            LinearGradient(
-                stops: [
-                    .init(color: color.opacity(opacity), location: 0.0),
-                    .init(color: color.opacity(opacity * 0.82), location: 0.20),
-                    .init(color: color.opacity(opacity * 0.52), location: 0.48),
-                    .init(color: color.opacity(opacity * 0.25), location: 0.74),
-                    .init(color: color.opacity(opacity * 0.08), location: 0.90),
-                    .init(color: Color.clear, location: 1.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: height)
-            .blur(radius: blurRadius)
+        if !isEffectivelyMono {
+            VStack(spacing: 0) {
+                LinearGradient(
+                    stops: [
+                        .init(color: color.opacity(opacity), location: 0.0),
+                        .init(color: color.opacity(opacity * 0.82), location: 0.20),
+                        .init(color: color.opacity(opacity * 0.52), location: 0.48),
+                        .init(color: color.opacity(opacity * 0.25), location: 0.74),
+                        .init(color: color.opacity(opacity * 0.08), location: 0.90),
+                        .init(color: Color.clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: height)
+                .blur(radius: blurRadius)
+                .ignoresSafeArea(edges: .top)
+                
+                Spacer()
+            }
             .ignoresSafeArea(edges: .top)
-            
-            Spacer()
+            .allowsHitTesting(false)
         }
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
     }
 }
 
