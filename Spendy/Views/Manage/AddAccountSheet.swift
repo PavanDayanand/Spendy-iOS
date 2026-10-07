@@ -4,8 +4,7 @@
 //
 //  Modal Drawer Sheet for Adding & Editing Financial Accounts
 //  Features:
-//  - Dynamic ambient header gradient glow based on account color
-//  - Clean capsule rows (Account Name & Color, Type, Tappable Balance)
+//  - Clean capsule rows (Account Name, Type, Tappable Balance)
 //  - Dedicated Bottom Sheet Numeric Keypad Drawer for Balance Entry with live commas & currency icon
 //  - Apple HIG compliant 44pt+ touch targets and haptic feedback
 //
@@ -24,11 +23,7 @@ struct AddAccountSheet: View {
     @State private var selectedColorHex: String = "#007AFF"
     @State private var selectedType: AccountType = .bank
     
-    // Color picker sliders & sheets
-    @State private var sliderHue: Double = 0.65
-    @State private var sliderBrightness: Double = 0.45
     @State private var showIconPickerSheet: Bool = false
-    @State private var showColorPalette: Bool = false
     @State private var showBalanceKeypadSheet: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showDiscardConfirm: Bool = false
@@ -45,13 +40,11 @@ struct AddAccountSheet: View {
             return label != acc.label ||
                    openingBalanceDouble != acc.openingBalance ||
                    selectedSymbol != acc.sfSymbol ||
-                   selectedColorHex != acc.colorHex ||
                    selectedType != acc.type
         } else {
             return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                    openingBalanceDouble != 0.0 ||
                    selectedSymbol != SFIcons.bankAccount ||
-                   selectedColorHex != "#007AFF" ||
                    selectedType != .bank
         }
     }
@@ -77,7 +70,6 @@ struct AddAccountSheet: View {
             _selectedColorHex = State(initialValue: "#007AFF")
             _selectedType = State(initialValue: .bank)
         }
-        _showColorPalette = State(initialValue: false)
     }
     
     private var canSave: Bool {
@@ -134,13 +126,7 @@ struct AddAccountSheet: View {
                                     }
                                 }
                             } trailing: {
-                                if !store.isMonoIconMode {
-                                    SpendyColorSwatchButton(hex: selectedColorHex) {
-                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                            showColorPalette.toggle()
-                                        }
-                                    }
-                                }
+                                EmptyView()
                             }
                             
                             SpendyCreateFormDivider()
@@ -197,22 +183,6 @@ struct AddAccountSheet: View {
                             .buttonStyle(.plain)
                         }
                         
-                        if showColorPalette && !store.isMonoIconMode {
-                            SpendyCreateColorPalette(
-                                selectedHex: $selectedColorHex,
-                                hue: $sliderHue,
-                                brightness: $sliderBrightness
-                            )
-                            .onChange(of: selectedColorHex) { _, newHex in
-                                syncSlidersFromHex(newHex)
-                            }
-                            .onChange(of: sliderHue) { _, _ in
-                                updateHexFromHSB()
-                            }
-                            .onChange(of: sliderBrightness) { _, _ in
-                                updateHexFromHSB()
-                            }
-                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120)
@@ -231,9 +201,6 @@ struct AddAccountSheet: View {
                 .padding(.bottom, 24)
                 .padding(.top, 12)
             }
-        }
-        .onAppear {
-            syncSlidersFromHex(selectedColorHex)
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
@@ -325,23 +292,6 @@ struct AddAccountSheet: View {
         dismiss()
     }
     
-    // MARK: - Color Methods
-    private func syncSlidersFromHex(_ hex: String) {
-        let uiColor = UIColor(Color(hex: hex))
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
-            sliderHue = Double(h)
-            sliderBrightness = Double(b)
-        }
-    }
-    
-    private func updateHexFromHSB() {
-        let uiColor = UIColor(hue: CGFloat(sliderHue), saturation: 0.85, brightness: CGFloat(sliderBrightness), alpha: 1.0)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
-            selectedColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
-        }
-    }
 }
 
 // MARK: - Dedicated Account Balance Numeric Keypad Sheet Drawer

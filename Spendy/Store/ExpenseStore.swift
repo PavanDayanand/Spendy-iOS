@@ -106,21 +106,6 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
-    var selectedSticker: String? = nil {
-        didSet { scheduleSave() }
-    }
-    
-    var activeCompanionSticker: SpendySticker {
-        if let saved = selectedSticker, let s = SpendySticker(rawValue: saved) {
-            return s
-        }
-        return .moneyHug
-    }
-    
-    var isHomeMascotEnabled: Bool = true {
-        didSet { scheduleSave() }
-    }
-    
     var notificationsEnabled: Bool = true {
         didSet { scheduleSave() }
     }
@@ -196,7 +181,7 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
-    var isMonoIconMode: Bool = false {
+    var isMonoIconMode: Bool = true {
         didSet {
             SpendyColors.isMonoMode = isMonoIconMode
             scheduleSave()
@@ -399,8 +384,8 @@ final class ExpenseStore {
         var ratesToUSD: [String: Double]?
         var ratesLastUpdated: Date?
         var hasCompletedOnboarding: Bool?
+        // Read only for migrating profile images saved by older versions.
         var selectedSticker: String?
-        var isHomeMascotEnabled: Bool?
     }
     
     private var storageURL: URL {
@@ -421,7 +406,7 @@ final class ExpenseStore {
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = payload.appearanceMode ?? .dark
-                self.isMonoIconMode = payload.isMonoIconMode ?? false
+                self.isMonoIconMode = true
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
@@ -468,8 +453,14 @@ final class ExpenseStore {
                     "SGD": 1.34
                 ]
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
-                self.selectedSticker = payload.selectedSticker
-                self.isHomeMascotEnabled = payload.isHomeMascotEnabled ?? true
+                // Earlier versions copied the chosen sticker into the profile photo.
+                // Remove only that exact generated image; preserve real profile photos.
+                if let selectedSticker = payload.selectedSticker,
+                   (1...8).contains(where: { selectedSticker == "Sticker\($0)" }),
+                   let stickerData = UIImage(named: selectedSticker)?.pngData(),
+                   profileImageData == stickerData {
+                    self.profileImageData = nil
+                }
                 // Migration: Ensure seeded accounts are typed
                 for i in 0..<self.accounts.count {
                     if self.accounts[i].id == "cash" {
@@ -528,8 +519,7 @@ final class ExpenseStore {
             ratesToUSD: ratesToUSD,
             ratesLastUpdated: ratesLastUpdated,
             hasCompletedOnboarding: hasCompletedOnboarding,
-            selectedSticker: selectedSticker,
-            isHomeMascotEnabled: isHomeMascotEnabled
+            selectedSticker: nil
         )
         let destinationURL = storageURL
         Task.detached(priority: .utility) {
@@ -550,7 +540,6 @@ final class ExpenseStore {
         self.soundEnabled = true
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
-        self.selectedSticker = nil
         self.appearanceMode = .dark
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
@@ -1322,7 +1311,6 @@ final class ExpenseStore {
         self.soundEnabled = true
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = true
-        self.selectedSticker = nil
         self.appearanceMode = SpendyDefaultData.appearanceMode
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
@@ -1385,7 +1373,7 @@ final class ExpenseStore {
             ratesToUSD: ratesToUSD,
             ratesLastUpdated: ratesLastUpdated,
             hasCompletedOnboarding: hasCompletedOnboarding,
-            selectedSticker: selectedSticker
+            selectedSticker: nil
         )
         return try? ExpenseStore.jsonEncoder.encode(payload)
     }
@@ -1441,7 +1429,7 @@ final class ExpenseStore {
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
                 self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
                 self.appearanceMode = payload.appearanceMode ?? self.appearanceMode
-                self.isMonoIconMode = payload.isMonoIconMode ?? self.isMonoIconMode
+                self.isMonoIconMode = true
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? self.isGradientBackgroundEnabled

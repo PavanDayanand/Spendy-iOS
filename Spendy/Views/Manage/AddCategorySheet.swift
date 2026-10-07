@@ -21,15 +21,11 @@ struct AddCategorySheet: View {
     @State private var selectedSymbol: String = "tag.fill"
     @State private var selectedColorHex: String = "#FFFFFF"
     
-    // Icon picker sheet and Color picker state
+    // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
-    @State private var showColorPalette: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showDiscardConfirm: Bool = false
     
-    // Sliders state for Custom Color Picker (Image 2 style)
-    @State private var sliderHue: Double = 0.65
-    @State private var sliderBrightness: Double = 0.45
     
     private var availableFolders: [String] {
         let custom = store.customFolders.filter { $0.type == type }.map { $0.name }
@@ -46,9 +42,9 @@ struct AddCategorySheet: View {
     
     private var hasUnsavedChanges: Bool {
         if let cat = categoryToEdit {
-            return label != cat.label || type != cat.type || selectedFolder != (cat.folder.isEmpty ? "Uncategorized" : cat.folder) || selectedSymbol != cat.sfSymbol || selectedColorHex != cat.colorHex
+            return label != cat.label || type != cat.type || selectedFolder != (cat.folder.isEmpty ? "Uncategorized" : cat.folder) || selectedSymbol != cat.sfSymbol
         } else {
-            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSymbol != "tag.fill" || selectedColorHex != "#007AFF"
+            return !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSymbol != "tag.fill"
         }
     }
     
@@ -63,12 +59,10 @@ struct AddCategorySheet: View {
             _selectedFolder = State(initialValue: cat.folder.isEmpty ? "Uncategorized" : cat.folder)
             _selectedSymbol = State(initialValue: cat.sfSymbol)
             _selectedColorHex = State(initialValue: cat.colorHex)
-            _showColorPalette = State(initialValue: false)
         } else {
             _type = State(initialValue: defaultType)
             _selectedFolder = State(initialValue: defaultFolder ?? (defaultType == .expense ? "Everyday Spending" : "Salary & Career"))
             _selectedColorHex = State(initialValue: "#007AFF")
-            _showColorPalette = State(initialValue: false)
         }
     }
     
@@ -118,13 +112,7 @@ struct AddCategorySheet: View {
                                     .autocorrectionDisabled()
                                     .textInputAutocapitalization(.words)
                             } trailing: {
-                                if !store.isMonoIconMode {
-                                    SpendyColorSwatchButton(hex: selectedColorHex) {
-                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                            showColorPalette.toggle()
-                                        }
-                                    }
-                                }
+                                EmptyView()
                             }
                             
                             SpendyCreateFormDivider()
@@ -162,30 +150,11 @@ struct AddCategorySheet: View {
                             .buttonStyle(.plain)
                         }
                         
-                        if showColorPalette && !store.isMonoIconMode {
-                            SpendyCreateColorPalette(
-                                selectedHex: $selectedColorHex,
-                                hue: $sliderHue,
-                                brightness: $sliderBrightness
-                            )
-                            .onChange(of: selectedColorHex) { _, newHex in
-                                syncSlidersFromHex(newHex)
-                            }
-                            .onChange(of: sliderHue) { _, _ in
-                                updateHexFromHSB()
-                            }
-                            .onChange(of: sliderBrightness) { _, _ in
-                                updateHexFromHSB()
-                            }
-                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120)
                 }
                 .scrollDismissesKeyboard(.interactively)
-            }
-            .onAppear {
-                syncSlidersFromHex(selectedColorHex)
             }
             .onChange(of: type) { _, newType in
                 let folders = newType == .expense
@@ -277,20 +246,6 @@ struct AddCategorySheet: View {
         dismiss()
     }
     
-    private func syncSlidersFromHex(_ hex: String) {
-        let color = Color(hex: hex)
-        let uiColor = UIColor(color)
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
-            sliderHue = Double(h)
-            sliderBrightness = Double(b)
-        }
-    }
-    
-    private func updateHexFromHSB() {
-        let color = Color(hue: sliderHue, saturation: 0.85, brightness: min(sliderBrightness, 0.95))
-        selectedColorHex = color.toHex()
-    }
 }
 
 //

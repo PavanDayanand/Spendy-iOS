@@ -19,11 +19,6 @@ struct EditProfileSheet: View {
     // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
     
-    // Color Palette & Sliders state matching AddCategorySheet
-    @State private var showColorPalette: Bool = false
-
-    @State private var sliderHue: Double = 0.65
-    @State private var sliderBrightness: Double = 0.45
     
     @State private var showCurrencyPicker: Bool = false
     @State private var showDiscardConfirm: Bool = false
@@ -32,11 +27,9 @@ struct EditProfileSheet: View {
     private var hasUnsavedChanges: Bool {
         let originalName = store.userName.isEmpty ? "Personal" : store.userName
         let originalIcon = store.profileIconSymbol ?? "person.fill"
-        let originalColor = store.profileColorHex ?? store.topGradientColorHex
         return tempName != originalName ||
                selectedImageData != store.profileImageData ||
-               selectedIconSymbol != originalIcon ||
-               selectedColorHex != originalColor
+               selectedIconSymbol != originalIcon
     }
     
     var body: some View {
@@ -62,13 +55,8 @@ struct EditProfileSheet: View {
                         avatarHeroSection
                             .padding(.top, 40)
                         
-                        // Name Input Field & Color Circle button (Matching AddCategorySheet)
+                        // Name field
                         nameAndColorCard
-                        
-                        // Color Palette / Sliders Card (Matching AddCategorySheet)
-                        if showColorPalette {
-                            colorPickerCard
-                        }
                         
                         // Default Currency Selector Card (Matching reference design)
                         defaultCurrencyCard
@@ -82,7 +70,6 @@ struct EditProfileSheet: View {
                 selectedImageData = store.profileImageData
                 selectedIconSymbol = store.profileIconSymbol ?? "person.fill"
                 selectedColorHex = store.profileColorHex ?? store.topGradientColorHex
-                syncSlidersFromHex(selectedColorHex)
             }
             
             // Bottom Fixed Action Button Container (White Capsule Save Button)
@@ -190,7 +177,7 @@ struct EditProfileSheet: View {
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 2))
-                        .shadow(color: Color(hex: selectedColorHex).opacity(0.4), radius: 10, y: 4)
+                        .shadow(color: Color.black.opacity(0.16), radius: 10, y: 4)
                 } else {
                     SpendyIconBadge(
                         sfSymbol: selectedIconSymbol.isEmpty ? "person.fill" : selectedIconSymbol,
@@ -208,7 +195,7 @@ struct EditProfileSheet: View {
         }
     }
     
-    // MARK: - Name & Color Card (Matching AddCategorySheet)
+    // MARK: - Name Card
     private var nameAndColorCard: some View {
         HStack {
             TextField("Personal", text: $tempName)
@@ -218,67 +205,10 @@ struct EditProfileSheet: View {
             
             Spacer()
             
-            // Circular Color Picker button
-            Button(action: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    showColorPalette.toggle()
-                }
-                HapticsManager.shared.trigger(.light)
-            }) {
-                Circle()
-                    .fill(Color(hex: selectedColorHex))
-                    .frame(width: 24, height: 24)
-                    .overlay {
-                        Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    }
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(SpendyColors.sheetCardBackground, in: Capsule())
-    }
-    
-    // MARK: - Custom Color Picker (Matching AddCategorySheet & Settings)
-    private var colorPickerCard: some View {
-        VStack(spacing: 16) {
-            SpendyColorPresetSwatches(selectedHex: $selectedColorHex, hue: $sliderHue, brightness: $sliderBrightness)
-                .onChange(of: selectedColorHex) { _, newHex in
-                    syncSlidersFromHex(newHex)
-                    store.setTopGradientColor(Color(hex: newHex))
-                }
-                .onChange(of: sliderHue) { _, newValue in
-                    updateHexFromHSB()
-                }
-                .onChange(of: sliderBrightness) { _, newValue in
-                    updateHexFromHSB()
-                }
-        }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.sheetCardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
-    }
-    
-    private func syncSlidersFromHex(_ hex: String) {
-        let color = Color(hex: hex)
-        let uiColor = UIColor(color)
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
-            sliderHue = Double(h)
-            sliderBrightness = Double(b)
-        }
-    }
-    
-    private func updateHexFromHSB() {
-        let color = Color(hue: sliderHue, saturation: 0.85, brightness: min(sliderBrightness, 0.95))
-        selectedColorHex = color.toHex()
-        store.setTopGradientColor(color)
     }
     
     // MARK: - Default Currency Card
@@ -332,8 +262,6 @@ struct EditProfileSheet: View {
             store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
             store.profileImageData = selectedImageData
             store.profileIconSymbol = selectedIconSymbol
-            store.profileColorHex = selectedColorHex
-            store.setTopGradientColor(Color(hex: selectedColorHex))
             dismiss()
         }) {
             Text("Save")
@@ -347,5 +275,3 @@ struct EditProfileSheet: View {
         .buttonStyle(.plain)
     }
 }
-
-

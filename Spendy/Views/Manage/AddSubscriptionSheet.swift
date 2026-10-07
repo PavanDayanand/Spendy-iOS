@@ -21,15 +21,11 @@ struct AddSubscriptionSheet: View {
     @State private var selectedAccountId: String = "bank"
     @State private var selectedSymbol: String = SFIcons.subscriptions
     @State private var selectedColorHex: String = "#5856D6"
-    @State private var isDarkBadge: Bool = false
     
     // UI states
     @State private var showIconPickerSheet: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var showDiscardConfirmation: Bool = false
-    @State private var showColorPalette: Bool = false
-    @State private var sliderHue: Double = 0.65
-    @State private var sliderBrightness: Double = 0.45
     
     @Namespace private var headerNamespace
 
@@ -43,14 +39,12 @@ struct AddSubscriptionSheet: View {
                    cycle != sub.cycle ||
                    isTrial != sub.isTrial ||
                    selectedAccountId != sub.accountId ||
-                   selectedSymbol != sub.sfSymbol ||
-                   selectedColorHex != sub.colorHex
+                   selectedSymbol != sub.sfSymbol
         } else {
             let amountDouble = Double(amountString) ?? 0.0
             return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                    amountDouble != 0.0 ||
                    selectedSymbol != SFIcons.subscriptions ||
-                   selectedColorHex != "#5856D6" ||
                    isTrial != false
         }
     }
@@ -71,7 +65,6 @@ struct AddSubscriptionSheet: View {
             _selectedAccountId = State(initialValue: sub.accountId)
             _selectedSymbol = State(initialValue: sub.sfSymbol)
             _selectedColorHex = State(initialValue: sub.colorHex)
-            _isDarkBadge = State(initialValue: true)
         } else {
             _name = State(initialValue: "")
             _amountString = State(initialValue: "")
@@ -81,9 +74,7 @@ struct AddSubscriptionSheet: View {
             _selectedAccountId = State(initialValue: "bank")
             _selectedSymbol = State(initialValue: SFIcons.subscriptions)
             _selectedColorHex = State(initialValue: "#5856D6")
-            _isDarkBadge = State(initialValue: true)
         }
-        _showColorPalette = State(initialValue: false) // Always closed by default
     }
 
     var body: some View {
@@ -91,7 +82,7 @@ struct AddSubscriptionSheet: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
 
-            // Top full-width ambient gradient glow based on selected color
+            // The ambient view stays neutral in monochrome mode.
             let themeColor = Color(hex: selectedColorHex)
             SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.30)
 
@@ -122,9 +113,6 @@ struct AddSubscriptionSheet: View {
                     .padding(.bottom, 24)
                     .padding(.top, 16)
             }
-        }
-        .onAppear {
-            syncSlidersFromHex(selectedColorHex)
         }
         .presentationBackground(SpendyColors.appBackground)
         .presentationDetents([.large])
@@ -247,7 +235,7 @@ struct AddSubscriptionSheet: View {
 
     private var formContentSection: some View {
         VStack(spacing: 16) {
-            // Row 1: Unified Service Name & Color Circle Split Capsule (80/20 Split)
+            // Service name
             HStack {
                 TextField("Service Name (e.g. Netflix, iCloud)", text: $name)
                     .font(.system(size: 15, weight: .medium))
@@ -256,32 +244,11 @@ struct AddSubscriptionSheet: View {
 
                 Spacer()
 
-                // Hide color picker in Mono Icon Mode
-                if !store.isMonoIconMode {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            showColorPalette.toggle()
-                        }
-                        HapticsManager.shared.trigger(.light)
-                    }) {
-                        Circle()
-                            .fill(Color(hex: selectedColorHex))
-                            .frame(width: 24, height: 24)
-                            .overlay {
-                                Circle().stroke(Color.white.opacity(0.15), lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
 
-            // Hue & Brightness Custom sliders
-            if showColorPalette && !store.isMonoIconMode {
-                colorSlidersCard
-            }
 
             // Row 2: Amount Field capsule
             HStack(spacing: 12) {
@@ -412,53 +379,18 @@ struct AddSubscriptionSheet: View {
         }
     }
 
-    private var colorSlidersCard: some View {
-        VStack(spacing: 16) {
-            SpendyColorPresetSwatches(selectedHex: $selectedColorHex, hue: $sliderHue, brightness: $sliderBrightness)
-                .onChange(of: selectedColorHex) { _, newHex in
-                    syncSlidersFromHex(newHex)
-                }
-                .onChange(of: sliderHue) { _, _ in
-                    updateHexFromHSB()
-                }
-                .onChange(of: sliderBrightness) { _, _ in
-                    updateHexFromHSB()
-                }
-        }
-        .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
-    }
-
     private var bottomActionButton: some View {
         Button(action: {
             saveSubscription()
         }) {
             Text(isEditing ? "Save Changes" : "Create Subscription")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(SpendyColors.elevatedControlForeground)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .background {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(hex: selectedColorHex), Color(hex: selectedColorHex).opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                    }
-                    .shadow(color: Color(hex: selectedColorHex).opacity(0.35), radius: 12, y: 5)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(SpendyColors.elevatedControlFill)
                 }
         }
         .buttonStyle(.plain)
@@ -508,22 +440,6 @@ struct AddSubscriptionSheet: View {
         dismiss()
     }
 
-    private func syncSlidersFromHex(_ hex: String) {
-        let uiColor = UIColor(Color(hex: hex))
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
-            sliderHue = Double(h)
-            sliderBrightness = Double(b)
-        }
-    }
-
-    private func updateHexFromHSB() {
-        let uiColor = UIColor(hue: CGFloat(sliderHue), saturation: 0.85, brightness: CGFloat(sliderBrightness), alpha: 1.0)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
-            selectedColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
-        }
-    }
 }
 
 //

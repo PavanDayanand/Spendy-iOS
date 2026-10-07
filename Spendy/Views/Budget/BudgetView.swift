@@ -159,32 +159,15 @@ struct BudgetView: View {
     
     // MARK: - Empty State View
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Spacer().frame(height: 20)
-            
-            SpendyCharacterMomentCard(
-                sticker: store.activeCompanionSticker,
-                speechText: "Someone has to sit with the budget. That’s you and me! Set a limit so nothing surprises us.",
-                kicker: store.activeCompanionSticker.title,
-                stickerSize: 110
-            )
-            
-            Button(action: {
-                HapticsManager.shared.trigger(.medium)
-                isEditingExisting = false
-                showEditBudgetSheet = true
-            }) {
-                Text("Create budget")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(SpendyColors.inverseText)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(SpendyColors.primaryBlue, in: Capsule())
-            }
-            .padding(.top, 8)
-            
-            Spacer()
+        SpendyPlainEmptyState(
+            title: "No budget yet",
+            message: "Set a spending limit to track your progress.",
+            actionTitle: "Create Budget"
+        ) {
+            isEditingExisting = false
+            showEditBudgetSheet = true
         }
+        .padding(.horizontal, 20)
     }
     
     // MARK: - Active Budget Content

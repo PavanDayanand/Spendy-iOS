@@ -560,18 +560,10 @@ struct AllTransactionsView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Spacer().frame(height: 20)
-            SpendyCharacterMomentCard(
-                sticker: store.activeCompanionSticker,
-                speechText: "Nothing found here! Try adjusting your search query or filters.",
-                kicker: store.activeCompanionSticker.title,
-                stickerSize: 85
-            )
-            Spacer().frame(height: 20)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        SpendyPlainEmptyState(
+            title: "No transactions found",
+            message: "Try a different search or adjust your filters."
+        )
     }
 }
 

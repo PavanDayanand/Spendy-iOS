@@ -79,7 +79,7 @@ enum SpendyColors {
     // MARK: - Global Mono Mode Flag
     // Set by ExpenseStore when isMonoIconMode changes. Allows static semantic colors
     // to resolve to monochrome without changing any call sites across the app.
-    static var isMonoMode: Bool = false
+    static var isMonoMode: Bool = true
     
     // Dynamic Base Backgrounds (paper white in Light, pitch black in Dark)
     static let appBackground = Color(uiColor: .dynamic(

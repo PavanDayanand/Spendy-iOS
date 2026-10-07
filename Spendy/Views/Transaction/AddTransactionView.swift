@@ -14,12 +14,14 @@ enum TransactionActiveSheet: Identifiable {
     case category
     case account(isDestination: Bool)
     case calendar
+    case scanner
     
     var id: String {
         switch self {
         case .category: return "category"
         case .account(let isDest): return "account_\(isDest)"
         case .calendar: return "calendar"
+        case .scanner: return "scanner"
         }
     }
 }
@@ -270,6 +272,12 @@ struct AddTransactionView: View {
                 )
             case .calendar:
                 CustomCalendarDrawer(selectedDate: $date)
+            case .scanner:
+                ReceiptScannerSheet { result in
+                    applyScanResult(result)
+                } onSaveDirectly: { _ in
+                    dismiss()
+                }
             }
         }
         .onAppear {
@@ -329,6 +337,15 @@ struct AddTransactionView: View {
             
             // Standard 44x44 More Options Menu ...
             Menu {
+                Button(action: {
+                    HapticsManager.shared.trigger(.selection)
+                    activeSheet = .scanner
+                }) {
+                    Label("Scan Receipt or Screenshot", systemImage: "doc.text.viewfinder")
+                }
+                
+                Divider()
+                
                 Button(action: {
                     HapticsManager.shared.trigger(.light)
                     clearAll()
@@ -623,7 +640,7 @@ struct AddTransactionView: View {
     // MARK: - 5. Full-Width Keypad & Actions Section
     private var keypadAndActionsSection: some View {
         VStack(spacing: 10) {
-            // Action Buttons Row: [ 📅 Today ] on left, ( 🏷 ) on right
+            // Action Buttons Row: [ 📅 Today ] on left, ( 📷 Scan ), ( 🏷️ Note ) on right
             HStack(spacing: 10) {
                 Button(action: {
                     activeSheet = .calendar
@@ -654,6 +671,28 @@ struct AddTransactionView: View {
                 
                 Spacer()
                 
+                // Receipt Scanner Button
+                Button {
+                    HapticsManager.shared.trigger(.selection)
+                    activeSheet = .scanner
+                } label: {
+                    Image(systemName: "doc.text.viewfinder")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            Circle()
+                                .fill(Color(hex: "#1C1C1E"))
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Scan Receipt")
+                
+                // Note Button
                 Button {
                     HapticsManager.shared.trigger(.light)
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -795,8 +834,6 @@ struct AddTransactionView: View {
         }
     }
     
-    
-    
     // MARK: - 6. Inline Note Editor (Matching Image 2 with iOS Liquid Glass styling)
     private var inlineNoteEditorView: some View {
         VStack(spacing: 12) {
@@ -840,6 +877,24 @@ struct AddTransactionView: View {
                 isNoteFocused = true
             }
         }
+    }
+    
+    // MARK: - Apply Scanned Receipt Result
+    private func applyScanResult(_ result: ReceiptScanResult) {
+        if result.totalAmount > 0 {
+            amountString = String(format: result.totalAmount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", result.totalAmount)
+        }
+        if !result.merchantName.isEmpty && result.merchantName != "Merchant" {
+            note = result.merchantName
+        }
+        date = result.date
+        if let catId = result.suggestedCategoryId, store.categories.contains(where: { $0.id == catId }) {
+            selectedCategoryId = catId
+        }
+        if let accId = result.suggestedAccountId, store.accounts.contains(where: { $0.id == accId }) {
+            fromAccountId = accId
+        }
+        type = .expense
     }
     
     // MARK: - Save Transaction Action
@@ -890,8 +945,6 @@ struct AddTransactionView: View {
         isDestinationAmountManuallyEdited = false
     }
 }
-
-
 
 // MARK: - Flow Layout Helper
 struct FlowLayout: Layout {

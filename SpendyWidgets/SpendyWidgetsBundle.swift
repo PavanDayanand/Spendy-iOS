@@ -15,5 +15,6 @@ struct SpendyWidgetsBundle: WidgetBundle {
         SpendyLockWidget()
         SpendyLogControl()
         SpendyQuickAddControl()
+        SpendyBudgetLiveActivity()
     }
 }

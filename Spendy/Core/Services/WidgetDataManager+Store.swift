@@ -2,7 +2,7 @@
 //  WidgetDataManager+Store.swift
 //  Spendy
 //
-//  Publishes live store data into the App Group for widgets and intents.
+//  Publishes live store data into the App Group for widgets, intents, and Live Activities.
 //
 
 import Foundation
@@ -31,6 +31,9 @@ extension WidgetDataManager {
                 order: account.order
             )
         })
+        
+        // Sync Dynamic Island & Lock Screen Live Activities
+        SpendyLiveActivityManager.shared.syncLiveActivity(from: store)
     }
 
     @MainActor
@@ -98,39 +101,48 @@ extension WidgetDataManager {
 
         let topCategories: [WidgetCategorySpend] = catSpendMap
             .sorted { $0.value > $1.value }
-            .prefix(4)
-            .compactMap { id, amount in
-                guard let category = store.categories.first(where: { $0.id == id }) else { return nil }
+            .prefix(3)
+            .compactMap { pair -> WidgetCategorySpend? in
+                guard let cat = store.categories.first(where: { $0.id == pair.key }) else { return nil }
                 return WidgetCategorySpend(
-                    id: category.id,
-                    name: category.label,
-                    sfSymbol: category.sfSymbol,
-                    colorHex: category.colorHex,
-                    amount: amount
+                    id: pair.key,
+                    name: cat.label,
+                    sfSymbol: cat.sfSymbol,
+                    colorHex: cat.colorHex,
+                    amount: pair.value
                 )
             }
+
+        let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
+        let currentDay = calendar.component(.day, from: now)
+        let daysLeft = max(0, daysInMonth - currentDay)
+        let dailyPace = daysLeft > 0 ? (remainingBudget / Double(daysLeft)) : remainingBudget
+        let pacingCaption = budgetLimit > 0
+            ? "\(SpendyWidgetFormat.compactAmount(dailyPace, symbol: store.currencySymbol))/day left"
+            : "\(SpendyWidgetFormat.compactAmount(todayTotal, symbol: store.currencySymbol)) spent today"
 
         let snapshot = SpendyWidgetSnapshot(
             currencySymbol: store.currencySymbol,
             currencyCode: store.currencyCode,
-            defaultAccountId: store.accounts.first(where: { $0.id == "cash" })?.id ?? store.accounts.first?.id ?? "cash",
+            defaultAccountId: store.accounts.first?.id ?? "bank",
             todayTotal: todayTotal,
             todayIncome: todayIncome,
             monthTotal: monthTotal,
             remainingBudget: remainingBudget,
             budgetTotal: budgetLimit,
             budgetProgress: budgetProgress,
-            topCategoryName: topCategory?.label ?? "Spendy",
-            topCategorySymbol: topCategory?.sfSymbol ?? "cart.fill",
-            topCategoryColorHex: topCategory?.colorHex ?? "#34C759",
+            topCategoryName: topCategory?.label ?? "None",
+            topCategorySymbol: topCategory?.sfSymbol ?? "tag.fill",
+            topCategoryColorHex: topCategory?.colorHex ?? "#007AFF",
             topCategoryAmount: topCatAmount,
             weeklySpending: weeklyPoints,
             recentTransactions: recentItems,
             topCategories: topCategories,
-            daysLeft: store.budgetDaysLeft,
-            pacingCaption: store.budgetPacingState.title,
+            daysLeft: daysLeft,
+            pacingCaption: pacingCaption,
             lastUpdated: now
         )
+
         saveSnapshot(snapshot)
     }
 }

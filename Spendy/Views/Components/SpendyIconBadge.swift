@@ -72,9 +72,8 @@ struct OverlappingBadgeCluster: View {
     }
 }
 
-/// How Spendy paints entity icons: chrome stays mono, color is identity.
-/// Every named thing (category, account, subscription) is a solid badge
-/// with a contrast glyph — the same language at 14pt and 80pt.
+/// Shared entity badge paint. The app uses adaptive monochrome fill and glyph
+/// colors, while legacy color values remain available for saved data.
 enum SpendyIconPaint {
     struct Resolved {
         let fill: Color

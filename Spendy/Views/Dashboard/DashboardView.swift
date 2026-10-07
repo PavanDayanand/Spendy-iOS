@@ -6,7 +6,7 @@
 //  - Top Bar: Profile Avatar (Left) + Top Action Toggles (Stats, Currency, Privacy, Budget)
 //  - Account Dropdown Selector (Below Top Toggles)
 //  - Hero Spend Section: Monthly Spend Card + On-Screen 6-Month Bar Chart with Interactive Scrubbing
-//  - Interactive Bottom Transactions Drawer: Comic Sticker Count Badge, High-Performance Drag & Character Moments
+//  - Interactive Bottom Transactions Drawer with high-performance drag
 //
 
 import SwiftUI
@@ -619,7 +619,6 @@ struct DashboardView: View {
     
     @ViewBuilder
     private var profileAvatarView: some View {
-        let profColorHex = store.profileColorHex ?? store.topGradientColorHex
         let avatarSize: CGFloat = 34
         
         ZStack {
@@ -632,7 +631,7 @@ struct DashboardView: View {
                     .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.8))
             } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
                 Circle()
-                    .fill(Color(hex: profColorHex))
+                    .fill(SpendyColors.textPrimary)
                     .frame(width: avatarSize, height: avatarSize)
                 
                 Image(systemName: symbol)
@@ -640,13 +639,7 @@ struct DashboardView: View {
                     .foregroundStyle(SpendyColors.inverseText)
             } else {
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(hex: profColorHex), SpendyColors.accentCyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(SpendyColors.textPrimary)
                     .frame(width: avatarSize, height: avatarSize)
                 
                 let initial = store.userName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1).uppercased()
@@ -873,7 +866,7 @@ struct DashboardView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
                 
-                // Header Row (Large 28pt Bold Title + Die-Cut Sticker Badge on Right)
+                // Transaction drawer header
                 HStack(alignment: .center) {
                     Text(drawerHeaderTitle)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -904,16 +897,10 @@ struct DashboardView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                         
-                        // Large Die-Cut Cartoon Sticker Badge
                         let count = todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count
-                        let badgePalette: SpendyComicPalette = todayTransactionsCount > 0 ? .cyberGold : .fire
-                        
-                        SpendyComicBadge(
-                            "\(count)",
-                            palette: badgePalette,
-                            size: .medium,
-                            rotationAngle: -6
-                        )
+                        Text("\(count)")
+                            .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(SpendyColors.textSecondary)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1270,29 +1257,19 @@ struct DashboardView: View {
     
     // MARK: - Empty State View
     private var emptyRecentActivityView: some View {
-        VStack(spacing: 16) {
-            SpendyCharacterMomentCard(
-                sticker: store.activeCompanionSticker,
-                speechText: hasActiveFilters ? "Nothing matches these filters. Clear them to see your spends!" : "Oh, the thrill of staring at zero expenses. Tap + to log your first spend.",
-                kicker: store.activeCompanionSticker.title,
-                stickerSize: 92
-            )
-            .padding(.top, 12)
-            
+        SpendyPlainEmptyState(
+            title: hasActiveFilters ? "No matching transactions" : "No transactions yet",
+            message: hasActiveFilters
+                ? "Try clearing your filters to see more transactions."
+                : "Add your first transaction to see it here.",
+            actionTitle: hasActiveFilters ? "Reset Filters" : nil
+        ) {
             if hasActiveFilters {
-                Button("Reset Filters") {
-                    HapticsManager.shared.trigger(.selection)
-                    withAnimation(AppMotion.snappySpring) {
-                        clearDrawerFilters()
-                    }
+                withAnimation(AppMotion.snappySpring) {
+                    clearDrawerFilters()
                 }
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(SpendyColors.primaryBlue)
-                .padding(.top, 4)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
     }
 }
 

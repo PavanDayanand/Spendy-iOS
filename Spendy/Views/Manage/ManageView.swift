@@ -436,7 +436,6 @@ struct SubscriptionsView: View {
         let billDay = calendar.startOfDay(for: sub.nextBillingDate)
         let daysUntil = calendar.dateComponents([.day], from: today, to: billDay).day ?? 0
         let daysText = daysUntil <= 0 ? "TODAY" : (daysUntil == 1 ? "1d" : "\(daysUntil)d")
-        let palette: SpendyComicPalette = daysUntil <= 3 ? .fire : .cyberGold
         
         return Button {
             HapticsManager.shared.trigger(.selection)
@@ -460,7 +459,9 @@ struct SubscriptionsView: View {
 
                 Spacer(minLength: 8)
                 
-                SpendyComicBadge(daysText, palette: palette, size: .small, rotationAngle: -4)
+                Text(daysText)
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(SpendyColors.textSecondary)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
@@ -631,31 +632,10 @@ struct SubscriptionsView: View {
 
     // MARK: - Empty State
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            SpendyCharacterMomentCard(
-                sticker: .billDue,
-                speechText: "That bill does not get to surprise you! Add recurring subscriptions and memberships to stay ahead.",
-                kicker: "The Bill Hawk",
-                stickerSize: 100
-            )
-            
-            Button(action: {
-                HapticsManager.shared.trigger(.selection)
-                showAddSubscription = true
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
-                    Text("Add Subscription")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(SpendyColors.inverseText)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(SpendyColors.primaryBlue, in: Capsule())
-            }
-        }
-        .padding(.vertical, 24)
+        SpendyPlainEmptyState(
+            title: "No subscriptions yet",
+            message: "Use the plus button to add a recurring payment."
+        )
     }
 
     // MARK: - Past & Cancelled Section

@@ -86,6 +86,40 @@ struct SpendyEmptyCardView: View {
     }
 }
 
+/// Text-only empty state for primary app screens.
+struct SpendyPlainEmptyState: View {
+    let title: String
+    let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+
+            Text(message)
+                .font(.system(size: 15))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let actionTitle, let action {
+                Button(actionTitle) {
+                    HapticsManager.shared.trigger(.selection)
+                    action()
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .padding(.top, 8)
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 24)
+    }
+}
+
 // MARK: - Interactive Button Press Style
 private struct EmptyCardPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

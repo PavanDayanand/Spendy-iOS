@@ -15,5 +15,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Spendy uses the camera to scan physical receipts and bills for instant transaction logging.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Spendy accesses your photos to import receipt and payment confirmation screenshots.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

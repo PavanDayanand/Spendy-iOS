@@ -27,8 +27,6 @@ final class SoundManager {
         case keyStroke
         /// Coin drop / metallic tink (1057)
         case currencySelect
-        /// Bouncy pop for sticker avatar selection (1155)
-        case stickerSelect
         /// Apple Pay style confirmation chime (1407)
         case successChime
         /// Gentle tick (1105)
@@ -40,7 +38,6 @@ final class SoundManager {
             case .pageTransition: return 1054
             case .keyStroke: return 1104
             case .currencySelect: return 1057
-            case .stickerSelect: return 1155
             case .successChime: return 1407
             case .tick: return 1105
             }
