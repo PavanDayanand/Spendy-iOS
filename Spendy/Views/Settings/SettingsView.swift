@@ -236,6 +236,7 @@ struct SettingsView: View {
                 OnboardingView()
             }
         }
+        .preferredColorScheme(store.colorScheme)
     }
 
     // MARK: - Profile

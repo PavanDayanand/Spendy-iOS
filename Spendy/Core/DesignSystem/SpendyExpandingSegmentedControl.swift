@@ -11,6 +11,7 @@ import SwiftUI
 
 // MARK: - Generic Expanding Segmented Control
 struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var selection: T
     let items: [T]
     var titleFor: (T) -> String
@@ -64,9 +65,9 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                         .frame(height: 36)
                         .background {
                             Capsule()
-                                .fill(Color(hex: "#242426"))
+                                .fill(colorScheme == .light ? Color.black : Color(hex: "#242426"))
                                 .overlay {
-                                    Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                         .shadow(color: Color.black.opacity(0.25), radius: 4, y: 1.5)
@@ -80,11 +81,11 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                             if isLetterBadge {
                                 Text(iconKey)
                                     .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(Color.black)
+                                    .foregroundStyle(colorScheme == .light ? SpendyColors.textPrimary : Color.white)
                             } else {
                                 Image(systemName: iconKey)
                                     .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(Color.black)
+                                    .foregroundStyle(colorScheme == .light ? SpendyColors.textPrimary : Color.white)
                             }
                         }
                         .frame(width: 36, height: 36)
@@ -100,9 +101,9 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
         .frame(height: 44)
         .background {
             Capsule()
-                .fill(Color(hex: "#161618"))
+                .fill(colorScheme == .light ? SpendyColors.transactionControlSurface : Color(hex: "#161618"))
                 .overlay {
-                    Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
                 }
         }
     }

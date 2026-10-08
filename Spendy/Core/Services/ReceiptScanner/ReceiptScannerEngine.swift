@@ -10,6 +10,7 @@
 import SwiftUI
 import Vision
 import Foundation
+import CoreImage
 
 // MARK: - Receipt Line Item
 struct ReceiptLineItem: Identifiable, Equatable {
@@ -60,13 +61,38 @@ final class ReceiptScannerEngine {
         accounts: [Account],
         defaultCurrencySymbol: String = "$"
     ) async -> ReceiptScanResult {
-        guard let cgImage = image.cgImage else {
-            return fallbackEmptyResult(currency: defaultCurrencySymbol, image: image)
+        await scanImages(
+            [image],
+            categories: categories,
+            accounts: accounts,
+            defaultCurrencySymbol: defaultCurrencySymbol
+        )
+    }
+
+    /// Document camera scans can contain several pages; read all of them before parsing.
+    func scanImages(
+        _ images: [UIImage],
+        categories: [Category],
+        accounts: [Account],
+        defaultCurrencySymbol: String = "$"
+    ) async -> ReceiptScanResult {
+        guard let firstImage = images.first else {
+            return fallbackEmptyResult(currency: defaultCurrencySymbol, image: UIImage())
         }
-        
-        let recognizedLines = await performVisionOCR(on: cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation))
+
+        var recognizedLines: [RecognizedLine] = []
+        for image in images {
+            let cgImage = image.cgImage ?? image.ciImage.flatMap {
+                CIContext().createCGImage($0, from: $0.extent)
+            }
+            guard let cgImage else { continue }
+            recognizedLines += await performVisionOCR(
+                on: cgImage,
+                orientation: CGImagePropertyOrientation(image.imageOrientation)
+            )
+        }
         guard !recognizedLines.isEmpty else {
-            return fallbackEmptyResult(currency: defaultCurrencySymbol, image: image)
+            return fallbackEmptyResult(currency: defaultCurrencySymbol, image: firstImage)
         }
         
         let fullText = recognizedLines.map { $0.text }.joined(separator: "\n")
@@ -87,7 +113,7 @@ final class ReceiptScannerEngine {
         let lineItems = extractLineItems(from: recognizedLines, totalAmount: totalAmount)
         
         // 6. Match Category & Account
-        let suggestedCategory = matchCategory(merchant: merchantName, fullText: fullText, categories: categories)
+        let suggestedCategory = matchCategory(merchant: merchantName, categories: categories)
         let suggestedAccount = matchAccount(fullText: fullText, accounts: accounts)
         
         // Calculate Confidence score
@@ -107,7 +133,7 @@ final class ReceiptScannerEngine {
             lineItems: lineItems,
             rawRecognizedText: fullText,
             receiptType: receiptType,
-            originalImage: image
+            originalImage: firstImage
         )
     }
     
@@ -155,7 +181,7 @@ final class ReceiptScannerEngine {
             
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
-            request.recognitionLanguages = ["en-US", "en-GB", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-BR", "ja-JP", "zh-Hans"]
+            request.automaticallyDetectsLanguage = true
             
             let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
             DispatchQueue.global(qos: .userInitiated).async {
@@ -253,6 +279,9 @@ final class ReceiptScannerEngine {
         for (index, line) in lines.enumerated() {
             let text = line.text
             let lower = text.lowercased()
+            if ["date", "time", "phone", "tel", "order #", "invoice #", "transaction id", "reference #"].contains(where: lower.contains) {
+                continue
+            }
             
             // Extract Currency Symbol if present
             if let curr = detectCurrencySymbol(in: text) {
@@ -263,46 +292,32 @@ final class ReceiptScannerEngine {
             let numbers = extractNumbersWithDecimals(from: text)
             if numbers.isEmpty { continue }
             
-            // Check keyword priority
-            var priority = 1
-            for kw in totalKeywords {
-                if lower.contains(kw) {
-                    priority = 10
-                    break
-                }
-            }
-            if priority == 1 {
-                for kw in subtotalKeywords {
-                    if lower.contains(kw) {
-                        priority = 5
-                        break
-                    }
-                }
-            }
+            // "Subtotal" contains "total". Treat it as a fallback, never as the final total.
+            let isSubtotal = subtotalKeywords.contains(where: lower.contains)
+            let previousLine = index > 0 ? lines[index - 1].text.lowercased() : ""
+            let followsTotalLabel = totalKeywords.contains(where: previousLine.contains)
+                && !subtotalKeywords.contains(where: previousLine.contains)
+                && extractNumbersWithDecimals(from: previousLine).isEmpty
+            let priority = isSubtotal ? 0 : (
+                totalKeywords.contains(where: lower.contains) ? 10 : (followsTotalLabel ? 8 : 1)
+            )
             
             for num in numbers {
-                // Filter out likely dates, years, or barcodes
-                if num > 1900 && num < 2100 && (lower.contains("20") || lower.contains("date")) {
-                    continue
-                }
                 if num > 0.01 && num < 500000 {
                     candidateAmounts.append((amount: num, priority: priority, lineIndex: index))
                 }
             }
         }
         
-        // Pick highest priority keyword match, preferably near the bottom
-        if let best = candidateAmounts.filter({ $0.priority == 10 }).last {
+        if let bestPriority = candidateAmounts.map(\.priority).max(), bestPriority > 1,
+           let best = candidateAmounts.filter({ $0.priority == bestPriority }).last {
             return (best.amount, detectedCurrency)
         }
-        if let best = candidateAmounts.filter({ $0.priority == 5 }).last {
-            return (best.amount, detectedCurrency)
-        }
-        
-        // Fallback: pick the largest plausible amount in the bottom half of the receipt
-        if !candidateAmounts.isEmpty {
-            let maxAmount = candidateAmounts.map { $0.amount }.max() ?? 0.0
-            return (maxAmount, detectedCurrency)
+
+        // Without a total label, the largest plausible amount is the least surprising guess.
+        if let amount = candidateAmounts.filter({ $0.priority > 0 }).map(\.amount).max()
+            ?? candidateAmounts.map(\.amount).max() {
+            return (amount, detectedCurrency)
         }
         
         return (0.0, detectedCurrency)
@@ -321,7 +336,7 @@ final class ReceiptScannerEngine {
     private func extractNumbersWithDecimals(from text: String) -> [Double] {
         var results: [Double] = []
         // Match numbers like 12.99, $1,250.50, 45.00, 1500
-        let pattern = #"(?:[\$€£₹¥]\s*)?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})|[0-9]+(?:\.[0-9]{2}))"#
+        let pattern = #"(?<![\d/:-])(?:[\$€£₹¥]\s*)?((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]{1,2})?)(?![\d/:-])"#
         if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
             let nsStr = text as NSString
             let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsStr.length))
@@ -418,8 +433,8 @@ final class ReceiptScannerEngine {
         return items
     }
     
-    private func matchCategory(merchant: String, fullText: String, categories: [Category]) -> Category? {
-        let combined = "\(merchant) \(fullText)".lowercased()
+    private func matchCategory(merchant: String, categories: [Category]) -> Category? {
+        let merchantText = merchant.lowercased()
         
         // Keyword rule mappings
         let mapping: [(keywords: [String], categoryNames: [String])] = [
@@ -434,7 +449,7 @@ final class ReceiptScannerEngine {
         
         for rule in mapping {
             for kw in rule.keywords {
-                if combined.contains(kw) {
+                if merchantText.contains(kw) {
                     for catName in rule.categoryNames {
                         if let matched = categories.first(where: { $0.label.localizedCaseInsensitiveContains(catName) }) {
                             return matched
@@ -444,14 +459,14 @@ final class ReceiptScannerEngine {
             }
         }
         
-        // Fallback: search direct category names in text
+        // A receipt's address and item descriptions can suggest an unrelated category.
         for cat in categories {
-            if combined.contains(cat.label.lowercased()) {
+            if merchantText.contains(cat.label.lowercased()) {
                 return cat
             }
         }
         
-        return categories.first(where: { $0.type == .expense })
+        return nil
     }
     
     private func matchAccount(fullText: String, accounts: [Account]) -> Account? {
@@ -464,13 +479,13 @@ final class ReceiptScannerEngine {
         if lower.contains("cash") {
             return accounts.first(where: { $0.type == .cash })
         }
-        if lower.contains("amazon") || lower.contains("pay") {
-            return accounts.first(where: { $0.type == .amazonPay }) ?? accounts.first
+        if lower.contains("amazon pay") {
+            return accounts.first(where: { $0.type == .amazonPay })
         }
         if lower.contains("visa") || lower.contains("mastercard") || lower.contains("card") || lower.contains("bank") {
-            return accounts.first(where: { $0.type == .bank }) ?? accounts.first
+            return accounts.first(where: { $0.type == .bank })
         }
-        return accounts.first
+        return nil
     }
     
     private func fallbackEmptyResult(currency: String, image: UIImage) -> ReceiptScanResult {

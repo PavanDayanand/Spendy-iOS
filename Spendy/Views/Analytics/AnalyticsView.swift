@@ -93,6 +93,7 @@ struct AnalyticsView: View {
     // Collapsible List Expand States
     @State private var isSpendingListExpanded: Bool = false
     @State private var isIncomeListExpanded: Bool = false
+    @State private var showDetailedCharts: Bool = false
     
     @Namespace private var analyticsControlsNamespace
     
@@ -124,13 +125,34 @@ struct AnalyticsView: View {
                         // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
                             VStack(spacing: 18) {
-                                cashflowOverviewCard
-                                
-                                spendingBreakdownCard
-                                
-                                incomeBreakdownCard
-                                
-                                budgetRingPacingCard
+                                spendingRhythmCard
+
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        showDetailedCharts.toggle()
+                                    }
+                                } label: {
+                                    HStack {
+                                        Text("Explore charts")
+                                            .font(.system(size: 14, weight: .semibold))
+                                        Spacer()
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .rotationEffect(.degrees(showDetailedCharts ? 180 : 0))
+                                    }
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint(showDetailedCharts ? "Hide detailed charts" : "Show detailed charts")
+
+                                if showDetailedCharts {
+                                    cashflowOverviewCard
+                                    spendingBreakdownCard
+                                    incomeBreakdownCard
+                                    budgetRingPacingCard
+                                }
                             }
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
@@ -199,6 +221,163 @@ struct AnalyticsView: View {
             }
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
+    }
+
+    // MARK: - At-a-glance insight
+    private var spendingRhythmCard: some View {
+        let intervals = intervalData
+        let peak = intervals.filter { $0.spendingAmount > 0 }.max { $0.spendingAmount < $1.spendingAmount }
+        let topDriver = spendingBreakdownItems.first
+        let budgetTarget = store.budgetTargetAmount(for: store.budget.period)
+        let showsBudget = granularity == .month &&
+            calendar.isDate(selectedDate, equalTo: Date(), toGranularity: .month) &&
+            selectedAccountId == "all" && store.budget.isActive && budgetTarget > 0
+        let budgetRemaining = budgetTarget - store.budgetCycleExpenses
+
+        return VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("SPENDING RHYTHM")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundStyle(SpendyColors.textSecondary)
+
+                Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 36, weight: .heavy, tracking: -1.2)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text("Spent in this \(granularity.rawValue.lowercased())")
+                    .font(.system(size: 13))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+
+            if totalSpending > 0 {
+                spendingRhythmPlot(intervals)
+
+                if let peak {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Highest: \(peak.label) · \(peak.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .accessibilityElement(children: .combine)
+                }
+
+                if let topDriver {
+                    Rectangle().fill(SpendyColors.separator).frame(height: 1)
+
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        if groupingMode == .categories {
+                            selectedCategoryForSheet = store.category(for: topDriver.id)
+                        } else if let account = store.accounts.first(where: { $0.id == topDriver.id }) {
+                            selectedAccountForSheet = account
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: topDriver.sfSymbol)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .frame(width: 34, height: 34)
+                                .background(SpendyColors.cardBackgroundSecondary, in: Circle())
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(groupingMode == .categories ? "Top category" : "Top account")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                                Text(topDriver.label)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 4)
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(topDriver.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                Text("\(Int(topDriver.percentage.rounded()))% of spending")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                        }
+                        .frame(minHeight: 48)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Top \(groupingMode == .categories ? "category" : "account"), \(topDriver.label), \(Int(topDriver.percentage.rounded())) percent of spending")
+                    .accessibilityHint("Open details")
+                }
+            } else {
+                Text("No spending recorded for this period.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 12)
+            }
+
+            if showsBudget {
+                Rectangle().fill(SpendyColors.separator).frame(height: 1)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Budget room")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                        Text("Current cycle · \(store.budgetDaysLeft) days left")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text(max(0, budgetRemaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+                .accessibilityElement(children: .combine)
+
+                if budgetRemaining < 0 {
+                    Text("Over budget by \((-budgetRemaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
+        }
+    }
+
+    private func spendingRhythmPlot(_ intervals: [PeriodIntervalData]) -> some View {
+        let maximum = max(1, intervals.map(\.spendingAmount).max() ?? 0)
+        return HStack(alignment: .bottom, spacing: granularity == .year ? 3 : 6) {
+            ForEach(intervals) { interval in
+                VStack(spacing: 7) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(interval.spendingAmount > 0 ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(3, 86 * interval.spendingAmount / maximum))
+                        .frame(height: 86, alignment: .bottom)
+
+                    Text(interval.label)
+                        .font(.system(size: granularity == .year ? 9 : 10, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(interval.label), \(interval.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) spent")
+            }
+        }
+        .padding(.top, 4)
     }
     
     private func triggerEntranceAnimation() {

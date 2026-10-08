@@ -153,9 +153,12 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
     let todayTotal: Double
     let todayIncome: Double
     let monthTotal: Double
+    let previousMonthToDateTotal: Double?
     let remainingBudget: Double
     let budgetTotal: Double
     let budgetProgress: Double
+    let budgetOverage: Double
+    let budgetPeriod: String
     let topCategoryName: String
     let topCategorySymbol: String
     let topCategoryColorHex: String
@@ -163,6 +166,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
     let weeklySpending: [WidgetDaySpending]
     let recentTransactions: [WidgetTransactionItem]
     let topCategories: [WidgetCategorySpend]
+    let categorySpending: [WidgetCategorySpend]
     let daysLeft: Int
     let pacingCaption: String
     let lastUpdated: Date
@@ -174,9 +178,12 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         todayTotal: Double = 0,
         todayIncome: Double = 0,
         monthTotal: Double = 0,
+        previousMonthToDateTotal: Double? = nil,
         remainingBudget: Double = 0,
         budgetTotal: Double = 0,
         budgetProgress: Double = 0,
+        budgetOverage: Double = 0,
+        budgetPeriod: String = "monthly",
         topCategoryName: String = "Groceries",
         topCategorySymbol: String = "cart.fill",
         topCategoryColorHex: String = "#34C759",
@@ -184,6 +191,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         weeklySpending: [WidgetDaySpending] = [],
         recentTransactions: [WidgetTransactionItem] = [],
         topCategories: [WidgetCategorySpend] = [],
+        categorySpending: [WidgetCategorySpend] = [],
         daysLeft: Int = 0,
         pacingCaption: String = "",
         lastUpdated: Date = Date()
@@ -194,9 +202,12 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         self.todayTotal = todayTotal
         self.todayIncome = todayIncome
         self.monthTotal = monthTotal
+        self.previousMonthToDateTotal = previousMonthToDateTotal
         self.remainingBudget = remainingBudget
         self.budgetTotal = budgetTotal
         self.budgetProgress = budgetProgress
+        self.budgetOverage = budgetOverage
+        self.budgetPeriod = budgetPeriod
         self.topCategoryName = topCategoryName
         self.topCategorySymbol = topCategorySymbol
         self.topCategoryColorHex = topCategoryColorHex
@@ -204,6 +215,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         self.weeklySpending = weeklySpending
         self.recentTransactions = recentTransactions
         self.topCategories = topCategories
+        self.categorySpending = categorySpending
         self.daysLeft = daysLeft
         self.pacingCaption = pacingCaption
         self.lastUpdated = lastUpdated
@@ -211,10 +223,10 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case currencySymbol, currencyCode, defaultAccountId
-        case todayTotal, todayIncome, monthTotal
-        case remainingBudget, budgetTotal, budgetProgress
+        case todayTotal, todayIncome, monthTotal, previousMonthToDateTotal
+        case remainingBudget, budgetTotal, budgetProgress, budgetOverage, budgetPeriod
         case topCategoryName, topCategorySymbol, topCategoryColorHex, topCategoryAmount
-        case weeklySpending, recentTransactions, topCategories, daysLeft, pacingCaption, lastUpdated
+        case weeklySpending, recentTransactions, topCategories, categorySpending, daysLeft, pacingCaption, lastUpdated
     }
 
     init(from decoder: Decoder) throws {
@@ -225,9 +237,12 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         todayTotal = try container.decodeIfPresent(Double.self, forKey: .todayTotal) ?? 0
         todayIncome = try container.decodeIfPresent(Double.self, forKey: .todayIncome) ?? 0
         monthTotal = try container.decodeIfPresent(Double.self, forKey: .monthTotal) ?? 0
+        previousMonthToDateTotal = try container.decodeIfPresent(Double.self, forKey: .previousMonthToDateTotal)
         remainingBudget = try container.decodeIfPresent(Double.self, forKey: .remainingBudget) ?? 0
         budgetTotal = try container.decodeIfPresent(Double.self, forKey: .budgetTotal) ?? 0
         budgetProgress = try container.decodeIfPresent(Double.self, forKey: .budgetProgress) ?? 0
+        budgetOverage = try container.decodeIfPresent(Double.self, forKey: .budgetOverage) ?? 0
+        budgetPeriod = try container.decodeIfPresent(String.self, forKey: .budgetPeriod) ?? "monthly"
         topCategoryName = try container.decodeIfPresent(String.self, forKey: .topCategoryName) ?? "Groceries"
         topCategorySymbol = try container.decodeIfPresent(String.self, forKey: .topCategorySymbol) ?? "cart.fill"
         topCategoryColorHex = try container.decodeIfPresent(String.self, forKey: .topCategoryColorHex) ?? "#34C759"
@@ -235,6 +250,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         weeklySpending = try container.decodeIfPresent([WidgetDaySpending].self, forKey: .weeklySpending) ?? []
         recentTransactions = try container.decodeIfPresent([WidgetTransactionItem].self, forKey: .recentTransactions) ?? []
         topCategories = try container.decodeIfPresent([WidgetCategorySpend].self, forKey: .topCategories) ?? []
+        categorySpending = try container.decodeIfPresent([WidgetCategorySpend].self, forKey: .categorySpending) ?? topCategories
         daysLeft = try container.decodeIfPresent(Int.self, forKey: .daysLeft) ?? 0
         pacingCaption = try container.decodeIfPresent(String.self, forKey: .pacingCaption) ?? ""
         lastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()

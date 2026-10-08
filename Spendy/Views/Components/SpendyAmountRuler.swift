@@ -130,6 +130,7 @@ struct AmountInputModeSwitcher: View {
 // MARK: - Sliding Money Ruler
 
 struct SpendyAmountRuler: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var amountString: String
     @Binding var step: AmountRulerStep
     var maxDigits: Int = 8
@@ -143,10 +144,10 @@ struct SpendyAmountRuler: View {
     
     private let tickSpacing: CGFloat = 12
     private let rulerHeight: CGFloat = 112
-    private let restGold = Color(hex: "#E08A2C")
-    private let liveGold = Color(hex: "#FFC14D")
-    private let restSelected = Color(hex: "#F4A83A")
-    private let liveSelected = Color(hex: "#FFF3B0")
+    private var restGold: Color { colorScheme == .light ? Color.black.opacity(0.56) : Color.white.opacity(0.60) }
+    private var liveGold: Color { colorScheme == .light ? Color.black.opacity(0.78) : Color.white.opacity(0.78) }
+    private var restSelected: Color { colorScheme == .light ? .black : .white }
+    private var liveSelected: Color { colorScheme == .light ? .black : .white }
     
     private var maxValue: Double {
         pow(10, Double(maxDigits)) - 0.01

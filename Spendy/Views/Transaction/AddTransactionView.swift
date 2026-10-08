@@ -7,6 +7,7 @@
 //  Clean 3-Column Numeric Keypad (No Math Operators), and Non-Duplicated Liquid Glass Sheets.
 //
 
+import PhotosUI
 import SwiftUI
 
 // MARK: - Active Sheet Enum for Single-Sheet Presentation
@@ -24,6 +25,10 @@ enum TransactionActiveSheet: Identifiable {
         case .scanner: return "scanner"
         }
     }
+}
+
+private enum ReceiptImageError: Error {
+    case invalidImage
 }
 
 struct AddTransactionView: View {
@@ -63,6 +68,12 @@ struct AddTransactionView: View {
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
     @State private var showDiscardConfirmation: Bool = false
+    @State private var showReceiptCamera = false
+    @State private var showReceiptPhotos = false
+    @State private var selectedReceiptPhoto: PhotosPickerItem?
+    @State private var receiptImages: [UIImage] = []
+    @State private var receiptImportError: String?
+    @State private var dismissAfterReceiptAdd = false
     
     private var isEditing: Bool {
         transactionToEdit != nil
@@ -241,7 +252,7 @@ struct AddTransactionView: View {
                     // MARK: - 5. Bottom Keypad & Actions (dock card)
                     keypadAndActionsSection
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 0)
+                        .padding(.bottom, 14)
                         .ignoresSafeArea(.container, edges: .bottom)
                 }
             }
@@ -256,7 +267,12 @@ struct AddTransactionView: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .sheet(item: $activeSheet) { sheet in
+        .sheet(item: $activeSheet, onDismiss: {
+            if dismissAfterReceiptAdd {
+                dismissAfterReceiptAdd = false
+                dismiss()
+            }
+        }) { sheet in
             switch sheet {
             case .category:
                 CategoryPickerDrawer(
@@ -273,12 +289,56 @@ struct AddTransactionView: View {
             case .calendar:
                 CustomCalendarDrawer(selectedDate: $date)
             case .scanner:
-                ReceiptScannerSheet { result in
-                    applyScanResult(result)
-                } onSaveDirectly: { _ in
-                    dismiss()
+                ReceiptScannerSheet(
+                    images: receiptImages,
+                    initialAccountId: fromAccountId,
+                    initialCategoryId: selectedCategoryId,
+                    onEditResult: { result in applyScanResult(result) },
+                    onAddResult: { result in addScannedTransaction(result) }
+                )
+            }
+        }
+        .sheet(isPresented: $showReceiptCamera, onDismiss: presentCapturedReceipt) {
+            ReceiptCameraCaptureView { image in
+                receiptImages = [image]
+                showReceiptCamera = false
+            } onCancel: {
+                showReceiptCamera = false
+            }
+            .presentationDetents([.fraction(0.72)])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(32)
+        }
+        .photosPicker(
+            isPresented: $showReceiptPhotos,
+            selection: $selectedReceiptPhoto,
+            matching: .images,
+            preferredItemEncoding: .compatible
+        )
+        .onChange(of: selectedReceiptPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self),
+                          let image = UIImage(data: data) else {
+                        throw ReceiptImageError.invalidImage
+                    }
+                    selectedReceiptPhoto = nil
+                    receiptImages = [image]
+                    activeSheet = .scanner
+                } catch {
+                    selectedReceiptPhoto = nil
+                    receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
                 }
             }
+        }
+        .alert("Receipt image", isPresented: Binding(
+            get: { receiptImportError != nil },
+            set: { if !$0 { receiptImportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { receiptImportError = nil }
+        } message: {
+            Text(receiptImportError ?? "")
         }
         .onAppear {
             if !store.accounts.contains(where: { $0.id == fromAccountId }) {
@@ -328,6 +388,9 @@ struct AddTransactionView: View {
                 selection: $type,
                 availableTypes: availableTypes
             ) { newType in
+                if newType == .transfer && !isDestinationAmountManuallyEdited {
+                    destinationAmountString = amountString
+                }
                 if let first = store.categories.filter({ $0.type == newType }).first {
                     selectedCategoryId = first.id
                 }
@@ -337,11 +400,16 @@ struct AddTransactionView: View {
             
             // Standard 44x44 More Options Menu ...
             Menu {
-                Button(action: {
+                Button {
                     HapticsManager.shared.trigger(.selection)
-                    activeSheet = .scanner
-                }) {
-                    Label("Scan Receipt or Screenshot", systemImage: "doc.text.viewfinder")
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        inputMode = inputMode == .keypad ? .slider : .keypad
+                    }
+                } label: {
+                    Label(
+                        inputMode == .keypad ? "Use Slider" : "Use Keypad",
+                        systemImage: inputMode == .keypad ? SFIcons.amountRuler : SFIcons.amountKeypad
+                    )
                 }
                 
                 Divider()
@@ -358,15 +426,6 @@ struct AddTransactionView: View {
                     date = Date()
                 }) {
                     Label("Reset Date to Today", systemImage: "calendar")
-                }
-                
-                Button(action: {
-                    HapticsManager.shared.trigger(.light)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        isEditingNote = true
-                    }
-                }) {
-                    Label("Add Note", systemImage: "square.and.pencil")
                 }
             } label: {
                 GlassCircleIcon(
@@ -444,10 +503,10 @@ struct AddTransactionView: View {
             .frame(height: 44)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(hex: "#1C1C1E"))
+                    .fill(SpendyColors.transactionControlSurface)
                     .overlay {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
@@ -479,7 +538,7 @@ struct AddTransactionView: View {
                 
                 Text(amountString)
                     .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.2)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .layoutPriority(1)
@@ -570,15 +629,15 @@ struct AddTransactionView: View {
             }) {
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "#242426"))
+                        .fill(SpendyColors.transactionControlSurface)
                         .frame(width: 38, height: 38)
                         .overlay {
-                            Circle().stroke(Color.white.opacity(0.15), lineWidth: 1.0)
+                            Circle().stroke(SpendyColors.separator, lineWidth: 1.0)
                         }
                     
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
                 .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
             }
@@ -640,10 +699,10 @@ struct AddTransactionView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(isActive ? Color(hex: "#18181B") : Color(hex: "#121214"))
+                    .fill(isActive ? SpendyColors.transactionControlSurface : SpendyColors.cardBackgroundSecondary)
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(isActive ? Color.white.opacity(0.18) : Color.white.opacity(0.06), lineWidth: isActive ? 1.0 : 0.8)
+                            .stroke(SpendyColors.separator.opacity(isActive ? 1 : 0.7), lineWidth: isActive ? 1.0 : 0.8)
                     }
             }
         }
@@ -655,7 +714,7 @@ struct AddTransactionView: View {
     // MARK: - 5. Full-Width Keypad & Actions Section
     private var keypadAndActionsSection: some View {
         VStack(spacing: 10) {
-            // Action Buttons Row: [ 📅 Today ] on left, ( 📷 Scan ), ( 🏷️ Note ) on right
+            // Keep frequent details visible; the alternate input mode lives in More.
             HStack(spacing: 10) {
                 Button(action: {
                     activeSheet = .calendar
@@ -673,23 +732,40 @@ struct AddTransactionView: View {
                     .frame(height: 44)
                     .background {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(hex: "#1C1C1E"))
+                            .fill(SpendyColors.transactionKeySurface)
                             .overlay {
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
                             }
                     }
                 }
                 .buttonStyle(.plain)
                 
-                AmountInputModeSwitcher(selection: $inputMode)
-                
                 Spacer()
                 
-                // Receipt Scanner Button
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    activeSheet = .scanner
+                // Source menu opens in place, like the other compact action menus.
+                Menu {
+                    Button {
+                        guard let image = UIPasteboard.general.image else {
+                            receiptImportError = "Copy a receipt image first, then choose Paste image again."
+                            return
+                        }
+                        receiptImages = [image]
+                        activeSheet = .scanner
+                    } label: {
+                        Label("Paste image", systemImage: "doc.on.clipboard")
+                    }
+                    Button {
+                        showReceiptPhotos = true
+                    } label: {
+                        Label("Photos", systemImage: "photo.on.rectangle")
+                    }
+                    Button {
+                        receiptImages = []
+                        showReceiptCamera = true
+                    } label: {
+                        Label("Camera", systemImage: "camera")
+                    }
                 } label: {
                     Image(systemName: "doc.text.viewfinder")
                         .font(.system(size: 15, weight: .bold))
@@ -697,15 +773,15 @@ struct AddTransactionView: View {
                         .frame(width: 44, height: 44)
                         .background {
                             Circle()
-                                .fill(Color(hex: "#1C1C1E"))
+                                .fill(SpendyColors.transactionKeySurface)
                                 .overlay {
                                     Circle()
-                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Scan Receipt")
+                .accessibilityLabel("Add receipt")
                 
                 // Note Button
                 Button {
@@ -714,21 +790,21 @@ struct AddTransactionView: View {
                         isEditingNote = true
                     }
                 } label: {
-                    Image(systemName: note.isEmpty ? "tag" : "tag.fill")
+                    Image(systemName: "square.and.pencil")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .frame(width: 44, height: 44)
                         .background {
                             Circle()
-                                .fill(Color(hex: "#1C1C1E"))
+                                .fill(SpendyColors.transactionKeySurface)
                                 .overlay {
                                     Circle()
-                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Add Note")
+                .accessibilityLabel(note.isEmpty ? "Add Note" : "Edit Note")
             }
             
             SpendyGlassEffectContainer(spacing: 12) {
@@ -784,10 +860,10 @@ struct AddTransactionView: View {
                         .frame(height: 44)
                         .background {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(hex: "#1C1C1E"))
+                                .fill(SpendyColors.transactionKeySurface)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
                                 }
                         }
                     }
@@ -800,12 +876,12 @@ struct AddTransactionView: View {
                     }) {
                         Text("Save")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
+                            .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                             .padding(.horizontal, 32)
                             .frame(height: 44)
                             .background {
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
+                                    .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.transactionKeySurface)
                             }
                     }
                     .buttonStyle(KeypadPressStyle())
@@ -831,18 +907,11 @@ struct AddTransactionView: View {
         .padding(.bottom, 22)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color(hex: "#141416").opacity(0.88))
+                .fill(SpendyColors.transactionTraySurface)
                 .overlay {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.04)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
+                            SpendyColors.separator,
                             lineWidth: 0.8
                         )
                 }
@@ -895,11 +964,16 @@ struct AddTransactionView: View {
     }
     
     // MARK: - Apply Scanned Receipt Result
+    private func presentCapturedReceipt() {
+        guard !receiptImages.isEmpty else { return }
+        activeSheet = .scanner
+    }
+
     private func applyScanResult(_ result: ReceiptScanResult) {
         if result.totalAmount > 0 {
             amountString = String(format: result.totalAmount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", result.totalAmount)
         }
-        if !result.merchantName.isEmpty && result.merchantName != "Merchant" {
+        if !result.rawRecognizedText.isEmpty && !result.merchantName.isEmpty {
             note = result.merchantName
         }
         date = result.date
@@ -910,6 +984,26 @@ struct AddTransactionView: View {
             fromAccountId = accId
         }
         type = .expense
+    }
+
+    private func addScannedTransaction(_ result: ReceiptScanResult) {
+        let merchant = result.merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let categoryId = result.suggestedCategoryId ?? selectedCategoryId
+        let accountId = result.suggestedAccountId ?? fromAccountId
+        guard result.totalAmount > 0, !merchant.isEmpty,
+              store.categories.contains(where: { $0.id == categoryId && $0.type == .expense }),
+              store.accounts.contains(where: { $0.id == accountId }) else { return }
+
+        HapticsManager.shared.trigger(.success)
+        store.addTransaction(Transaction(
+            title: merchant,
+            amount: result.totalAmount,
+            type: .expense,
+            categoryId: categoryId,
+            accountId: accountId,
+            date: result.date
+        ))
+        dismissAfterReceiptAdd = true
     }
     
     // MARK: - Save Transaction Action
@@ -1290,7 +1384,7 @@ struct AccountPickerDrawer: View {
                                 }
                             }
                         }
-                        .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -1500,19 +1594,19 @@ struct CustomCalendarDrawer: View {
                             ZStack {
                                 if isSelected {
                                     Circle()
-                                        .fill(Color.white)
+                                        .fill(SpendyColors.elevatedControlFill)
                                         .frame(width: 38, height: 38)
                                 }
                                 
                                 Text("\(dayNumber)")
                                     .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                                    .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                                    .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                             }
                             .frame(width: 44, height: 44)
                             
                             if isSelected {
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(SpendyColors.elevatedControlFill)
                                     .frame(width: 4, height: 4)
                             }
                         }
@@ -1538,13 +1632,13 @@ struct CustomCalendarDrawer: View {
                     } label: {
                         Text(monthSymbols[month - 1])
                             .font(.system(size: 15, weight: isSelected ? .bold : .medium))
-                            .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                            .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                             .background {
                                 if isSelected {
                                     Capsule(style: .continuous)
-                                        .fill(Color.white)
+                                        .fill(SpendyColors.elevatedControlFill)
                                 }
                             }
                             .contentShape(Capsule())
@@ -1565,12 +1659,12 @@ struct CustomCalendarDrawer: View {
                             } label: {
                                 Text(String(year))
                                     .font(.system(size: 15, weight: isSelected ? .bold : .medium))
-                                    .foregroundStyle(isSelected ? Color.black : SpendyColors.textPrimary)
+                                    .foregroundStyle(isSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                                     .padding(.horizontal, 16)
                                     .frame(height: 40)
                                     .background {
                                         Capsule(style: .continuous)
-                                            .fill(isSelected ? Color.white : SpendyColors.cardBackgroundSecondary)
+                                            .fill(isSelected ? SpendyColors.elevatedControlFill : SpendyColors.cardBackgroundSecondary)
                                     }
                             }
                             .buttonStyle(.plain)
@@ -1654,20 +1748,10 @@ struct SpendySlideToTransfer: View {
             ZStack(alignment: .leading) {
                 // 1. Authentic Frosted Liquid Glass Track
                 Capsule()
-                    .fill(Color(hex: "#161618").opacity(0.92))
+                    .fill(SpendyColors.transactionTraySurface)
                     .overlay {
                         Capsule()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.22),
-                                        Color.white.opacity(0.05)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.0
-                            )
+                            .stroke(SpendyColors.separator, lineWidth: 1.0)
                     }
                     .nativeLiquidGlassCapsule(isInteractive: false)
                     .shadow(color: Color.black.opacity(0.3), radius: 8, y: 3)
@@ -1681,9 +1765,9 @@ struct SpendySlideToTransfer: View {
                         .foregroundStyle(
                             LinearGradient(
                                 stops: [
-                                    .init(color: Color(hex: "#636366"), location: max(0, shimmerPhase - 0.3)),
-                                    .init(color: Color.white, location: shimmerPhase),
-                                    .init(color: Color(hex: "#636366"), location: min(1, shimmerPhase + 0.3))
+                                    .init(color: SpendyColors.textSecondary, location: max(0, shimmerPhase - 0.3)),
+                                    .init(color: SpendyColors.textPrimary, location: shimmerPhase),
+                                    .init(color: SpendyColors.textSecondary, location: min(1, shimmerPhase + 0.3))
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -1698,29 +1782,10 @@ struct SpendySlideToTransfer: View {
                 // 3. Circular Liquid Glass Knob
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: "#2C2C2E"),
-                                    Color(hex: "#1C1C1E")
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(SpendyColors.elevatedControlFill)
                         .overlay {
                             Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.45),
-                                            Color.white.opacity(0.12)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1.2
-                                )
+                                .stroke(SpendyColors.separator, lineWidth: 1.2)
                         }
                         .nativeLiquidGlassCircle(isInteractive: true, tint: isEnabled ? Color.white.opacity(0.16) : nil)
                         .shadow(color: Color.black.opacity(0.4), radius: 6, y: 2)
@@ -1728,7 +1793,7 @@ struct SpendySlideToTransfer: View {
                     // Knob Icon
                     Image(systemName: isCompleted ? "checkmark" : "arrow.right")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isEnabled ? Color.white : Color(hex: "#636366"))
+                        .foregroundStyle(isEnabled ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                         .rotationEffect(.degrees(isCompleted ? 0 : (progress * 45)))
                 }
                 .frame(width: knobSize, height: knobSize)

@@ -5,7 +5,7 @@
 //  Bottom Floating Liquid Glass Dock Navigation:
 //  - Left: Home circle button with native Apple Liquid Glass (.glassEffect in .circle)
 //  - Next: Subscriptions circle button with native Apple Liquid Glass (.glassEffect in .circle)
-//  - Right: Hero Blue "+ Add" capsule button with native Apple Liquid Glass (.glassEffect in .capsule with blue tint)
+//  - Right: adaptive monochrome "+ Add" capsule button with native Apple Liquid Glass
 //
 
 import SwiftUI
@@ -62,9 +62,6 @@ struct GlassTabBar: View {
     private var pillHeight: CGFloat {
         isExpanded ? 56 : 50
     }
-    private let primaryBlue = Color(hex: "#007AFF")
-    private let electricAzure = Color(hex: "#0A84FF")
-
     var body: some View {
         SpendyGlassEffectContainer(spacing: isExpanded ? 12 : 8) {
             HStack(spacing: isExpanded ? 12 : 8) {
@@ -88,7 +85,7 @@ struct GlassTabBar: View {
 
                 Spacer(minLength: isExpanded ? 12 : 8)
 
-                // 3. Hero Blue Liquid Glass "+ Add" Capsule Pill
+                // 3. Primary "+ Add" Capsule Pill
                 Button {
                     HapticsManager.shared.trigger(.cardSnap)
                     onQuickAdd()
@@ -99,13 +96,13 @@ struct GlassTabBar: View {
                         Text("Add")
                             .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .rounded))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyColors.elevatedControlForeground)
                     .padding(.horizontal, isExpanded ? 24 : 18)
                     .frame(height: pillHeight)
                     .contentShape(Capsule())
                 }
                 .buttonStyle(LiquidScaleButtonStyle())
-                .modifier(HeroSpendLiquidGlassModifier(tint: primaryBlue))
+                .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
                 .accessibilityLabel("Add Transaction")
                 .accessibilityAddTraits(.isButton)
             }
@@ -206,7 +203,7 @@ private struct HeroSpendLiquidGlassModifier: ViewModifier {
             content
                 .background(
                     LinearGradient(
-                        colors: [tint, Color(hex: "#0A84FF")],
+                        colors: [tint, tint.opacity(0.88)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -226,4 +223,3 @@ private struct LiquidScaleButtonStyle: ButtonStyle {
             .animation(AppMotion.snappySpring, value: configuration.isPressed)
     }
 }
-

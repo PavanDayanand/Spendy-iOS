@@ -153,6 +153,23 @@ enum SpendyColors {
         dark: UIColor(white: 0.0, alpha: 1.0)
     ))
 
+    // Transaction entry uses distinct adaptive surfaces so controls remain
+    // readable against both the white canvas and the dark keypad tray.
+    static let transactionControlSurface = Color(uiColor: .dynamic(
+        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0),
+        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0)
+    ))
+
+    static let transactionTraySurface = Color(uiColor: .dynamic(
+        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0),
+        dark: UIColor(red: 20.0/255.0, green: 20.0/255.0, blue: 22.0/255.0, alpha: 1.0)
+    ))
+
+    static let transactionKeySurface = Color(uiColor: .dynamic(
+        light: UIColor(white: 1.0, alpha: 1.0),
+        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0)
+    ))
+
     static let monoGraphLine = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.88),
         dark: UIColor(white: 0.72, alpha: 1.0)

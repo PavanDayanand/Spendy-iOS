@@ -31,7 +31,8 @@ struct BudgetGaugeView: View {
     private var filledSegments: Int {
         guard target > 0 else { return 0 }
         let progress = spent / target
-        return Int(round(min(1.0, max(0.0, progress)) * Double(totalSegments)))
+        let count = Int(round(min(1.0, max(0.0, progress)) * Double(totalSegments)))
+        return spent > 0 ? max(1, count) : 0
     }
     
     private var isExceeded: Bool {
@@ -69,7 +70,7 @@ struct BudgetGaugeView: View {
                     let isFilled = index < animatedFilledSegments
                     
                     Capsule()
-                        .fill(isFilled ? segmentColor(for: index) : Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.08), dark: UIColor(white: 1.0, alpha: 0.12))))
+                        .fill(isFilled ? segmentColor(for: index) : Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.16), dark: UIColor(white: 1.0, alpha: 0.12))))
                         .frame(width: 9, height: 34)
                         .scaleEffect(isFilled ? 1.05 : 0.95)
                         .shadow(color: isFilled ? segmentColor(for: index).opacity(0.45) : .clear, radius: 4, x: 0, y: 1)
@@ -107,7 +108,7 @@ struct BudgetGaugeView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(isExceeded ? SpendyColors.warningOrange : Color(hex: "#30D158"))
+                        .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.statusBeaconGreen)
                         .padding(.top, 2)
                     
                     Text(msg)

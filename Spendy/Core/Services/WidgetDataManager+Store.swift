@@ -55,9 +55,32 @@ extension WidgetDataManager {
         }
         let monthTotal = currentMonthExpenses.reduce(0) { $0 + $1.amount }
 
-        let budgetLimit = store.budget.amount > 0 ? store.budget.amount : 0
-        let remainingBudget = max(0, budgetLimit - monthTotal)
-        let budgetProgress = budgetLimit > 0 ? min(1, max(0, monthTotal / budgetLimit)) : 0
+        // Compare elapsed time with the same point last month. Skip months that
+        // lack the equivalent calendar day or have no prior spending to compare.
+        let monthStart = calendar.dateInterval(of: .month, for: now)?.start ?? now.startOfMonth
+        let previousMonthStart = calendar.date(byAdding: .month, value: -1, to: monthStart) ?? monthStart
+        let currentDay = calendar.component(.day, from: now)
+        let priorMonthDays = calendar.range(of: .day, in: .month, for: previousMonthStart)?.count ?? 0
+        let secondsSinceMidnight = calendar.component(.hour, from: now) * 3600
+            + calendar.component(.minute, from: now) * 60
+            + calendar.component(.second, from: now)
+        let previousMonthToDateTotal: Double? = {
+            guard currentDay <= priorMonthDays,
+                  let previousDay = calendar.date(byAdding: .day, value: currentDay - 1, to: previousMonthStart),
+                  let previousCutoff = calendar.date(byAdding: .second, value: secondsSinceMidnight, to: previousDay)
+            else { return nil }
+            let priorExpenses = store.transactions.filter {
+                $0.type == .expense && $0.date >= previousMonthStart && $0.date <= previousCutoff
+            }
+            guard !priorExpenses.isEmpty else { return nil }
+            return priorExpenses.reduce(0) { $0 + $1.amount }
+        }()
+
+        let budgetLimit = store.budgetTargetAmount(for: store.budget.period)
+        let budgetSpent = store.budgetCycleExpenses
+        let remainingBudget = max(0, budgetLimit - budgetSpent)
+        let budgetOverage = budgetLimit > 0 ? max(0, budgetSpent - budgetLimit) : 0
+        let budgetProgress = budgetLimit > 0 ? min(1, max(0, budgetSpent / budgetLimit)) : 0
 
         var catSpendMap: [String: Double] = [:]
         for tx in currentMonthExpenses {
@@ -99,9 +122,8 @@ extension WidgetDataManager {
             )
         }
 
-        let topCategories: [WidgetCategorySpend] = catSpendMap
+        let categorySpending: [WidgetCategorySpend] = catSpendMap
             .sorted { $0.value > $1.value }
-            .prefix(3)
             .compactMap { pair -> WidgetCategorySpend? in
                 guard let cat = store.categories.first(where: { $0.id == pair.key }) else { return nil }
                 return WidgetCategorySpend(
@@ -112,14 +134,15 @@ extension WidgetDataManager {
                     amount: pair.value
                 )
             }
+        let topCategories = Array(categorySpending.prefix(3))
 
-        let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
-        let currentDay = calendar.component(.day, from: now)
-        let daysLeft = max(0, daysInMonth - currentDay)
+        let daysLeft = store.budgetDaysLeft
         let dailyPace = daysLeft > 0 ? (remainingBudget / Double(daysLeft)) : remainingBudget
         let pacingCaption = budgetLimit > 0
-            ? "\(SpendyWidgetFormat.compactAmount(dailyPace, symbol: store.currencySymbol))/day left"
-            : "\(SpendyWidgetFormat.compactAmount(todayTotal, symbol: store.currencySymbol)) spent today"
+            ? (budgetOverage > 0
+                ? "Over budget by \(SpendyWidgetFormat.compactAmount(budgetOverage, symbol: store.currencySymbol))"
+                : "\(SpendyWidgetFormat.compactAmount(dailyPace, symbol: store.currencySymbol)) per day left")
+            : "No active budget"
 
         let snapshot = SpendyWidgetSnapshot(
             currencySymbol: store.currencySymbol,
@@ -128,9 +151,12 @@ extension WidgetDataManager {
             todayTotal: todayTotal,
             todayIncome: todayIncome,
             monthTotal: monthTotal,
+            previousMonthToDateTotal: previousMonthToDateTotal,
             remainingBudget: remainingBudget,
             budgetTotal: budgetLimit,
             budgetProgress: budgetProgress,
+            budgetOverage: budgetOverage,
+            budgetPeriod: store.budget.period.rawValue,
             topCategoryName: topCategory?.label ?? "None",
             topCategorySymbol: topCategory?.sfSymbol ?? "tag.fill",
             topCategoryColorHex: topCategory?.colorHex ?? "#007AFF",
@@ -138,6 +164,7 @@ extension WidgetDataManager {
             weeklySpending: weeklyPoints,
             recentTransactions: recentItems,
             topCategories: topCategories,
+            categorySpending: categorySpending,
             daysLeft: daysLeft,
             pacingCaption: pacingCaption,
             lastUpdated: now

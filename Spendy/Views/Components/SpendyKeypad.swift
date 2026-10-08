@@ -13,7 +13,7 @@ struct SpendyKeypad: View {
     @Binding var amountString: String
     var maxDigits: Int = 10
     var maxDecimals: Int = 2
-    var buttonBackgroundColor: Color = Color(hex: "#1C1C1E")
+    var buttonBackgroundColor: Color = SpendyColors.transactionKeySurface
     var useLiquidGlass: Bool = false
     
     private let rows = [
@@ -43,12 +43,12 @@ struct SpendyKeypad: View {
                 if key == "delete" || key == "backspace" {
                     Image(systemName: "delete.left.fill")
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 } else {
                     Text(key)
                         .font(.system(size: 24, weight: .medium, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(SpendyColors.textPrimary)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -113,7 +113,7 @@ private struct KeypadBackgroundModifier: ViewModifier {
                         .fill(buttonBackgroundColor)
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                                .stroke(SpendyColors.separator, lineWidth: 0.8)
                         }
                 }
         }

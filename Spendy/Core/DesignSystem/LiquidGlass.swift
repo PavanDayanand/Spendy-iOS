@@ -347,10 +347,10 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         .background {
             if !useLiquidGlass {
                 Capsule(style: .continuous)
-                    .fill(Color(hex: "#1C1C1E"))
+                    .fill(SpendyColors.transactionControlSurface)
                     .overlay {
                         Capsule(style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
