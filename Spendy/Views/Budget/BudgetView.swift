@@ -113,6 +113,7 @@ struct BudgetView: View {
             Text("Budget")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 

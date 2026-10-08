@@ -124,9 +124,9 @@ struct AddTransactionView: View {
         return categoryName.isEmpty ? "spent" : "on \(categoryName)"
     }
     
-    private var amountHeroSize: CGFloat { 72 }
-    
-    private var amountSymbolSize: CGFloat { 38 }
+    @ScaledMetric(relativeTo: .largeTitle) private var amountHeroSize: CGFloat = 72
+    @ScaledMetric(relativeTo: .largeTitle) private var amountSymbolSize: CGFloat = 38
+    @ScaledMetric(relativeTo: .title) private var transferAmountSize: CGFloat = 44
     
     private var activeAmountBinding: Binding<String> {
         Binding(
@@ -464,6 +464,12 @@ struct AddTransactionView: View {
     private var standardAmountSection: some View {
         VStack(spacing: 10) {
             Spacer()
+
+            Text("AMOUNT")
+                .font(AppTypography.eyebrow)
+                .tracking(1.4)
+                .foregroundStyle(SpendyColors.textTertiary)
+                .accessibilityHidden(true)
             
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(store.currencySymbol)
@@ -482,6 +488,8 @@ struct AddTransactionView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Amount, \(store.currencySymbol)\(amountString)")
             
             if let amountCaption {
                 Text(amountCaption)
@@ -592,10 +600,15 @@ struct AddTransactionView: View {
     ) -> some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
-                // Top Row: Account Pill on Left
-                HStack {
+                // Keep the account in its original position while naming each side of the transfer.
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                    Text(isDestination ? "TO" : "FROM")
+                        .font(AppTypography.eyebrow)
+                        .tracking(1.4)
+                        .foregroundStyle(SpendyColors.textTertiary)
+                        .accessibilityAddTraits(.isHeader)
+
                     accountPillButton(account: account, isDestination: isDestination)
-                    Spacer()
                 }
                 
                 Spacer(minLength: 4)
@@ -608,7 +621,7 @@ struct AddTransactionView: View {
                         .fixedSize()
                     
                     Text(amount.isEmpty ? "0" : amount)
-                        .font(.system(size: 44, weight: .heavy, design: .default))
+                        .font(.system(size: transferAmountSize, weight: .heavy, design: .default))
                         .monospacedDigit()
                         .foregroundStyle(isActive ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                         .lineLimit(1)
@@ -635,6 +648,8 @@ struct AddTransactionView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(isDestination ? "To" : "From") \(account?.label ?? "account"), \(store.currencySymbol)\(amount.isEmpty ? "0" : amount)")
+        .accessibilityHint("Select this amount for the keypad")
     }
     
     // MARK: - 5. Full-Width Keypad & Actions Section
@@ -1760,5 +1775,14 @@ struct SpendySlideToTransfer: View {
             }
         }
         .frame(height: trackHeight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isEnabled ? "Transfer to \(destinationAccountName ?? "destination account")" : "Enter an amount to transfer")
+        .accessibilityHint(isEnabled ? "Double tap to confirm the transfer" : "Transfer is unavailable until an amount is entered")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction {
+            guard isEnabled, !isCompleted else { return }
+            HapticsManager.shared.trigger(.success)
+            onConfirm()
+        }
     }
 }

@@ -393,25 +393,8 @@ struct DashboardView: View {
         }
     }
     
-    private var todayTransactionsCount: Int {
-        let calendar = Calendar.current
-        return displayedTransactions.filter { calendar.isDateInToday($0.date) }.count
-    }
-    
     private var drawerHeaderTitle: String {
-        let calendar = Calendar.current
-        let hasTodayTxs = displayedTransactions.contains { calendar.isDateInToday($0.date) }
-        if hasTodayTxs {
-            return "Today"
-        } else if isSheetExpanded {
-            return "Transactions"
-        } else {
-            return "Recent"
-        }
-    }
-    
-    private var visibleTransactions: [Transaction] {
-        Array(displayedTransactions.prefix(3))
+        isSheetExpanded ? "Transactions" : "Recent activity"
     }
     
     private var displayedBalance: Double {
@@ -897,10 +880,10 @@ struct DashboardView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                         
-                        let count = todayTransactionsCount > 0 ? todayTransactionsCount : displayedTransactions.count
-                        Text("\(count)")
+                        Text("\(displayedTransactions.count)")
                             .font(.system(size: 14, weight: .semibold).monospacedDigit())
                             .foregroundStyle(SpendyColors.textSecondary)
+                            .accessibilityLabel("\(displayedTransactions.count) transactions")
                     }
                 }
                 .padding(.horizontal, 20)

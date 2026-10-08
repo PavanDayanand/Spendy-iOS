@@ -92,6 +92,8 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(titleFor(item))
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
             }
         }
         .padding(4)

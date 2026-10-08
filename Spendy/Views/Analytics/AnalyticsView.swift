@@ -232,6 +232,7 @@ struct AnalyticsView: View {
                 Text("Analytics")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(SpendyColors.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
                 
@@ -241,6 +242,7 @@ struct AnalyticsView: View {
                 Text("Analytics")
                     .font(.system(size: 32, weight: .heavy))
                     .foregroundStyle(SpendyColors.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
             }

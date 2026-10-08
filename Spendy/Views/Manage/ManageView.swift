@@ -191,6 +191,7 @@ struct SubscriptionsView: View {
             Text("Subscriptions")
                 .font(.system(size: 32, weight: .heavy))
                 .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -237,6 +238,7 @@ struct SubscriptionsView: View {
             Text("Subscriptions")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -634,7 +636,7 @@ struct SubscriptionsView: View {
     private var emptyState: some View {
         SpendyPlainEmptyState(
             title: "No subscriptions yet",
-            message: "Use the plus button to add a recurring payment."
+            message: "Tap the plus button at the top to add a recurring payment."
         )
     }
 
