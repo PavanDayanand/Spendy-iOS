@@ -58,6 +58,28 @@ struct AnalyticsBreakdownItem: Identifiable {
     let percentage: Double
 }
 
+private struct SpendingDay: Identifiable {
+    let date: Date
+    let amount: Double?
+    var id: Date { date }
+}
+
+private struct AnalyticsPanelStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(SpendyColors.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                    }
+            }
+    }
+}
+
 struct AnalyticsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -82,6 +104,7 @@ struct AnalyticsView: View {
     @State private var selectedIncomeLabel: String? = nil
     @State private var selectedCategorySectorId: String? = nil
     @State private var selectedIncomeSectorId: String? = nil
+    @State private var selectedNoSpendDate: Date? = nil
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
@@ -93,7 +116,6 @@ struct AnalyticsView: View {
     // Collapsible List Expand States
     @State private var isSpendingListExpanded: Bool = false
     @State private var isIncomeListExpanded: Bool = false
-    @State private var showDetailedCharts: Bool = false
     
     @Namespace private var analyticsControlsNamespace
     
@@ -124,35 +146,11 @@ struct AnalyticsView: View {
                         
                         // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
                         Section {
-                            VStack(spacing: 18) {
+                            VStack(spacing: 16) {
                                 spendingRhythmCard
-
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        showDetailedCharts.toggle()
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text("Explore charts")
-                                            .font(.system(size: 14, weight: .semibold))
-                                        Spacer()
-                                        Image(systemName: "chevron.down")
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .rotationEffect(.degrees(showDetailedCharts ? 180 : 0))
-                                    }
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .frame(minHeight: 44)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityHint(showDetailedCharts ? "Hide detailed charts" : "Show detailed charts")
-
-                                if showDetailedCharts {
-                                    cashflowOverviewCard
-                                    spendingBreakdownCard
-                                    incomeBreakdownCard
-                                    budgetRingPacingCard
-                                }
+                                spendingMixSection
+                                cashflowChartSection
+                                noSpendDaysSection
                             }
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
@@ -223,22 +221,16 @@ struct AnalyticsView: View {
             .toolbar(.hidden, for: .navigationBar)
     }
 
-    // MARK: - At-a-glance insight
+    // MARK: - Spending over time
     private var spendingRhythmCard: some View {
         let intervals = intervalData
+        let selected = intervals.first { $0.label == selectedSpendingLabel }
         let peak = intervals.filter { $0.spendingAmount > 0 }.max { $0.spendingAmount < $1.spendingAmount }
-        let topDriver = spendingBreakdownItems.first
-        let budgetTarget = store.budgetTargetAmount(for: store.budget.period)
-        let showsBudget = granularity == .month &&
-            calendar.isDate(selectedDate, equalTo: Date(), toGranularity: .month) &&
-            selectedAccountId == "all" && store.budget.isActive && budgetTarget > 0
-        let budgetRemaining = budgetTarget - store.budgetCycleExpenses
 
         return VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("SPENDING RHYTHM")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .tracking(1.2)
+                Text("Spending rhythm")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
 
                 Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
@@ -255,63 +247,15 @@ struct AnalyticsView: View {
             if totalSpending > 0 {
                 spendingRhythmPlot(intervals)
 
-                if let peak {
+                if let highlighted = selected ?? peak {
                     HStack(spacing: 6) {
                         Image(systemName: "chart.bar.fill")
                             .font(.system(size: 11, weight: .semibold))
-                        Text("Highest: \(peak.label) · \(peak.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                        Text("\(selected == nil ? "Highest" : "Selected"): \(highlighted.label) · \(highlighted.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundStyle(SpendyColors.textSecondary)
                     .accessibilityElement(children: .combine)
-                }
-
-                if let topDriver {
-                    Rectangle().fill(SpendyColors.separator).frame(height: 1)
-
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        if groupingMode == .categories {
-                            selectedCategoryForSheet = store.category(for: topDriver.id)
-                        } else if let account = store.accounts.first(where: { $0.id == topDriver.id }) {
-                            selectedAccountForSheet = account
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: topDriver.sfSymbol)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                                .frame(width: 34, height: 34)
-                                .background(SpendyColors.cardBackgroundSecondary, in: Circle())
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(groupingMode == .categories ? "Top category" : "Top account")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                Text(topDriver.label)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                    .lineLimit(1)
-                            }
-                            Spacer(minLength: 4)
-                            VStack(alignment: .trailing, spacing: 3) {
-                                Text(topDriver.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                Text("\(Int(topDriver.percentage.rounded()))% of spending")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
-                        .frame(minHeight: 48)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Top \(groupingMode == .categories ? "category" : "account"), \(topDriver.label), \(Int(topDriver.percentage.rounded())) percent of spending")
-                    .accessibilityHint("Open details")
                 }
             } else {
                 Text("No spending recorded for this period.")
@@ -320,64 +264,398 @@ struct AnalyticsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 12)
             }
-
-            if showsBudget {
-                Rectangle().fill(SpendyColors.separator).frame(height: 1)
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Budget room")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        Text("Current cycle · \(store.budgetDaysLeft) days left")
-                            .font(.system(size: 11))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                    Spacer(minLength: 8)
-                    Text(max(0, budgetRemaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-                .accessibilityElement(children: .combine)
-
-                if budgetRemaining < 0 {
-                    Text("Over budget by \((-budgetRemaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-            }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8))
-        }
+        .modifier(AnalyticsPanelStyle())
     }
 
     private func spendingRhythmPlot(_ intervals: [PeriodIntervalData]) -> some View {
         let maximum = max(1, intervals.map(\.spendingAmount).max() ?? 0)
         return HStack(alignment: .bottom, spacing: granularity == .year ? 3 : 6) {
             ForEach(intervals) { interval in
-                VStack(spacing: 7) {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(interval.spendingAmount > 0 ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: max(3, 86 * interval.spendingAmount / maximum))
-                        .frame(height: 86, alignment: .bottom)
+                Button {
+                    selectedSpendingLabel = interval.label
+                    HapticsManager.shared.trigger(.selection)
+                } label: {
+                    VStack(spacing: 7) {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(interval.spendingAmount > 0 ? SpendyColors.textPrimary : SpendyColors.cardBackgroundSecondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: max(3, 86 * interval.spendingAmount / maximum))
+                            .frame(height: 86, alignment: .bottom)
 
-                    Text(interval.label)
-                        .font(.system(size: granularity == .year ? 9 : 10, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity)
+                        Text(interval.label)
+                            .font(.system(size: granularity == .year ? 9 : 10, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .accessibilityElement(children: .ignore)
+                .buttonStyle(.plain)
                 .accessibilityLabel("\(interval.label), \(interval.spendingAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) spent")
+                .accessibilityHint("Select this period")
             }
         }
         .padding(.top, 4)
+    }
+
+    private var noSpendDaysSection: some View {
+        let days = monthSpendingDays
+        let cells = calendarCells(for: days)
+        let tracked = days.compactMap(\.amount)
+        let noSpendCount = tracked.filter { $0 == 0 }.count
+        let bestRun = longestNoSpendRun(in: days)
+        let selectedDay = days.first { day in
+            selectedNoSpendDate.map { calendar.isDate(day.date, inSameDayAs: $0) } ?? false
+        }
+
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No-spend streak")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Text(selectedDate.formatted(.dateTime.month(.wide).year()))
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                }
+                Spacer()
+            }
+
+            if tracked.isEmpty {
+                Text("No completed days to track yet.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 20) {
+                    streakMetric(title: "Best run", value: "\(bestRun)", unit: bestRun == 1 ? "day" : "days")
+                    streakMetric(title: "No-spend days", value: "\(noSpendCount)", unit: "of \(tracked.count)")
+                    Spacer()
+                }
+            }
+
+                HStack(spacing: 0) {
+                    ForEach(["M", "T", "W", "T", "F", "S", "S"].indices, id: \.self) { index in
+                        Text(["M", "T", "W", "T", "F", "S", "S"][index])
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textTertiary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 8) {
+                    ForEach(cells.indices, id: \.self) { index in
+                        if let day = cells[index] {
+                            Button {
+                                selectedNoSpendDate = day.date
+                                HapticsManager.shared.trigger(.selection)
+                            } label: {
+                                calendarDayMark(day, isSelected: selectedDay?.id == day.id)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted)), \(day.amount.map { $0 == 0 ? "no spending" : "spent \($0.formattedCurrency(symbol: store.currencySymbol, decimals: 0))" } ?? (day.date >= calendar.startOfDay(for: Date()) ? "not completed" : "before tracking"))")
+                        } else {
+                            Color.clear.frame(height: 44)
+                        }
+                    }
+                }
+
+                if let selectedDay {
+                    HStack {
+                        Text(selectedDay.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                        Spacer()
+                        Text(selectedDay.amount.map { $0 == 0 ? "No spending" : $0.formattedCurrency(symbol: store.currencySymbol, decimals: 0) } ?? (selectedDay.date >= calendar.startOfDay(for: Date()) ? "Not completed" : "Before tracking"))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                } else {
+                    Text("Filled days = no spending · tap a day for its amount")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                }
+        }
+        .modifier(AnalyticsPanelStyle())
+    }
+
+    private func streakMetric(title: String, value: String, unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(SpendyColors.textSecondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .spendyNumberFont(size: 27, weight: .bold, tracking: -0.5)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                Text(unit)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+        }
+    }
+
+    private func calendarDayMark(_ day: SpendingDay, isSelected: Bool) -> some View {
+        ZStack {
+            if day.amount == 0 {
+                Circle()
+                    .fill(SpendyColors.textPrimary)
+                    .frame(width: 32, height: 32)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SpendyColors.appBackground)
+            } else if day.amount != nil {
+                Circle()
+                    .fill(SpendyColors.cardBackgroundSecondary)
+                    .overlay {
+                        Circle().stroke(SpendyColors.textSecondary.opacity(0.55), lineWidth: 1)
+                    }
+                    .frame(width: 32, height: 32)
+                Text(day.date.formatted(.dateTime.day()))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            } else {
+                Text(day.date.formatted(.dateTime.day()))
+                    .font(.system(size: 12))
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .overlay {
+            if isSelected {
+                Circle()
+                    .stroke(SpendyColors.textPrimary.opacity(0.65), lineWidth: 1)
+                    .frame(width: 38, height: 38)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    private var spendingMixSection: some View {
+        let allItems = spendingBreakdownItems
+        let items = Array(allItems.prefix(3))
+        let remaining = Array(allItems.dropFirst(3))
+        let otherAmount = remaining.reduce(0.0) { $0 + $1.amount }
+        let slices = items + (remaining.isEmpty ? [] : [AnalyticsBreakdownItem(
+            id: "analytics-other",
+            label: "Other \(remaining.count)",
+            sfSymbol: "square.grid.2x2",
+            colorHex: "",
+            txCount: remaining.reduce(0) { $0 + $1.txCount },
+            amount: otherAmount,
+            percentage: totalSpending > 0 ? otherAmount / totalSpending * 100 : 0
+        )])
+
+        return VStack(alignment: .leading, spacing: 17) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(groupingMode == .categories ? "Category spending" : "Account spending")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer()
+                Text("\(allItems.count) \(groupingMode == .categories ? "categories" : "accounts")")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+
+            if items.isEmpty {
+                Text("Your spending breakdown will appear here.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .padding(.vertical, 8)
+            } else {
+                VStack(alignment: .leading, spacing: 11) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(items.first?.label ?? "")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text("\(Int((items.first?.percentage ?? 0).rounded()))% of spending")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                    }
+
+                    GeometryReader { geometry in
+                        let available = max(0, geometry.size.width - CGFloat(max(0, slices.count - 1)) * 3)
+                        HStack(spacing: 3) {
+                            ForEach(Array(slices.enumerated()), id: \.element.id) { index, item in
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(breakdownTone(at: index))
+                                    .frame(width: max(2, available * item.amount / max(1, totalSpending)))
+                            }
+                        }
+                        .frame(height: 15)
+                        .clipShape(Capsule())
+                    }
+                    .frame(height: 15)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Spending distribution: \(slices.map { "\($0.label) \(Int($0.percentage.rounded())) percent" }.joined(separator: ", "))")
+
+                    HStack {
+                        Text("Top \(items.count) of \(allItems.count)")
+                        Spacer()
+                        Text(totalSpending.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(Array(slices.enumerated()), id: \.element.id) { index, item in
+                        if index < items.count {
+                            Button {
+                                HapticsManager.shared.trigger(.selection)
+                                if groupingMode == .categories {
+                                    selectedCategoryForSheet = store.categories.first { $0.id == item.id }
+                                } else {
+                                    selectedAccountForSheet = store.accounts.first { $0.id == item.id }
+                                }
+                            } label: {
+                                breakdownLegendRow(item, index: index)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                        } else {
+                            breakdownLegendRow(item, index: index)
+                        }
+                        if index < slices.count - 1 {
+                            Divider().overlay(SpendyColors.separator)
+                        }
+                    }
+                }
+            }
+        }
+        .modifier(AnalyticsPanelStyle())
+    }
+
+    private func breakdownTone(at index: Int) -> Color {
+        switch index {
+        case 0: SpendyColors.textPrimary
+        case 1: SpendyColors.textSecondary
+        case 2: SpendyColors.textTertiary
+        default: SpendyColors.cardBackgroundSecondary
+        }
+    }
+
+    private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
+        HStack(spacing: 9) {
+            Text(index < 3 ? String(format: "%02d", index + 1) : "··")
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .frame(width: 18, alignment: .leading)
+            Circle()
+                .fill(breakdownTone(at: index))
+                .frame(width: 8, height: 8)
+            Text(item.label)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 6)
+            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+            Text("\(Int(item.percentage.rounded()))%")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .frame(width: 34, alignment: .trailing)
+        }
+        .frame(minHeight: 39)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private var cashflowChartSection: some View {
+        let net = totalIncome - totalSpending
+        let retained = max(0, net)
+        let keptShare = totalIncome > 0 ? min(1, retained / totalIncome) : 0
+
+        return VStack(alignment: .leading, spacing: 17) {
+            HStack {
+                Text("Cash flow")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer()
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+
+            if totalIncome > 0 || totalSpending > 0 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(net >= 0 ? "+" : "−")\(abs(net).formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                        .spendyNumberFont(size: 34, weight: .bold, tracking: -1)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text("Net this \(granularity.rawValue.lowercased())")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+
+                if totalIncome > 0 {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack {
+                            Text(net >= 0 ? "Kept from income" : "Spent beyond income")
+                            Spacer()
+                            Text(net >= 0 ? "\(Int((keptShare * 100).rounded()))%" : abs(net).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+
+                        GeometryReader { geometry in
+                            Capsule()
+                                .fill(SpendyColors.cardBackgroundSecondary)
+                                .overlay(alignment: .leading) {
+                                    Capsule()
+                                        .fill(SpendyColors.textPrimary)
+                                        .frame(width: keptShare > 0 ? max(3, geometry.size.width * keptShare) : 0)
+                                }
+                        }
+                        .frame(height: 12)
+                    }
+                    .accessibilityLabel("\(Int((keptShare * 100).rounded())) percent of income kept")
+                } else {
+                    Text("No income recorded in this period")
+                        .font(.system(size: 11))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+
+                Divider().overlay(SpendyColors.separator)
+
+                HStack(spacing: 12) {
+                    cashFlowValue(title: "Money in", amount: totalIncome, symbol: "arrow.down.left", prefix: "+")
+                    Rectangle()
+                        .fill(SpendyColors.separator)
+                        .frame(width: 1, height: 45)
+                    cashFlowValue(title: "Money out", amount: totalSpending, symbol: "arrow.up.right", prefix: "−")
+                }
+            } else {
+                Text("Record income or spending to see cash flow.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .padding(.vertical, 8)
+            }
+        }
+        .modifier(AnalyticsPanelStyle())
+    }
+
+    private func cashFlowValue(title: String, amount: Double, symbol: String, prefix: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 11))
+            }
+            .foregroundStyle(SpendyColors.textSecondary)
+            Text("\(prefix)\(amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
     private func triggerEntranceAnimation() {
@@ -1359,18 +1637,22 @@ struct AnalyticsView: View {
     // MARK: - Computed Properties & Period Math
     
     private var currentPeriodBounds: (start: Date, end: Date) {
+        periodBounds(for: selectedDate)
+    }
+
+    private func periodBounds(for date: Date) -> (start: Date, end: Date) {
         switch granularity {
         case .day:
-            return (selectedDate.startOfDay, selectedDate.endOfDay)
+            return (date.startOfDay, date.endOfDay)
         case .week:
-            return (selectedDate.startOfWeek, selectedDate.endOfWeek)
+            return (date.startOfWeek, date.endOfWeek)
         case .month:
-            return (selectedDate.startOfMonth, selectedDate.endOfMonth)
+            return (date.startOfMonth, date.endOfMonth)
         case .year:
-            return (selectedDate.startOfYear, selectedDate.endOfYear)
+            return (date.startOfYear, date.endOfYear)
         }
     }
-    
+
     /// Filtered transactions in the active period
     private var filteredTransactions: [Transaction] {
         let bounds = currentPeriodBounds
@@ -1378,6 +1660,45 @@ struct AnalyticsView: View {
         return accountFiltered.filter { tx in
             tx.date >= bounds.start && tx.date <= bounds.end
         }
+    }
+
+    /// A month calendar; days before the first expense and today/future days remain untracked.
+    private var monthSpendingDays: [SpendingDay] {
+        let start = selectedDate.startOfMonth
+        let count = calendar.range(of: .day, in: .month, for: start)?.count ?? 30
+        let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
+        let expenses = store.filteredTransactions(for: selectedAccountId).filter { $0.type == .expense }
+        let firstTrackedDay = expenses.map(\.date).min().map { calendar.startOfDay(for: $0) }
+        let today = calendar.startOfDay(for: Date())
+        let amounts = Dictionary(grouping: expenses.filter { $0.date >= start && $0.date < end }) {
+            calendar.startOfDay(for: $0.date)
+        }.mapValues { transactions in
+            transactions.reduce(0.0) { $0 + $1.amount }
+        }
+
+        return (0..<count).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
+            let isTracked = firstTrackedDay.map { date >= $0 && date < today } ?? false
+            return SpendingDay(date: date, amount: isTracked ? (amounts[date] ?? 0) : nil)
+        }
+    }
+
+    private func calendarCells(for days: [SpendingDay]) -> [SpendingDay?] {
+        guard let first = days.first else { return [] }
+        let leading = (calendar.component(.weekday, from: first.date) + 5) % 7
+        let filled: [SpendingDay?] = Array(repeating: nil, count: leading) + days.map(Optional.some)
+        let trailing = (7 - filled.count % 7) % 7
+        return filled + Array(repeating: nil, count: trailing)
+    }
+
+    private func longestNoSpendRun(in days: [SpendingDay]) -> Int {
+        var current = 0
+        var longest = 0
+        for day in days {
+            current = day.amount == 0 ? current + 1 : 0
+            longest = max(longest, current)
+        }
+        return longest
     }
     
     private var totalSpending: Double {
@@ -1623,6 +1944,7 @@ struct AnalyticsView: View {
         selectedIncomeLabel = nil
         selectedCategorySectorId = nil
         selectedIncomeSectorId = nil
+        selectedNoSpendDate = nil
     }
 }
 

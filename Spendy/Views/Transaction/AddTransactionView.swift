@@ -1108,35 +1108,10 @@ struct CategoryPickerDrawer: View {
     
     @State private var searchText: String = ""
     
-    private var groupedFolders: [(folder: String, categories: [Category])] {
-        let filtered = searchText.isEmpty
-            ? categories
-            : categories.filter { $0.label.localizedCaseInsensitiveContains(searchText) }
-        
-        var groups: [String: [Category]] = [:]
-        for cat in filtered {
-            let f = cat.folder.isEmpty ? "Uncategorized" : cat.folder
-            groups[f, default: []].append(cat)
-        }
-        
-        let predefinedOrder = [
-            "Everyday Spending",
-            "Transport",
-            "Living",
-            "Personal & Wellness",
-            "Salary & Career",
-            "Investments & Other",
-            "Uncategorized"
-        ]
-        
-        return predefinedOrder.compactMap { folder in
-            if let list = groups[folder], !list.isEmpty {
-                return (folder: folder, categories: list.sorted(by: { $0.order < $1.order }))
-            }
-            return nil
-        }
+    private var groupedFolders: [CategoryDirectorySection] {
+        CategoryDirectory.folderSections(categories, query: searchText)
     }
-    
+
     private var suggestedCategories: [Category] {
         if !searchText.isEmpty { return [] }
         return Array(categories.prefix(2))
@@ -1173,7 +1148,7 @@ struct CategoryPickerDrawer: View {
                 .padding(.bottom, 12)
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
+                    LazyVStack(spacing: 22) {
                         // 1. Suggested Section
                         if !suggestedCategories.isEmpty {
                             categoryFolderBlock(
@@ -1183,9 +1158,9 @@ struct CategoryPickerDrawer: View {
                         }
                         
                         // 2. Folder Grouped Sections
-                        ForEach(groupedFolders, id: \.folder) { group in
+                        ForEach(groupedFolders) { group in
                             categoryFolderBlock(
-                                title: group.folder,
+                                title: group.title,
                                 items: group.categories
                             )
                         }
@@ -1213,7 +1188,7 @@ struct CategoryPickerDrawer: View {
                 .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.horizontal, 4)
             
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 ForEach(items) { cat in
                     let isSelected = selectedCategoryId == cat.id
                     

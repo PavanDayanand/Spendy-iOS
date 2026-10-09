@@ -35,7 +35,7 @@ struct CategoriesSettingsView: View {
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
+                LazyVStack(spacing: 18) {
                     // Expense / Income Segmented Glass Toggle
                     typeSegmentedControl
                         .padding(.top, 12)
@@ -133,6 +133,11 @@ struct CategoriesSettingsView: View {
                 allFolders.append(f.name)
             }
         }
+        for section in CategoryDirectory.folderSections(currentTypeCategories) where section.title != "Uncategorized" {
+            if !allFolders.contains(section.title) {
+                allFolders.append(section.title)
+            }
+        }
         allFolders.append("Uncategorized")
         
         // Group existing categories by folder
@@ -142,7 +147,7 @@ struct CategoriesSettingsView: View {
             grouped[f, default: []].append(cat)
         }
         
-        return VStack(spacing: 24) {
+        return LazyVStack(spacing: 24) {
             ForEach(allFolders, id: \.self) { folderName in
                 let items = grouped[folderName] ?? []
                 let isCustomFolder = customFoldersForType.contains(where: { $0.name == folderName })
@@ -181,7 +186,7 @@ struct CategoriesSettingsView: View {
             .padding(.horizontal, 4)
             
             // List of Categories in this Folder
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 if categories.isEmpty {
                     HStack {
                         Spacer()
@@ -409,10 +414,6 @@ struct CategoriesSettingsView: View {
     }
     
     private var filteredCategories: [Category] {
-        var list = store.categories.filter { $0.type == selectedType }
-        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            list = list.filter { $0.label.localizedCaseInsensitiveContains(searchQuery) }
-        }
-        return list
+        CategoryDirectory.matching(store.categories.filter { $0.type == selectedType }, query: searchQuery)
     }
 }
