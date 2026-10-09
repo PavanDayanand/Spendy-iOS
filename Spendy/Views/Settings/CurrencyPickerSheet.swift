@@ -289,6 +289,7 @@ struct CurrencyPickerSheet: View {
     // Custom highlights & selection triggers
     var selectedCode: String? = nil
     var onSelect: ((CurrencyInfo) -> Void)? = nil
+    var allowedCodes: Set<String>? = nil
     
     private var activeSelectedCode: String {
         selectedCode ?? store.currencyCode
@@ -297,7 +298,7 @@ struct CurrencyPickerSheet: View {
     // Suggested currencies (Matches reference: Polish Złoty, Ukrainian Hryvnia, and popular world currencies)
     private var suggestedCurrencies: [CurrencyInfo] {
         let codes = ["PLN", "UAH", "USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "CHF"]
-        return codes.map { code in
+        return codes.filter { allowedCodes?.contains($0) ?? true }.map { code in
             CurrencyInfo(
                 code: code,
                 symbol: CurrencyInfo.symbol(for: code),
@@ -314,7 +315,7 @@ struct CurrencyPickerSheet: View {
             codesSet.insert(code)
         }
         
-        return codesSet.sorted().map { code in
+        return codesSet.filter { allowedCodes?.contains($0) ?? true }.sorted().map { code in
             CurrencyInfo(
                 code: code,
                 symbol: CurrencyInfo.symbol(for: code),

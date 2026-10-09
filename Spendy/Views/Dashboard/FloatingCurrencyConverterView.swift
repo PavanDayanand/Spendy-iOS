@@ -2,8 +2,7 @@
 //  FloatingCurrencyConverterView.swift
 //  Spendy
 //
-//  Real-time Currency Converter Floating Card with Liquid Glass Design.
-//  Matches screenshot layout with editable base amount, dynamic conversion, and swap rate pill.
+//  Focused currency conversion sheet backed by the store's cached exchange rates.
 //
 
 import SwiftUI
@@ -11,230 +10,286 @@ import SwiftUI
 struct FloatingCurrencyConverterView: View {
     @Binding var isPresented: Bool
     @Environment(ExpenseStore.self) private var store
-    
-    @State private var fromAmount: String = "100"
-    @State private var fromCurrency: String = "USD"
-    @State private var toCurrency: String = "INR"
-    
-    @State private var showFromCurrencyPicker: Bool = false
-    @State private var showToCurrencyPicker: Bool = false
+
+    @State private var fromAmount = "100"
+    @State private var fromCurrency = "USD"
+    @State private var toCurrency = "INR"
+    @State private var showFromCurrencyPicker = false
+    @State private var showToCurrencyPicker = false
     @FocusState private var isAmountFocused: Bool
-    
-    @State private var dragOffset: CGFloat = 0.0
-    @Namespace private var converterNamespace
-    
-    private var convertedAmount: Double {
-        guard let amount = Double(fromAmount.replacingOccurrences(of: ",", with: "")) else {
-            return 0.0
-        }
-        let fromRate = store.ratesToUSD[fromCurrency] ?? 1.0
-        let toRate = store.ratesToUSD[toCurrency] ?? 1.0
-        // Convert to USD then to target currency
-        let amountInUSD = amount / fromRate
-        return amountInUSD * toRate
+
+    private var availableCodes: Set<String> {
+        Set(store.ratesToUSD.keys).union([fromCurrency, toCurrency])
     }
-    
-    private var exchangeRate: Double {
-        let fromRate = store.ratesToUSD[fromCurrency] ?? 1.0
-        let toRate = store.ratesToUSD[toCurrency] ?? 1.0
-        return (1.0 / fromRate) * toRate
+
+    private var inputAmount: Double? {
+        let grouping = Locale.current.groupingSeparator ?? ","
+        let decimal = Locale.current.decimalSeparator ?? "."
+        let normalized = fromAmount
+            .replacingOccurrences(of: grouping, with: "")
+            .replacingOccurrences(of: decimal, with: ".")
+        guard let value = Double(normalized), value.isFinite, value >= 0 else { return nil }
+        return value
     }
-    
+
+    private var exchangeRate: Double? {
+        if fromCurrency == toCurrency { return 1 }
+        guard store.ratesLastUpdated != nil,
+              let fromRate = store.ratesToUSD[fromCurrency], fromRate > 0,
+              let toRate = store.ratesToUSD[toCurrency], toRate > 0 else { return nil }
+        return toRate / fromRate
+    }
+
+    private var convertedAmount: Double? {
+        guard let inputAmount, let exchangeRate else { return nil }
+        let result = inputAmount * exchangeRate
+        return result.isFinite ? result : nil
+    }
+
+    private func fractionDigits(for code: String) -> Int {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = code
+        return formatter.maximumFractionDigits
+    }
+
+    @Namespace private var sheetNamespace
+
     var body: some View {
-        VStack(spacing: 16) {
-            // Header Row: Close button on Left, Centered Title
-            SpendyGlassEffectContainer(spacing: 0) {
-                ZStack {
-                    HStack {
-                        Button(action: {
-                            HapticsManager.shared.trigger(.selection)
-                            isAmountFocused = false // Resign keyboard focus
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                                isPresented = false
-                            }
-                        }) {
-                            Image(systemName: SFIcons.close)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(SpendyColors.textPrimary)
-                                .frame(width: 44, height: 44)
-                                .nativeLiquidGlassCircle(isInteractive: true)
-                                .glassMorphID("closeButton", in: converterNamespace)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Spacer()
-                    }
-                    
-                    Text("Currency converter")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(SpendyColors.textPrimary)
+        ZStack(alignment: .top) {
+            SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 320, opacity: 0.30)
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    Spacer().frame(height: 58)
+                    heroSection
+                    conversionCard
+                    rateFooter
                 }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 4)
-            
-            // From Currency Rounded Box
-            HStack(spacing: 12) {
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    showFromCurrencyPicker = true
-                }) {
-                    HStack(spacing: 6) {
-                        Text(CurrencyInfo.flag(for: fromCurrency))
-                            .font(.system(size: 20))
-                        Text(fromCurrency)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(SpendyColors.textPrimary)
-                        Image(systemName: "triangle.fill")
-                            .font(.system(size: 7))
-                            .rotationEffect(.degrees(180))
-                            .foregroundColor(SpendyColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
-                
-                HStack(spacing: 4) {
-                    Text(CurrencyInfo.symbol(for: fromCurrency))
-                        .spendyNumberFont(size: 20, weight: .bold, tracking: -0.6)
-                        .foregroundColor(SpendyColors.textTertiary)
-                    
-                    TextField("100", text: $fromAmount)
-                        .font(.system(size: 24, weight: .bold, design: .default))
-                        .monospacedDigit()
-                        .foregroundColor(SpendyColors.textPrimary)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .focused($isAmountFocused)
-                        .frame(maxWidth: 160)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(SpendyColors.separator, lineWidth: 0.8)
-            }
-            
-            // Middle Exchange Rate Pill / Split Divider
-            HStack {
-                Rectangle()
-                    .fill(SpendyColors.separator)
-                    .frame(height: 1)
-                
-                SpendyGlassEffectContainer {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.medium)
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            let temp = fromCurrency
-                            fromCurrency = toCurrency
-                            toCurrency = temp
-                        }
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.left.and.right")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(SpendyColors.textPrimary)
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("1 \(fromCurrency) =")
-                                    .font(.system(size: 9, weight: .medium))
-                                    .foregroundColor(SpendyColors.textSecondary)
-                                Text("\(CurrencyInfo.symbol(for: toCurrency))\(exchangeRate.formattedNumber(decimals: 2))")
-                                    .spendyNumberFont(size: 10, weight: .bold, tracking: -0.3)
-                                    .foregroundColor(SpendyColors.textPrimary)
-                            }
-                        }
-                        .foregroundColor(SpendyColors.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
-                        .glassMorphID("swapRatePill", in: converterNamespace)
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                Rectangle()
-                    .fill(SpendyColors.separator)
-                .frame(height: 1)
-            }
-            
-            // To Currency Rounded Box
-            HStack(spacing: 12) {
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    showToCurrencyPicker = true
-                }) {
-                    HStack(spacing: 6) {
-                        Text(CurrencyInfo.flag(for: toCurrency))
-                            .font(.system(size: 20))
-                        Text(toCurrency)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(SpendyColors.textPrimary)
-                        Image(systemName: "triangle.fill")
-                            .font(.system(size: 7))
-                            .rotationEffect(.degrees(180))
-                            .foregroundColor(SpendyColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
-                
-                HStack(spacing: 4) {
-                    Text(CurrencyInfo.symbol(for: toCurrency))
-                        .spendyNumberFont(size: 20, weight: .bold, tracking: -0.6)
-                        .foregroundColor(SpendyColors.textTertiary)
-                    
-                    Text(convertedAmount.formattedNumber(decimals: 2))
-                        .spendyNumberFont(size: 24, weight: .bold, tracking: -0.8)
-                        .foregroundColor(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(SpendyColors.separator, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(SpendyColors.separator, lineWidth: 0.8)
-            }
+            .scrollDismissesKeyboard(.interactively)
+
+            topActionBar
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
         }
-        .padding(20)
-        .nativeLiquidGlass(cornerRadius: 32, isInteractive: true)
-        .offset(y: dragOffset)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    if value.translation.height < 0 {
-                        dragOffset = value.translation.height
-                    }
-                }
-                .onEnded { value in
-                    if value.translation.height < -60 {
-                        HapticsManager.shared.trigger(.selection)
-                        isAmountFocused = false // Resign keyboard first
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                            isPresented = false
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            dragOffset = 0.0
-                        }
-                    }
-                }
-        )
+        .background(Color.clear)
+        .presentationDetents([.height(420), .large])
+        .presentationDragIndicator(.hidden)
+        .task {
+            toCurrency = store.currencyCode == "USD" ? "INR" : store.currencyCode
+            await store.refreshExchangeRates()
+        }
         .sheet(isPresented: $showFromCurrencyPicker) {
-            CurrencyPickerSheet(selectedCode: fromCurrency) { currency in
+            CurrencyPickerSheet(selectedCode: fromCurrency, onSelect: { currency in
                 fromCurrency = currency.code
-            }
+            }, allowedCodes: availableCodes)
         }
         .sheet(isPresented: $showToCurrencyPicker) {
-            CurrencyPickerSheet(selectedCode: toCurrency) { currency in
+            CurrencyPickerSheet(selectedCode: toCurrency, onSelect: { currency in
                 toCurrency = currency.code
+            }, allowedCodes: availableCodes)
+        }
+    }
+
+    private var topActionBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: SFIcons.close,
+                size: 44,
+                iconSize: 16,
+                iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Close currency converter",
+                morphID: "closeButton",
+                namespace: sheetNamespace
+            ) {
+                isAmountFocused = false
+                isPresented = false
+            }
+
+            Spacer()
+
+            GlassCircleButton(
+                icon: "arrow.up.arrow.down",
+                size: 44,
+                iconSize: 16,
+                iconWeight: .semibold,
+                foregroundColor: SpendyColors.textPrimary,
+                haptic: .selection,
+                accessibilityLabel: "Swap currencies",
+                morphID: "swapButton",
+                namespace: sheetNamespace
+            ) {
+                swapCurrencies()
             }
         }
+    }
+
+    private var heroSection: some View {
+        VStack(spacing: 9) {
+            SpendyIconBadge(
+                sfSymbol: "arrow.left.arrow.right",
+                color: SpendyColors.primaryBlue,
+                size: .large,
+                style: .circle,
+                monogramName: "Conversion"
+            )
+            Text(convertedAmount.map {
+                "\(CurrencyInfo.symbol(for: toCurrency))\($0.formattedNumber(decimals: fractionDigits(for: toCurrency)))"
+            } ?? "—")
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+                .accessibilityLabel("Converted amount in \(toCurrency)")
+        }
+    }
+
+    private var conversionCard: some View {
+        VStack(spacing: 0) {
+            conversionRow(label: "From", code: fromCurrency, isInput: true) {
+                isAmountFocused = false
+                showFromCurrencyPicker = true
+            }
+            cardDivider
+            conversionRow(label: "To", code: toCurrency, isInput: false) {
+                isAmountFocused = false
+                showToCurrencyPicker = true
+            }
+            cardDivider
+            HStack(spacing: 10) {
+                Text("Rate")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer(minLength: 4)
+                if let exchangeRate {
+                    Text("1 \(fromCurrency) = \(exchangeRate.formatted(.number.precision(.significantDigits(4...6)))) \(toCurrency)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                } else {
+                    Text(store.isRefreshingRates ? "Updating…" : "Unavailable")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+            }
+            .frame(minHeight: 52)
+        }
+        .padding(.horizontal, 18)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(SpendyColors.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(SpendyColors.separator, lineWidth: 0.8)
+                }
+        }
+    }
+
+    private var cardDivider: some View {
+        Divider().background(SpendyColors.separator)
+    }
+
+    private func conversionRow(label: String, code: String, isInput: Bool, choose: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+
+            Spacer(minLength: 4)
+
+            Button(action: choose) {
+                HStack(spacing: 5) {
+                    Text(CurrencyInfo.flag(for: code))
+                        .font(.system(size: 20))
+                    Text(code)
+                        .font(.system(size: 15, weight: .semibold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+                .foregroundStyle(SpendyColors.textPrimary)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frame(width: 96, alignment: .leading)
+            .accessibilityLabel("Choose \(label.lowercased()) currency, \(code)")
+
+            if isInput {
+                TextField("0", text: $fromAmount)
+                    .font(.system(size: 20, weight: .semibold))
+                    .monospacedDigit()
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .focused($isAmountFocused)
+                    .frame(width: 116)
+                    .accessibilityLabel("Amount in \(code)")
+            } else {
+                Text(convertedAmount.map { $0.formattedNumber(decimals: fractionDigits(for: code)) } ?? "—")
+                    .font(.system(size: 20, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(width: 116, alignment: .trailing)
+            }
+        }
+        .frame(minHeight: 62)
+    }
+
+    private var rateFooter: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                if let updated = store.ratesLastUpdated {
+                    Text("\(store.ratesError == nil ? "Updated" : "Cached rate from") \(updated.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                } else {
+                    Text(store.ratesError ?? "Waiting for live rates")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                Link("Rates by Exchange Rate API", destination: URL(string: "https://www.exchangerate-api.com")!)
+                    .font(.system(size: 12))
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+            Spacer(minLength: 0)
+            Button {
+                Task { await store.refreshExchangeRates(force: true) }
+            } label: {
+                if store.isRefreshingRates {
+                    ProgressView().frame(width: 44, height: 44)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .nativeLiquidGlassCircle(isInteractive: true)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(store.isRefreshingRates)
+            .accessibilityLabel("Refresh exchange rates")
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func swapCurrencies() {
+        HapticsManager.shared.trigger(.selection)
+        if let convertedAmount {
+            let digits = fractionDigits(for: toCurrency)
+            fromAmount = convertedAmount.formatted(.number.grouping(.never).precision(.fractionLength(0...digits)))
+        }
+        swap(&fromCurrency, &toCurrency)
     }
 }

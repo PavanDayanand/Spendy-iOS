@@ -487,32 +487,6 @@ struct DashboardView: View {
                     .padding(.horizontal, 20)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     
-                    if showCurrencyConverter {
-                        Color(uiColor: .dynamic(
-                            light: UIColor(white: 0.0, alpha: 0.25),
-                            dark: UIColor(white: 0.0, alpha: 0.55)
-                        ))
-                        .ignoresSafeArea()
-                        .transition(.opacity)
-                        .onTapGesture {
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                                showCurrencyConverter = false
-                            }
-                        }
-                        
-                        VStack {
-                            FloatingCurrencyConverterView(isPresented: $showCurrencyConverter)
-                                .padding(.horizontal, 20)
-                                .padding(.top, topInset + 60)
-                            Spacer()
-                        }
-                        .ignoresSafeArea(.keyboard, edges: .bottom)
-                        .ignoresSafeArea(edges: .top)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .zIndex(10)
-                    }
-                    
                     // 2. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
                     recentTransactionsDrawer(
                         totalHeight: totalHeight,
@@ -532,6 +506,9 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
+            }
+            .sheet(isPresented: $showCurrencyConverter) {
+                FloatingCurrencyConverterView(isPresented: $showCurrencyConverter)
             }
             .sheet(isPresented: $showHomeConfigSheet) {
                 HomeConfigurationSheet()
@@ -706,9 +683,7 @@ struct DashboardView: View {
                     accessibilityLabel: "Currency converter"
                 ) {
                     HapticsManager.shared.trigger(.selection)
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                        showCurrencyConverter = true
-                    }
+                    showCurrencyConverter = true
                 }
                 
                 // 3. Privacy Eye Toggle Button

@@ -152,23 +152,21 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
-    var ratesToUSD: [String: Double] = [
-        "USD": 1.0,
-        "INR": 86.85,
-        "EUR": 0.95,
-        "GBP": 0.79,
-        "JPY": 152.40,
-        "CAD": 1.41,
-        "AUD": 1.55,
-        "AED": 3.67,
-        "SGD": 1.34
-    ] {
+    // The API returns units of each currency per USD. Never use sample rates as live data.
+    var ratesToUSD: [String: Double] = ["USD": 1.0] {
         didSet { scheduleSave() }
     }
     
     var ratesLastUpdated: Date? = nil {
         didSet { scheduleSave() }
     }
+
+    var ratesNextUpdate: Date? = nil {
+        didSet { scheduleSave() }
+    }
+
+    var isRefreshingRates = false
+    var ratesError: String? = nil
     
     var ratesLastUpdatedFormatted: String {
         guard let date = ratesLastUpdated else { return "Not updated yet" }
@@ -349,7 +347,7 @@ final class ExpenseStore {
     // MARK: - Initializer & Persistence
     init() {
         loadFromDisk()
-        fetchLiveRates()
+        Task { await refreshExchangeRates() }
         HapticsManager.shared.isEnabled = hapticsEnabled
     }
     
@@ -383,6 +381,7 @@ final class ExpenseStore {
         var customFolders: [Folder]?
         var ratesToUSD: [String: Double]?
         var ratesLastUpdated: Date?
+        var ratesNextUpdate: Date?
         var hasCompletedOnboarding: Bool?
         // Read only for migrating profile images saved by older versions.
         var selectedSticker: String?
@@ -441,17 +440,8 @@ final class ExpenseStore {
                 self.currencyCode = payload.currencyCode
                 self.customFolders = payload.customFolders ?? []
                 self.ratesLastUpdated = payload.ratesLastUpdated
-                self.ratesToUSD = payload.ratesToUSD ?? [
-                    "USD": 1.0,
-                    "INR": 86.85,
-                    "EUR": 0.95,
-                    "GBP": 0.79,
-                    "JPY": 152.40,
-                    "CAD": 1.41,
-                    "AUD": 1.55,
-                    "AED": 3.67,
-                    "SGD": 1.34
-                ]
+                self.ratesNextUpdate = payload.ratesNextUpdate
+                self.ratesToUSD = payload.ratesLastUpdated == nil ? ["USD": 1.0] : (payload.ratesToUSD ?? ["USD": 1.0])
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
                 // Earlier versions copied the chosen sticker into the profile photo.
                 // Remove only that exact generated image; preserve real profile photos.
@@ -518,6 +508,7 @@ final class ExpenseStore {
             customFolders: customFolders,
             ratesToUSD: ratesToUSD,
             ratesLastUpdated: ratesLastUpdated,
+            ratesNextUpdate: ratesNextUpdate,
             hasCompletedOnboarding: hasCompletedOnboarding,
             selectedSticker: nil
         )
@@ -1293,28 +1284,47 @@ final class ExpenseStore {
         HapticsManager.shared.trigger(.selection)
     }
     
-    func fetchLiveRates() {
-        guard let url = URL(string: "https://open.er-api.com/v6/latest/USD") else { return }
-        
-        Task {
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                struct APIResponse: Codable {
-                    let result: String
-                    let rates: [String: Double]
-                }
-                let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
-                guard decoded.result == "success" else { return }
-                var updatedRates = ratesToUSD
-                for (code, rate) in decoded.rates where rate.isFinite && rate > 0 {
-                    updatedRates[code] = rate
-                }
-                ratesToUSD = updatedRates
-                ratesLastUpdated = Date()
-            } catch {
-                print("Failed to decode currency rates: \(error)")
+    func refreshExchangeRates(force: Bool = false) async {
+        guard !isRefreshingRates else { return }
+        if !force, let nextCheck = ratesNextUpdate, Date() < nextCheck { return }
+
+        isRefreshingRates = true
+        ratesError = nil
+        defer { isRefreshingRates = false }
+
+        do {
+            let url = URL(string: "https://open.er-api.com/v6/latest/USD")!
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 15
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                throw ExchangeRateError.invalidResponse
             }
+            struct APIResponse: Decodable {
+                let result: String
+                let base_code: String
+                let time_last_update_unix: TimeInterval
+                let time_next_update_unix: TimeInterval
+                let rates: [String: Double]
+            }
+            let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
+            let validRates = decoded.rates.filter { $0.value.isFinite && $0.value > 0 }
+            guard decoded.result == "success", decoded.base_code == "USD",
+                  validRates.count > 20, validRates["USD"] == 1,
+                  decoded.time_last_update_unix > 0,
+                  decoded.time_next_update_unix > decoded.time_last_update_unix else {
+                throw ExchangeRateError.invalidResponse
+            }
+            ratesToUSD = validRates
+            ratesLastUpdated = Date(timeIntervalSince1970: decoded.time_last_update_unix)
+            ratesNextUpdate = Date(timeIntervalSince1970: decoded.time_next_update_unix)
+        } catch {
+            ratesError = "Couldn't update rates. Check your connection and try again."
         }
+    }
+
+    private enum ExchangeRateError: Error {
+        case invalidResponse
     }
 
     
@@ -1384,6 +1394,7 @@ final class ExpenseStore {
             customFolders: customFolders,
             ratesToUSD: ratesToUSD,
             ratesLastUpdated: ratesLastUpdated,
+            ratesNextUpdate: ratesNextUpdate,
             hasCompletedOnboarding: hasCompletedOnboarding,
             selectedSticker: nil
         )
