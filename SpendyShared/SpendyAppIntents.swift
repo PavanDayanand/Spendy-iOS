@@ -37,7 +37,7 @@ nonisolated enum TransactionTypeAppEnum: String, AppEnum, Sendable {
     ]
 }
 
-nonisolated struct CategoryAppEntity: AppEntity, Identifiable, Sendable {
+nonisolated struct CategoryAppEntity: IndexedEntity, Identifiable, Sendable {
     static var defaultQuery = CategoryAppEntityQuery()
     static var typeDisplayRepresentation = TypeDisplayRepresentation("Category")
 
@@ -50,11 +50,30 @@ nonisolated struct CategoryAppEntity: AppEntity, Identifiable, Sendable {
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
             title: "\(name)",
-            image: .init(
-                systemName: sfSymbol,
-                tintColor: UIColor(SpendyHexColor.color(from: colorHex))
-            )
+            image: .init(systemName: sfSymbol)
         )
+    }
+}
+
+struct OpenCategoryIntent: OpenIntent {
+    static var title: LocalizedStringResource = "Open Category"
+
+    @Parameter(title: "Category")
+    var target: CategoryAppEntity
+
+    init() {}
+
+    init(target: CategoryAppEntity) {
+        self.target = target
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        #if !WIDGET_EXTENSION
+        QuickActionManager.shared.targetTab = .home
+        QuickActionManager.shared.requestedCategoryId = target.id
+        #endif
+        return .result()
     }
 }
 
@@ -143,7 +162,7 @@ struct TransactionSnippetView: View {
     }
 }
 
-nonisolated struct LogTransactionIntent: AppIntent {
+struct LogTransactionIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Transaction"
     static var description = IntentDescription(
         "Log an expense or income in Spendy.",
@@ -322,6 +341,121 @@ nonisolated struct QuickAddExpenseIntent: AppIntent {
     }
 }
 
+nonisolated struct OpenReceiptScannerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Scan Receipt"
+    static var description = IntentDescription("Open Spendy’s receipt camera.", categoryName: "Transactions")
+    static var openAppWhenRun = true
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+    static var isDiscoverable = true
+
+    static var supportedModes: IntentModes { .foreground(.immediate) }
+
+    init() {}
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        #if !WIDGET_EXTENSION
+        QuickActionManager.shared.presentReceiptScan()
+        #endif
+        return .result()
+    }
+}
+
+nonisolated enum SpendingPeriodAppEnum: String, AppEnum, Sendable {
+    case today
+    case week
+    case month
+
+    static var typeDisplayRepresentation = TypeDisplayRepresentation("Period")
+    static var caseDisplayRepresentations: [SpendingPeriodAppEnum: DisplayRepresentation] = [
+        .today: DisplayRepresentation(title: "Today"),
+        .week: DisplayRepresentation(title: "Last 7 days"),
+        .month: DisplayRepresentation(title: "This month")
+    ]
+
+    var spokenName: String {
+        switch self {
+        case .today: "today"
+        case .week: "in the last seven days"
+        case .month: "this month"
+        }
+    }
+}
+
+struct SpendingSummaryIntent: AppIntent {
+    static var title: LocalizedStringResource = "Check Spending"
+    static var description = IntentDescription("Find out how much you spent today, in the last seven days, or this month.", categoryName: "Insights")
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+    static var isDiscoverable = true
+
+    @Parameter(title: "Period", default: .today)
+    var period: SpendingPeriodAppEnum
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Check spending for \(\.$period)")
+    }
+
+    init() { period = .today }
+    init(period: SpendingPeriodAppEnum) { self.period = period }
+
+    func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
+        let snapshot = WidgetDataManager.shared.loadSnapshot()
+        let amount: Double
+        switch period {
+        case .today: amount = snapshot.todayTotal
+        case .week: amount = snapshot.weeklySpending.reduce(0) { $0 + $1.amount }
+        case .month: amount = snapshot.monthTotal
+        }
+        let formatted = SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)
+        return .result(value: amount, dialog: IntentDialog("You spent \(formatted) \(period.spokenName)."))
+    }
+}
+
+nonisolated struct BudgetStatusIntent: AppIntent {
+    static var title: LocalizedStringResource = "Check Budget Room"
+    static var description = IntentDescription("Find out what remains in your current budget cycle.", categoryName: "Insights")
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+    static var isDiscoverable = true
+
+    init() {}
+
+    func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
+        let snapshot = WidgetDataManager.shared.loadSnapshot()
+        guard snapshot.budgetTotal > 0 else {
+            return .result(value: 0, dialog: IntentDialog("You haven’t set a budget in Spendy yet."))
+        }
+        let amount = snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget
+        let formatted = SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)
+        let message = snapshot.budgetOverage > 0
+            ? "You are \(formatted) over budget."
+            : "You have \(formatted) left for this budget cycle, with \(snapshot.daysLeft) days remaining."
+        return .result(value: amount, dialog: IntentDialog(stringLiteral: message))
+    }
+}
+
+struct CategorySpendingIntent: AppIntent {
+    static var title: LocalizedStringResource = "Check Category Spending"
+    static var description = IntentDescription("Find this month’s spending in a category.", categoryName: "Insights")
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+    static var isDiscoverable = true
+
+    @Parameter(title: "Category", requestValueDialog: IntentDialog("Which category?"))
+    var category: CategoryAppEntity
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Check spending in \(\.$category)")
+    }
+
+    init() {}
+
+    func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
+        let snapshot = WidgetDataManager.shared.loadSnapshot()
+        let amount = snapshot.categorySpending.first(where: { $0.id == category.id })?.amount ?? 0
+        let formatted = SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)
+        return .result(value: amount, dialog: IntentDialog("You spent \(formatted) on \(category.name) this month."))
+    }
+}
+
 #if !WIDGET_EXTENSION
 nonisolated struct SpendyShortcutsProvider: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor { .blue }
@@ -366,6 +500,34 @@ nonisolated struct SpendyShortcutsProvider: AppShortcutsProvider {
             shortTitle: "Quick Add",
             systemImageName: "plus"
         )
+
+        AppShortcut(
+            intent: OpenReceiptScannerIntent(),
+            phrases: ["Scan a receipt in \(.applicationName)"],
+            shortTitle: "Scan Receipt",
+            systemImageName: "camera.viewfinder"
+        )
+
+        AppShortcut(
+            intent: SpendingSummaryIntent(period: .today),
+            phrases: ["How much did I spend today in \(.applicationName)"],
+            shortTitle: "Today’s Spending",
+            systemImageName: "chart.bar"
+        )
+
+        AppShortcut(
+            intent: SpendingSummaryIntent(period: .month),
+            phrases: ["How much did I spend this month in \(.applicationName)"],
+            shortTitle: "Monthly Spending",
+            systemImageName: "calendar"
+        )
+
+        AppShortcut(
+            intent: BudgetStatusIntent(),
+            phrases: ["How much budget is left in \(.applicationName)"],
+            shortTitle: "Budget Room",
+            systemImageName: "circle.dotted"
+        )
     }
 }
 #endif
@@ -386,7 +548,7 @@ nonisolated enum SpendyWidgetFocus: String, AppEnum, Sendable {
     ]
 }
 
-nonisolated struct SpendyHomeWidgetIntent: WidgetConfigurationIntent {
+struct SpendyHomeWidgetIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Spendy Widget"
     static var description = IntentDescription("Choose Today, Budget, This Week, or a category.")
     static var isDiscoverable = false

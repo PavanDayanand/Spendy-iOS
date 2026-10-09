@@ -4,6 +4,7 @@
 //
 
 import AppIntents
+import CoreSpotlight
 import SwiftUI
 
 final class SpendyAppDelegate: NSObject, UIApplicationDelegate {
@@ -77,9 +78,36 @@ struct SpendyApp: App {
         store.ingestPendingWidgetTransactions()
         WidgetDataManager.shared.publish(from: store)
         SpendyShortcutsProvider.updateAppShortcutParameters()
+        indexCategoriesForSiri()
         quickActionManager.registerDynamicShortcuts()
         if WidgetDataManager.shared.consumePendingQuickAdd() {
             quickActionManager.triggerQuickAdd()
+        }
+    }
+
+    @MainActor
+    private func indexCategoriesForSiri() {
+        let categories = WidgetDataManager.shared.loadCategories()
+            .filter { !$0.isHidden }
+            .map {
+                CategoryAppEntity(
+                    id: $0.id,
+                    name: $0.name,
+                    sfSymbol: $0.sfSymbol,
+                    colorHex: $0.colorHex,
+                    isExpense: $0.isExpense
+                )
+            }
+        Task {
+            let index = CSSearchableIndex(name: "SpendyCategories")
+            do {
+                try await index.deleteAppEntities(ofType: CategoryAppEntity.self)
+                try await index.indexAppEntities(categories)
+            } catch {
+                #if DEBUG
+                print("Category indexing for Siri failed: \(error)")
+                #endif
+            }
         }
     }
 }

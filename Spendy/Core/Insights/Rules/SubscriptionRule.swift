@@ -96,7 +96,7 @@ struct SubscriptionRule: InsightRule {
             // 3. Billing Date Alerts (Overdue vs. Upcoming)
             let daysUntil = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: sub.nextBillingDate)).day ?? 999
             
-            if daysUntil <= 0 && daysUntil >= -7 {
+            if daysUntil < 0 && daysUntil >= -7 {
                 // Overdue (Critical)
                 let evidence = InsightEvidence.subscriptionOverdue(
                     subscriptionId: subId,
@@ -125,8 +125,8 @@ struct SubscriptionRule: InsightRule {
                         canActAsDriver: false
                     )
                 )
-            } else if daysUntil > 0 && daysUntil <= 3 {
-                // Upcoming Due in 1-3 Days
+            } else if daysUntil >= 0 && daysUntil <= 3 {
+                // Due today or upcoming in 1-3 days
                 let evidence = InsightEvidence.subscriptionDue(
                     subscriptionId: subId,
                     subscriptionName: sub.name,

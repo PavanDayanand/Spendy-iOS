@@ -235,6 +235,7 @@ struct HeroSpendBarChart: View {
 // MARK: - Dashboard View
 struct DashboardView: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(QuickActionManager.self) private var quickActionManager
     @Binding var showAddTransaction: Bool
     var selectedTab: Binding<AppTab>? = nil
     var isSheetExpandedBinding: Binding<Bool>? = nil
@@ -588,8 +589,29 @@ struct DashboardView: View {
                     isSubpageActiveBinding?.wrappedValue = active
                 }
             }
+            .onChange(of: quickActionManager.shouldOpenBudget) { _, shouldOpen in
+                if shouldOpen {
+                    showBudgetHub = true
+                    quickActionManager.shouldOpenBudget = false
+                }
+            }
+            .onChange(of: quickActionManager.requestedCategoryId) { _, id in
+                if let id, let category = store.categories.first(where: { $0.id == id }) {
+                    selectedCategoryForSheet = category
+                    quickActionManager.requestedCategoryId = nil
+                }
+            }
             .onAppear {
                 isSubpageActiveBinding?.wrappedValue = isSubpageActive
+                if quickActionManager.shouldOpenBudget {
+                    showBudgetHub = true
+                    quickActionManager.shouldOpenBudget = false
+                }
+                if let id = quickActionManager.requestedCategoryId,
+                   let category = store.categories.first(where: { $0.id == id }) {
+                    selectedCategoryForSheet = category
+                    quickActionManager.requestedCategoryId = nil
+                }
             }
         }
     }

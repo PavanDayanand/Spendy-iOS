@@ -568,6 +568,12 @@ final class ExpenseStore {
         if let cached = _cachedBalances {
             return cached
         }
+        let balances = Self.calculateAccountBalances(accounts: accounts, transactions: transactions)
+        _cachedBalances = balances
+        return balances
+    }
+
+    static func calculateAccountBalances(accounts: [Account], transactions: [Transaction]) -> [String: Double] {
         var balances: [String: Double] = [:]
         for account in accounts {
             balances[account.id] = account.openingBalance
@@ -582,11 +588,11 @@ final class ExpenseStore {
             case .transfer:
                 balances[t.accountId, default: 0] -= t.amount
                 if let toId = t.toAccountId {
-                    balances[toId, default: 0] += (t.toAmount ?? t.amount)
+                    // Accounts share one app currency, so a transfer preserves the total balance.
+                    balances[toId, default: 0] += t.amount
                 }
             }
         }
-        _cachedBalances = balances
         return balances
     }
     
@@ -713,6 +719,8 @@ final class ExpenseStore {
     }
     
     func addTransaction(_ transaction: Transaction) {
+        var transaction = transaction
+        if transaction.type == .transfer { transaction.toAmount = transaction.amount }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             transactions.insert(transaction, at: 0)
         }
@@ -720,6 +728,8 @@ final class ExpenseStore {
     }
 
     func addTransactionFromIntent(_ transaction: Transaction) {
+        var transaction = transaction
+        if transaction.type == .transfer { transaction.toAmount = transaction.amount }
         transactions.insert(transaction, at: 0)
     }
 
@@ -767,6 +777,8 @@ final class ExpenseStore {
     
     func updateTransaction(_ transaction: Transaction) {
         if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
+            var transaction = transaction
+            if transaction.type == .transfer { transaction.toAmount = transaction.amount }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 transactions[index] = transaction
             }

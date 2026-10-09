@@ -14,6 +14,7 @@ enum SettingsDestination: Hashable {
     case dataBackup
     case insightCardsGallery
     case appIcon
+    case widgets
 }
 
 struct SettingsView: View {
@@ -94,6 +95,10 @@ struct SettingsView: View {
                                 appIconRow
                             }
                             .buttonStyle(.plain)
+                            groupDivider
+                            NavigationLink(value: SettingsDestination.widgets) {
+                                linkRow(icon: "square.grid.2x2", title: "Home Screen widgets", value: nil)
+                            }
                         }
 
                         settingsGroup(title: "Alerts") {
@@ -213,6 +218,8 @@ struct SettingsView: View {
                     InsightCardsGalleryView()
                 case .appIcon:
                     AppIconPickerView()
+                case .widgets:
+                    WidgetShowcaseView()
                 }
             }
             .onAppear {

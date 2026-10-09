@@ -239,7 +239,7 @@ enum InsightMessageBuilder {
             }()
             return InsightMessagePayload(
                 headline: "\(name) is due \(dayText).",
-                supportingText: "\(formattedAmount) comes out then.",
+                supportingText: "\(formattedAmount) is the expected charge.",
                 emphasis: [.highlight(name), .highlight(dayText)],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View \(name) →") : nil
             )

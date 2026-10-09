@@ -6,6 +6,7 @@
 //  Unified shared analytics architecture with live-scrubbing chart and 3 full-width sections.
 //
 
+import AppIntents
 import SwiftUI
 
 struct CategoryAnalyticsSheet: View {
@@ -18,7 +19,18 @@ struct CategoryAnalyticsSheet: View {
     var calendarControlMorphID: String = "calendarMenu"
     var onDismiss: (() -> Void)? = nil
     
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 27.0, *) {
+            content.appEntityIdentifier(
+                EntityIdentifier(for: CategoryAppEntity.self, identifier: category.id)
+            )
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         SharedEntityAnalyticsSheet(
             entity: .category(category),
             initialType: initialType,

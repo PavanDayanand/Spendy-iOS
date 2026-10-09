@@ -18,6 +18,7 @@ struct BudgetView: View {
     @State private var isEditingExisting: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var selectedCategoryForSheet: Category? = nil
+    @State private var isCalculatorExpanded: Bool = false
     
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
@@ -204,101 +205,86 @@ struct BudgetView: View {
                 pacingState: store.budgetPacingState
             )
             
-            // Integrated Semantic Budget Moment
-            VStack(alignment: .leading, spacing: 10) {
-                SpendyInsightBrandMark(style: .kicker)
-                EditorialInsightRailView(
-                    moments: budgetInsightMoments,
-                    showSectionHeader: false
-                )
-            }
-            
-            // Dual Stat Cards Row (Exact Same Size as Home Screen Insight Cards, NO ICONS)
-            HStack(spacing: 10) {
-                // Card 1: Left today
-                let isExceededToday = store.todayExpenses > (target / Double(max(1, store.budgetDaysLeft)))
-                
+            // Show the insight rail only when it has something useful to say.
+            let usefulInsights = budgetInsightMoments.filter { !$0.isInsufficientData }
+            if !usefulInsights.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Left today")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    
-                    Text(store.leftToday.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .spendyNumberFont(size: 24, weight: .heavy, tracking: -0.8)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    
-                    Spacer(minLength: 12)
-                    
-                    VStack(alignment: .leading, spacing: 6) {
-                        Capsule()
-                            .fill(isExceededToday ? SpendyColors.warningOrange : SpendyColors.incomeGreen)
-                            .frame(height: 6)
-                        
-                        Text(isExceededToday ? "Above daily target" : "Safe daily pace")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(isExceededToday ? SpendyColors.warningOrange : SpendyColors.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, minHeight: 185, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                }
-                
-                // Card 2: Budget
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Budget")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    
-                    Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                        .spendyNumberFont(size: 24, weight: .heavy, tracking: -0.8)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    
-                    Spacer(minLength: 12)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Available to allocate:")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Text(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                            .spendyNumberFont(size: 13, weight: .bold, tracking: -0.3)
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                    }
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, minHeight: 185, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(SpendyColors.cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
+                    SpendyInsightBrandMark(style: .kicker)
+                    EditorialInsightRailView(
+                        moments: usefulInsights,
+                        showSectionHeader: false
+                    )
                 }
             }
-            
-            // What-If Budget Calculator Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Budget Calculator")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .padding(.horizontal, 4)
-                
+
+            budgetSummaryRows(target: target, spent: spent)
+
+            Button {
+                withAnimation(AppMotion.fluidSpring) {
+                    isCalculatorExpanded.toggle()
+                }
+                HapticsManager.shared.trigger(.selection)
+            } label: {
+                HStack {
+                    Text("Plan daily spending")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    Spacer()
+                    Image(systemName: isCalculatorExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isCalculatorExpanded ? "Hide budget calculator" : "Show budget calculator")
+
+            if isCalculatorExpanded {
                 WhatIfPlannerView()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+    }
+
+    private func budgetSummaryRows(target: Double, spent: Double) -> some View {
+        let isOverBudget = spent > target
+        let remaining = abs(target - spent)
+
+        return VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isOverBudget ? "Over budget" : "Left this cycle")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Text("of \(target.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                }
+                Spacer(minLength: 8)
+                Text(remaining.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 23, weight: .bold, tracking: -0.5)
+                    .foregroundStyle(isOverBudget ? SpendyColors.warningOrange : SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .padding(.vertical, 14)
+
+            Divider().overlay(SpendyColors.separator)
+
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Daily pace")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer(minLength: 8)
+                Text(store.safeDailyAllowance.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .spendyNumberFont(size: 23, weight: .bold, tracking: -0.5)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .padding(.vertical, 14)
+        }
+        .padding(.horizontal, 4)
     }
 }

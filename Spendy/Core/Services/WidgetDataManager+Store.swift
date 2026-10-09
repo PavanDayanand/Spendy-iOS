@@ -102,7 +102,8 @@ extension WidgetDataManager {
                 WidgetDaySpending(
                     dayLabel: String(dayFormatter.string(from: targetDate).prefix(1)),
                     amount: daySum,
-                    isToday: calendar.isDateInToday(targetDate)
+                    isToday: calendar.isDateInToday(targetDate),
+                    dayStart: calendar.startOfDay(for: targetDate)
                 )
             )
         }
@@ -157,6 +158,7 @@ extension WidgetDataManager {
             budgetProgress: budgetProgress,
             budgetOverage: budgetOverage,
             budgetPeriod: store.budget.period.rawValue,
+            budgetCycleEnd: store.budget.isActive ? store.budgetCycleEnd() : nil,
             topCategoryName: topCategory?.label ?? "None",
             topCategorySymbol: topCategory?.sfSymbol ?? "tag.fill",
             topCategoryColorHex: topCategory?.colorHex ?? "#007AFF",

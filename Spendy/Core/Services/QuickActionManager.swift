@@ -16,7 +16,10 @@ final class QuickActionManager {
     
     // Observable UI Triggers
     var shouldPresentQuickAdd: Bool = false
+    var shouldPresentReceiptScan: Bool = false
     var targetTab: AppTab? = nil
+    var shouldOpenBudget: Bool = false
+    var requestedCategoryId: String? = nil
     
     // Shortcut Item Types
     enum ShortcutType: String {
@@ -73,6 +76,10 @@ final class QuickActionManager {
     func presentQuickAddFromIntent() {
         shouldPresentQuickAdd = true
     }
+
+    func presentReceiptScan() {
+        shouldPresentReceiptScan = true
+    }
     
     /// Handles deep link URLs (e.g. spendy://quick-add or spendy://analytics)
     func handleURL(_ url: URL) {
@@ -80,8 +87,16 @@ final class QuickActionManager {
         let host = url.host?.lowercased() ?? ""
         let path = url.path.lowercased()
         
-        if host == "quick-add" || host == "log" || path.contains("quick-add") || path.contains("log") {
+        if host == "scan" {
+            presentReceiptScan()
+        } else if host == "quick-add" || host == "log" || path.contains("quick-add") || path.contains("log") {
             triggerQuickAdd()
+        } else if host == "budget" {
+            targetTab = .home
+            shouldOpenBudget = true
+        } else if host == "category", let categoryId = url.pathComponents.dropFirst().first {
+            targetTab = .home
+            requestedCategoryId = categoryId
         } else if host == "home" || path.contains("home") {
             return
         } else if host == "analytics" || path.contains("analytics") {

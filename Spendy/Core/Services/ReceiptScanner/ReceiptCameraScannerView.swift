@@ -15,6 +15,7 @@ struct ReceiptCameraCaptureView: View {
 
     var onCapture: (UIImage) -> Void
     var onCancel: () -> Void
+    var onChoosePhoto: () -> Void
 
     var body: some View {
         ZStack {
@@ -82,6 +83,9 @@ struct ReceiptCameraCaptureView: View {
                                 }
                                 .font(.subheadline.weight(.semibold))
                             }
+                            Button("Choose photo", action: onChoosePhoto)
+                                .font(.subheadline.weight(.semibold))
+                                .frame(minWidth: 120, minHeight: 44)
                         }
                     }
                     .padding(.horizontal, 28)

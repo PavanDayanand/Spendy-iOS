@@ -29,10 +29,15 @@ struct SpendyWidgetTimelineProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SpendyWidgetEntry>) -> Void) {
-        let snapshot = WidgetDataManager.shared.loadSnapshot()
         let now = Date()
+        let snapshot = WidgetDataManager.shared.loadSnapshot(asOf: now)
+        let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now))
+            ?? now.addingTimeInterval(86_400)
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now.addingTimeInterval(900)
-        completion(Timeline(entries: [SpendyWidgetEntry(date: now, snapshot: snapshot)], policy: .after(nextUpdate)))
+        completion(Timeline(entries: [
+            SpendyWidgetEntry(date: now, snapshot: snapshot),
+            SpendyWidgetEntry(date: midnight, snapshot: WidgetDataManager.shared.loadSnapshot(asOf: midnight))
+        ], policy: .after(nextUpdate)))
     }
 }
 
@@ -47,11 +52,20 @@ struct SpendyConfigurableProvider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: SpendyHomeWidgetIntent, in context: Context) async -> Timeline<SpendyConfiguredEntry> {
-        let snapshot = WidgetDataManager.shared.loadSnapshot()
         let now = Date()
+        let snapshot = WidgetDataManager.shared.loadSnapshot(asOf: now)
+        let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now))
+            ?? now.addingTimeInterval(86_400)
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now.addingTimeInterval(900)
         return Timeline(
-            entries: [SpendyConfiguredEntry(date: now, snapshot: snapshot, configuration: configuration)],
+            entries: [
+                SpendyConfiguredEntry(date: now, snapshot: snapshot, configuration: configuration),
+                SpendyConfiguredEntry(
+                    date: midnight,
+                    snapshot: WidgetDataManager.shared.loadSnapshot(asOf: midnight),
+                    configuration: configuration
+                )
+            ],
             policy: .after(next)
         )
     }

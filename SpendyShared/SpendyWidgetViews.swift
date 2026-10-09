@@ -2,7 +2,7 @@
 //  SpendyWidgetViews.swift
 //  Spendy
 //
-//  Glanceable widgets: big category icons, one number, padding on every side.
+//  Glanceable Home Screen widgets with a quiet monochrome visual language.
 //
 
 import AppIntents
@@ -13,7 +13,7 @@ import WidgetKit
 enum SpendyWidgetPalette {
     static let canvas = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)
+            ? UIColor(red: 18 / 255, green: 18 / 255, blue: 20 / 255, alpha: 1)
             : UIColor.white
     })
     static let text = Color(uiColor: .label)
@@ -23,6 +23,11 @@ enum SpendyWidgetPalette {
         trait.userInterfaceStyle == .dark
             ? UIColor(white: 1, alpha: 0.10)
             : UIColor(white: 0, alpha: 0.06)
+    })
+    static let line = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(white: 1, alpha: 0.13)
+            : UIColor(white: 0, alpha: 0.10)
     })
     static let inverse = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark ? .black : .white
@@ -37,14 +42,12 @@ struct WidgetCategoryBadge: View {
     var size: CGFloat = 44
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(SpendyHexColor.color(from: colorHex))
-            Image(systemName: symbol.isEmpty ? "tag.fill" : symbol)
-                .font(.system(size: size * 0.44, weight: .bold))
-                .foregroundStyle(SpendyHexColor.glyphColor(from: colorHex))
-        }
-        .frame(width: size, height: size)
+        Image(systemName: symbol.isEmpty ? "tag" : symbol)
+            .font(.system(size: size * 0.43, weight: .semibold))
+            .foregroundStyle(SpendyWidgetPalette.text)
+            .frame(width: size, height: size)
+            .background(SpendyWidgetPalette.fill, in: Circle())
+            .widgetAccentable()
         .accessibilityHidden(true)
     }
 }
@@ -55,35 +58,14 @@ struct SpendyWidgetAmount: View {
     var size: CGFloat = 32
     var color: Color = SpendyWidgetPalette.text
 
-    private var parts: (integer: String, decimal: String) {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = abs(amount) >= 100 ? 0 : 2
-        let raw = formatter.string(from: NSNumber(value: abs(amount))) ?? "0"
-        let bits = raw.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
-        let decimals = bits.count > 1 ? ".\(bits[1])" : ""
-        return (String(bits.first ?? "0"), decimals)
-    }
-
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 1) {
-            Text(symbol)
-                .font(.system(size: size * 0.58, weight: .bold, design: .monospaced))
-            Text(parts.integer)
-                .font(.system(size: size, weight: .heavy, design: .monospaced))
-                .monospacedDigit()
-            if !parts.decimal.isEmpty {
-                Text(parts.decimal)
-                    .font(.system(size: max(13, size * 0.46), weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(color.opacity(0.55))
-            }
-        }
+        Text(SpendyWidgetFormat.amount(amount, symbol: symbol, decimals: amount == 0 || abs(amount) >= 100 ? 0 : 2))
+            .font(.system(size: size, weight: .bold, design: .rounded))
+            .monospacedDigit()
         .foregroundStyle(color)
-        .tracking(-1.0)
+        .tracking(-1.1)
         .lineLimit(1)
-        .minimumScaleFactor(0.8)
+        .minimumScaleFactor(0.58)
     }
 }
 
@@ -107,24 +89,29 @@ struct SpendyWeekBars: View {
     var height: CGFloat = 52
 
     var body: some View {
-        let maxVal = max(days.map(\.amount).max() ?? 1, 1)
-        let accent = SpendyHexColor.color(from: accentHex)
-        HStack(alignment: .bottom, spacing: 7) {
-            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
-                VStack(spacing: 6) {
-                    Capsule()
-                        .fill(day.isToday ? accent : accent.opacity(0.22))
+        let maxVal = max(days.map(\.amount).max() ?? 0, 1)
+        let highlightedIndex = days.lastIndex(where: { $0.isToday && $0.amount > 0 })
+            ?? days.firstIndex(where: { $0.amount == maxVal && $0.amount > 0 })
+        HStack(alignment: .bottom, spacing: 5) {
+            ForEach(Array(days.enumerated()), id: \.offset) { index, day in
+                let highlighted = index == highlightedIndex
+                VStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(highlighted ? SpendyWidgetPalette.text : day.amount > 0 ? SpendyWidgetPalette.text.opacity(0.38) : SpendyWidgetPalette.fill)
                         .frame(maxWidth: .infinity)
-                        .frame(height: max(8, (day.amount / maxVal) * height))
+                        .frame(height: max(3, (day.amount / maxVal) * height))
+                        .frame(height: height, alignment: .bottom)
+                        .widgetAccentable(highlighted)
                     Text(day.dayLabel)
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(day.isToday ? SpendyWidgetPalette.text : SpendyWidgetPalette.tertiary)
+                        .font(.system(size: 9, weight: day.isToday || highlighted ? .bold : .medium))
+                        .foregroundStyle(day.isToday || highlighted ? SpendyWidgetPalette.text : SpendyWidgetPalette.secondary)
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(day.dayLabel), \(SpendyWidgetFormat.amount(day.amount, symbol: "", decimals: 0)) spent\(day.isToday ? ", today" : "")")
             }
         }
-        .frame(height: height + 18)
-        .accessibilityHidden(true)
+        .frame(height: height + 16)
     }
 }
 
@@ -154,12 +141,142 @@ struct SpendyMiniRing: View {
 private extension View {
     func spendyWidgetChrome() -> some View {
         self
-            .padding(20)
+            .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(SpendyWidgetPalette.canvas)
             .containerBackground(for: .widget) {
                 SpendyWidgetPalette.canvas
             }
+    }
+}
+
+private struct WidgetSectionLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .foregroundStyle(SpendyWidgetPalette.secondary)
+            .lineLimit(1)
+    }
+}
+
+private struct WidgetActionLink: View {
+    let title: String
+    let symbol: String
+    let destination: String
+
+    var body: some View {
+        Link(destination: URL(string: destination)!) {
+            VStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .medium))
+                    .widgetAccentable()
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(SpendyWidgetPalette.text)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(SpendyWidgetPalette.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .accessibilityLabel(title)
+    }
+}
+
+struct SpendyQuickActionsWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let snapshot: SpendyWidgetSnapshot
+    var previewFamily: WidgetFamily? = nil
+
+    private var isSmall: Bool { (previewFamily ?? family) == .systemSmall }
+
+    var body: some View {
+        Group {
+            if isSmall {
+                VStack(alignment: .leading, spacing: 10) {
+                    WidgetSectionLabel(text: "Quick actions")
+                    Spacer(minLength: 0)
+                    HStack(spacing: 8) {
+                        WidgetActionLink(title: "Add", symbol: "plus", destination: "spendy://quick-add")
+                        WidgetActionLink(title: "Scan", symbol: "camera.viewfinder", destination: "spendy://scan")
+                    }
+                    Spacer(minLength: 0)
+                    Text("Log it in a moment")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(SpendyWidgetPalette.secondary)
+                }
+            } else {
+                HStack(spacing: 15) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        WidgetSectionLabel(text: "Today")
+                        Spacer(minLength: 2)
+                        SpendyWidgetAmount(amount: snapshot.todayTotal, symbol: snapshot.currencySymbol, size: 29)
+                        Text("spent so far")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                        Spacer(minLength: 2)
+                        SpendyWeekBars(days: snapshot.weeklySpending, accentHex: "", height: 19)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+                    VStack(spacing: 7) {
+                        HStack(spacing: 7) {
+                            WidgetActionLink(title: "Add", symbol: "plus", destination: "spendy://quick-add")
+                            WidgetActionLink(title: "Scan", symbol: "camera.viewfinder", destination: "spendy://scan")
+                        }
+                        HStack(spacing: 7) {
+                            WidgetActionLink(title: "Budget", symbol: "circle.dotted", destination: "spendy://budget")
+                            WidgetActionLink(title: "Trends", symbol: "chart.xyaxis.line", destination: "spendy://analytics")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .spendyWidgetChrome()
+    }
+}
+
+private struct WidgetBudgetRail: View {
+    let progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            Capsule()
+                .fill(SpendyWidgetPalette.fill)
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(SpendyWidgetPalette.text)
+                        .frame(width: geometry.size.width * min(1, max(0, progress)))
+                        .widgetAccentable()
+                }
+        }
+        .frame(height: 5)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct WidgetComparisonLine: View {
+    let snapshot: SpendyWidgetSnapshot
+
+    var body: some View {
+        if let prior = snapshot.previousMonthToDateTotal {
+            let difference = snapshot.monthTotal - prior
+            HStack(spacing: 4) {
+                Image(systemName: difference > 0 ? "arrow.up.right" : difference < 0 ? "arrow.down.right" : "equal")
+                    .font(.system(size: 10, weight: .bold))
+                Text(difference == 0
+                     ? "Same as last month"
+                     : "\(SpendyWidgetFormat.compactAmount(abs(difference), symbol: snapshot.currencySymbol)) \(difference > 0 ? "more" : "less") vs last month")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(SpendyWidgetPalette.secondary)
+            .accessibilityLabel("\(SpendyWidgetFormat.amount(abs(difference), symbol: snapshot.currencySymbol, decimals: 0)) \(difference > 0 ? "more" : difference < 0 ? "less" : "difference") than the same point last month")
+        }
     }
 }
 
@@ -169,45 +286,38 @@ private extension View {
 struct SpendySmallWidgetView: View {
     let snapshot: SpendyWidgetSnapshot
 
+    private var sevenDayAverage: Double {
+        guard !snapshot.weeklySpending.isEmpty else { return 0 }
+        return snapshot.weeklySpending.reduce(0) { $0 + $1.amount } / Double(snapshot.weeklySpending.count)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            WidgetCategoryBadge(
-                symbol: snapshot.topCategorySymbol,
-                colorHex: snapshot.topCategoryColorHex,
-                size: 44
-            )
-
-            Spacer(minLength: 12)
-
-            Text("Today")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+            HStack {
+                WidgetSectionLabel(text: "Today")
+                Spacer(minLength: 4)
+                Image(systemName: "sun.max")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                    .widgetAccentable()
+            }
+            Spacer(minLength: 8)
+            SpendyWidgetAmount(amount: snapshot.todayTotal, symbol: snapshot.currencySymbol, size: 34)
+            Spacer(minLength: 8)
+            Rectangle().fill(SpendyWidgetPalette.line).frame(height: 1)
+            Text(sevenDayAverage > 0
+                 ? "7-day avg \(SpendyWidgetFormat.compactAmount(sevenDayAverage, symbol: snapshot.currencySymbol))"
+                 : "No spending this week")
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(SpendyWidgetPalette.secondary)
-
-            SpendyWidgetAmount(
-                amount: snapshot.todayTotal,
-                symbol: snapshot.currencySymbol,
-                size: 34
-            )
-            .padding(.top, 2)
-
-            Text(budgetLine)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(SpendyWidgetPalette.secondary)
-                .padding(.top, 4)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .padding(.top, 10)
         }
         .spendyWidgetChrome()
         .widgetURL(URL(string: "spendy://home"))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Today \(SpendyWidgetFormat.amount(snapshot.todayTotal, symbol: snapshot.currencySymbol)). \(budgetLine)."
-        )
-    }
-
-    private var budgetLine: String {
-        if snapshot.budgetTotal <= 0 {
-            return snapshot.topCategoryName
-        }
-        return "\(SpendyWidgetFormat.compactAmount(snapshot.remainingBudget, symbol: snapshot.currencySymbol)) left"
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Spent today, \(SpendyWidgetFormat.amount(snapshot.todayTotal, symbol: snapshot.currencySymbol)). Seven day daily average, \(SpendyWidgetFormat.amount(sevenDayAverage, symbol: snapshot.currencySymbol)).")
     }
 }
 
@@ -263,79 +373,139 @@ struct SpendyBudgetArc: View {
 }
 
 struct SpendyBudgetWidgetView: View {
+    @Environment(\.widgetFamily) private var family
     let snapshot: SpendyWidgetSnapshot
+    var previewFamily: WidgetFamily? = nil
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text("Spent this month")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(SpendyWidgetPalette.tertiary)
-
-            SpendyWidgetAmount(
-                amount: snapshot.monthTotal,
-                symbol: snapshot.currencySymbol,
-                size: 26
-            )
-
-            ZStack {
-                SpendyBudgetArc(progress: snapshot.budgetProgress, radius: 54, segments: 13)
-                VStack(spacing: 1) {
-                    Text("\(snapshot.daysLeft)")
-                        .font(.system(size: 22, weight: .bold, design: .monospaced))
-                        .monospacedDigit()
-                        .foregroundStyle(SpendyWidgetPalette.text)
-                    Text(snapshot.daysLeft == 1 ? "day left" : "days left")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(SpendyWidgetPalette.tertiary)
-                        .textCase(.uppercase)
+        Group {
+            if (previewFamily ?? family) == .systemSmall {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        WidgetSectionLabel(text: "Budget room")
+                        Spacer(minLength: 4)
+                        Image(systemName: "circle.dotted")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                            .widgetAccentable()
+                    }
+                    Spacer(minLength: 8)
+                    if snapshot.budgetTotal > 0 {
+                        SpendyWidgetAmount(
+                            amount: snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget,
+                            symbol: snapshot.currencySymbol,
+                            size: 32
+                        )
+                        Text(snapshot.budgetOverage > 0 ? "over budget" : "left this cycle")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                        Spacer(minLength: 8)
+                        WidgetBudgetRail(progress: snapshot.budgetProgress)
+                        Text("\(snapshot.daysLeft) days left")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                            .padding(.top, 7)
+                    } else {
+                        Text("Set a budget")
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .foregroundStyle(SpendyWidgetPalette.text)
+                        Text("See what’s left to spend")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                            .padding(.top, 5)
+                    }
                 }
-                .offset(y: 10)
-            }
-
-            if !snapshot.pacingCaption.isEmpty {
-                Text(snapshot.pacingCaption)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(SpendyWidgetPalette.secondary)
-                    .lineLimit(1)
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    WidgetSectionLabel(text: "Budget room")
+                    if snapshot.budgetTotal > 0 {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            SpendyWidgetAmount(
+                                amount: snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget,
+                                symbol: snapshot.currencySymbol,
+                                size: 34
+                            )
+                            Spacer(minLength: 4)
+                            Text("\(snapshot.daysLeft) days left")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(SpendyWidgetPalette.secondary)
+                        }
+                        Text(snapshot.budgetOverage > 0 ? "over budget" : "left this cycle")
+                            .font(.system(size: 12))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                        WidgetBudgetRail(progress: snapshot.budgetProgress)
+                        Text(snapshot.pacingCaption)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                    } else {
+                        Text("Set a budget to see your room to spend.")
+                            .font(.headline)
+                            .foregroundStyle(SpendyWidgetPalette.text)
+                    }
+                    Spacer(minLength: 0)
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(16)
-        .background(SpendyWidgetPalette.canvas)
-        .containerBackground(for: .widget) { SpendyWidgetPalette.canvas }
-        .widgetURL(URL(string: "spendy://home"))
+        .spendyWidgetChrome()
+        .widgetURL(URL(string: "spendy://budget"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(snapshot.budgetTotal > 0
+            ? "Budget \(snapshot.budgetOverage > 0 ? "over by \(SpendyWidgetFormat.amount(snapshot.budgetOverage, symbol: snapshot.currencySymbol))" : "room \(SpendyWidgetFormat.amount(snapshot.remainingBudget, symbol: snapshot.currencySymbol))"), \(snapshot.daysLeft) days left"
+            : "Set a budget in Spendy")
     }
 }
 
 struct SpendyCategoryFocusView: View {
+    @Environment(\.widgetFamily) private var family
     let snapshot: SpendyWidgetSnapshot
     let category: CategoryAppEntity?
 
+    private var match: WidgetCategorySpend? {
+        snapshot.categorySpending.first(where: { $0.id == category?.id })
+            ?? (category == nil ? snapshot.topCategories.first : nil)
+    }
+
     var body: some View {
-        let match = snapshot.topCategories.first(where: { $0.id == category?.id })
-        let name = category?.name ?? snapshot.topCategoryName
-        let symbol = category?.sfSymbol ?? snapshot.topCategorySymbol
-        let hex = category?.colorHex ?? snapshot.topCategoryColorHex
-        let amount = match?.amount ?? (category == nil ? snapshot.topCategoryAmount : 0)
+        let name = category?.name ?? match?.name ?? "Category"
+        let symbol = category?.sfSymbol ?? match?.sfSymbol ?? "tag"
+        let amount = match?.amount ?? 0
+        let share = snapshot.monthTotal > 0 ? amount / snapshot.monthTotal : 0
 
         VStack(alignment: .leading, spacing: 0) {
-            WidgetCategoryBadge(symbol: symbol, colorHex: hex, size: 44)
-            Spacer(minLength: 10)
-            Text(name)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+            HStack(spacing: 8) {
+                WidgetCategoryBadge(symbol: symbol, colorHex: "", size: family == .systemSmall ? 30 : 36)
+                Text(name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyWidgetPalette.text)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 8)
+            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: family == .systemSmall ? 30 : 38)
+            Text("spent this month")
+                .font(.system(size: 11))
                 .foregroundStyle(SpendyWidgetPalette.secondary)
-                .lineLimit(1)
-            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: 30)
                 .padding(.top, 2)
-            Spacer(minLength: 12)
-            SpendyWeekBars(
-                days: snapshot.weeklySpending,
-                accentHex: hex,
-                height: 36
-            )
+            if family != .systemSmall { Spacer(minLength: 12) }
+            WidgetBudgetRail(progress: share)
+                .padding(.top, family == .systemSmall ? 12 : 0)
+            Text("\(Int((share * 100).rounded()))% of monthly spending")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(SpendyWidgetPalette.secondary)
+                .padding(.top, 7)
+            if family == .systemLarge {
+                Spacer(minLength: 12)
+                Rectangle().fill(SpendyWidgetPalette.line).frame(height: 1)
+                Text("Month total · \(SpendyWidgetFormat.amount(snapshot.monthTotal, symbol: snapshot.currencySymbol, decimals: 0))")
+                    .font(.system(size: 12))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                    .padding(.top, 12)
+            }
         }
         .spendyWidgetChrome()
-        .widgetURL(URL(string: "spendy://home"))
+        .widgetURL(category.flatMap { URL(string: "spendy://category/\($0.id)") } ?? URL(string: "spendy://analytics"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name), \(SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)) this month, \(Int((share * 100).rounded())) percent of spending")
     }
 }
 
@@ -351,6 +521,8 @@ struct SpendyConfiguredWidgetView: View {
         case .week:
             if family == .systemSmall {
                 SpendySmallWidgetView(snapshot: snapshot)
+            } else if family == .systemLarge {
+                SpendyLargeOverviewWidgetView(snapshot: snapshot)
             } else {
                 SpendyMediumWeekWidgetView(snapshot: snapshot)
             }
@@ -374,47 +546,38 @@ struct SpendyConfiguredWidgetView: View {
 struct SpendyMediumWeekWidgetView: View {
     let snapshot: SpendyWidgetSnapshot
 
+    private var weekTotal: Double { snapshot.weeklySpending.reduce(0) { $0 + $1.amount } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Today")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(SpendyWidgetPalette.secondary)
-                    SpendyWidgetAmount(
-                        amount: snapshot.todayTotal,
-                        symbol: snapshot.currencySymbol,
-                        size: 36
-                    )
-                }
+        HStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 0) {
+                WidgetSectionLabel(text: "Today")
                 Spacer(minLength: 8)
-                WidgetCategoryBadge(
-                    symbol: snapshot.topCategorySymbol,
-                    colorHex: snapshot.topCategoryColorHex,
-                    size: 48
-                )
-            }
-
-            Spacer(minLength: 16)
-
-            SpendyWeekBars(
-                days: snapshot.weeklySpending,
-                accentHex: snapshot.topCategoryColorHex,
-                height: 54
-            )
-
-            if !snapshot.pacingCaption.isEmpty {
-                Text(snapshot.pacingCaption)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                SpendyWidgetAmount(amount: snapshot.todayTotal, symbol: snapshot.currencySymbol, size: 31)
+                Text("spent today")
+                    .font(.system(size: 11))
                     .foregroundStyle(SpendyWidgetPalette.secondary)
-                    .padding(.top, 8)
+                    .padding(.top, 2)
+                Spacer(minLength: 8)
+                Text("\(SpendyWidgetFormat.compactAmount(weekTotal, symbol: snapshot.currencySymbol)) in 7 days")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 0) {
+                WidgetSectionLabel(text: "Last 7 days")
+                Spacer(minLength: 7)
+                SpendyWeekBars(days: snapshot.weeklySpending, accentHex: "", height: 60)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .spendyWidgetChrome()
-        .widgetURL(URL(string: "spendy://home"))
-        .accessibilityLabel(
-            "Today \(SpendyWidgetFormat.amount(snapshot.todayTotal, symbol: snapshot.currencySymbol))"
-        )
+        .widgetURL(URL(string: "spendy://analytics"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Spent today \(SpendyWidgetFormat.amount(snapshot.todayTotal, symbol: snapshot.currencySymbol)). Spent over the last seven days \(SpendyWidgetFormat.amount(weekTotal, symbol: snapshot.currencySymbol)).")
     }
 }
 
@@ -480,11 +643,14 @@ struct SpendyMediumCategoriesWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("This month")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(SpendyWidgetPalette.secondary)
-
-            Spacer(minLength: 12)
+            HStack(alignment: .firstTextBaseline) {
+                WidgetSectionLabel(text: "Where it went")
+                Spacer(minLength: 8)
+                Text("This month")
+                    .font(.system(size: 10))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+            }
+            Spacer(minLength: 9)
 
             if snapshot.topCategories.isEmpty {
                 Text("No spending yet")
@@ -492,106 +658,131 @@ struct SpendyMediumCategoriesWidgetView: View {
                     .foregroundStyle(SpendyWidgetPalette.secondary)
                 Spacer(minLength: 0)
             } else {
-                let maxAmount = max(snapshot.topCategories.map(\.amount).max() ?? 1, 1)
-                HStack(spacing: 8) {
+                VStack(spacing: 7) {
                     ForEach(snapshot.topCategories.prefix(3)) { category in
-                        VStack(spacing: 8) {
-                            ZStack {
-                                SpendyMiniRing(
-                                    progress: category.amount / maxAmount,
-                                    size: 58,
-                                    lineWidth: 7,
-                                    color: SpendyHexColor.color(from: category.colorHex)
-                                )
+                        VStack(spacing: 3) {
+                            HStack(spacing: 8) {
                                 Image(systemName: category.sfSymbol)
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(SpendyHexColor.color(from: category.colorHex))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                                    .frame(width: 16)
+                                Text(category.name)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(SpendyWidgetPalette.text)
+                                    .lineLimit(1)
+                                Spacer(minLength: 5)
+                                Text(SpendyWidgetFormat.compactAmount(category.amount, symbol: snapshot.currencySymbol))
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(SpendyWidgetPalette.text)
+                                    .lineLimit(1)
                             }
-                            Text(category.name)
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(SpendyWidgetPalette.text)
-                                .lineLimit(1)
-                            Text(SpendyWidgetFormat.compactAmount(category.amount, symbol: snapshot.currencySymbol))
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .monospacedDigit()
-                                .foregroundStyle(SpendyWidgetPalette.secondary)
-                                .lineLimit(1)
+                            WidgetBudgetRail(
+                                progress: category.amount / max(snapshot.topCategories.first?.amount ?? 1, 1)
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel(
                             "\(category.name), \(SpendyWidgetFormat.amount(category.amount, symbol: snapshot.currencySymbol))"
                         )
                     }
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 7)
+                let top = snapshot.topCategories[0]
+                let share = snapshot.monthTotal > 0 ? Int((top.amount / snapshot.monthTotal * 100).rounded()) : 0
+                Text("\(top.name) is \(share)% of spending")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                    .lineLimit(1)
             }
         }
         .spendyWidgetChrome()
-        .widgetURL(URL(string: "spendy://home"))
+        .widgetURL(URL(string: "spendy://analytics"))
     }
 }
 
-// MARK: - Large · Overview
-// Hero + bars + two recents. Still a glance.
+// MARK: - Large · Monthly brief
 
 struct SpendyLargeOverviewWidgetView: View {
     let snapshot: SpendyWidgetSnapshot
 
+    private var weekTotal: Double { snapshot.weeklySpending.reduce(0) { $0 + $1.amount } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Today")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(SpendyWidgetPalette.secondary)
-                    SpendyWidgetAmount(
-                        amount: snapshot.todayTotal,
-                        symbol: snapshot.currencySymbol,
-                        size: 38
-                    )
-                }
-                Spacer()
-                WidgetCategoryBadge(
-                    symbol: snapshot.topCategorySymbol,
-                    colorHex: snapshot.topCategoryColorHex,
-                    size: 52
-                )
+            WidgetSectionLabel(text: "Monthly brief")
+            SpendyWidgetAmount(amount: snapshot.monthTotal, symbol: snapshot.currencySymbol, size: 36)
+                .padding(.top, 7)
+            WidgetComparisonLine(snapshot: snapshot)
+                .padding(.top, 3)
+
+            Rectangle().fill(SpendyWidgetPalette.line).frame(height: 1)
+                .padding(.vertical, 13)
+
+            HStack {
+                WidgetSectionLabel(text: "Last 7 days")
+                Spacer(minLength: 6)
+                Text(SpendyWidgetFormat.compactAmount(weekTotal, symbol: snapshot.currencySymbol))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
             }
+            SpendyWeekBars(days: snapshot.weeklySpending, accentHex: "", height: 62)
+                .padding(.top, 9)
 
-            Spacer(minLength: 20)
+            Rectangle().fill(SpendyWidgetPalette.line).frame(height: 1)
+                .padding(.vertical, 13)
 
-            SpendyWeekBars(
-                days: snapshot.weeklySpending,
-                accentHex: snapshot.topCategoryColorHex,
-                height: 64
-            )
-
-            Spacer(minLength: 20)
-
-            VStack(spacing: 14) {
-                ForEach(snapshot.recentTransactions.prefix(2)) { item in
-                    HStack(spacing: 14) {
-                        WidgetCategoryBadge(
-                            symbol: item.categorySymbol,
-                            colorHex: item.categoryColorHex,
-                            size: 36
-                        )
-                        Text(item.title)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    WidgetSectionLabel(text: "Top category")
+                    if let top = snapshot.topCategories.first {
+                        Text(top.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SpendyWidgetPalette.text)
                             .lineLimit(1)
-                        Spacer()
-                        Text("\(item.isExpense ? "−" : "+")\(SpendyWidgetFormat.compactAmount(item.amount, symbol: snapshot.currencySymbol))")
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
-                            .monospacedDigit()
-                            .foregroundStyle(item.isExpense ? SpendyWidgetPalette.text : SpendyWidgetPalette.income)
+                        Text("\(Int((top.amount / max(snapshot.monthTotal, 1) * 100).rounded()))% of spending")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                    } else {
+                        Text("No expenses yet")
+                            .font(.system(size: 12))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Rectangle().fill(SpendyWidgetPalette.line).frame(width: 1, height: 49)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    WidgetSectionLabel(text: "Budget room")
+                    if snapshot.budgetTotal > 0 {
+                        Text(SpendyWidgetFormat.compactAmount(
+                            snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget,
+                            symbol: snapshot.currencySymbol
+                        ))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(SpendyWidgetPalette.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        Text(snapshot.budgetOverage > 0 ? "over budget" : "\(snapshot.daysLeft) days left")
+                            .font(.system(size: 11))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                    } else {
+                        Text("Not set")
+                            .font(.system(size: 12))
+                            .foregroundStyle(SpendyWidgetPalette.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: 6)
+            HStack(spacing: 8) {
+                WidgetActionLink(title: "Add expense", symbol: "plus", destination: "spendy://quick-add")
+                WidgetActionLink(title: "Scan receipt", symbol: "camera.viewfinder", destination: "spendy://scan")
+            }
         }
         .spendyWidgetChrome()
-        .widgetURL(URL(string: "spendy://home"))
+        .widgetURL(URL(string: "spendy://analytics"))
     }
 }
 

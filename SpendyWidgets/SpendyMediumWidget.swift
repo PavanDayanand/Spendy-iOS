@@ -13,9 +13,23 @@ struct SpendyWeekWidget: Widget {
         StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
             SpendyMediumWeekWidgetView(snapshot: entry.snapshot)
         }
-        .configurationDisplayName("This Week")
-        .description("Today’s spend and a 7-day pulse.")
+        .configurationDisplayName("Spending Pulse")
+        .description("Today’s spending and the last seven days.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
+    }
+}
+
+struct SpendyQuickActionsWidget: Widget {
+    let kind = "SpendyQuickActionsWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
+            SpendyQuickActionsWidgetView(snapshot: entry.snapshot)
+        }
+        .configurationDisplayName("Quick actions")
+        .description("Add an expense, scan a receipt, or open your budget and trends.")
+        .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
 }
@@ -41,8 +55,8 @@ struct SpendyCategoriesWidget: Widget {
         StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
             SpendyMediumCategoriesWidgetView(snapshot: entry.snapshot)
         }
-        .configurationDisplayName("Categories")
-        .description("Top three categories this month.")
+        .configurationDisplayName("Where It Went")
+        .description("The categories driving this month’s spending.")
         .supportedFamilies([.systemMedium])
         .contentMarginsDisabled()
     }
@@ -55,8 +69,8 @@ struct SpendyOverviewWidget: Widget {
         StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
             SpendyLargeOverviewWidgetView(snapshot: entry.snapshot)
         }
-        .configurationDisplayName("Overview")
-        .description("Today, this week, and recent activity.")
+        .configurationDisplayName("Monthly Brief")
+        .description("A monthly comparison, seven-day trend, top category, and budget room.")
         .supportedFamilies([.systemLarge])
         .contentMarginsDisabled()
     }

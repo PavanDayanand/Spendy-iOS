@@ -83,31 +83,35 @@ struct GlassTabBar: View {
                 }
                 .padding(.leading, isExpanded ? 6 : 4)
 
-                Spacer(minLength: isExpanded ? 12 : 8)
+                if selectedTab != .subscriptions {
+                    Spacer(minLength: isExpanded ? 12 : 8)
 
-                // 3. Primary "+ Add" Capsule Pill
-                Button {
-                    HapticsManager.shared.trigger(.cardSnap)
-                    onQuickAdd()
-                } label: {
-                    HStack(spacing: isExpanded ? 7 : 5) {
-                        Image(systemName: "plus")
-                            .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
-                        Text("Add")
-                            .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .rounded))
+                    // Transaction entry belongs on Home; Subscriptions has its own add button.
+                    Button {
+                        HapticsManager.shared.trigger(.cardSnap)
+                        onQuickAdd()
+                    } label: {
+                        HStack(spacing: isExpanded ? 7 : 5) {
+                            Image(systemName: "plus")
+                                .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
+                            Text("Add")
+                                .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(SpendyColors.elevatedControlForeground)
+                        .padding(.horizontal, isExpanded ? 24 : 18)
+                        .frame(height: pillHeight)
+                        .contentShape(Capsule())
                     }
-                    .foregroundStyle(SpendyColors.elevatedControlForeground)
-                    .padding(.horizontal, isExpanded ? 24 : 18)
-                    .frame(height: pillHeight)
-                    .contentShape(Capsule())
+                    .buttonStyle(LiquidScaleButtonStyle())
+                    .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
+                    .accessibilityLabel("Add Transaction")
+                    .accessibilityAddTraits(.isButton)
                 }
-                .buttonStyle(LiquidScaleButtonStyle())
-                .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
-                .accessibilityLabel("Add Transaction")
-                .accessibilityAddTraits(.isButton)
             }
             .padding(.horizontal, isExpanded ? 16 : 22)
+            .frame(maxWidth: .infinity, alignment: selectedTab == .subscriptions ? .center : .leading)
             .animation(AppMotion.fluidSpring, value: isExpanded)
+            .animation(AppMotion.fluidSpring, value: selectedTab)
         }
     }
 

@@ -33,24 +33,16 @@ private enum ReceiptImageError: Error {
 
 struct AddTransactionView: View {
     @Environment(ExpenseStore.self) private var store
+    @Environment(QuickActionManager.self) private var quickActionManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isMonoIconMode) private var isMonoMode
     
     var transactionToEdit: Transaction? = nil
     
-    // Transfer Active Field for Dual Number Input
-    enum TransferActiveField {
-        case source
-        case destination
-    }
-    
     // Core Transaction State
     @State private var type: TransactionType = .expense
     @State private var amountString: String = "0"
-    @State private var destinationAmountString: String = "0"
-    @State private var isDestinationAmountManuallyEdited: Bool = false
-    @State private var transferActiveField: TransferActiveField = .source
     
     @State private var selectedCategoryId: String = "groceries"
     @State private var fromAccountId: String = "bank"
@@ -70,6 +62,7 @@ struct AddTransactionView: View {
     @State private var showDiscardConfirmation: Bool = false
     @State private var showReceiptCamera = false
     @State private var showReceiptPhotos = false
+    @State private var openPhotosAfterCamera = false
     @State private var selectedReceiptPhoto: PhotosPickerItem?
     @State private var receiptImages: [UIImage] = []
     @State private var receiptImportError: String?
@@ -81,10 +74,6 @@ struct AddTransactionView: View {
     
     private var currentAmountValue: Double {
         Double(amountString) ?? 0.0
-    }
-    
-    private var currentDestinationAmountValue: Double {
-        Double(destinationAmountString) ?? currentAmountValue
     }
     
     private var hasUnsavedChanges: Bool {
@@ -137,29 +126,7 @@ struct AddTransactionView: View {
     
     @ScaledMetric(relativeTo: .largeTitle) private var amountHeroSize: CGFloat = 72
     @ScaledMetric(relativeTo: .largeTitle) private var amountSymbolSize: CGFloat = 38
-    @ScaledMetric(relativeTo: .title) private var transferAmountSize: CGFloat = 44
-    
-    private var activeAmountBinding: Binding<String> {
-        Binding(
-            get: {
-                if type == .transfer && transferActiveField == .destination {
-                    return destinationAmountString
-                }
-                return amountString
-            },
-            set: { newValue in
-                if type == .transfer && transferActiveField == .destination {
-                    destinationAmountString = newValue
-                    isDestinationAmountManuallyEdited = true
-                } else {
-                    amountString = newValue
-                    if type == .transfer && !isDestinationAmountManuallyEdited {
-                        destinationAmountString = newValue
-                    }
-                }
-            }
-        )
-    }
+    @ScaledMetric(relativeTo: .largeTitle) private var transferAmountSize: CGFloat = 60
     
     private var formattedDateLabel: String {
         let calendar = Calendar.current
@@ -184,9 +151,6 @@ struct AddTransactionView: View {
         if let t = transactionToEdit {
             _type = State(initialValue: t.type)
             _amountString = State(initialValue: String(format: t.amount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", t.amount))
-            let destAmt = t.toAmount ?? t.amount
-            _destinationAmountString = State(initialValue: String(format: destAmt.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", destAmt))
-            _isDestinationAmountManuallyEdited = State(initialValue: t.toAmount != nil)
             _selectedCategoryId = State(initialValue: t.categoryId)
             _fromAccountId = State(initialValue: t.accountId)
             _toAccountId = State(initialValue: t.toAccountId ?? "cash")
@@ -213,7 +177,7 @@ struct AddTransactionView: View {
                 topHeaderBar
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, type == .transfer ? 10 : 16)
 
                 
                 // MARK: - 2. Subheader Row (Account Pill on Left) - Hidden in Transfer Mode
@@ -236,7 +200,7 @@ struct AddTransactionView: View {
                     // MARK: - 3. Amount Display
                     if type == .transfer {
                         transferCardsSection
-                            .padding(.bottom, 10)
+                            .padding(.bottom, 4)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .scale(scale: 0.98)),
                                 removal: .opacity.combined(with: .scale(scale: 0.98))
@@ -252,7 +216,7 @@ struct AddTransactionView: View {
                     // MARK: - 5. Bottom Keypad & Actions (dock card)
                     keypadAndActionsSection
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 14)
+                        .padding(.bottom, type == .transfer ? 8 : 14)
                         .ignoresSafeArea(.container, edges: .bottom)
                 }
             }
@@ -282,7 +246,7 @@ struct AddTransactionView: View {
                 )
             case .account(let isDestination):
                 AccountPickerDrawer(
-                    selectedAccountId: isDestination ? $toAccountId : $fromAccountId,
+                    selectedAccountId: accountSelectionBinding(isDestination: isDestination),
                     title: isDestination ? "Select destination account" : "Select account",
                     accounts: store.accounts
                 )
@@ -298,11 +262,21 @@ struct AddTransactionView: View {
                 )
             }
         }
-        .sheet(isPresented: $showReceiptCamera, onDismiss: presentCapturedReceipt) {
+        .sheet(isPresented: $showReceiptCamera, onDismiss: {
+            if openPhotosAfterCamera {
+                openPhotosAfterCamera = false
+                showReceiptPhotos = true
+            } else {
+                presentCapturedReceipt()
+            }
+        }) {
             ReceiptCameraCaptureView { image in
                 receiptImages = [image]
                 showReceiptCamera = false
             } onCancel: {
+                showReceiptCamera = false
+            } onChoosePhoto: {
+                openPhotosAfterCamera = true
                 showReceiptCamera = false
             }
             .presentationDetents([.fraction(0.72)])
@@ -358,6 +332,19 @@ struct AddTransactionView: View {
                     toAccountId = other.id
                 }
             }
+            openRequestedReceiptCamera()
+        }
+        .onChange(of: quickActionManager.shouldPresentReceiptScan) { _, requested in
+            if requested { openRequestedReceiptCamera() }
+        }
+    }
+
+    private func openRequestedReceiptCamera() {
+        guard quickActionManager.shouldPresentReceiptScan else { return }
+        quickActionManager.shouldPresentReceiptScan = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            showReceiptCamera = true
         }
     }
     
@@ -388,9 +375,6 @@ struct AddTransactionView: View {
                 selection: $type,
                 availableTypes: availableTypes
             ) { newType in
-                if newType == .transfer && !isDestinationAmountManuallyEdited {
-                    destinationAmountString = amountString
-                }
                 if let first = store.categories.filter({ $0.type == newType }).first {
                     selectedCategoryId = first.id
                 }
@@ -443,6 +427,25 @@ struct AddTransactionView: View {
     
     private var availableTypes: [TransactionType] {
         store.accounts.count >= 2 ? [.expense, .income, .transfer] : [.expense, .income]
+    }
+
+    private func accountSelectionBinding(isDestination: Bool) -> Binding<String> {
+        Binding(
+            get: { isDestination ? toAccountId : fromAccountId },
+            set: { selectedId in
+                guard type == .transfer else {
+                    fromAccountId = selectedId
+                    return
+                }
+                if isDestination {
+                    if selectedId == fromAccountId { fromAccountId = toAccountId }
+                    toAccountId = selectedId
+                } else {
+                    if selectedId == toAccountId { toAccountId = fromAccountId }
+                    fromAccountId = selectedId
+                }
+            }
+        )
     }
     
     // MARK: - 2. Subheader Row (Account Pill on Left)
@@ -582,133 +585,130 @@ struct AddTransactionView: View {
         .frame(maxHeight: .infinity)
     }
     
-    // MARK: - 4. Dual Transfer Cards Section (Full Height, Matching Reference Image)
+    // MARK: - 4. Transfer Amount and Account Selection
     private var transferCardsSection: some View {
-        ZStack(alignment: .trailing) {
-            VStack(spacing: 4) {
-                // Top From Account Card
-                transferAccountCard(
-                    account: fromAccount,
-                    isDestination: false,
-                    amount: amountString,
-                    isActive: transferActiveField == .source
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        transferActiveField = .source
-                    }
-                    HapticsManager.shared.trigger(.selection)
-                }
-                
-                // Bottom To Account Card
-                transferAccountCard(
-                    account: toAccount,
-                    isDestination: true,
-                    amount: destinationAmountString,
-                    isActive: transferActiveField == .destination
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        transferActiveField = .destination
-                    }
-                    HapticsManager.shared.trigger(.selection)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
-            // Swap Accounts Floating Circle Button (Centered on dividing seam between the two cards)
-            Button(action: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    let tempAcc = fromAccountId
-                    fromAccountId = toAccountId
-                    toAccountId = tempAcc
-                    
-                    let tempAmt = amountString
-                    amountString = destinationAmountString
-                    destinationAmountString = tempAmt
-                }
-                HapticsManager.shared.trigger(.selection)
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(SpendyColors.transactionControlSurface)
-                        .frame(width: 38, height: 38)
-                        .overlay {
-                            Circle().stroke(SpendyColors.separator, lineWidth: 1.0)
-                        }
-                    
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.system(size: 14, weight: .bold))
+        VStack(spacing: 12) {
+            Spacer(minLength: 4)
+
+            VStack(spacing: 2) {
+                Text("Transfer amount")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(store.currencySymbol)
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(SpendyColors.textSecondary)
+
+                    Text(amountString)
+                        .font(.system(size: transferAmountSize, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(SpendyColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amountString)
                 }
-                .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
             }
-            .buttonStyle(.plain)
-            .padding(.trailing, 24)
-            .zIndex(10)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Transfer amount, \(store.currencySymbol)\(amountString)")
+
+            Spacer(minLength: 4)
+
+            ZStack(alignment: .trailing) {
+                VStack(spacing: 8) {
+                    transferAccountCard(account: fromAccount, isDestination: false)
+                    transferAccountCard(account: toAccount, isDestination: true)
+                }
+
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        swap(&fromAccountId, &toAccountId)
+                    }
+                    HapticsManager.shared.trigger(.selection)
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            Circle()
+                                .fill(SpendyColors.transactionControlSurface)
+                                .overlay {
+                                    Circle().stroke(SpendyColors.separator, lineWidth: 1)
+                                }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Swap accounts")
+                .padding(.trailing, 20)
+                .zIndex(1)
+            }
         }
         .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    @ViewBuilder
     private func transferAccountCard(
         account: Account?,
-        isDestination: Bool,
-        amount: String,
-        isActive: Bool,
-        onTap: @escaping () -> Void
+        isDestination: Bool
     ) -> some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Keep the account in its original position while naming each side of the transfer.
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    Text(isDestination ? "TO" : "FROM")
-                        .font(AppTypography.eyebrow)
-                        .tracking(1.4)
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .accessibilityAddTraits(.isHeader)
+        let paint = SpendyIconPaint.resolve(
+            account?.color ?? SpendyColors.cardBackgroundSecondary,
+            scheme: colorScheme,
+            mono: isMonoMode,
+            prominent: false
+        )
 
-                    accountPillButton(account: account, isDestination: isDestination)
-                }
-                
-                Spacer(minLength: 4)
-                
-                // Centered Large Amount Display ($0 with Numeric Transitions)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(store.currencySymbol)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(isActive ? SpendyColors.textTertiary : SpendyColors.textTertiary.opacity(0.5))
-                        .fixedSize()
-                    
-                    Text(amount.isEmpty ? "0" : amount)
-                        .font(.system(size: transferAmountSize, weight: .heavy, design: .default))
-                        .monospacedDigit()
-                        .foregroundStyle(isActive ? SpendyColors.textPrimary : SpendyColors.textSecondary)
+        return Button {
+            activeSheet = .account(isDestination: isDestination)
+            HapticsManager.shared.trigger(.selection)
+        } label: {
+            HStack(spacing: 12) {
+                Text(String((account?.label.prefix(1) ?? "A")).uppercased())
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(paint.glyph)
+                    .frame(width: 44, height: 44)
+                    .background(paint.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isDestination ? "To" : "From")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+
+                    Text(account?.label ?? "Choose account")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.35)
-                        .frame(minWidth: 0)
-                        .contentTransition(.numericText())
-                        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: amount)
+
+                    Text(store.balance(for: account?.id ?? "").formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        .spendyNumberFont(size: 12, weight: .medium)
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 8)
-                .clipped()
-                
+
                 Spacer(minLength: 8)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(isActive ? SpendyColors.transactionControlSurface : SpendyColors.cardBackgroundSecondary)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(SpendyColors.transactionControlSurface)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(SpendyColors.separator.opacity(isActive ? 1 : 0.7), lineWidth: isActive ? 1.0 : 0.8)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(isDestination ? "To" : "From") \(account?.label ?? "account"), \(store.currencySymbol)\(amount.isEmpty ? "0" : amount)")
-        .accessibilityHint("Select this amount for the keypad")
+        .accessibilityLabel("Choose \(isDestination ? "destination" : "source") account, \(account?.label ?? "none selected")")
+        .accessibilityHint("Opens account picker")
     }
     
     // MARK: - 5. Full-Width Keypad & Actions Section
@@ -810,7 +810,7 @@ struct AddTransactionView: View {
             SpendyGlassEffectContainer(spacing: 12) {
                 if inputMode == .keypad {
                     SpendyKeypad(
-                        amountString: activeAmountBinding,
+                        amountString: $amountString,
                         maxDigits: 8,
                         useLiquidGlass: false
                     )
@@ -821,7 +821,7 @@ struct AddTransactionView: View {
                     ))
                 } else {
                     SpendyAmountRuler(
-                        amountString: activeAmountBinding,
+                        amountString: $amountString,
                         step: $rulerStep,
                         maxDigits: 8
                     )
@@ -895,7 +895,10 @@ struct AddTransactionView: View {
                     title: "slide to transfer",
                     sourceAccountName: fromAccount?.label ?? "Source",
                     destinationAccountName: toAccount?.label ?? "Destination",
-                    isEnabled: currentAmountValue > 0
+                    isEnabled: currentAmountValue > 0 && fromAccountId != toAccountId,
+                    disabledMessage: currentAmountValue <= 0
+                        ? "enter amount to transfer"
+                        : "choose a different account"
                 ) {
                     saveTransaction()
                 }
@@ -904,7 +907,7 @@ struct AddTransactionView: View {
         }
         .padding(.horizontal, 14)
         .padding(.top, 12)
-        .padding(.bottom, 22)
+        .padding(.bottom, type == .transfer ? 14 : 22)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(SpendyColors.transactionTraySurface)
@@ -1016,8 +1019,7 @@ struct AddTransactionView: View {
             ? (selectedCategory?.label ?? type.title)
             : note.trimmingCharacters(in: .whitespacesAndNewlines)
             
-        let destAmount = (Double(destinationAmountString) ?? currentAmountValue)
-        let toAmt = type == .transfer ? (destAmount > 0 ? destAmount : currentAmountValue) : nil
+        let toAmt = type == .transfer ? currentAmountValue : nil
         
         if let existing = transactionToEdit {
             var updated = existing
@@ -1050,8 +1052,6 @@ struct AddTransactionView: View {
     
     private func clearAll() {
         amountString = "0"
-        destinationAmountString = "0"
-        isDestinationAmountManuallyEdited = false
     }
 }
 
@@ -1719,6 +1719,7 @@ struct SpendySlideToTransfer: View {
     var sourceAccountName: String? = nil
     var destinationAccountName: String? = nil
     var isEnabled: Bool = true
+    var disabledMessage: String = "enter amount to transfer"
     var onConfirm: () -> Void
     
     @State private var dragOffset: CGFloat = 0
@@ -1731,7 +1732,7 @@ struct SpendySlideToTransfer: View {
     
     private var displayText: String {
         if !isEnabled {
-            return "enter amount to transfer"
+            return disabledMessage
         }
         if let dst = destinationAccountName {
             return "slide to transfer to \(dst)"
@@ -1841,8 +1842,8 @@ struct SpendySlideToTransfer: View {
         }
         .frame(height: trackHeight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isEnabled ? "Transfer to \(destinationAccountName ?? "destination account")" : "Enter an amount to transfer")
-        .accessibilityHint(isEnabled ? "Double tap to confirm the transfer" : "Transfer is unavailable until an amount is entered")
+        .accessibilityLabel(isEnabled ? "Transfer to \(destinationAccountName ?? "destination account")" : disabledMessage)
+        .accessibilityHint(isEnabled ? "Double tap to confirm the transfer" : disabledMessage)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
             guard isEnabled, !isCompleted else { return }

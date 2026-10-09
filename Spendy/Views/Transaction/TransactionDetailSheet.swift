@@ -131,7 +131,7 @@ struct TransactionDetailSheet: View {
         } message: {
             Text("Are you sure you want to delete this transaction? This cannot be undone.")
         }
-        .presentationDetents([.height(540), .large])
+        .presentationDetents([.height(500), .large])
         .presentationDragIndicator(.hidden)
         .fullScreenCover(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction)
@@ -217,14 +217,6 @@ struct TransactionDetailSheet: View {
     
     private var detailsCard: some View {
         VStack(spacing: 0) {
-            detailRow(label: "Amount") {
-                Text(formattedAmountText)
-                    .font(.system(size: 16, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            
-            cardDivider
-            
             detailRow(label: "Date") {
                 Text(transaction.date.formatted(date: .long, time: .omitted))
                     .font(.system(size: 16, weight: .semibold))

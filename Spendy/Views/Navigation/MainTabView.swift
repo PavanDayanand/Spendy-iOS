@@ -81,6 +81,16 @@ struct MainTabView: View {
                 quickActionManager.shouldPresentQuickAdd = false
             }
         }
+        .onChange(of: quickActionManager.shouldPresentReceiptScan) { _, shouldPresent in
+            if shouldPresent {
+                showAddTransaction = true
+            }
+        }
+        .onAppear {
+            if quickActionManager.shouldPresentReceiptScan {
+                showAddTransaction = true
+            }
+        }
         .onChange(of: quickActionManager.targetTab) { _, target in
             if let target {
                 withAnimation(AppMotion.snappySpring) {

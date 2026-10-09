@@ -17,8 +17,8 @@ struct SpendyTodayWidget: Widget {
         ) { entry in
             SpendyConfiguredWidgetView(snapshot: entry.snapshot, configuration: entry.configuration)
         }
-        .configurationDisplayName("Spendy")
-        .description("Edit this widget to show Today, Budget, This Week, or a category.")
+        .configurationDisplayName("Today")
+        .description("Today’s spending at a glance. Edit to choose a budget or category view.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -31,8 +31,8 @@ struct SpendyBudgetWidget: Widget {
         StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
             SpendyBudgetWidgetView(snapshot: entry.snapshot)
         }
-        .configurationDisplayName("Budget")
-        .description("How much of this month’s budget is left.")
+        .configurationDisplayName("Budget Room")
+        .description("What remains in your current budget cycle.")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

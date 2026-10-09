@@ -66,17 +66,9 @@ struct WhatIfPlannerView: View {
                 }
             }
         }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
+        .padding(.horizontal, 4)
         .onAppear {
-            let initial = store.leftToday > 0 ? store.leftToday : 500.0
+            let initial = store.safeDailyAllowance > 0 ? store.safeDailyAllowance : 500.0
             customDailySpend = (initial / 50).rounded() * 50
         }
     }

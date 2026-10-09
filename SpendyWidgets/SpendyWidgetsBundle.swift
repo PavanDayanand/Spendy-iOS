@@ -11,7 +11,10 @@ struct SpendyWidgetsBundle: WidgetBundle {
     var body: some Widget {
         SpendyTodayWidget()
         SpendyBudgetWidget()
+        SpendyQuickActionsWidget()
         SpendyWeekWidget()
+        SpendyCategoriesWidget()
+        SpendyOverviewWidget()
         SpendyLockWidget()
         SpendyLogControl()
         SpendyQuickAddControl()

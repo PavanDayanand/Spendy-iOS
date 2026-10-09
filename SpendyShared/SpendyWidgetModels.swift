@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-enum SpendyAppGroup {
+nonisolated enum SpendyAppGroup {
     static let identifier = "group.com.Spendy"
     static let snapshotKey = "spendy_widget_snapshot_data"
     static let categoriesKey = "spendy_widget_categories_data"
@@ -69,7 +69,7 @@ enum SpendyHexColor {
     }
 }
 
-enum SpendyWidgetFormat {
+nonisolated enum SpendyWidgetFormat {
     static func amount(_ value: Double, symbol: String, decimals: Int = 2) -> String {
         let number = abs(value).formatted(.number.precision(.fractionLength(decimals)).grouping(.automatic))
         return "\(symbol)\(number)"
@@ -78,7 +78,7 @@ enum SpendyWidgetFormat {
     static func compactAmount(_ value: Double, symbol: String) -> String {
         let absValue = abs(value)
         if absValue >= 10_000 {
-            return amount(absValue, symbol: symbol, decimals: 0)
+            return "\(symbol)\(absValue.formatted(.number.notation(.compactName).precision(.significantDigits(3))))"
         }
         if absValue >= 100 {
             return amount(absValue, symbol: symbol, decimals: absValue.rounded() == absValue ? 0 : 2)
@@ -87,14 +87,22 @@ enum SpendyWidgetFormat {
     }
 }
 
-struct WidgetDaySpending: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct WidgetDaySpending: Identifiable, Codable, Hashable, Sendable {
     var id: String { dayLabel + (isToday ? "-today" : "") }
     let dayLabel: String
     let amount: Double
     let isToday: Bool
+    let dayStart: Date?
+
+    init(dayLabel: String, amount: Double, isToday: Bool, dayStart: Date? = nil) {
+        self.dayLabel = dayLabel
+        self.amount = amount
+        self.isToday = isToday
+        self.dayStart = dayStart
+    }
 }
 
-struct WidgetTransactionItem: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct WidgetTransactionItem: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let title: String
     let amount: Double
@@ -104,7 +112,7 @@ struct WidgetTransactionItem: Identifiable, Codable, Hashable, Sendable {
     let formattedTime: String
 }
 
-struct WidgetCategorySpend: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct WidgetCategorySpend: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let name: String
     let sfSymbol: String
@@ -112,7 +120,7 @@ struct WidgetCategorySpend: Identifiable, Codable, Hashable, Sendable {
     let amount: Double
 }
 
-struct WidgetCategoryRecord: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct WidgetCategoryRecord: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let name: String
     let sfSymbol: String
@@ -122,7 +130,7 @@ struct WidgetCategoryRecord: Identifiable, Codable, Hashable, Sendable {
     let order: Int
 }
 
-struct WidgetAccountRecord: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct WidgetAccountRecord: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let name: String
     let sfSymbol: String
@@ -130,7 +138,7 @@ struct WidgetAccountRecord: Identifiable, Codable, Hashable, Sendable {
     let order: Int
 }
 
-struct PendingWidgetTransaction: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct PendingWidgetTransaction: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let title: String
     let amount: Double
@@ -146,7 +154,7 @@ struct PendingWidgetTransaction: Identifiable, Codable, Hashable, Sendable {
     let date: Date
 }
 
-struct SpendyWidgetSnapshot: Codable, Sendable {
+nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
     let currencySymbol: String
     let currencyCode: String
     let defaultAccountId: String
@@ -159,6 +167,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
     let budgetProgress: Double
     let budgetOverage: Double
     let budgetPeriod: String
+    let budgetCycleEnd: Date?
     let topCategoryName: String
     let topCategorySymbol: String
     let topCategoryColorHex: String
@@ -184,6 +193,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         budgetProgress: Double = 0,
         budgetOverage: Double = 0,
         budgetPeriod: String = "monthly",
+        budgetCycleEnd: Date? = nil,
         topCategoryName: String = "Groceries",
         topCategorySymbol: String = "cart.fill",
         topCategoryColorHex: String = "#34C759",
@@ -208,6 +218,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         self.budgetProgress = budgetProgress
         self.budgetOverage = budgetOverage
         self.budgetPeriod = budgetPeriod
+        self.budgetCycleEnd = budgetCycleEnd
         self.topCategoryName = topCategoryName
         self.topCategorySymbol = topCategorySymbol
         self.topCategoryColorHex = topCategoryColorHex
@@ -224,7 +235,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case currencySymbol, currencyCode, defaultAccountId
         case todayTotal, todayIncome, monthTotal, previousMonthToDateTotal
-        case remainingBudget, budgetTotal, budgetProgress, budgetOverage, budgetPeriod
+        case remainingBudget, budgetTotal, budgetProgress, budgetOverage, budgetPeriod, budgetCycleEnd
         case topCategoryName, topCategorySymbol, topCategoryColorHex, topCategoryAmount
         case weeklySpending, recentTransactions, topCategories, categorySpending, daysLeft, pacingCaption, lastUpdated
     }
@@ -243,6 +254,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         budgetProgress = try container.decodeIfPresent(Double.self, forKey: .budgetProgress) ?? 0
         budgetOverage = try container.decodeIfPresent(Double.self, forKey: .budgetOverage) ?? 0
         budgetPeriod = try container.decodeIfPresent(String.self, forKey: .budgetPeriod) ?? "monthly"
+        budgetCycleEnd = try container.decodeIfPresent(Date.self, forKey: .budgetCycleEnd)
         topCategoryName = try container.decodeIfPresent(String.self, forKey: .topCategoryName) ?? "Groceries"
         topCategorySymbol = try container.decodeIfPresent(String.self, forKey: .topCategorySymbol) ?? "cart.fill"
         topCategoryColorHex = try container.decodeIfPresent(String.self, forKey: .topCategoryColorHex) ?? "#34C759"
@@ -254,6 +266,103 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
         daysLeft = try container.decodeIfPresent(Int.self, forKey: .daysLeft) ?? 0
         pacingCaption = try container.decodeIfPresent(String.self, forKey: .pacingCaption) ?? ""
         lastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()
+    }
+
+    /// Widget timelines can outlive the last app launch. Keep day and cycle
+    /// labels honest using the dates saved with the snapshot, without inventing
+    /// transactions that the extension cannot read.
+    func normalized(for date: Date) -> SpendyWidgetSnapshot {
+        let calendar = Calendar.current
+        let sameDay = calendar.isDate(lastUpdated, inSameDayAs: date)
+        let sameMonth = calendar.isDate(lastUpdated, equalTo: date, toGranularity: .month)
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E"
+        let datedDays = weeklySpending.filter { $0.dayStart != nil }
+        let week: [WidgetDaySpending]
+        if datedDays.count == weeklySpending.count, !datedDays.isEmpty {
+            week = (0..<7).reversed().compactMap { offset in
+                guard let day = calendar.date(byAdding: .day, value: -offset, to: date) else { return nil }
+                let saved = datedDays.first { point in
+                    point.dayStart.map { calendar.isDate($0, inSameDayAs: day) } ?? false
+                }
+                return WidgetDaySpending(
+                    dayLabel: String(formatter.string(from: day).prefix(1)),
+                    amount: saved?.amount ?? 0,
+                    isToday: offset == 0,
+                    dayStart: calendar.startOfDay(for: day)
+                )
+            }
+        } else if sameDay {
+            week = weeklySpending
+        } else {
+            week = (0..<7).reversed().compactMap { offset in
+                guard let day = calendar.date(byAdding: .day, value: -offset, to: date) else { return nil }
+                return WidgetDaySpending(
+                    dayLabel: String(formatter.string(from: day).prefix(1)),
+                    amount: 0,
+                    isToday: offset == 0,
+                    dayStart: calendar.startOfDay(for: day)
+                )
+            }
+        }
+
+        var cycleEnd = budgetCycleEnd
+        var cycleChanged = false
+        if budgetTotal > 0, var end = cycleEnd {
+            for _ in 0..<60 {
+                guard date >= end else { break }
+                cycleChanged = true
+                guard let next = calendar.date(
+                    byAdding: budgetPeriod == "weekly" ? .weekOfYear : .month,
+                    value: 1,
+                    to: end
+                ) else { break }
+                end = next
+            }
+            cycleEnd = end
+        }
+        let room = cycleChanged ? budgetTotal : remainingBudget
+        let overage = cycleChanged ? 0 : budgetOverage
+        let progress = cycleChanged ? 0 : budgetProgress
+        let remainingDays = cycleEnd.map {
+            max(0, calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: $0)).day ?? 0)
+        } ?? (sameDay ? daysLeft : max(0, daysLeft - (calendar.dateComponents([.day], from: lastUpdated, to: date).day ?? 0)))
+        let dailyRoom = remainingDays > 0 ? room / Double(remainingDays) : room
+        let caption = budgetTotal > 0
+            ? (overage > 0
+                ? "Over budget by \(SpendyWidgetFormat.compactAmount(overage, symbol: currencySymbol))"
+                : "\(SpendyWidgetFormat.compactAmount(dailyRoom, symbol: currencySymbol)) per day left")
+            : "No active budget"
+        let categories = sameMonth ? (categorySpending.isEmpty ? topCategories : categorySpending) : []
+        let top = categories.first
+
+        return SpendyWidgetSnapshot(
+            currencySymbol: currencySymbol,
+            currencyCode: currencyCode,
+            defaultAccountId: defaultAccountId,
+            todayTotal: sameDay ? todayTotal : (week.first(where: \.isToday)?.amount ?? 0),
+            todayIncome: sameDay ? todayIncome : 0,
+            monthTotal: sameMonth ? monthTotal : 0,
+            previousMonthToDateTotal: sameDay ? previousMonthToDateTotal : nil,
+            remainingBudget: room,
+            budgetTotal: budgetTotal,
+            budgetProgress: progress,
+            budgetOverage: overage,
+            budgetPeriod: budgetPeriod,
+            budgetCycleEnd: cycleEnd,
+            topCategoryName: top?.name ?? "None",
+            topCategorySymbol: top?.sfSymbol ?? "tag",
+            topCategoryColorHex: top?.colorHex ?? "#000000",
+            topCategoryAmount: top?.amount ?? 0,
+            weeklySpending: week,
+            recentTransactions: recentTransactions,
+            topCategories: Array(categories.prefix(3)),
+            categorySpending: categories,
+            daysLeft: remainingDays,
+            pacingCaption: caption,
+            lastUpdated: lastUpdated
+        )
     }
 
     static var empty: SpendyWidgetSnapshot {
@@ -272,6 +381,7 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
             todayTotal: 34,
             todayIncome: 0,
             monthTotal: 845,
+            previousMonthToDateTotal: 720,
             remainingBudget: 655,
             budgetTotal: 1500,
             budgetProgress: 0.56,
@@ -322,6 +432,13 @@ struct SpendyWidgetSnapshot: Codable, Sendable {
                 WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", amount: 148),
                 WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", amount: 96)
             ],
+            categorySpending: [
+                WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", amount: 312),
+                WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", amount: 148),
+                WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", amount: 96)
+            ],
+            daysLeft: 14,
+            pacingCaption: "₹47 per day left",
             lastUpdated: Date()
         )
     }
@@ -369,11 +486,11 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
         persist(snapshot, key: SpendyAppGroup.snapshotKey, filename: "widget_snapshot.json")
     }
 
-    func loadSnapshot() -> SpendyWidgetSnapshot {
+    func loadSnapshot(asOf date: Date = Date()) -> SpendyWidgetSnapshot {
         if let snapshot: SpendyWidgetSnapshot = load(key: SpendyAppGroup.snapshotKey, filename: "widget_snapshot.json") {
-            return snapshot
+            return snapshot.normalized(for: date)
         }
-        return .empty
+        return SpendyWidgetSnapshot.empty.normalized(for: date)
     }
 
     func saveCategories(_ categories: [WidgetCategoryRecord]) {
@@ -537,7 +654,8 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
             weekly[todayIndex] = WidgetDaySpending(
                 dayLabel: today.dayLabel,
                 amount: today.amount + item.amount,
-                isToday: true
+                isToday: true,
+                dayStart: today.dayStart
             )
         }
 
@@ -553,11 +671,38 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
             )
         ] + snapshot.recentTransactions.prefix(2)
 
-        let todayTotal = snapshot.todayTotal + (item.isExpense ? item.amount : 0)
-        let todayIncome = snapshot.todayIncome + (item.isExpense ? 0 : item.amount)
-        let monthTotal = snapshot.monthTotal + (item.isExpense ? item.amount : 0)
-        let remaining = max(0, snapshot.budgetTotal - monthTotal)
-        let progress = snapshot.budgetTotal > 0 ? min(1, max(0, monthTotal / snapshot.budgetTotal)) : 0
+        let expense = item.isExpense ? item.amount : 0
+        let todayTotal = snapshot.todayTotal + expense
+        let todayIncome = snapshot.todayIncome + (!item.isExpense && !item.isTransfer ? item.amount : 0)
+        let monthTotal = snapshot.monthTotal + expense
+        let previousBudgetSpent = snapshot.budgetTotal - snapshot.remainingBudget + snapshot.budgetOverage
+        let budgetSpent = snapshot.budgetTotal > 0 ? previousBudgetSpent + expense : 0
+        let remaining = snapshot.budgetTotal > 0 ? max(0, snapshot.budgetTotal - budgetSpent) : 0
+        let overage = snapshot.budgetTotal > 0 ? max(0, budgetSpent - snapshot.budgetTotal) : 0
+        let progress = snapshot.budgetTotal > 0 ? min(1, max(0, budgetSpent / snapshot.budgetTotal)) : 0
+        var categorySpending = snapshot.categorySpending
+        if item.isExpense {
+            if let index = categorySpending.firstIndex(where: { $0.id == item.categoryId }) {
+                let old = categorySpending[index]
+                categorySpending[index] = WidgetCategorySpend(
+                    id: old.id, name: old.name, sfSymbol: old.sfSymbol,
+                    colorHex: old.colorHex, amount: old.amount + item.amount
+                )
+            } else {
+                categorySpending.append(WidgetCategorySpend(
+                    id: item.categoryId, name: item.categoryName, sfSymbol: item.categorySymbol,
+                    colorHex: item.categoryColorHex, amount: item.amount
+                ))
+            }
+            categorySpending.sort { $0.amount > $1.amount }
+        }
+        let topCategory = categorySpending.first
+        let dailyPace = snapshot.daysLeft > 0 ? remaining / Double(snapshot.daysLeft) : remaining
+        let pacingCaption = snapshot.budgetTotal > 0
+            ? (overage > 0
+                ? "Over budget by \(SpendyWidgetFormat.compactAmount(overage, symbol: snapshot.currencySymbol))"
+                : "\(SpendyWidgetFormat.compactAmount(dailyPace, symbol: snapshot.currencySymbol)) per day left")
+            : "No active budget"
 
         saveSnapshot(
             SpendyWidgetSnapshot(
@@ -567,18 +712,23 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
                 todayTotal: todayTotal,
                 todayIncome: todayIncome,
                 monthTotal: monthTotal,
+                previousMonthToDateTotal: snapshot.previousMonthToDateTotal,
                 remainingBudget: remaining,
                 budgetTotal: snapshot.budgetTotal,
                 budgetProgress: progress,
-                topCategoryName: item.isExpense ? item.categoryName : snapshot.topCategoryName,
-                topCategorySymbol: item.isExpense ? item.categorySymbol : snapshot.topCategorySymbol,
-                topCategoryColorHex: item.isExpense ? item.categoryColorHex : snapshot.topCategoryColorHex,
-                topCategoryAmount: item.isExpense && item.categoryName == snapshot.topCategoryName
-                    ? snapshot.topCategoryAmount + item.amount
-                    : snapshot.topCategoryAmount,
+                budgetOverage: overage,
+                budgetPeriod: snapshot.budgetPeriod,
+                budgetCycleEnd: snapshot.budgetCycleEnd,
+                topCategoryName: topCategory?.name ?? "None",
+                topCategorySymbol: topCategory?.sfSymbol ?? "tag",
+                topCategoryColorHex: topCategory?.colorHex ?? "#000000",
+                topCategoryAmount: topCategory?.amount ?? 0,
                 weeklySpending: weekly,
                 recentTransactions: Array(recent),
-                topCategories: snapshot.topCategories,
+                topCategories: Array(categorySpending.prefix(3)),
+                categorySpending: categorySpending,
+                daysLeft: snapshot.daysLeft,
+                pacingCaption: pacingCaption,
                 lastUpdated: Date()
             )
         )

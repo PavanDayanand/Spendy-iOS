@@ -34,8 +34,10 @@ enum SmartInsightsUnitTests {
         testPeriodSwitchingRegression1Wto1Mto3Mto1W()
         testActionRowExistenceAndSelfReferentialResolution()
         testLabelCapitalizationNormalCase()
+        testSubscriptionDueDateBoundary()
+        testTransferBalanceConservation()
         
-        print("✅ [SmartInsightsUnitTests] All 18 Master Intelligence Test Suites Passed Successfully!")
+        print("✅ [SmartInsightsUnitTests] All 20 Master Intelligence Test Suites Passed Successfully!")
     }
     
     // MARK: - 1. Period Bounds & Capability Matrix
@@ -229,7 +231,7 @@ enum SmartInsightsUnitTests {
         
         let payload = InsightMessageBuilder.buildMessage(for: subDueCandidate, currencySymbol: "₹")
         assert(payload.headline == "Spotify is due tomorrow.")
-        assert(payload.supportingText == "₹1,199 comes out then.")
+        assert(payload.supportingText == "₹1,199 is the expected charge.")
         assert(payload.actionTitle == "View Spotify →")
         
         let overdue = InsightCandidate(
@@ -748,5 +750,53 @@ enum SmartInsightsUnitTests {
             assert(family.title == title, "Family title must be normal casing '\(title)', got '\(family.title)'")
             assert(family.title != family.title.uppercased(), "Family title must not be ALL CAPS for \(family)")
         }
+    }
+
+    private static func testSubscriptionDueDateBoundary() {
+        let calendar = Calendar.current
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 9, hour: 12))!
+
+        for dayOffset in [-1, 0, 1] {
+            let dueDate = calendar.date(byAdding: .day, value: dayOffset, to: now)!
+            let subscription = Subscription(name: "Test plan", amount: 99, nextBillingDate: dueDate)
+            let facts = InsightFactsExtractor.extractFacts(
+                transactions: [],
+                budget: Budget(amount: 0, period: .monthly, isActive: false),
+                categories: [],
+                subscriptions: [subscription],
+                now: now
+            )
+            let candidates = SubscriptionRule().evaluate(
+                facts: facts,
+                context: InsightEvaluationContext(surface: .subscriptions, now: now)
+            )
+            let isOverdue = candidates.contains { $0.semanticKey == "sub_overdue" }
+            let isDue = candidates.contains { $0.semanticKey == "sub_upcoming_due" }
+            assert(isOverdue == (dayOffset < 0), "Only a past calendar day is overdue")
+            assert(isDue == (dayOffset >= 0), "Today and tomorrow must be due, not overdue")
+        }
+    }
+
+    private static func testTransferBalanceConservation() {
+        let accounts = [
+            Account(id: "bank", label: "Bank", openingBalance: 100),
+            Account(id: "cash", label: "Cash", openingBalance: 50)
+        ]
+        let legacyTransfer = Transaction(
+            title: "Transfer",
+            amount: 9,
+            toAmount: 78,
+            type: .transfer,
+            categoryId: "transfer",
+            accountId: "bank",
+            toAccountId: "cash"
+        )
+        let balances = ExpenseStore.calculateAccountBalances(
+            accounts: accounts,
+            transactions: [legacyTransfer]
+        )
+        assert(balances["bank"] == 91)
+        assert(balances["cash"] == 59)
+        assert(balances.values.reduce(0, +) == 150, "A transfer must preserve total balance")
     }
 }
