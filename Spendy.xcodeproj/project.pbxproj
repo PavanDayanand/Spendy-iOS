@@ -6,28 +6,53 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-D1200000000000000000000B = {isa = PBXContainerItemProxy; containerPortal = 8D0E76363035F7EA006C03D1; proxyType = 1; remoteGlobalIDString = 8D0E763D3035F7EA006C03D1; remoteInfo = Spendy; };
-D13000000000000000000003 = {isa = PBXContainerItemProxy; containerPortal = 8D0E76363035F7EA006C03D1; proxyType = 1; remoteGlobalIDString = A10E763D3035F7EA006C03D1; remoteInfo = SpendyWidgets; };
-D1400000000000000000000B = {isa = PBXContainerItemProxy; containerPortal = 8D0E76363035F7EA006C03D1; proxyType = 1; remoteGlobalIDString = 8D0E763D3035F7EA006C03D1; remoteInfo = Spendy; };
-/* End PBXContainerItemProxy section */
-/* Begin PBXTargetDependency section */
-D1200000000000000000000A = {isa = PBXTargetDependency; target = 8D0E763D3035F7EA006C03D1; targetProxy = D1200000000000000000000B; };
-D13000000000000000000004 = {isa = PBXTargetDependency; target = A10E763D3035F7EA006C03D1; targetProxy = D13000000000000000000003; };
-D1400000000000000000000A = {isa = PBXTargetDependency; target = 8D0E763D3035F7EA006C03D1; targetProxy = D1400000000000000000000B; };
-/* End PBXTargetDependency section */
-
 /* Begin PBXBuildFile section */
-D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10E763E3035F7EA006C03D1; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D1200000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8D0E76363035F7EA006C03D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8D0E763D3035F7EA006C03D1;
+			remoteInfo = Spendy;
+		};
+		D13000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8D0E76363035F7EA006C03D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10E763D3035F7EA006C03D1;
+			remoteInfo = SpendyWidgets;
+		};
+		D1400000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8D0E76363035F7EA006C03D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8D0E763D3035F7EA006C03D1;
+			remoteInfo = Spendy;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
-D13000000000000000000002 /* Embed App Extensions */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (D13000000000000000000001); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+		D13000000000000000000002 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		8D0E763E3035F7EA006C03D1 /* Spendy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spendy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpendyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D12000000000000000000001 /* SpendyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = SpendyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-D14000000000000000000001 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = SpendyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D14000000000000000000001 /* SpendyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = SpendyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -46,8 +71,16 @@ D14000000000000000000001 = {isa = PBXFileReference; explicitFileType = wrapper.c
 			path = SpendyShared;
 			sourceTree = "<group>";
 		};
-		D12000000000000000000002 /* SpendyTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = SpendyTests; sourceTree = "<group>"; };
-D14000000000000000000002 = {isa = PBXFileSystemSynchronizedRootGroup; path = SpendyUITests; sourceTree = "<group>"; };
+		D12000000000000000000002 /* SpendyTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpendyTests;
+			sourceTree = "<group>";
+		};
+		D14000000000000000000002 /* SpendyUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpendyUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,8 +98,20 @@ D14000000000000000000002 = {isa = PBXFileSystemSynchronizedRootGroup; path = Spe
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D12000000000000000000004 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-D14000000000000000000004 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D12000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D14000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -74,7 +119,7 @@ D14000000000000000000004 = {isa = PBXFrameworksBuildPhase; buildActionMask = 214
 			isa = PBXGroup;
 			children = (
 				8D0E76403035F7EA006C03D1 /* Spendy */,
-D14000000000000000000002 /* SpendyUITests */,
+				D14000000000000000000002 /* SpendyUITests */,
 				D12000000000000000000002 /* SpendyTests */,
 				C10E76403035F7EA006C03D1 /* SpendyShared */,
 				A10E76403035F7EA006C03D1 /* SpendyWidgets */,
@@ -86,7 +131,7 @@ D14000000000000000000002 /* SpendyUITests */,
 			isa = PBXGroup;
 			children = (
 				8D0E763E3035F7EA006C03D1 /* Spendy.app */,
-D14000000000000000000001 /* SpendyUITests.xctest */,
+				D14000000000000000000001 /* SpendyUITests.xctest */,
 				D12000000000000000000001 /* SpendyTests.xctest */,
 				A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */,
 			);
@@ -103,12 +148,12 @@ D14000000000000000000001 /* SpendyUITests.xctest */,
 				8D0E763A3035F7EA006C03D1 /* Sources */,
 				8D0E763B3035F7EA006C03D1 /* Frameworks */,
 				8D0E763C3035F7EA006C03D1 /* Resources */,
-                D13000000000000000000002 /* Embed App Extensions */,
+				D13000000000000000000002 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-                D13000000000000000000004,
+				D13000000000000000000004 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8D0E76403035F7EA006C03D1 /* Spendy */,
@@ -145,18 +190,47 @@ D14000000000000000000001 /* SpendyUITests.xctest */,
 			productType = "com.apple.product-type.app-extension";
 		};
 		D12000000000000000000006 /* SpendyTests */ = {
- isa = PBXNativeTarget;
- buildConfigurationList = D12000000000000000000007;
- buildPhases = (D12000000000000000000003, D12000000000000000000004, D12000000000000000000005);
- buildRules = ();
- dependencies = (D1200000000000000000000A);
- fileSystemSynchronizedGroups = (D12000000000000000000002);
- name = SpendyTests;
- productName = SpendyTests;
- productReference = D12000000000000000000001;
- productType = "com.apple.product-type.bundle.unit-test";
-};
-D14000000000000000000006 = {isa = PBXNativeTarget; buildConfigurationList = D14000000000000000000007; buildPhases = (D14000000000000000000003, D14000000000000000000004, D14000000000000000000005); buildRules = (); dependencies = (D1400000000000000000000A); fileSystemSynchronizedGroups = (D14000000000000000000002); name = SpendyUITests; productName = SpendyUITests; productReference = D14000000000000000000001; productType = "com.apple.product-type.bundle.ui-testing"; };
+			isa = PBXNativeTarget;
+			buildConfigurationList = D12000000000000000000007 /* Build configuration list for PBXNativeTarget "SpendyTests" */;
+			buildPhases = (
+				D12000000000000000000003 /* Sources */,
+				D12000000000000000000004 /* Frameworks */,
+				D12000000000000000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1200000000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D12000000000000000000002 /* SpendyTests */,
+			);
+			name = SpendyTests;
+			productName = SpendyTests;
+			productReference = D12000000000000000000001 /* SpendyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D14000000000000000000006 /* SpendyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D14000000000000000000007 /* Build configuration list for PBXNativeTarget "SpendyUITests" */;
+			buildPhases = (
+				D14000000000000000000003 /* Sources */,
+				D14000000000000000000004 /* Frameworks */,
+				D14000000000000000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1400000000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D14000000000000000000002 /* SpendyUITests */,
+			);
+			name = SpendyUITests;
+			productName = SpendyUITests;
+			productReference = D14000000000000000000001 /* SpendyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -189,7 +263,7 @@ D14000000000000000000006 = {isa = PBXNativeTarget; buildConfigurationList = D140
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-D14000000000000000000006 /* SpendyUITests */,
+				D14000000000000000000006 /* SpendyUITests */,
 				D12000000000000000000006 /* SpendyTests */,
 				8D0E763D3035F7EA006C03D1 /* Spendy */,
 				A10E763D3035F7EA006C03D1 /* SpendyWidgets */,
@@ -212,8 +286,20 @@ D14000000000000000000006 /* SpendyUITests */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D12000000000000000000005 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-D14000000000000000000005 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D12000000000000000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D14000000000000000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -231,9 +317,39 @@ D14000000000000000000005 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D12000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-D14000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D12000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D14000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1200000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8D0E763D3035F7EA006C03D1 /* Spendy */;
+			targetProxy = D1200000000000000000000B /* PBXContainerItemProxy */;
+		};
+		D13000000000000000000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10E763D3035F7EA006C03D1 /* SpendyWidgets */;
+			targetProxy = D13000000000000000000003 /* PBXContainerItemProxy */;
+		};
+		D1400000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8D0E763D3035F7EA006C03D1 /* Spendy */;
+			targetProxy = D1400000000000000000000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8D0E76473035F7EA006C03D1 /* Debug */ = {
@@ -362,7 +478,7 @@ D14000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 214748
 		8D0E764A3035F7EA006C03D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Spendy_iOS;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Spendy/Spendy.entitlements;
@@ -401,7 +517,7 @@ D14000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 214748
 		8D0E764B3035F7EA006C03D1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Spendy_iOS;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Spendy/Spendy.entitlements;
@@ -503,38 +619,80 @@ D14000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 214748
 			};
 			name = Release;
 		};
-D12000000000000000000008 = {isa = XCBuildConfiguration; buildSettings = {
- BUNDLE_LOADER = "$(TEST_HOST)";
- TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spendy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Spendy";
- GENERATE_INFOPLIST_FILE = YES;
- PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Tests;
- PRODUCT_NAME = "$(TARGET_NAME)";
- IPHONEOS_DEPLOYMENT_TARGET = 26.5;
- SDKROOT = iphoneos;
- SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
- SWIFT_VERSION = 5.0;
- SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
- TARGETED_DEVICE_FAMILY = "1,2";
- CODE_SIGN_STYLE = Automatic;
- DEVELOPMENT_TEAM = AQ256VD848;
- }; name = Debug; };
-D12000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {
- BUNDLE_LOADER = "$(TEST_HOST)";
- TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spendy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Spendy";
- GENERATE_INFOPLIST_FILE = YES;
- PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Tests;
- PRODUCT_NAME = "$(TARGET_NAME)";
- IPHONEOS_DEPLOYMENT_TARGET = 26.5;
- SDKROOT = iphoneos;
- SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
- SWIFT_VERSION = 5.0;
- SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
- TARGETED_DEVICE_FAMILY = "1,2";
- CODE_SIGN_STYLE = Automatic;
- DEVELOPMENT_TEAM = AQ256VD848;
- }; name = Release; };
-D14000000000000000000008 = {isa = XCBuildConfiguration; buildSettings = {TEST_TARGET_NAME = Spendy; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; IPHONEOS_DEPLOYMENT_TARGET = 26.5; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = AQ256VD848; }; name = Debug; };
-D14000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {TEST_TARGET_NAME = Spendy; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; IPHONEOS_DEPLOYMENT_TARGET = 26.5; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = AQ256VD848; }; name = Release; };
+		D12000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AQ256VD848;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spendy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Spendy";
+			};
+			name = Debug;
+		};
+		D12000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AQ256VD848;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spendy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Spendy";
+			};
+			name = Release;
+		};
+		D14000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AQ256VD848;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Spendy;
+			};
+			name = Debug;
+		};
+		D14000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AQ256VD848;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Spendy;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -565,8 +723,24 @@ D14000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {TEST_TA
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-D12000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (D12000000000000000000008, D12000000000000000000009); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-D14000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (D14000000000000000000008, D14000000000000000000009); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		D12000000000000000000007 /* Build configuration list for PBXNativeTarget "SpendyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D12000000000000000000008 /* Debug */,
+				D12000000000000000000009 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D14000000000000000000007 /* Build configuration list for PBXNativeTarget "SpendyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D14000000000000000000008 /* Debug */,
+				D14000000000000000000009 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
 	rootObject = 8D0E76363035F7EA006C03D1 /* Project object */;

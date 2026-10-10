@@ -24,6 +24,25 @@ enum InsightMessageBuilder {
         let hasDestination = candidate.destination != nil
         
         switch candidate.evidence {
+        case .averageExpense(let average, let count):
+            let amount = formatCurrency(average, symbol: currencySymbol)
+            return InsightMessagePayload(headline: "Your average recorded expense is \(amount).",
+                supportingText: "Based on \(count) expenses in the selected period.", emphasis: [.highlight(amount)], actionTitle: nil)
+        case .largestExpense(_, let title, let amount, let share):
+            let formatted = formatCurrency(amount, symbol: currencySymbol)
+            return InsightMessagePayload(headline: "\(title) is your largest recorded expense.",
+                supportingText: "\(formatted), or \(Int(share.rounded()))% of this period's spending.",
+                emphasis: [.highlight(formatted)], actionTitle: hasDestination ? "View Transaction →" : nil)
+        case .spendingDays(let days, let total):
+            let amount = formatCurrency(total / Double(max(1, days)), symbol: currencySymbol)
+            return InsightMessagePayload(headline: "Expenses logged on \(daysWord(days)) this period.",
+                supportingText: "An average of \(amount) per active spending day.", emphasis: [.highlight(amount)], actionTitle: nil)
+        case .recordedSpending(let total, let count, let period):
+            let amount = formatCurrency(total, symbol: currencySymbol)
+            return InsightMessagePayload(headline: "\(amount) logged \(period.currentPeriodPhrase).",
+                supportingText: "\(count) recorded expenses. Transfers aren't counted.",
+                emphasis: [.highlight(amount)], actionTitle: nil)
+
             
         case .spendingVelocity(_, _, let deltaPercent, let projected, _, let period):
             let formattedProjected = formatCurrency(projected, symbol: currencySymbol)
@@ -49,7 +68,7 @@ enum InsightMessageBuilder {
         case .budgetExceeded(_, _, let excess):
             let formattedExcess = formatCurrency(excess, symbol: currencySymbol)
             return InsightMessagePayload(
-                headline: "You've gone past this month's budget.",
+                headline: "You've gone over this cycle's budget.",
                 supportingText: "\(formattedExcess) over the limit.",
                 emphasis: [.highlight(formattedExcess), .currency(excess)],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View Budget →") : nil
@@ -64,13 +83,13 @@ enum InsightMessageBuilder {
                 let dateStr = formatDateShort(date)
                 return InsightMessagePayload(
                     headline: "Your budget runs out around \(dateStr) at this pace.",
-                    supportingText: "You can spend \(formattedSafeDaily) a day for the next \(daysText).",
+                    supportingText: "You can spend \(formattedSafeDaily) a day over the remaining \(daysText).",
                     emphasis: [.highlight(dateStr), .highlight(formattedSafeDaily), .date(date)],
                     actionTitle: hasDestination ? (candidate.actionTitle ?? "View Budget →") : nil
                 )
             } else if overPace > 12.0 {
                 return InsightMessagePayload(
-                    headline: "You're spending faster than this month's budget.",
+                    headline: "You're spending faster than this budget cycle.",
                     supportingText: "\(formattedPct) used, with \(daysText) left.",
                     emphasis: [.highlight(formattedPct), .count(daysRemaining)],
                     actionTitle: hasDestination ? (candidate.actionTitle ?? "View Budget →") : nil
@@ -84,7 +103,7 @@ enum InsightMessageBuilder {
                 )
             } else {
                 return InsightMessagePayload(
-                    headline: "You're still in control of this month's budget.",
+                    headline: "You're still in control of this budget cycle.",
                     supportingText: "\(formattedPct) used so far.",
                     emphasis: [.highlight(formattedPct)],
                     actionTitle: hasDestination ? (candidate.actionTitle ?? "View Budget →") : nil
@@ -93,7 +112,7 @@ enum InsightMessageBuilder {
             
         case .categoryTrend(_, let name, _, _, let deltaAmount, let deltaPercent, let period):
             let formattedAmount = formatCurrency(abs(deltaAmount), symbol: currencySymbol)
-            let basePeriodWord = period.baselinePeriodPhrase
+            let basePeriodWord = "the comparable part of \(period.baselinePeriodPhrase)"
             
             if deltaAmount < 0 {
                 if abs(deltaPercent) >= 35.0 {
@@ -177,16 +196,16 @@ enum InsightMessageBuilder {
             
         case .zeroSpendStreak(let streak):
             return InsightMessagePayload(
-                headline: "\(daysWord(streak)) with nothing spent.",
-                supportingText: "You're in control of the spending.",
+                headline: "\(daysWord(streak)) with no expenses logged.",
+                supportingText: "Based on recorded expenses, not proof of no spending.",
                 emphasis: [.highlight(daysWord(streak))],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View spending →") : nil
             )
             
         case .zeroSpendWeekly(let zeroDays):
             return InsightMessagePayload(
-                headline: "\(daysWord(zeroDays)) this week with nothing spent.",
-                supportingText: "That's a quiet week so far.",
+                headline: "\(daysWord(zeroDays)) in the past seven days with no expenses logged.",
+                supportingText: "Check whether anything is still missing from your log.",
                 emphasis: [.highlight(daysWord(zeroDays))],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View spending →") : nil
             )
@@ -201,10 +220,10 @@ enum InsightMessageBuilder {
             )
             
         case .subscriptionDoubleCharge(_, let name, let count, _):
-            let formattedCount = "\(count) charges"
+            let formattedCount = "\(count) recorded expenses"
             return InsightMessagePayload(
-                headline: "\(name) was charged twice.",
-                supportingText: "\(formattedCount) in this cycle.",
+                headline: "\(name) has multiple expenses logged on one day.",
+                supportingText: "\(formattedCount). Check whether an entry was duplicated.",
                 emphasis: [.highlight(name), .highlight(formattedCount)],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View \(name) →") : nil
             )

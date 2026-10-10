@@ -9,13 +9,11 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .home
-    @State private var composeTransitionID: String? = nil
     @State private var showAddTransaction: Bool = false
     @State private var isHomeDrawerExpanded: Bool = false
     @State private var isHomeSubpageActive: Bool = false
     @State private var isAnalyticsSubpageActive: Bool = false
     @State private var quickActionManager = QuickActionManager.shared
-    @Namespace private var composeNamespace
 
     private var isDockVisible: Bool {
         switch selectedTab {
@@ -65,9 +63,7 @@ struct MainTabView: View {
             GlassTabBar(
                 selectedTab: $selectedTab,
                 isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
-                composeNamespace: composeNamespace,
                 onQuickAdd: {
-                    composeTransitionID = AppTransitionIDs.quickAddButton
                     showAddTransaction = true
                 }
             )
@@ -78,11 +74,8 @@ struct MainTabView: View {
             .animation(AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .fullScreenCover(isPresented: $showAddTransaction, onDismiss: {
-            composeTransitionID = nil
-        }) {
+        .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
-                .spendyNavigationZoom(from: composeTransitionID, in: composeNamespace)
         }
         .onChange(of: quickActionManager.shouldPresentQuickAdd) { _, shouldPresent in
             if shouldPresent {

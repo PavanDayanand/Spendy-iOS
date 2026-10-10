@@ -27,6 +27,7 @@ struct SpendTrendPoint: Identifiable, Equatable {
 
 // MARK: - On-Screen Hero Spend Bar Chart Component with Interactive Scrubbing
 struct HeroSpendBarChart: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let dataPoints: [MinimalBarPoint]
     @Binding var scrubbedPoint: MinimalBarPoint?
     @Binding var isScrubbing: Bool
@@ -80,7 +81,7 @@ struct HeroSpendBarChart: View {
             spacing = max(4, chartWidth * 0.03)
         }
         let barWidth = min(48, max(4, (chartWidth - spacing * (count + 1)) / count))
-        let cornerRadius = min(12, max(2, barWidth * 0.42))
+        let cornerRadius: CGFloat = 1
         return (barWidth, spacing, cornerRadius)
     }
     
@@ -96,29 +97,20 @@ struct HeroSpendBarChart: View {
                 
                 ZStack(alignment: .topLeading) {
                     // 1. Horizontal Grid Lines & Right-aligned Y-Axis Labels
-                    VStack(spacing: 0) {
-                        ForEach(Array(yAxisLevels.enumerated()), id: \.offset) { index, level in
-                            HStack(spacing: 8) {
-                                // Horizontal Grid Line
-                                Rectangle()
-                                    .fill(gridColor)
-                                    .frame(height: 0.8)
-                                
-                                // Y-Axis Label
-                                Text(formatAxisNumber(level))
-                                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                    .monospacedDigit()
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .frame(width: 50, alignment: .leading)
-                            }
-                            
-                            if index < yAxisLevels.count - 1 {
-                                Spacer()
-                            }
+                    ForEach(Array(yAxisLevels.enumerated()), id: \.offset) { index, level in
+                        HStack(spacing: 8) {
+                            Rectangle().fill(gridColor).frame(height: 0.8)
+                            Text(formatAxisNumber(level))
+                                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                .monospacedDigit()
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .frame(width: 50, alignment: .leading)
                         }
+                        .frame(width: geo.size.width)
+                        .position(x: geo.size.width / 2,
+                                  y: chartHeight * CGFloat(index) / CGFloat(yAxisLevels.count - 1))
                     }
-                    .frame(height: chartHeight)
-                    
+
                     // Both views use the same scale, month positions, and scrubbing.
                     if showsLine {
                         spendingLine(width: chartWidth, height: chartHeight)
@@ -137,22 +129,13 @@ struct HeroSpendBarChart: View {
 
                                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                         .fill(barColor)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                                .stroke(isSelected ? Color.white : Color.clear, lineWidth: 1.5)
-                                        )
-                                        .shadow(
-                                            color: isSelected ? Color.white.opacity(0.4) : Color.clear,
-                                            radius: 8,
-                                            y: 0
-                                        )
                                         .frame(width: barWidth, height: barH)
                                         .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
                                         .opacity(isAnySelected && !isSelected ? 0.30 : 1.0)
                                 }
                                 .frame(width: barWidth, height: chartHeight)
-                                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
-                                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isAnySelected)
+                                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: isSelected)
+                                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: isAnySelected)
                             }
 
                             Spacer(minLength: 0)
@@ -236,8 +219,7 @@ struct HeroSpendBarChart: View {
                 path.addLine(to: CGPoint(x: first.x, y: height))
                 path.closeSubpath()
             }
-            .fill(LinearGradient(colors: [barColor.opacity(0.18), barColor.opacity(0)],
-                                 startPoint: .top, endPoint: .bottom))
+            .fill(barColor.opacity(0.05))
             curve.stroke(barColor, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
             ForEach(Array(dataPoints.enumerated()), id: \.element.id) { index, point in
                 if scrubbedPoint?.id == point.id || (scrubbedPoint == nil && index == dataPoints.count - 1) {
@@ -449,10 +431,6 @@ struct DashboardView: View {
         } else {
             return absFormatted
         }
-    }
-    
-    private var drawerHeaderTitle: String {
-        isSheetExpanded ? "Transactions" : "Recent activity"
     }
     
     private var displayedBalance: Double {
@@ -720,54 +698,60 @@ struct DashboardView: View {
             
             Spacer()
             
-            // Top Right Action Toggles (Stats, Currency, Privacy, Budget)
-            GlassButtonGroup(spacing: 10) {
-                // 1. Stats / Analytics Button (Slides in like Budget)
-                GlassCircleButton(
-                    icon: SFIcons.tabAnalytics,
-                    size: 44,
-                    iconSize: 16,
-                    accessibilityLabel: "Analytics and statistics"
-                ) {
+            // Keep the frequent action visible; secondary actions share one menu.
+            HStack(spacing: 0) {
+                Button {
                     HapticsManager.shared.trigger(.selection)
                     showAnalyticsView = true
+                } label: {
+                    Image(systemName: SFIcons.tabAnalytics)
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
-                
-                // 2. Currency Converter Button
-                GlassCircleButton(
-                    icon: "arrow.left.arrow.right",
-                    size: 44,
-                    iconSize: 16,
-                    accessibilityLabel: "Currency converter"
-                ) {
-                    HapticsManager.shared.trigger(.selection)
-                    showCurrencyConverter = true
-                }
-                
-                // 3. Privacy Eye Toggle Button
-                GlassCircleButton(
-                    icon: hideBalance ? SFIcons.eyeSlash : SFIcons.eye,
-                    size: 44,
-                    iconSize: 16,
-                    accessibilityLabel: hideBalance ? "Show balance" : "Hide balance"
-                ) {
-                    HapticsManager.shared.trigger(.selection)
-                    withAnimation(.spring(response: 0.25)) {
-                        hideBalance.toggle()
+                .buttonStyle(GlassCirclePressStyle())
+                .accessibilityLabel("Analytics and statistics")
+
+                Rectangle()
+                    .fill(SpendyColors.separator)
+                    .frame(width: 1, height: 18)
+                    .accessibilityHidden(true)
+
+                Menu {
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        showBudgetHub = true
+                    } label: {
+                        Label("Budget", systemImage: "target")
                     }
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        showCurrencyConverter = true
+                    } label: {
+                        Label("Currency Converter", systemImage: "arrow.left.arrow.right")
+                    }
+                    Divider()
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(.spring(response: 0.25)) {
+                            hideBalance.toggle()
+                        }
+                    } label: {
+                        Label(hideBalance ? "Show Amounts" : "Hide Amounts",
+                              systemImage: hideBalance ? SFIcons.eyeSlash : SFIcons.eye)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
-                
-                // 4. Budget Hub Button
-                GlassCircleButton(
-                    icon: "target",
-                    size: 44,
-                    iconSize: 16,
-                    accessibilityLabel: "Budget"
-                ) {
-                    HapticsManager.shared.trigger(.selection)
-                    showBudgetHub = true
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("More actions")
+                .accessibilityHint("Budget, currency converter, and amount visibility")
             }
+            .foregroundStyle(SpendyColors.textPrimary)
+            .nativeLiquidGlassCapsule(isInteractive: true)
             .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
         }
     }
@@ -922,81 +906,47 @@ struct DashboardView: View {
         let restingOffset = totalHeight * 0.55
         let expandedOffset = max(topInset + 10, 56)
         let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
-        let drawerAvailableHeight = max(100, totalHeight - expandedOffset)
+        let drawerAvailableHeight = max(100, totalHeight - currentOffset)
         
         return VStack(spacing: 0) {
-            // Drag Indicator & Header Zone (Always draggable & tappable)
+            // A stable header keeps its identity and spacing throughout a drag.
             VStack(spacing: 0) {
-                // Centered Capsule Grab Handle
                 Capsule()
-                    .fill(Color.secondary.opacity(0.40))
-                    .frame(width: 38, height: 5)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .fill(SpendyColors.textTertiary)
+                    .frame(width: 32, height: 4)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 24)
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(AppMotion.fluidSpring) {
-                            setExpandedState(!isSheetExpanded)
-                        }
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
-                    .accessibilityAddTraits(.isButton)
-                
-                // Transaction drawer header
-                HStack(alignment: .center) {
-                    Text(drawerHeaderTitle)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 8) {
-                        if isSheetExpanded && hasActiveFilters {
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                    clearDrawerFilters()
-                                }
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 12, weight: .semibold))
-                                    Text("Clear")
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .padding(.horizontal, 10)
-                                .frame(height: 34)
-                                .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                        
-                        Text("\(displayedTransactions.count)")
-                            .font(.system(size: 14, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .accessibilityLabel("\(displayedTransactions.count) transactions")
+                    .onTapGesture { toggleActivityDrawer() }
+                    .accessibilityHidden(true)
 
-                        Button {
-                            showAllTransactions = true
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("See all transactions")
+                HStack(spacing: 12) {
+                    Button { toggleActivityDrawer() } label: {
+                        Text("Recent activity")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
+                    .accessibilityValue("\(displayedTransactions.count) transactions")
+
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        showAllTransactions = true
+                    } label: {
+                        Text("See all")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("See all transactions")
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, isSheetExpanded ? 10 : 8)
-                
+                .padding(.bottom, 4)
             }
             .contentShape(Rectangle())
             .highPriorityGesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
@@ -1008,35 +958,20 @@ struct DashboardView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             
-            // Transaction List Content
-            if displayedTransactions.isEmpty {
-                emptyRecentActivityView
-                    .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                Spacer(minLength: 0)
-            } else if !isSheetExpanded {
-                // Collapsed Solid State: Show only the transactions that fit cleanly ABOVE the floating dock
-                let collapsedTxs = Array(displayedTransactions.prefix(3))
-                VStack(spacing: 0) {
-                    ForEach(Array(collapsedTxs.enumerated()), id: \.element.id) { index, tx in
-                        transactionRow(tx)
-                        
-                        if index < collapsedTxs.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 64)
-                                .padding(.trailing, 16)
+            // Only activity scrolls. Its viewport ends above the floating dock.
+            ScrollView(showsIndicators: isSheetExpanded) {
+                if displayedTransactions.isEmpty {
+                    emptyRecentActivityView
+                        .padding(.horizontal, 20)
+                        .padding(.top, 18)
+                } else if !isSheetExpanded {
+                    LazyVStack(spacing: 0) {
+                        ForEach(displayedTransactions.prefix(3)) { tx in
+                            transactionRow(tx)
                         }
                     }
-                }
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
-                
-                Spacer(minLength: 0)
-            } else {
-                // Expanded Full State: Scrollable view with all categorized/date-grouped transactions
-                ScrollView(showsIndicators: true) {
+                    .padding(.horizontal, 4)
+                } else {
                     LazyVStack(spacing: 0) {
                         ForEach(drawerGroupedTransactions, id: \.0) { groupTitle, groupNet, txs in
                             VStack(alignment: .leading, spacing: 4) {
@@ -1071,9 +1006,13 @@ struct DashboardView: View {
                         }
                     }
                     .padding(.horizontal, 4)
-                    .padding(.bottom, bottomInset + 100) // Clearance for floating dock when scrolled
                 }
             }
+            .scrollDisabled(!isSheetExpanded)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .clipped()
+            .accessibilityIdentifier("homeActivityViewport")
+            .padding(.bottom, bottomInset + 78)
         }
         .frame(maxWidth: .infinity)
         .frame(height: drawerAvailableHeight)
@@ -1210,6 +1149,20 @@ struct DashboardView: View {
                     .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.primaryBlue : nil)
                 }
                 .buttonStyle(.plain)
+
+                if hasActiveFilters {
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(AppMotion.fluidSpring) { clearDrawerFilters() }
+                    } label: {
+                        Label("Clear", systemImage: "xmark.circle")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear transaction filters")
+                }
             }
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 20)
@@ -1217,6 +1170,13 @@ struct DashboardView: View {
         .accessibilityIdentifier("transactionFilters")
     }
     
+    private func toggleActivityDrawer() {
+        HapticsManager.shared.trigger(.selection)
+        withAnimation(AppMotion.fluidSpring) {
+            setExpandedState(!isSheetExpanded)
+        }
+    }
+
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in

@@ -211,7 +211,7 @@ struct DataManagementView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(SpendyColors.sheetCardBackground)
+                    .fill(SpendyColors.settingsCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)

@@ -6,8 +6,14 @@
 import AppIntents
 import CoreSpotlight
 import SwiftUI
+import UserNotifications
 
 final class SpendyAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = NotificationManager.shared
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
@@ -51,6 +57,7 @@ struct SpendyApp: App {
                 .environment(quickActionManager)
                 .environment(\.isMonoIconMode, store.isMonoIconMode)
                 .preferredColorScheme(store.colorScheme)
+                .toggleStyle(SpendySwitchStyle())
                 .onOpenURL { url in
                     quickActionManager.handleURL(url)
                 }
@@ -69,6 +76,7 @@ struct SpendyApp: App {
 
     @MainActor
     private func activateSpendySystemIntegrations() {
+        SpendyLiveActivityManager.shared.endAllLiveActivities()
         guard store.systemIntegrationsEnabled else { return }
         store.ingestPendingWidgetTransactions()
         WidgetDataManager.shared.publish(from: store)

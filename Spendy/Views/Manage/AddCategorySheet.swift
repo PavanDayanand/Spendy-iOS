@@ -10,10 +10,12 @@ import SwiftUI
 struct AddCategorySheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var categoryToEdit: Category? = nil
     var defaultType: TransactionType = .expense
     var defaultFolder: String? = nil
+    var isSettingsPage: Bool = false
     
     @State private var label: String = ""
     @State private var type: TransactionType = .expense
@@ -48,10 +50,11 @@ struct AddCategorySheet: View {
         }
     }
     
-    init(categoryToEdit: Category? = nil, defaultType: TransactionType = .expense, defaultFolder: String? = nil) {
+    init(categoryToEdit: Category? = nil, defaultType: TransactionType = .expense, defaultFolder: String? = nil, isSettingsPage: Bool = false) {
         self.categoryToEdit = categoryToEdit
         self.defaultType = defaultType
         self.defaultFolder = defaultFolder
+        self.isSettingsPage = isSettingsPage
         
         if let cat = categoryToEdit {
             _label = State(initialValue: cat.label)
@@ -72,11 +75,6 @@ struct AddCategorySheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
-            SpendyAmbientHeaderBackground(color: Color(hex: selectedColorHex), height: 280, opacity: 0.28)
-            
             VStack(spacing: 0) {
                 SpendyCreateSheetHeader(
                     showDelete: isEditing,
@@ -104,7 +102,7 @@ struct AddCategorySheet: View {
                         avatarHeroSection
                             .padding(.top, 20)
                         
-                        SpendyCreateFormCard {
+                        SpendyCreateFormCard(fillColor: isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground) {
                             SpendyCreateFormRow {
                                 TextField("Category name", text: $label)
                                     .font(.system(size: 16, weight: .medium))
@@ -152,7 +150,7 @@ struct AddCategorySheet: View {
                         
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 100)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -177,8 +175,8 @@ struct AddCategorySheet: View {
                 .padding(.top, 12)
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
+        // Short forms start compact; larger text can use the full sheet.
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(420), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)

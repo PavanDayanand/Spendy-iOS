@@ -34,3 +34,10 @@ Carthage/Build/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local UI verification output
+/artifacts/
+*.xcresult/
+
+# Personal exported ledgers
+/spendy_backup*.json

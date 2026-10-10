@@ -102,7 +102,7 @@ struct CustomColorSliderPickerView: View {
                     }
                 ))
                 .labelsHidden()
-                .tint(SpendyColors.incomeGreen)
+                .tint(SpendyColors.controlAccent)
             }
         }
         .padding(16)

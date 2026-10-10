@@ -170,7 +170,7 @@ struct HomeConfigurationSheet: View {
                     if section.isAlwaysVisible {
                         Toggle("", isOn: .constant(true))
                             .labelsHidden()
-                            .tint(Color.green)
+                            .tint(SpendyColors.controlAccent)
                             .disabled(true)
                             .opacity(0.45)
                     } else {
@@ -184,7 +184,7 @@ struct HomeConfigurationSheet: View {
                             }
                         ))
                         .labelsHidden()
-                        .tint(Color.green)
+                        .tint(SpendyColors.controlAccent)
                     }
                 }
                 .padding(.horizontal, 16)

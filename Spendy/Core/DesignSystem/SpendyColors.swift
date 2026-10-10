@@ -76,6 +76,8 @@ extension UIColor {
 
 // MARK: - Spendy Adaptive Monochrome Color System
 enum SpendyColors {
+    // Enabled switches stay distinct from the white thumb in both appearances.
+    static let controlAccent = Color.blue
     // MARK: - Global Mono Mode Flag
     // Set by ExpenseStore when isMonoIconMode changes. Allows static semantic colors
     // to resolve to monochrome without changing any call sites across the app.
@@ -105,11 +107,9 @@ enum SpendyColors {
         dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
-    // Settings Background
-    static let settingsBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 1.0, alpha: 1.0),                                              // #FFFFFF
-        dark: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)                           // #000000
-    ))
+    // Match the native grouped Forms used by Notifications and Insights.
+    static let settingsBackground = Color(uiColor: .systemGroupedBackground)
+    static let settingsCardBackground = Color(uiColor: .secondarySystemGroupedBackground)
 
     static let separator = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.10),

@@ -62,6 +62,28 @@ final class ExpenseStore {
             let fixture = ExpenseStore(storageURL: url, startsServices: false)
             fixture.hasCompletedOnboarding = true
             fixture.transactions = [Transaction(title: "Readiness expense", amount: 25, categoryId: "groceries", accountId: "cash")]
+            if mode == "analytics" {
+                fixture.transactions = Array(fixture.categories.filter { $0.type == .expense }.prefix(6)).enumerated().map { index, category in
+                    Transaction(title: "Analytics expense \(index)", amount: Double(60 - index * 5), categoryId: category.id, accountId: "cash")
+                }
+            }
+            if mode == "subscription-detail" {
+                fixture.subscriptions = [Subscription(name: "Readiness Music", amount: 12, nextBillingDate: Date().addingTimeInterval(86400))]
+            }
+            if mode == "insights" {
+                let current = (0..<3).map { index in
+                    Transaction(title: "Pager expense \(index)", amount: 50, categoryId: "groceries", accountId: "cash",
+                        date: Calendar.current.date(byAdding: .day, value: -(index + 2), to: Date())!)
+                }
+                fixture.transactions = current + current.map { tx in
+                    Transaction(title: "Previous expense", amount: 100, categoryId: "groceries", accountId: "cash",
+                        date: Calendar.current.date(byAdding: .month, value: -1, to: tx.date)!)
+                }
+                fixture.budget = Budget(amount: 100, isActive: true)
+            }
+            if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_APPEARANCE"] == "light" {
+                fixture.appearanceMode = .light
+            }
             fixture.flushPendingSave()
             fixture.flushPendingSave()
             if mode == "recovery" { try? Data("unreadable UI test fixture".utf8).write(to: url) }
@@ -136,6 +158,10 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var insightsEnabled = true { didSet { scheduleSave() } }
+    var weeklySummaryEnabled = false { didSet { scheduleSave() } }
+    var loggingRemindersEnabled = false { didSet { scheduleSave() } }
+
     var notificationsEnabled: Bool = true {
         didSet { scheduleSave() }
     }
@@ -386,6 +412,9 @@ final class ExpenseStore {
         var profileIconSymbol: String?
         var profileColorHex: String?
         var soundEnabled: Bool?
+        var insightsEnabled: Bool?
+        var weeklySummaryEnabled: Bool?
+        var loggingRemindersEnabled: Bool?
         var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
         var isMonoIconMode: Bool?
@@ -430,6 +459,9 @@ final class ExpenseStore {
                 self.profileIconSymbol = payload.profileIconSymbol
                 self.profileColorHex = payload.profileColorHex
                 self.soundEnabled = payload.soundEnabled ?? true
+                self.insightsEnabled = payload.insightsEnabled ?? true
+                self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? false
+                self.loggingRemindersEnabled = payload.loggingRemindersEnabled ?? false
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = payload.appearanceMode ?? .dark
                 self.isMonoIconMode = true
@@ -548,6 +580,9 @@ final class ExpenseStore {
             profileIconSymbol: profileIconSymbol,
             profileColorHex: profileColorHex,
             soundEnabled: soundEnabled,
+            insightsEnabled: insightsEnabled,
+            weeklySummaryEnabled: weeklySummaryEnabled,
+            loggingRemindersEnabled: loggingRemindersEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
             isMonoIconMode: isMonoIconMode,
@@ -616,6 +651,9 @@ final class ExpenseStore {
     private func seedInitialData() {
         self.userName = ""
         self.soundEnabled = true
+        self.insightsEnabled = true
+        self.weeklySummaryEnabled = false
+        self.loggingRemindersEnabled = false
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
         self.appearanceMode = .dark
@@ -1143,7 +1181,7 @@ final class ExpenseStore {
         let start = budgetCycleStart()
         let end = budgetCycleEnd()
         return transactions
-            .filter { $0.type == .expense && $0.date >= start && $0.date < end }
+            .filter { $0.type == .expense && $0.date >= start && $0.date < end && $0.date <= Date() }
             .reduce(0.0) { $0 + $1.amount }
     }
     
@@ -1270,12 +1308,10 @@ final class ExpenseStore {
             return .exceeded(excessAmount: spent - target)
         }
         
-        let start = budgetCycleStart()
-        let end = budgetCycleEnd()
-        let calendar = Calendar.current
-        let totalDays = max(1, calendar.dateComponents([.day], from: start, to: end).day ?? 30)
-        let elapsedDays = max(1, calendar.dateComponents([.day], from: start, to: Date()).day ?? 1)
-        
+        let facts = budgetInsightFacts()
+        let totalDays = facts.totalDaysInCycle
+        let elapsedDays = facts.elapsedDays
+
         let timePct = totalDays > 0 ? (Double(elapsedDays) / Double(totalDays)) * 100.0 : 0.0
         let spendPct = target > 0 ? (spent / target) * 100.0 : 0.0
         let delta = spendPct - timePct
@@ -1290,36 +1326,22 @@ final class ExpenseStore {
     }
     
     /// Projected budget exhaustion information and pacing insight message
+    func budgetInsightFacts(for date: Date = Date()) -> InsightFacts {
+        let start = budgetCycleStart(for: date)
+        let unit: Calendar.Component = budget.period == .weekly ? .weekOfYear : .month
+        return InsightFactsExtractor.extractFacts(transactions: transactions, budget: budget,
+            categories: categories, subscriptions: subscriptions,
+            context: AnalyticsInsightContext(period: budget.period == .weekly ? .week : .month,
+                startDate: start, endDate: budgetCycleEnd(for: date).addingTimeInterval(-1),
+                baselineStartDate: Calendar.current.date(byAdding: unit, value: -1, to: start) ?? start,
+                baselineEndDate: start.addingTimeInterval(-1), referenceDate: date))
+    }
+
     var budgetPacingInsightMessage: String? {
-        let target = budgetTargetAmount(for: budget.period)
-        guard budget.isActive, target > 0 else { return nil }
-        
-        let start = budgetCycleStart()
-        let calendar = Calendar.current
-        let elapsedDays = max(1, calendar.dateComponents([.day], from: start, to: Date()).day ?? 1)
-        let spent = budgetCycleExpenses
-        
-        if spent > target {
-            let excess = spent - target
-            return "At this pace, your budget is exceeded by \(excess.formattedCurrency(symbol: currencySymbol, decimals: 0))."
-        }
-        
-        let avgDaily = spent / Double(elapsedDays)
-        guard avgDaily > 0 else { return "Pacing comfortably within your safe daily target." }
-        
-        let projectedDaysToExhaust = target / avgDaily
-        let daysVal = min(365.0, max(0.0, projectedDaysToExhaust)).safeInt
-        guard let projectedExhaustionDate = calendar.date(byAdding: .day, value: daysVal, to: start) else { return nil }
-        
-        let end = budgetCycleEnd()
-        if projectedExhaustionDate < end {
-            let daysEarly = max(1, calendar.dateComponents([.day], from: projectedExhaustionDate, to: end).day ?? 1)
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return "At your current pace (\(avgDaily.formattedCurrency(symbol: currencySymbol, decimals: 0))/day), budget runs out on \(formatter.string(from: projectedExhaustionDate)) (\(daysEarly) \(daysEarly == 1 ? "day" : "days") early)."
-        } else {
-            return "Pacing smoothly! You are projected to finish the cycle under budget."
-        }
+        guard budget.isActive else { return nil }
+        let moment = InsightDecisionEngine.shared.evaluate(facts: budgetInsightFacts(), surface: .budget,
+            currencySymbol: currencySymbol).first { !$0.isInsufficientData }
+        return moment.map { [$0.headline, $0.supportingText].compactMap { $0 }.joined(separator: " ") }
     }
 
     /// What-If projected total cycle expenses
@@ -1425,6 +1447,9 @@ final class ExpenseStore {
     func resetToSampleData() {
         self.userName = SpendyDefaultData.userName
         self.soundEnabled = true
+        self.insightsEnabled = true
+        self.weeklySummaryEnabled = false
+        self.loggingRemindersEnabled = false
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = true
         self.appearanceMode = SpendyDefaultData.appearanceMode
@@ -1466,6 +1491,9 @@ final class ExpenseStore {
             profileIconSymbol: profileIconSymbol,
             profileColorHex: profileColorHex,
             soundEnabled: soundEnabled,
+            insightsEnabled: insightsEnabled,
+            weeklySummaryEnabled: weeklySummaryEnabled,
+            loggingRemindersEnabled: loggingRemindersEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
             isMonoIconMode: isMonoIconMode,
@@ -1548,6 +1576,9 @@ final class ExpenseStore {
                 self.profileImageData = payload.profileImageData
                 self.profileIconSymbol = payload.profileIconSymbol
                 self.profileColorHex = payload.profileColorHex
+                self.insightsEnabled = payload.insightsEnabled ?? self.insightsEnabled
+                self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? self.weeklySummaryEnabled
+                self.loggingRemindersEnabled = payload.loggingRemindersEnabled ?? self.loggingRemindersEnabled
                 self.notificationsEnabled = payload.notificationsEnabled ?? self.notificationsEnabled
                 self.ratesLastUpdated = payload.ratesLastUpdated
                 self.ratesNextUpdate = payload.ratesNextUpdate

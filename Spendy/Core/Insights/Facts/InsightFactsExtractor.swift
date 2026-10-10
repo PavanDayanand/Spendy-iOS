@@ -35,7 +35,7 @@ enum InsightFactsExtractor {
         
         // Filter by exact date boundaries
         let currentExpenseTxs = scopedTransactions.filter {
-            $0.type == .expense && $0.date >= context.startDate && $0.date <= context.endDate
+            $0.type == .expense && $0.date >= context.startDate && $0.date <= min(context.endDate, now)
         }
         
         let baselineExpenseTxs = scopedTransactions.filter {
@@ -43,7 +43,7 @@ enum InsightFactsExtractor {
         }
         
         let currentIncomeTxs = scopedTransactions.filter {
-            $0.type == .income && $0.date >= context.startDate && $0.date <= context.endDate
+            $0.type == .income && $0.date >= context.startDate && $0.date <= min(context.endDate, now)
         }
         
         let baselineIncomeTxs = scopedTransactions.filter {
@@ -51,7 +51,8 @@ enum InsightFactsExtractor {
         }
         
         // 1. Temporal Math & Sufficiency
-        let totalDaysInCycle = context.totalDays
+        let totalDaysInCycle = max(1, (calendar.dateComponents([.day],
+            from: calendar.startOfDay(for: context.startDate), to: calendar.startOfDay(for: context.endDate)).day ?? 0) + 1)
         let elapsedDays: Int = {
             if context.isHistorical {
                 return totalDaysInCycle
@@ -62,7 +63,7 @@ enum InsightFactsExtractor {
                 return 1
             }
         }()
-        let remainingDays = max(0, totalDaysInCycle - elapsedDays)
+        let remainingDays = context.isPeriodInProgress ? max(1, totalDaysInCycle - elapsedDays + 1) : 0
         let isEarlyPeriod = elapsedDays < 3 && context.period != .week && !context.isHistorical
         let isPeriodInProgress = context.isPeriodInProgress
         
@@ -132,7 +133,20 @@ enum InsightFactsExtractor {
             .max { $0.deltaSpend < $1.deltaSpend }
         
         // 4. Budget & Pacing Math (Only if global scope and budget is active)
+        let expectedBudgetStart: Date = {
+            let today = calendar.startOfDay(for: now)
+            if budget.period == .weekly {
+                let diff = (calendar.component(.weekday, from: now) - budget.startDay + 7) % 7
+                return calendar.date(byAdding: .day, value: -diff, to: today) ?? today
+            }
+            var components = calendar.dateComponents([.year, .month], from: now)
+            components.day = min(28, max(1, budget.startDay))
+            let candidate = calendar.date(from: components) ?? today
+            return candidate <= now ? candidate : (calendar.date(byAdding: .month, value: -1, to: candidate) ?? candidate)
+        }()
         let hasActiveBudget = budget.isActive && budget.amount > 0 && context.scope == .global
+            && context.isPeriodInProgress && calendar.isDate(context.startDate, inSameDayAs: expectedBudgetStart)
+            && (budget.period == .weekly ? context.period == .week : context.period == .month)
         let budgetLimit = budget.amount
         let budgetExpenses = currentSpendTotal
         let budgetPercentSpent = budgetLimit > 0 ? (budgetExpenses / budgetLimit) * 100.0 : 0.0
@@ -142,10 +156,10 @@ enum InsightFactsExtractor {
         var exhaustionDays: Int? = nil
         var exhaustionDate: Date? = nil
         if dailyRunRate > 0 && hasActiveBudget {
-            let daysUntilExhaustion = Int(budgetLimit / dailyRunRate)
+            let daysUntilExhaustion = Int(ceil(budgetLimit / dailyRunRate))
             if daysUntilExhaustion < totalDaysInCycle {
                 exhaustionDays = daysUntilExhaustion
-                exhaustionDate = calendar.date(byAdding: .day, value: daysUntilExhaustion, to: context.startDate)
+                exhaustionDate = calendar.date(byAdding: .day, value: max(0, daysUntilExhaustion - 1), to: context.startDate)
             }
         }
         
@@ -174,9 +188,9 @@ enum InsightFactsExtractor {
         // Zero-spend streak (consecutive days with 0 expenses ending today)
         var streak = 0
         var checkDate = calendar.startOfDay(for: now)
-        while streak < 30 {
+        while streak < 30 && checkDate >= context.startDate && checkDate <= context.endDate {
             let dayEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: checkDate) ?? checkDate
-            let dayTxs = scopedTransactions.filter { $0.type == .expense && $0.date >= checkDate && $0.date <= dayEnd }
+            let dayTxs = scopedTransactions.filter { $0.type == .expense && $0.date >= checkDate && $0.date <= min(dayEnd, now) }
             if dayTxs.isEmpty {
                 streak += 1
                 guard let prevDay = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
@@ -191,14 +205,14 @@ enum InsightFactsExtractor {
         for i in 0..<7 {
             if let d = calendar.date(byAdding: .day, value: -i, to: calendar.startOfDay(for: now)) {
                 let dEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: d) ?? d
-                let hasTx = scopedTransactions.contains { $0.type == .expense && $0.date >= d && $0.date <= dEnd }
-                if !hasTx { zeroDaysPastWeek += 1 }
+                let hasTx = scopedTransactions.contains { $0.type == .expense && $0.date >= d && $0.date <= min(dEnd, now) }
+                if d >= context.startDate && d <= context.endDate && !hasTx { zeroDaysPastWeek += 1 }
             }
         }
         
         // 6. Committed Subscriptions
         let activeSubs = subscriptions.filter { !$0.isCancelled && !$0.isPaused }
-        let totalMonthlyCommitted = activeSubs.reduce(0.0) { (sum: Double, sub: Subscription) -> Double in
+        let totalMonthlyCommitted = activeSubs.filter { !$0.isTrial }.reduce(0.0) { (sum: Double, sub: Subscription) -> Double in
             switch sub.cycle {
             case .monthly: return sum + sub.amount
             case .yearly: return sum + (sub.amount / 12.0)
@@ -208,8 +222,7 @@ enum InsightFactsExtractor {
         
         let subTxList = currentExpenseTxs.filter { tx in
             activeSubs.contains { sub in
-                sub.name.localizedCaseInsensitiveContains(tx.title) ||
-                tx.title.localizedCaseInsensitiveContains(sub.name)
+                tx.subscriptionId?.lowercased() == sub.id.uuidString.lowercased()
             }
         }
         
@@ -220,7 +233,7 @@ enum InsightFactsExtractor {
         
         // 8. Long-Term Multi-Month Metrics
         var monthlyTotals: [Date: Double] = [:]
-        for tx in scopedTransactions where tx.type == .expense {
+        for tx in currentExpenseTxs {
             let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: tx.date)) ?? tx.date
             monthlyTotals[monthStart, default: 0.0] += tx.amount
         }
@@ -250,7 +263,7 @@ enum InsightFactsExtractor {
             }
         }()
         
-        let multiMonthSufficiency = monthlyTotals.count >= 3 && scopedTransactions.count >= 10
+        let multiMonthSufficiency = monthlyTotals.count >= 3 && currentExpenseTxs.count >= 10
         let densityScore = min(1.0, Double(totalExpenseTxCount) / 15.0)
         
         return InsightFacts(

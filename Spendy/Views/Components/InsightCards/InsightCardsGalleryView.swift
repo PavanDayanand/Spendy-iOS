@@ -14,7 +14,7 @@ struct InsightCardsGalleryView: View {
     
     var body: some View {
         ZStack {
-            SpendyColors.appBackground.ignoresSafeArea()
+            SpendyColors.settingsBackground.ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 22) {

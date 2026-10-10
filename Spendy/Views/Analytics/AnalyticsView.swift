@@ -65,9 +65,11 @@ private struct SpendingDay: Identifiable {
 }
 
 private struct AnalyticsPanelStyle: ViewModifier {
+    var verticalPadding: CGFloat = 20
     func body(content: Content) -> some View {
         content
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -81,6 +83,7 @@ private struct AnalyticsPanelStyle: ViewModifier {
 }
 
 struct AnalyticsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     var selectedTab: Binding<AppTab>? = nil
@@ -89,6 +92,7 @@ struct AnalyticsView: View {
     var isSubpageActiveBinding: Binding<Bool>? = nil
     
     // View Filters & Navigation State
+    @State private var quickActions = QuickActionManager.shared
     @State private var groupingMode: AnalyticsGroupingMode = .categories
     @State private var granularity: TimeGranularity = .month
     @State private var selectedDate: Date = Date()
@@ -106,6 +110,7 @@ struct AnalyticsView: View {
     @State private var selectedIncomeSectorId: String? = nil
     @State private var selectedNoSpendDate: Date? = nil
     @State private var selectedCategoryForSheet: Category? = nil
+    @State private var isBreakdownExpanded = false
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
     @State private var selectedSubscriptionIdForDetail: String? = nil
@@ -113,6 +118,7 @@ struct AnalyticsView: View {
     @State private var pendingTransactionEdit: Transaction? = nil
     @State private var inspectingTransaction: Transaction? = nil
     @State private var showEditBudgetSheet: Bool = false
+    @State private var showBudgetHub = false
     @State private var showAddTransaction: Bool = false
     
     // Collapsible List Expand States
@@ -151,6 +157,10 @@ struct AnalyticsView: View {
                         Section {
                             VStack(spacing: 16) {
                                 spendingRhythmCard
+                                if !analyticsInsights.isEmpty {
+                                    SpendyInsightSummary(moments: analyticsInsights, onSelect: openInsight)
+                                        .modifier(AnalyticsPanelStyle(verticalPadding: 14))
+                                }
                                 spendingMixSection
                                 cashflowChartSection
                                 noSpendDaysSection
@@ -192,6 +202,7 @@ struct AnalyticsView: View {
                     inspectingTransaction = nil
                 }
             }
+            .navigationDestination(isPresented: $showBudgetHub) { BudgetView() }
             .sheet(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
             }
@@ -200,20 +211,20 @@ struct AnalyticsView: View {
                     account: account,
                     topControlsNamespace: analyticsControlsNamespace
                 )
-                .spendyNavigationZoom(from: AppTransitionIDs.accountCard(account.id), in: analyticsTransitions)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
                     topControlsNamespace: analyticsControlsNamespace
                 )
-                .spendyNavigationZoom(from: AppTransitionIDs.categoryCard(category.id), in: analyticsTransitions)
             }
 
             .onAppear {
                 isSubpageActiveBinding?.wrappedValue = isSubpageActive
                 chartProgress = 1.0
+                openRequestedWeek()
             }
+            .onChange(of: quickActions.requestedAnalyticsWeekDate) { _, _ in openRequestedWeek() }
             .onChange(of: isSubpageActive) { _, active in
                 withAnimation(AppMotion.fluidSpring) {
                     isSubpageActiveBinding?.wrappedValue = active
@@ -233,6 +244,45 @@ struct AnalyticsView: View {
             }
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func openRequestedWeek() {
+        guard topControlsNamespace == nil, let date = quickActions.requestedAnalyticsWeekDate else { return }
+        granularity = .week
+        selectedDate = date
+        quickActions.requestedAnalyticsWeekDate = nil
+    }
+
+    private var analyticsInsights: [InsightMoment] {
+        guard store.insightsEnabled else { return [] }
+        let bounds = currentPeriodBounds
+        let unit: Calendar.Component = granularity == .day ? .day : granularity == .week ? .weekOfYear : granularity == .month ? .month : .year
+        let previousDate = Calendar.current.date(byAdding: unit, value: -1, to: selectedDate) ?? selectedDate
+        let previous = periodBounds(for: previousDate)
+        let period: InsightPeriod = granularity == .week ? .week : granularity == .month ? .month : granularity == .year ? .year : .custom
+        let context = AnalyticsInsightContext(scope: selectedAccountId == "all" ? .global : .account(id: selectedAccountId),
+            period: period, startDate: bounds.start, endDate: bounds.end,
+            baselineStartDate: previous.start, baselineEndDate: previous.end,
+            referenceDate: Date())
+        let facts = InsightFactsExtractor.extractFacts(transactions: store.transactions, budget: store.budget,
+            categories: store.categories, subscriptions: store.subscriptions, context: context)
+        return InsightDecisionEngine.shared.evaluate(facts: facts, surface: .analytics, currencySymbol: store.currencySymbol)
+            .filter { !$0.isInsufficientData }
+    }
+
+    private func openInsight(_ destination: InsightDestination) {
+        switch destination {
+        case .category(let id): selectedCategoryForSheet = store.categories.first { $0.id == id }
+        case .budget: showBudgetHub = true
+        case .subscriptions:
+            selectedSubscriptionIdForDetail = nil
+            showSubscriptionSheet = true
+        case .subscriptionDetail(let id):
+            selectedSubscriptionIdForDetail = id
+            showSubscriptionSheet = true
+        case .transaction(let id): inspectingTransaction = store.transactions.first { $0.id == id }
+        case .analytics: break
+        }
     }
 
     // MARK: - Spending over time
@@ -461,6 +511,8 @@ struct AnalyticsView: View {
             percentage: totalSpending > 0 ? otherAmount / totalSpending * 100 : 0
         )])
 
+        let visibleItems = isBreakdownExpanded ? allItems : slices
+
         return VStack(alignment: .leading, spacing: 17) {
             HStack(alignment: .firstTextBaseline) {
                 Text(groupingMode == .categories ? "Category spending" : "Account spending")
@@ -516,8 +568,8 @@ struct AnalyticsView: View {
                 }
 
                 VStack(spacing: 0) {
-                    ForEach(Array(slices.enumerated()), id: \.element.id) { index, item in
-                        if index < items.count {
+                    ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
+                        if item.id != "analytics-other" {
                             Button {
                                 HapticsManager.shared.trigger(.selection)
                                 if groupingMode == .categories {
@@ -530,6 +582,7 @@ struct AnalyticsView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                            .accessibilityIdentifier("breakdown-\(item.id)")
                             .spendyNavigationSource(
                                 groupingMode == .categories
                                     ? AppTransitionIDs.categoryCard(item.id)
@@ -537,13 +590,32 @@ struct AnalyticsView: View {
                                 in: analyticsTransitions
                             )
                         } else {
-                            breakdownLegendRow(item, index: index)
+                            Button {
+                                withAnimation(AppMotion.fluidSpring) { isBreakdownExpanded = true }
+                            } label: {
+                                HStack {
+                                    breakdownLegendRow(item, index: index)
+                                    Image(systemName: "chevron.down").font(.caption)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Show all remaining categories or accounts")
+                            .accessibilityIdentifier("expand-spending-breakdown")
                         }
-                        if index < slices.count - 1 {
+                        if index < visibleItems.count - 1 {
                             Divider().overlay(SpendyColors.separator)
                         }
                     }
                 }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 8) {
+            if isBreakdownExpanded && !remaining.isEmpty {
+                Button("Show less") {
+                    withAnimation(AppMotion.fluidSpring) { isBreakdownExpanded = false }
+                }
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .modifier(AnalyticsPanelStyle())
@@ -560,7 +632,7 @@ struct AnalyticsView: View {
 
     private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
         HStack(spacing: 9) {
-            Text(index < 3 ? String(format: "%02d", index + 1) : "··")
+            Text(item.id == "analytics-other" ? "··" : String(format: "%02d", index + 1))
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .foregroundStyle(SpendyColors.textTertiary)
                 .frame(width: 18, alignment: .leading)
@@ -835,6 +907,8 @@ struct AnalyticsView: View {
                         namespace: analyticsControlsNamespace
                     )
                 }
+                .accessibilityLabel("Analytics filters")
+                .accessibilityIdentifier("analytics-filters")
             }
         }
     }
@@ -884,7 +958,7 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Native Swift Chart: Interactive Cashflow Multi-Bar Chart with Gray & Green Flow
+            // Flat, square bars retain separate spending and income series.
             Chart(intervals) { item in
                 let isSelected = selectedCashflowLabel == item.label
                 
@@ -892,34 +966,18 @@ struct AnalyticsView: View {
                     x: .value("Period", item.label),
                     y: .value("Spending", item.spendingAmount * chartProgress)
                 )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(hex: "#8E8E93").opacity(isSelected ? 1.0 : (item.spendingAmount > 0 ? 0.9 : 0.2)),
-                                 Color(hex: "#636366").opacity(isSelected ? 0.85 : 0.35)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .foregroundStyle(SpendyColors.textPrimary.opacity(isSelected ? 0.65 : 0.35))
                 .position(by: .value("Type", "Spending"))
-                .cornerRadius(6)
-                
-                let incomeBarColor1 = SpendyColors.isMonoMode ? SpendyColors.textPrimary : Color(hex: "#30D158")
-                let incomeBarColor2 = SpendyColors.isMonoMode ? SpendyColors.textPrimary.opacity(0.8) : Color(hex: "#248A3D")
+                .cornerRadius(1)
+
                 BarMark(
                     x: .value("Period", item.label),
                     y: .value("Income", item.incomeAmount * chartProgress)
                 )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [incomeBarColor1.opacity(isSelected ? 1.0 : (item.incomeAmount > 0 ? 0.95 : 0.2)),
-                                 incomeBarColor2.opacity(isSelected ? 0.85 : 0.4)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .foregroundStyle(SpendyColors.incomeGreen.opacity(isSelected ? 1 : 0.9))
                 .position(by: .value("Type", "Income"))
-                .cornerRadius(6)
-                
+                .cornerRadius(1)
+
                 if let selectedLabel = selectedCashflowLabel, selectedLabel == item.label {
                     RuleMark(x: .value("Selected", item.label))
                         .foregroundStyle(SpendyColors.separator.opacity(0.8))
@@ -1665,7 +1723,10 @@ struct AnalyticsView: View {
         case .day:
             return (date.startOfDay, date.endOfDay)
         case .week:
-            return (date.startOfWeek, date.endOfWeek)
+            var calendar = Calendar.current
+            calendar.firstWeekday = 2
+            let start = calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date.startOfDay
+            return (start, calendar.date(byAdding: .day, value: 7, to: start)?.addingTimeInterval(-1) ?? date.endOfDay)
         case .month:
             return (date.startOfMonth, date.endOfMonth)
         case .year:

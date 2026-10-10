@@ -10,6 +10,7 @@ import SwiftUI
 struct AddFolderSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var folderToEdit: Folder? = nil
     var defaultType: TransactionType = .expense
@@ -53,11 +54,6 @@ struct AddFolderSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
-            SpendyAmbientHeaderBackground(color: themeColor, height: 280, opacity: 0.28)
-            
             VStack(spacing: 0) {
                 SpendyCreateSheetHeader(
                     showDelete: isEditing,
@@ -104,7 +100,7 @@ struct AddFolderSheet: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 100)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -121,8 +117,7 @@ struct AddFolderSheet: View {
                 .padding(.top, 12)
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(350), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)

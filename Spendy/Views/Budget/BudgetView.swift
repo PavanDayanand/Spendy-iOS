@@ -174,12 +174,8 @@ struct BudgetView: View {
     
     // MARK: - Active Budget Content
     private var budgetInsightMoments: [InsightMoment] {
-        let facts = InsightFactsExtractor.extractFacts(
-            transactions: store.transactions,
-            budget: store.budget,
-            categories: store.categories,
-            subscriptions: store.subscriptions
-        )
+        guard store.insightsEnabled else { return [] }
+        let facts = store.budgetInsightFacts()
         return InsightDecisionEngine.shared.evaluate(
             facts: facts,
             surface: .budget,
@@ -201,19 +197,17 @@ struct BudgetView: View {
                 daysLeft: store.budgetDaysLeft,
                 periodTitle: store.budget.period == .weekly ? "Weekly" : "Monthly",
                 dateRangeString: cycleDateRangeString,
-                pacingInsightMessage: store.budgetPacingInsightMessage,
+                pacingInsightMessage: nil,
                 pacingState: store.budgetPacingState
             )
             
             // Show the insight rail only when it has something useful to say.
             let usefulInsights = budgetInsightMoments.filter { !$0.isInsufficientData }
             if !usefulInsights.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    SpendyInsightBrandMark(style: .kicker)
-                    EditorialInsightRailView(
-                        moments: usefulInsights,
-                        showSectionHeader: false
-                    )
+                SpendyInsightSummary(moments: usefulInsights) { destination in
+                    if case .category(let id) = destination {
+                        selectedCategoryForSheet = store.categories.first { $0.id == id }
+                    }
                 }
             }
 

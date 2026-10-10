@@ -10,7 +10,7 @@ import Foundation
 struct BudgetPacingRule: InsightRule {
     let id = "budget_pacing_rule"
     let family = InsightFamily.budget
-    let supportedPeriods: Set<InsightPeriod> = [.month]
+    let supportedPeriods: Set<InsightPeriod> = [.week, .month]
     
     init() {}
     

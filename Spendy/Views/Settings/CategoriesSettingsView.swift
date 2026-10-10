@@ -74,20 +74,16 @@ struct CategoriesSettingsView: View {
             }
         }
         .sheet(isPresented: $showAddCategory) {
-            AddCategorySheet(categoryToEdit: nil, defaultType: selectedType, defaultFolder: selectedFolderForAdd)
-                .presentationBackground(SpendyColors.appBackground)
+            AddCategorySheet(categoryToEdit: nil, defaultType: selectedType, defaultFolder: selectedFolderForAdd, isSettingsPage: true)
         }
         .sheet(item: $categoryToEdit) { cat in
-            AddCategorySheet(categoryToEdit: cat)
-                .presentationBackground(SpendyColors.appBackground)
+            AddCategorySheet(categoryToEdit: cat, isSettingsPage: true)
         }
         .sheet(isPresented: $showAddFolder) {
             AddFolderSheet(folderToEdit: nil, defaultType: selectedType)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $folderToEdit) { folder in
             AddFolderSheet(folderToEdit: folder)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .alert(
             "Delete Category?",
@@ -254,6 +250,7 @@ struct CategoriesSettingsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 13)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityElement(children: .combine)
@@ -273,7 +270,7 @@ struct CategoriesSettingsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(SpendyColors.sheetCardBackground, in: Capsule())
+                            .background(SpendyColors.settingsCardBackground, in: Capsule())
                         }
                         
                         if index < categories.count - 1 {
@@ -286,7 +283,7 @@ struct CategoriesSettingsView: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.sheetCardBackground)
+                    .fill(SpendyColors.settingsCardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)

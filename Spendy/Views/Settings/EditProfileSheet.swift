@@ -10,6 +10,7 @@ import SwiftUI
 struct EditProfileSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @State private var tempName: String = ""
     @State private var selectedImageData: Data? = nil
@@ -33,13 +34,6 @@ struct EditProfileSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
-            // Dynamic Space Ambient Gradient Glow based on selected theme color
-            let themeColor = Color(hex: selectedColorHex)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.32)
-            
             VStack(spacing: 0) {
                 // Top Header Bar: Close, Title "Edit Space" (Sticky at top!)
                 topHeaderBar
@@ -76,21 +70,8 @@ struct EditProfileSheet: View {
                     .padding(.bottom, 24)
                     .padding(.top, 16)
             }
-            .background {
-                LinearGradient(
-                    stops: [
-                        .init(color: SpendyColors.appBackground.opacity(0), location: 0),
-                        .init(color: SpendyColors.appBackground.opacity(0.85), location: 0.25),
-                        .init(color: SpendyColors.appBackground, location: 0.6)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .toolbar(.hidden, for: .navigationBar)
@@ -202,7 +183,7 @@ struct EditProfileSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(SpendyColors.sheetCardBackground, in: Capsule())
+        .background(SpendyColors.settingsCardBackground, in: Capsule())
     }
     
     // MARK: - Bottom Save Action Button (White Capsule)

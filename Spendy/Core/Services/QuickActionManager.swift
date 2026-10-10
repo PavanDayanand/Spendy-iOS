@@ -18,6 +18,7 @@ final class QuickActionManager {
     var shouldPresentQuickAdd: Bool = false
     var shouldPresentReceiptScan: Bool = false
     var targetTab: AppTab? = nil
+    var requestedAnalyticsWeekDate: Date? = nil
     var shouldOpenBudget: Bool = false
     var requestedCategoryId: String? = nil
     
@@ -99,6 +100,9 @@ final class QuickActionManager {
             requestedCategoryId = categoryId
         } else if host == "home" || path.contains("home") {
             return
+        } else if host == "weekly-summary" {
+            requestedAnalyticsWeekDate = url.pathComponents.dropFirst().first.flatMap(Double.init).map { Date(timeIntervalSince1970: $0) } ?? Date()
+            targetTab = .analytics
         } else if host == "analytics" || path.contains("analytics") {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 self.targetTab = .analytics

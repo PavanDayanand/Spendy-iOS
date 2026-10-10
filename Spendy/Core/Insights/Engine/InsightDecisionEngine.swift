@@ -11,6 +11,7 @@ import Foundation
 
 final class InsightDecisionEngine: Sendable {
     static let shared = InsightDecisionEngine()
+    static let maximumMoments = 5
     
     private let rules: [any InsightRule]
     private let exposureStore: InsightExposureStore
@@ -20,6 +21,8 @@ final class InsightDecisionEngine: Sendable {
         exposureStore: InsightExposureStore = .shared
     ) {
         self.rules = rules ?? [
+            RecordedSpendingRule(),
+            SpendingDetailRule(),
             SpendingVelocityRule(),
             BudgetPacingRule(),
             CategoryTrendRule(),
@@ -40,21 +43,18 @@ final class InsightDecisionEngine: Sendable {
         period: InsightPeriod? = nil,
         currencySymbol: String = "₹",
         now: Date? = nil,
-        recordExposures: Bool = true
+        recordExposures: Bool = false
     ) -> [InsightMoment] {
         let activePeriod = period ?? facts.context.period
         let activeNow = now ?? facts.context.referenceDate
-        
-        // Data sufficiency check
-        guard facts.hasSufficientGeneralData else {
-            return [InsightMoment.insufficientData(for: surface, period: activePeriod)]
-        }
         
         let context = InsightEvaluationContext(surface: surface, period: activePeriod, currencySymbol: currencySymbol, now: activeNow)
         
         // 1. Generate all candidate insights across period-supported domain rules
         var allCandidates: [InsightCandidate] = []
         for rule in rules where rule.supportedPeriods.contains(activePeriod) {
+            // Bills and budget facts remain useful before an expense history exists.
+            if !facts.hasSufficientGeneralData && rule.family != .subscription && rule.family != .budget && rule.family != .income { continue }
             let produced = rule.evaluate(facts: facts, context: context)
             allCandidates.append(contentsOf: produced)
         }
@@ -84,7 +84,7 @@ final class InsightDecisionEngine: Sendable {
         
         // Contextual exposure key helper
         func contextKey(for candidate: InsightCandidate) -> String {
-            "\(surface.rawIdentifier):\(candidate.semanticKey):\(facts.context.scope.key):\(facts.context.period.id)"
+            "\(surface.rawIdentifier):\(candidate.semanticKey):\(candidate.affectedEntityId ?? "global"):\(facts.context.scope.key):\(facts.periodStart.timeIntervalSince1970):\(facts.periodEnd.timeIntervalSince1970)"
         }
         
         // 3. Filter out fatigued candidates (unless critical or materially changed)
@@ -118,26 +118,33 @@ final class InsightDecisionEngine: Sendable {
                       + (candidate.actionability * 0.05)
             
             return (candidate, score)
-        }.sorted(by: { $0.score > $1.score })
+        }.sorted { $0.score == $1.score ? $0.candidate.id < $1.candidate.id : $0.score > $1.score }
         
         // 5. Compound Insight Synthesis & Multi-Moment Surface Routing
         var moments: [InsightMoment] = []
         var consumedCandidateIds = Set<String>()
-        var seenFamilies = Set<InsightFamily>()
+        var seenTopics = Set<String>()
+        func topic(_ candidate: InsightCandidate) -> String {
+            // Different observations can share a family. Merge only overlapping claims.
+            if candidate.family == .budget { return "budget_pace" }
+            if ["no_spend_streak", "zero_day_week"].contains(candidate.semanticKey) { return "unlogged_days" }
+            return "\(candidate.semanticKey):\(candidate.affectedEntityId ?? "global")"
+        }
         
         for (candidate, _) in scoredCandidates {
-            if consumedCandidateIds.contains(candidate.id) { continue }
+            guard moments.count < Self.maximumMoments else { break }
+            if consumedCandidateIds.contains(candidate.id) || seenTopics.contains(topic(candidate)) { continue }
             
             // Check for Macro + Driver Compound Pairing
             if (candidate.family == .budget || candidate.family == .spending) && candidate.kind == .warning {
                 let driverMatch = scoredCandidates.map { $0.candidate }.first(where: {
-                    $0.canActAsDriver && !consumedCandidateIds.contains($0.id)
+                    $0.canActAsDriver && !consumedCandidateIds.contains($0.id) && !seenTopics.contains(topic($0)) && $0.semanticKey == "cat_driver"
                 })
                 
                 guard let driver = driverMatch else {
                     // Output individual candidate
-                    if !seenFamilies.contains(candidate.family) || candidate.isCritical {
-                        seenFamilies.insert(candidate.family)
+                    if !seenTopics.contains(topic(candidate)) {
+                        seenTopics.insert(topic(candidate))
                         consumedCandidateIds.insert(candidate.id)
                         
                         let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: currencySymbol)
@@ -192,13 +199,13 @@ final class InsightDecisionEngine: Sendable {
                 
                 consumedCandidateIds.insert(candidate.id)
                 consumedCandidateIds.insert(driver.id)
-                seenFamilies.insert(candidate.family)
-                seenFamilies.insert(driver.family)
+                seenTopics.insert(topic(candidate))
+                seenTopics.insert(topic(driver))
                 
             } else {
                 // Deduplicate by family to avoid redundancy on the rail
-                if !seenFamilies.contains(candidate.family) || candidate.isCritical {
-                    seenFamilies.insert(candidate.family)
+                if !seenTopics.contains(topic(candidate)) {
+                    seenTopics.insert(topic(candidate))
                     consumedCandidateIds.insert(candidate.id)
                     
                     let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: currencySymbol)
@@ -223,8 +230,7 @@ final class InsightDecisionEngine: Sendable {
                 }
             }
             
-            let maxMoments = 5
-            if moments.count >= maxMoments { break }
+            if moments.count >= Self.maximumMoments { break }
         }
         
         // 6. Record exposures for surfaced moments
@@ -242,7 +248,7 @@ final class InsightDecisionEngine: Sendable {
             }
         }
         
-        return moments.isEmpty ? [InsightMoment.insufficientData(for: surface, period: activePeriod)] : moments
+        return moments.isEmpty ? [InsightMoment.insufficientData(for: surface, period: activePeriod)] : Array(moments.prefix(Self.maximumMoments))
     }
     
     // MARK: - Helpers
@@ -270,6 +276,11 @@ final class InsightDecisionEngine: Sendable {
     
     private func extractDeltaAndValue(from candidate: InsightCandidate) -> (delta: Double, value: Double) {
         switch candidate.evidence {
+        case .averageExpense(let average, _): return (0, average)
+        case .largestExpense(_, _, let amount, let share): return (share, amount)
+        case .spendingDays(let days, let total): return (Double(days), total)
+        case .recordedSpending(let total, let count, _):
+            return (Double(count), total)
         case .spendingVelocity(let current, _, let deltaPct, _, _, _):
             return (deltaPct, current)
         case .categoryTrend(_, _, let current, _, _, let deltaPct, _):

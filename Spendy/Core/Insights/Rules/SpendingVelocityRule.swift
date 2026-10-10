@@ -18,7 +18,7 @@ struct SpendingVelocityRule: InsightRule {
         var candidates: [InsightCandidate] = []
         
         // Data Sufficiency Gate: At least 2 transactions and baseline history
-        guard !facts.isEarlyPeriod,
+        guard facts.isPeriodInProgress, !facts.isEarlyPeriod,
               facts.totalExpenseTxCount >= 2,
               facts.currentSpendTotal > 0,
               facts.baselineSpendTotal > 50.0 else {

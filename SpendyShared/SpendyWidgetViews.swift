@@ -96,7 +96,7 @@ struct SpendyWeekBars: View {
             ForEach(Array(days.enumerated()), id: \.offset) { index, day in
                 let highlighted = index == highlightedIndex
                 VStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
                         .fill(highlighted ? SpendyWidgetPalette.text : day.amount > 0 ? SpendyWidgetPalette.text.opacity(0.38) : SpendyWidgetPalette.fill)
                         .frame(maxWidth: .infinity)
                         .frame(height: max(3, (day.amount / maxVal) * height))

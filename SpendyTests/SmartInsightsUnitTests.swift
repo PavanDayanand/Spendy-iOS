@@ -58,7 +58,7 @@ enum SmartInsightsUnitTests {
         XCTAssertTrue(velocityRule.supportedPeriods.contains(.week) && velocityRule.supportedPeriods.contains(.month), "SpendingVelocityRule should support week and month")
         
         let budgetRule = BudgetPacingRule()
-        XCTAssertTrue(budgetRule.supportedPeriods == [.month], "BudgetPacingRule should support month only")
+        XCTAssertTrue(budgetRule.supportedPeriods == [.week, .month], "BudgetPacingRule should support weekly and monthly budgets")
         
         let longTermRule = LongTermPatternRule()
         XCTAssertTrue(longTermRule.supportedPeriods.contains(.year) && longTermRule.supportedPeriods.contains(.sixMonths), "LongTermPatternRule should support 6M, 1Y, All")
@@ -205,7 +205,7 @@ enum SmartInsightsUnitTests {
             currencySymbol: "₹"
         )
         
-        XCTAssertTrue(compound.headline == "You're spending faster than this month's budget.")
+        XCTAssertTrue(compound.headline == "You're spending faster than this budget cycle.")
         XCTAssertTrue(compound.supportingText == "Shopping is doing most of the extra spend this month.")
         XCTAssertTrue(compound.actionTitle == "View Shopping →")
     }

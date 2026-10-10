@@ -2,7 +2,7 @@
 //  WidgetDataManager+Store.swift
 //  Spendy
 //
-//  Publishes live store data into the App Group for widgets, intents, and Live Activities.
+//  Publishes live store data into the App Group for widgets and intents.
 //
 
 import Foundation
@@ -11,6 +11,7 @@ extension WidgetDataManager {
     @MainActor
     func publish(from store: ExpenseStore) {
         updateSnapshot(from: store)
+        NotificationManager.shared.refresh(from: store)
         saveCategories(store.categories.map { category in
             WidgetCategoryRecord(
                 id: category.id,
@@ -32,8 +33,6 @@ extension WidgetDataManager {
             )
         })
         
-        // Sync Dynamic Island & Lock Screen Live Activities
-        SpendyLiveActivityManager.shared.syncLiveActivity(from: store)
     }
 
     @MainActor

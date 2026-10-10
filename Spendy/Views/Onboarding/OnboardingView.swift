@@ -228,7 +228,7 @@ public struct OnboardingView: View {
     private var welcome: some View {
         let reduceWelcomeMotion = reduceMotion
         return VStack(alignment: .leading, spacing: 16) {
-            Image("AppIconPreview-Default")
+            Image("SpendyLogo")
                 .resizable().scaledToFit()
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 17))

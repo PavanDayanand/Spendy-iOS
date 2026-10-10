@@ -53,9 +53,6 @@ struct ReceiptPrinterSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SpendyColors.appBackground
-                    .ignoresSafeArea()
-                
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         // Top Header Bar

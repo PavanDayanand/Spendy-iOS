@@ -244,7 +244,7 @@ struct SubscriptionQuickActionSheet: View {
         } message: {
             Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
         }
-        .presentationDetents([.height(640), .large])
+        .presentationDetents([.height(500), .large])
         .presentationDragIndicator(.hidden)
     }
     

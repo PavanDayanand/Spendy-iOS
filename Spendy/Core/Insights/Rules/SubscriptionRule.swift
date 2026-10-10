@@ -27,12 +27,15 @@ struct SubscriptionRule: InsightRule {
             let materiality = min(1.0, sub.amount / 1500.0)
             
             // 1. Double Billing Detection (Critical)
-            if subTxs.count > 1 {
-                let totalCharged = subTxs.reduce(0.0) { $0 + $1.amount }
+            // Several legitimate weekly renewals in a month are not duplicate billing.
+            let sameDayGroups = Dictionary(grouping: subTxs) { calendar.startOfDay(for: $0.date) }
+            let duplicateEntries = sameDayGroups.filter { $0.value.count > 1 }.max { $0.key < $1.key }?.value ?? []
+            if duplicateEntries.count > 1 {
+                let totalCharged = duplicateEntries.reduce(0.0) { $0 + $1.amount }
                 let evidence = InsightEvidence.subscriptionDoubleCharge(
                     subscriptionId: subId,
                     subscriptionName: sub.name,
-                    chargeCount: subTxs.count,
+                    chargeCount: duplicateEntries.count,
                     totalCharged: totalCharged
                 )
                 candidates.append(
@@ -59,7 +62,7 @@ struct SubscriptionRule: InsightRule {
             }
             
             // 2. Price Change / Creep Detection
-            for tx in subTxs {
+            for tx in subTxs.sorted(by: { $0.date > $1.date }).prefix(1) {
                 if sub.amount > 0 && abs(tx.amount - sub.amount) >= 1.0 {
                     let deltaPct = ((tx.amount - sub.amount) / sub.amount) * 100.0
                     let evidence = InsightEvidence.subscriptionPriceChange(

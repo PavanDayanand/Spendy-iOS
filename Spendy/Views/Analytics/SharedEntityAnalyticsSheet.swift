@@ -85,6 +85,7 @@ struct SharedEntityAnalyticsSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     let entity: AnalyticsEntity
+    var isSettingsPage: Bool = false
     var initialType: TransactionType = .expense
     var topControlsNamespace: Namespace.ID? = nil
     var backButtonMorphID: String = "topControl_left"
@@ -122,14 +123,13 @@ struct SharedEntityAnalyticsSheet: View {
         entity.color
     }
     
-    /// Adaptive base background for sheets: #000000 in dark mode, #F6F6F6 in light mode
+    // Keep the presenting page's palette throughout the navigation push.
     private var sheetBackgroundColor: Color {
-        SpendyColors.appBackground
+        isSettingsPage ? SpendyColors.settingsBackground : SpendyColors.appBackground
     }
-    
-    /// Standard card fill: #1A1A1A in dark mode, #FFFFFF in light mode
+
     private var cardFillColor: Color {
-        SpendyColors.cardBackground
+        isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground
     }
     
     private var cardBorderColor: Color {
@@ -366,6 +366,7 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var insightMoments: [InsightMoment] {
+        guard store.insightsEnabled else { return [] }
         let context = activeInsightContext
         let surface: InsightSurface = {
             switch entity {
@@ -402,11 +403,13 @@ struct SharedEntityAnalyticsSheet: View {
     var body: some View {
         ZStack {
             sheetBackgroundColor.ignoresSafeArea()
-            SpendyAmbientHeaderBackground(
-                color: themeColor,
-                height: 440,
-                opacity: 0.24
-            )
+            if !isSettingsPage {
+                SpendyAmbientHeaderBackground(
+                    color: themeColor,
+                    height: 440,
+                    opacity: 0.24
+                )
+            }
             
             VStack(spacing: 0) {
                 if isHomeOrigin {
@@ -426,17 +429,12 @@ struct SharedEntityAnalyticsSheet: View {
                             .padding(.horizontal, 16)
                         
                         if !visibleInsights.isEmpty, !isScrubbingChart {
-                            VStack(alignment: .leading, spacing: 12) {
-                                SpendyInsightBrandMark(style: .kicker)
-                                
-                                VStack(alignment: .leading, spacing: 14) {
-                                    ForEach(Array(visibleInsights.enumerated()), id: \.element.id) { index, moment in
-                                        insightSentence(moment)
-                                        if index < visibleInsights.count - 1 {
-                                            Divider()
-                                                .overlay(SpendyColors.separator.opacity(0.55))
-                                        }
-                                    }
+                            SpendyInsightSummary(moments: visibleInsights, canSelect: { destination in
+                                if case .transaction = destination { return true }
+                                return false
+                            }) { destination in
+                                if case .transaction(let id) = destination {
+                                    inspectingTransaction = store.transactions.first { $0.id == id }
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -487,12 +485,10 @@ struct SharedEntityAnalyticsSheet: View {
             }
         }
         .sheet(item: $editingCategoryToEdit) { cat in
-            AddCategorySheet(categoryToEdit: cat)
-                .presentationBackground(SpendyColors.appBackground)
+            AddCategorySheet(categoryToEdit: cat, isSettingsPage: isSettingsPage)
         }
         .sheet(item: $editingAccountToEdit) { acc in
             AddAccountSheet(accountToEdit: acc)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $inspectingTransaction, onDismiss: {
             editingTransaction = pendingTransactionEdit

@@ -8,6 +8,11 @@
 import Foundation
 
 enum InsightEvidence: Hashable, Sendable {
+    case averageExpense(average: Double, count: Int)
+    case largestExpense(transactionId: UUID, title: String, amount: Double, sharePercent: Double)
+    case spendingDays(activeDays: Int, total: Double)
+    case recordedSpending(total: Double, count: Int, period: InsightPeriod)
+
     // Spending & Velocity
     case spendingVelocity(currentSpend: Double, baselineSpend: Double, deltaPercent: Double, projectedMonthSpend: Double, daysElapsed: Int, period: InsightPeriod)
     

@@ -10,6 +10,7 @@ import SwiftUI
 
 struct AccountAnalyticsSheet: View {
     let account: Account
+    var isSettingsPage: Bool = false
     var topControlsNamespace: Namespace.ID? = nil
     var backButtonMorphID: String = "topControl_left"
     var editButtonMorphID: String = "topControl_right"
@@ -20,6 +21,7 @@ struct AccountAnalyticsSheet: View {
     var body: some View {
         SharedEntityAnalyticsSheet(
             entity: .account(account),
+            isSettingsPage: isSettingsPage,
             initialType: .expense,
             topControlsNamespace: topControlsNamespace,
             backButtonMorphID: backButtonMorphID,

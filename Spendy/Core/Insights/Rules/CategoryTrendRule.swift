@@ -19,7 +19,7 @@ struct CategoryTrendRule: InsightRule {
         guard facts.hasSufficientGeneralData else { return candidates }
         
         let totalSpend = facts.currentSpendTotal
-        let totalBaseline = facts.baselineSpendTotal
+        let totalBaseline = InsightComparison.baselineSpending(facts: facts)
         let isOverallSpendUp = totalSpend > totalBaseline && totalBaseline > 0
         let overallIncrease = totalSpend - totalBaseline
         
@@ -49,9 +49,9 @@ struct CategoryTrendRule: InsightRule {
             let catId = summary.categoryId
             let catName = summary.categoryName
             let curSpend = summary.currentSpend
-            let baseSpend = summary.baselineSpend
-            let delta = summary.deltaSpend
-            let deltaPct = summary.deltaPercent
+            let baseSpend = InsightComparison.baselineSpending(facts: facts, categoryID: catId)
+            let delta = curSpend - baseSpend
+            let deltaPct = baseSpend > 0 ? delta / baseSpend * 100 : 0
             let txCount = summary.txCount
             let materiality = min(1.0, abs(delta) / 3000.0)
             
@@ -160,7 +160,7 @@ struct CategoryTrendRule: InsightRule {
             }
             
             // 4. Category Dominance (Only when >= minTxThreshold and share >= 40%)
-            if summary.currentSharePercent >= 40.0 && curSpend >= 250.0 {
+            if facts.context.scope != .category(id: catId) && summary.currentSharePercent >= 40.0 && curSpend >= 250.0 {
                 let evidence = InsightEvidence.categoryDominance(
                     categoryId: catId,
                     categoryName: catName,
@@ -193,17 +193,17 @@ struct CategoryTrendRule: InsightRule {
             }
             
             // 5. Category Run-Rate Forecast (Active for monthly pacing when >= 5 txs and >= 3 elapsed days)
-            if context.period == .month && txCount >= 5 && facts.elapsedDays >= 3 && curSpend > 0 {
+            if facts.isPeriodInProgress && context.period == .month && txCount >= 5 && facts.elapsedDays >= 3 && curSpend > 0 {
                 let dailyRate = curSpend / Double(facts.elapsedDays)
                 let projected = dailyRate * Double(facts.totalDaysInCycle)
-                let isSurging = baseSpend > 0 ? (projected > baseSpend * 1.20) : false
+                let isSurging = summary.baselineSpend > 0 ? (projected > summary.baselineSpend * 1.20) : false
                 
                 let evidence = InsightEvidence.categoryForecast(
                     categoryId: catId,
                     categoryName: catName,
                     currentSpend: curSpend,
                     projectedSpend: projected,
-                    baselineSpend: baseSpend,
+                    baselineSpend: summary.baselineSpend,
                     isSurging: isSurging
                 )
                 candidates.append(

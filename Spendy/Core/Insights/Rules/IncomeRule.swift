@@ -45,7 +45,7 @@ struct IncomeRule: InsightRule {
                         canActAsDriver: false
                     )
                 )
-            } else if deltaPct <= -20.0 {
+            } else if deltaPct <= -20.0 && !facts.isPeriodInProgress {
                 candidates.append(
                     InsightCandidate(
                         id: "income_drop_\(context.period.rawValue)",

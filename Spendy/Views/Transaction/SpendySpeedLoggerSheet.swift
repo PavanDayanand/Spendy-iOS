@@ -43,9 +43,12 @@ struct SpendySpeedLoggerSheet: View {
     
     var body: some View {
         ZStack {
-            // Liquid Glass Background
-            SpendyColors.cardBackground
-                .ignoresSafeArea()
+            // Let the system sheet material show while listening.
+            // Review keeps its opaque surface behind recorded amounts.
+            if screenState == .review {
+                SpendyColors.cardBackground
+                    .ignoresSafeArea()
+            }
             
             VStack(spacing: 0) {
                 switch screenState {

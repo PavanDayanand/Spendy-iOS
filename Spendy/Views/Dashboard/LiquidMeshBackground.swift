@@ -85,7 +85,7 @@ public struct LiquidMeshBackground: View {
     }
     
     private var canvasColor: Color {
-        isLight ? SpendySignatureTheme.paperWhite : SpendySignatureTheme.pitchBlack
+        SpendyColors.appBackground
     }
     
     private var meshStrength: Double {

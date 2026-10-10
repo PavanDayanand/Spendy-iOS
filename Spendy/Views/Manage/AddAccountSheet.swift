@@ -14,6 +14,7 @@ import SwiftUI
 struct AddAccountSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var accountToEdit: Account? = nil
     
@@ -82,11 +83,6 @@ struct AddAccountSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
-            SpendyAmbientHeaderBackground(color: Color(hex: selectedColorHex), height: 280, opacity: 0.28)
-            
             VStack(spacing: 0) {
                 SpendyCreateSheetHeader(
                     title: isEditing ? "Edit Account" : "New Account",
@@ -185,7 +181,7 @@ struct AddAccountSheet: View {
                         
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 100)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -202,8 +198,8 @@ struct AddAccountSheet: View {
                 .padding(.top, 12)
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
+        // Short forms start compact; larger text can use the full sheet.
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(480), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)

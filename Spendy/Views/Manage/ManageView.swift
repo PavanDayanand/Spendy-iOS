@@ -23,7 +23,6 @@ struct SubscriptionsView: View {
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
-    @State private var insightPage: Int = 0
     @Namespace private var subscriptionTransitions
     @State private var subscriptionTransitionID: String? = nil
     @Namespace private var subsNamespace
@@ -98,6 +97,7 @@ struct SubscriptionsView: View {
     }
     
     private var subscriptionInsightMoments: [InsightMoment] {
+        guard store.insightsEnabled else { return [] }
         let facts = InsightFactsExtractor.extractFacts(
             transactions: store.transactions,
             budget: store.budget,
@@ -160,15 +160,13 @@ struct SubscriptionsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
+            NotificationManager.shared.refresh(from: store)
         }
         .sheet(isPresented: $showAddSubscription) {
             AddSubscriptionSheet()
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $subscriptionToEdit) { sub in
             AddSubscriptionSheet(subscriptionToEdit: sub)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $selectedSubscriptionForDetail, onDismiss: {
             subscriptionToEdit = pendingSubscriptionEdit
@@ -178,7 +176,6 @@ struct SubscriptionsView: View {
                 pendingSubscriptionEdit = subToEdit
                 selectedSubscriptionForDetail = nil
             }
-            .spendyNavigationZoom(from: subscriptionTransitionID, in: subscriptionTransitions)
         }
         .onAppear {
             selectInitialSubscriptionIfNeeded()
@@ -309,8 +306,7 @@ struct SubscriptionsView: View {
                 Divider()
                     .overlay(SpendyColors.separator.opacity(0.7))
                 VStack(alignment: .leading, spacing: 8) {
-                    SpendyInsightBrandMark(style: .kicker)
-                    insightPager
+                    SpendyInsightSummary(moments: cardInsights, onSelect: handleInsightDestination)
                 }
             } else if let next = nextUpcomingSubscription {
                 Divider()
@@ -327,41 +323,6 @@ struct SubscriptionsView: View {
 
     private var cardInsights: [InsightMoment] {
         subscriptionInsightMoments
-    }
-
-    private var insightPager: some View {
-        VStack(spacing: 8) {
-            if cardInsights.count == 1, let only = cardInsights.first {
-                insightRow(only)
-            } else {
-                TabView(selection: $insightPage) {
-                    ForEach(Array(cardInsights.enumerated()), id: \.element.id) { index, moment in
-                        insightRow(moment)
-                            .tag(index)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(height: 58)
-                .onChange(of: insightPage) { _, _ in
-                    HapticsManager.shared.trigger(.selection)
-                }
-
-                HStack(spacing: 5) {
-                    ForEach(0..<cardInsights.count, id: \.self) { index in
-                        Capsule()
-                            .fill(index == insightPage ? SpendyColors.textPrimary : SpendyColors.textTertiary.opacity(0.35))
-                            .frame(width: index == insightPage ? 12 : 5, height: 5)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(true)
-            }
-        }
-        .onChange(of: cardInsights.map(\.id)) { _, _ in
-            insightPage = 0
-        }
-        .accessibilityHint(cardInsights.count > 1 ? "Swipe left or right for more insights" : "")
     }
 
     private var heroSecondaryLine: some View {
@@ -386,61 +347,6 @@ struct SubscriptionsView: View {
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
-    }
-
-    private func subscriptionForMoment(_ moment: InsightMoment) -> Subscription? {
-        if case .subscriptionDetail(let id) = moment.destination {
-            return store.subscriptions.first { $0.id.uuidString.lowercased() == id.lowercased() }
-        }
-        return nil
-    }
-    
-    private func insightRow(_ moment: InsightMoment) -> some View {
-        let sub = subscriptionForMoment(moment)
-        return Button {
-            HapticsManager.shared.trigger(.selection)
-            if let destination = moment.destination {
-                handleInsightDestination(destination)
-            }
-        } label: {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: sub?.sfSymbol ?? SFIcons.subscriptions)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .frame(width: 22, height: 22)
-                    .padding(.top, 1)
-                    .symbolRenderingMode(.monochrome)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    ShinyHeadlineText(
-                        headline: moment.headline,
-                        emphasis: moment.emphasis,
-                        font: .system(size: 15, weight: .semibold),
-                        emphasisFont: .system(size: 15, weight: .bold)
-                    )
-                    .lineLimit(2)
-
-                    if let supporting = moment.supportingText, !supporting.isEmpty {
-                        InsightSupportingText(text: supporting, emphasis: moment.emphasis)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: 8)
-
-                if moment.destination != nil {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .padding(.top, 4)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(moment.destination == nil)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(moment.destination == nil ? [] : .isButton)
     }
 
     private func nextBillRow(_ sub: Subscription) -> some View {

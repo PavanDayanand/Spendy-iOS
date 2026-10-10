@@ -26,7 +26,8 @@ struct CategoryAnomalyRule: InsightRule {
             let mean = summary.meanTxAmount
             let threshold = mean * 3.0
             
-            let catTxs = facts.transactions.filter { $0.categoryId == catId }
+            let catTxs = facts.transactions.filter { $0.categoryId == catId && $0.type == .expense
+                && $0.date >= facts.periodStart && $0.date <= min(facts.periodEnd, context.now) }
             let anomalies = catTxs.filter { $0.amount >= threshold && $0.amount >= 150.0 }
             
             for tx in anomalies {

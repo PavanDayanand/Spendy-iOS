@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SpendyCreateFormCard<Content: View>: View {
+    var fillColor: Color = SpendyColors.cardBackground
     @ViewBuilder var content: () -> Content
     
     var body: some View {
@@ -16,7 +17,7 @@ struct SpendyCreateFormCard<Content: View>: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(fillColor)
                 .overlay {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)

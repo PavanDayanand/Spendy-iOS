@@ -118,7 +118,7 @@ struct WidgetShowcaseView: View {
         .padding(18)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(SpendyColors.settingsCardBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)

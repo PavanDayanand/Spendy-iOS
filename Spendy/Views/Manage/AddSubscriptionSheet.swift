@@ -10,6 +10,7 @@ import SwiftUI
 struct AddSubscriptionSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var subscriptionToEdit: Subscription? = nil
 
@@ -87,13 +88,6 @@ struct AddSubscriptionSheet: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-
-            // The ambient view stays neutral in monochrome mode.
-            let themeColor = Color(hex: selectedColorHex)
-            SpendyAmbientHeaderBackground(color: themeColor, height: 340, opacity: 0.30)
-
             VStack(spacing: 0) {
                 // Top Header Bar
                 topHeaderBar
@@ -122,14 +116,13 @@ struct AddSubscriptionSheet: View {
                     .padding(.top, 16)
             }
         }
-        .presentationBackground(SpendyColors.appBackground)
-        .presentationDetents([.large])
+        // Match the currency picker; allow expansion for the longer form.
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Discard Changes", role: .destructive) {

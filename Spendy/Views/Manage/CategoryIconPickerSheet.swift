@@ -48,11 +48,6 @@ struct CategoryIconPickerSheet: View {
         }
     }
     
-    // MARK: - Apple Default Grey Colors
-    private var sheetBackgroundColor: Color {
-        Color(uiColor: .systemGroupedBackground)
-    }
-    
     private var iconItemBackgroundColor: Color {
         Color(uiColor: .secondarySystemGroupedBackground)
     }
@@ -207,9 +202,6 @@ struct CategoryIconPickerSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            sheetBackgroundColor
-                .ignoresSafeArea()
-            
             VStack(spacing: 0) {
                 // 1. Header Bar: Close Button & Centered Title "Choose Icon"
                 headerBar
@@ -258,7 +250,6 @@ struct CategoryIconPickerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
         }
-        .presentationBackground(sheetBackgroundColor)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)

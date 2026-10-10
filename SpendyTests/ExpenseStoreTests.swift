@@ -10,6 +10,24 @@ final class ExpenseStoreTests: XCTestCase {
         return (ExpenseStore(storageURL: url, startsServices: false), url)
     }
 
+    @MainActor func testBackupWithRetiredBackgroundColorsStillImports() throws {
+        let (source, _) = try temporaryStore()
+        source.appearanceMode = .light
+        source.isGradientBackgroundEnabled = false
+        source.userName = "Legacy user"
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(source.exportJSONData())) as? [String: Any])
+        object["darkBackgroundHex"] = "#0033FF"
+        object["lightBackgroundHex"] = "#0033FF"
+        let (destination, _) = try temporaryStore()
+        XCTAssertTrue(destination.importJSONData(data: try JSONSerialization.data(withJSONObject: object)))
+        XCTAssertEqual(destination.userName, "Legacy user")
+        XCTAssertEqual(destination.appearanceMode, .light)
+        XCTAssertFalse(destination.isGradientBackgroundEnabled)
+        let exported = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(destination.exportJSONData())) as? [String: Any])
+        XCTAssertNil(exported["darkBackgroundHex"])
+        XCTAssertNil(exported["lightBackgroundHex"])
+    }
+
     @MainActor func testTransactionEditDeleteAndTransferConserveBalances() throws {
         let (store, _) = try temporaryStore()
         store.accounts = [Account(id: "cash", label: "Cash", openingBalance: 1000), Account(id: "bank", label: "Bank", openingBalance: 500)]

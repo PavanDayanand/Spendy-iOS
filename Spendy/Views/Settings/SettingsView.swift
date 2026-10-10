@@ -13,8 +13,9 @@ enum SettingsDestination: Hashable {
     case categories
     case dataBackup
     case insightCardsGallery
-    case appIcon
     case widgets
+    case insights
+    case notifications
 }
 
 struct SettingsView: View {
@@ -91,17 +92,12 @@ struct SettingsView: View {
                                 )
                             )
                             groupDivider
-                            NavigationLink(value: SettingsDestination.appIcon) {
-                                appIconRow
-                            }
-                            .buttonStyle(.plain)
-                            groupDivider
                             NavigationLink(value: SettingsDestination.widgets) {
                                 linkRow(icon: "square.grid.2x2", title: "Home Screen widgets", value: nil)
                             }
                         }
 
-                        settingsGroup(title: "Alerts") {
+                        settingsGroup(title: "Preferences") {
                             toggleRow(
                                 icon: "iphone.radiowaves.left.and.right",
                                 title: "Haptics",
@@ -114,25 +110,13 @@ struct SettingsView: View {
                                 )
                             )
                             groupDivider
-                            toggleRow(
-                                icon: "bell",
-                                title: "Bill reminders",
-                                isOn: Binding(
-                                    get: { store.notificationsEnabled },
-                                    set: { newValue in
-                                        store.notificationsEnabled = newValue
-                                        HapticsManager.shared.trigger(.selection)
-                                        if newValue {
-                                            Task {
-                                                let granted = await NotificationManager.shared.requestAuthorization()
-                                                if granted {
-                                                    NotificationManager.shared.syncAllSubscriptionReminders(subscriptions: store.subscriptions)
-                                                }
-                                            }
-                                        }
-                                    }
-                                )
-                            )
+                            NavigationLink(value: SettingsDestination.insights) {
+                                linkRow(icon: "sparkles", title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
+                            }.buttonStyle(.plain)
+                            groupDivider
+                            NavigationLink(value: SettingsDestination.notifications) {
+                                linkRow(icon: "bell", title: "Notifications", value: nil)
+                            }.buttonStyle(.plain)
                         }
 
                         settingsGroup(title: "Data") {
@@ -209,17 +193,19 @@ struct SettingsView: View {
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
                 case .accounts:
-                    AccountsView()
+                    AccountsView(isSettingsPage: true)
                 case .categories:
                     CategoriesSettingsView()
                 case .dataBackup:
                     DataManagementView()
                 case .insightCardsGallery:
                     InsightCardsGalleryView()
-                case .appIcon:
-                    AppIconPickerView()
                 case .widgets:
                     WidgetShowcaseView()
+                case .insights:
+                    InsightsPreferencesView()
+                case .notifications:
+                    NotificationPreferencesView()
                 }
             }
             .onAppear {
@@ -243,6 +229,7 @@ struct SettingsView: View {
                 OnboardingView()
             }
         }
+        .presentationBackground(SpendyColors.settingsBackground)
         .preferredColorScheme(store.colorScheme)
     }
 
@@ -343,30 +330,6 @@ struct SettingsView: View {
         .frame(minHeight: 52)
     }
 
-    private var appIconRow: some View {
-        HStack(spacing: 14) {
-            rowIcon("app")
-            Text("App icon")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-            Spacer()
-            Image(SpendyAppIcon.current.assetImageName)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 28, height: 28)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            Text(SpendyAppIcon.current.title)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
-        }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 52)
-        .contentShape(Rectangle())
-    }
-
     // MARK: - Footer
     private var footerSection: some View {
         VStack(spacing: 8) {
@@ -405,7 +368,7 @@ struct SettingsView: View {
 
     private var groupedCardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(SpendyColors.sheetCardBackground)
+            .fill(SpendyColors.settingsCardBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -477,7 +440,7 @@ struct SettingsView: View {
             Spacer(minLength: 8)
             Toggle("", isOn: isOn)
                 .labelsHidden()
-                .tint(SpendyColors.incomeGreen)
+                .tint(SpendyColors.controlAccent)
         }
         .padding(.horizontal, 16)
         .frame(minHeight: 52)
@@ -487,7 +450,6 @@ struct SettingsView: View {
     private var coffeeSheet: some View {
         NavigationStack {
             ZStack {
-                SpendyColors.appBackground.ignoresSafeArea()
                 VStack(spacing: 16) {
                     Image(systemName: "cup.and.saucer")
                         .font(.system(size: 36, weight: .medium))

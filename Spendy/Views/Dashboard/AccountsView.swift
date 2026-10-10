@@ -20,13 +20,12 @@ struct AccountsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
+    var isSettingsPage: Bool = false
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
     
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
-    @Namespace private var accountTransitions
-    @State private var accountTransitionID: String? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
     @State private var insightPage: Int = 0
     
@@ -96,7 +95,7 @@ struct AccountsView: View {
     
     private var groupedCardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(SpendyColors.cardBackground)
+            .fill(isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -105,7 +104,7 @@ struct AccountsView: View {
     
     var body: some View {
         ZStack {
-            SpendyColors.appBackground
+            (isSettingsPage ? SpendyColors.settingsBackground : SpendyColors.appBackground)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -154,15 +153,12 @@ struct AccountsView: View {
         }
         .sheet(isPresented: $showAddAccount) {
             AddAccountSheet()
-                .presentationBackground(SpendyColors.appBackground)
         }
         .sheet(item: $editingAccount) { acc in
             AddAccountSheet(accountToEdit: acc)
-                .presentationBackground(SpendyColors.appBackground)
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
-            AccountAnalyticsSheet(account: acc)
-                .spendyNavigationZoom(from: accountTransitionID, in: accountTransitions)
+            AccountAnalyticsSheet(account: acc, isSettingsPage: isSettingsPage)
         }
     }
     
@@ -367,7 +363,6 @@ struct AccountsView: View {
         Button {
             HapticsManager.shared.trigger(.selection)
             if let account = item.account {
-                accountTransitionID = nil
                 selectedAccountForAnalytics = account
             }
         } label: {
@@ -448,7 +443,6 @@ struct AccountsView: View {
         
         return Button {
             HapticsManager.shared.trigger(.selection)
-            accountTransitionID = AppTransitionIDs.accountCard(account.id)
             selectedAccountForAnalytics = account
         } label: {
             HStack(alignment: .center, spacing: 14) {
@@ -486,11 +480,9 @@ struct AccountsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .spendyNavigationSource(AppTransitionIDs.accountCard(account.id), in: accountTransitions)
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
-                accountTransitionID = AppTransitionIDs.accountCard(account.id)
                 selectedAccountForAnalytics = account
             } label: {
                 Label("View Analytics", systemImage: "chart.bar.xaxis")
