@@ -8,6 +8,8 @@
 //
 
 import Foundation
+import XCTest
+@testable import Spendy
 
 enum SmartInsightsUnitTests {
     
@@ -47,19 +49,19 @@ enum SmartInsightsUnitTests {
         
         for period in InsightPeriod.allCases {
             let bounds = period.resolveBounds(now: now, calendar: calendar)
-            assert(bounds.periodStart <= bounds.periodEnd, "Period bounds start must precede end for \(period)")
-            assert(bounds.baselineStart <= bounds.baselineEnd, "Baseline bounds start must precede end for \(period)")
+            XCTAssertTrue(bounds.periodStart <= bounds.periodEnd, "Period bounds start must precede end for \(period)")
+            XCTAssertTrue(bounds.baselineStart <= bounds.baselineEnd, "Baseline bounds start must precede end for \(period)")
         }
         
         // Capability Matrix Verification
         let velocityRule = SpendingVelocityRule()
-        assert(velocityRule.supportedPeriods.contains(.week) && velocityRule.supportedPeriods.contains(.month), "SpendingVelocityRule should support week and month")
+        XCTAssertTrue(velocityRule.supportedPeriods.contains(.week) && velocityRule.supportedPeriods.contains(.month), "SpendingVelocityRule should support week and month")
         
         let budgetRule = BudgetPacingRule()
-        assert(budgetRule.supportedPeriods == [.month], "BudgetPacingRule should support month only")
+        XCTAssertTrue(budgetRule.supportedPeriods == [.month], "BudgetPacingRule should support month only")
         
         let longTermRule = LongTermPatternRule()
-        assert(longTermRule.supportedPeriods.contains(.year) && longTermRule.supportedPeriods.contains(.sixMonths), "LongTermPatternRule should support 6M, 1Y, All")
+        XCTAssertTrue(longTermRule.supportedPeriods.contains(.year) && longTermRule.supportedPeriods.contains(.sixMonths), "LongTermPatternRule should support 6M, 1Y, All")
     }
     
     // MARK: - 2. Data Sufficiency Gates
@@ -71,7 +73,7 @@ enum SmartInsightsUnitTests {
             subscriptions: [],
             period: .month
         )
-        assert(!emptyFacts.hasSufficientGeneralData, "Empty transactions must not satisfy general data sufficiency")
+        XCTAssertTrue(!emptyFacts.hasSufficientGeneralData, "Empty transactions must not satisfy general data sufficiency")
         
         let moments = InsightDecisionEngine.shared.evaluate(
             facts: emptyFacts,
@@ -79,7 +81,7 @@ enum SmartInsightsUnitTests {
             period: .month,
             recordExposures: false
         )
-        assert(moments.count == 1 && moments.first?.isInsufficientData == true, "Insufficient data must return canonical empty moment")
+        XCTAssertTrue(moments.count == 1 && moments.first?.isInsufficientData == true, "Insufficient data must return canonical empty moment")
     }
     
     // MARK: - 3. Materiality-Weighted Ranking
@@ -126,7 +128,7 @@ enum SmartInsightsUnitTests {
                        + (largeModeratePercentCandidate.materiality * 0.05)
                        + (largeModeratePercentCandidate.actionability * 0.05)
         
-        assert(scoreLarge > scoreSmall, "Substantial financial materiality must outrank tiny percentage changes")
+        XCTAssertTrue(scoreLarge > scoreSmall, "Substantial financial materiality must outrank tiny percentage changes")
     }
     
     // MARK: - 4. Dynamic Novelty Decay & Material Shifts
@@ -135,18 +137,18 @@ enum SmartInsightsUnitTests {
         let store = InsightExposureStore(fileURL: testURL)
         
         let key = "test_cat_surge"
-        assert(store.calculateNovelty(for: key) == 1.0, "Fresh candidate must have 1.0 novelty")
+        XCTAssertTrue(store.calculateNovelty(for: key) == 1.0, "Fresh candidate must have 1.0 novelty")
         
         store.recordExposure(semanticId: key, delta: 15.0, value: 500.0)
-        assert(store.calculateNovelty(for: key) == 0.70, "1 exposure must decay novelty to 0.70")
+        XCTAssertTrue(store.calculateNovelty(for: key) == 0.70, "1 exposure must decay novelty to 0.70")
         
         // Simulating second exposure after 1 hr
         store.recordExposure(semanticId: key, delta: 15.0, value: 500.0, now: Date().addingTimeInterval(3700))
-        assert(store.calculateNovelty(for: key) == 0.40, "2 exposures must decay novelty to 0.40")
+        XCTAssertTrue(store.calculateNovelty(for: key) == 0.40, "2 exposures must decay novelty to 0.40")
         
         // Material shift (+15% -> +30%) must restore novelty to 0.90
         let shiftNovelty = store.calculateNovelty(for: key, currentDelta: 30.0, currentValue: 650.0)
-        assert(shiftNovelty == 0.90, "Material delta shift must reset novelty to 0.90")
+        XCTAssertTrue(shiftNovelty == 0.90, "Material delta shift must reset novelty to 0.90")
         
         store.reset()
     }
@@ -203,9 +205,9 @@ enum SmartInsightsUnitTests {
             currencySymbol: "₹"
         )
         
-        assert(compound.headline == "You're spending faster than this month's budget.")
-        assert(compound.supportingText == "Shopping is doing most of the extra spend this month.")
-        assert(compound.actionTitle == "View Shopping →")
+        XCTAssertTrue(compound.headline == "You're spending faster than this month's budget.")
+        XCTAssertTrue(compound.supportingText == "Shopping is doing most of the extra spend this month.")
+        XCTAssertTrue(compound.actionTitle == "View Shopping →")
     }
     
     // MARK: - 6. Deterministic Message Generation
@@ -230,9 +232,9 @@ enum SmartInsightsUnitTests {
         )
         
         let payload = InsightMessageBuilder.buildMessage(for: subDueCandidate, currencySymbol: "₹")
-        assert(payload.headline == "Spotify is due tomorrow.")
-        assert(payload.supportingText == "₹1,199 is the expected charge.")
-        assert(payload.actionTitle == "View Spotify →")
+        XCTAssertTrue(payload.headline == "Spotify is due tomorrow.")
+        XCTAssertTrue(payload.supportingText == "₹1,199 is the expected charge.")
+        XCTAssertTrue(payload.actionTitle == "View Spotify →")
         
         let overdue = InsightCandidate(
             id: "sub_overdue",
@@ -246,9 +248,9 @@ enum SmartInsightsUnitTests {
             destination: .subscriptionDetail(id: "sub_1")
         )
         let overduePayload = InsightMessageBuilder.buildMessage(for: overdue, currencySymbol: "₹")
-        assert(overduePayload.headline == "Apple Music is past due.")
-        assert(overduePayload.supportingText == "₹59 was due 1 day ago.")
-        assert(!overduePayload.supportingText!.contains("1 days"))
+        XCTAssertTrue(overduePayload.headline == "Apple Music is past due.")
+        XCTAssertTrue(overduePayload.supportingText == "₹59 was due 1 day ago.")
+        XCTAssertTrue(!overduePayload.supportingText!.contains("1 days"))
         
         let lessFood = InsightCandidate(
             id: "food_less",
@@ -270,13 +272,13 @@ enum SmartInsightsUnitTests {
             destination: .category(id: "food")
         )
         let lessPayload = InsightMessageBuilder.buildMessage(for: lessFood, currencySymbol: "₹")
-        assert(lessPayload.headline == "You're spending less on Food.")
-        assert(lessPayload.headline.lowercased().contains("you"))
+        XCTAssertTrue(lessPayload.headline == "You're spending less on Food.")
+        XCTAssertTrue(lessPayload.headline.lowercased().contains("you"))
         
         let banned = ["discipline", "restraint", "detected", "allocation", "utilization"]
         for word in banned {
-            assert(!lessPayload.headline.lowercased().contains(word))
-            assert(!(lessPayload.supportingText ?? "").lowercased().contains(word))
+            XCTAssertTrue(!lessPayload.headline.lowercased().contains(word))
+            XCTAssertTrue(!(lessPayload.supportingText ?? "").lowercased().contains(word))
         }
     }
     
@@ -300,9 +302,9 @@ enum SmartInsightsUnitTests {
             evidence: evidence
         )
         let payload = InsightMessageBuilder.buildMessage(for: candidate, currencySymbol: "₹")
-        assert(payload.headline == "December is usually your most expensive month.")
-        assert(payload.supportingText == "Spending then runs about 1.8x the rest of the year.")
-        assert(payload.actionTitle == nil, "Seasonality has no destination, so actionTitle must be nil")
+        XCTAssertTrue(payload.headline == "December is usually your most expensive month.")
+        XCTAssertTrue(payload.supportingText == "Spending then runs about 1.8x the rest of the year.")
+        XCTAssertTrue(payload.actionTitle == nil, "Seasonality has no destination, so actionTitle must be nil")
     }
     
     // MARK: - 8. Destination Identity Preservation
@@ -324,7 +326,7 @@ enum SmartInsightsUnitTests {
             actionTitle: "View Apple Music →",
             destination: .subscriptionDetail(id: subId)
         )
-        assert(subCandidate.destination == .subscriptionDetail(id: subId), "Subscription ID must be preserved in Candidate destination")
+        XCTAssertTrue(subCandidate.destination == .subscriptionDetail(id: subId), "Subscription ID must be preserved in Candidate destination")
         
         let subPayload = InsightMessageBuilder.buildMessage(for: subCandidate, currencySymbol: "₹")
         let subMoment = InsightMoment(
@@ -339,8 +341,8 @@ enum SmartInsightsUnitTests {
             actionTitle: subPayload.actionTitle,
             destination: subCandidate.destination
         )
-        assert(subMoment.destination == .subscriptionDetail(id: subId), "Subscription ID must be preserved in InsightMoment destination")
-        assert(subMoment.actionTitle == "View Apple Music →", "Action title must match specific subscription name")
+        XCTAssertTrue(subMoment.destination == .subscriptionDetail(id: subId), "Subscription ID must be preserved in InsightMoment destination")
+        XCTAssertTrue(subMoment.actionTitle == "View Apple Music →", "Action title must match specific subscription name")
         
         // 2. Category Destination Preservation
         let catCandidate = InsightCandidate(
@@ -356,7 +358,8 @@ enum SmartInsightsUnitTests {
             actionTitle: "View Dining →",
             destination: .category(id: catId)
         )
-        assert(catCandidate.destination == .category(id: catId), "Category ID must be preserved in Candidate destination")
+        XCTAssertTrue(catCandidate.affectedEntityId == catId)
+        XCTAssertTrue(catCandidate.destination == .category(id: catId), "Category ID must be preserved in Candidate destination")
         
         // 3. Transaction Destination Preservation
         let txCandidate = InsightCandidate(
@@ -371,14 +374,14 @@ enum SmartInsightsUnitTests {
             actionTitle: "View Transaction →",
             destination: .transaction(id: txId)
         )
-        assert(txCandidate.destination == .transaction(id: txId), "Transaction UUID must be preserved in Candidate destination")
+        XCTAssertTrue(txCandidate.destination == .transaction(id: txId), "Transaction UUID must be preserved in Candidate destination")
     }
     
     // MARK: - 9. Fixed Geometry Constants
     private static func testFixedGeometryConstants() {
-        assert(EditorialInsightMomentView.canonicalHeight == 136.0, "Canonical fixed height must be exactly 136.0pt")
-        assert(EditorialInsightMomentView.railCardWidth == 296.0, "Rail card width must be exactly 296.0pt")
-        assert(EditorialInsightMomentView.cardCornerRadius == 20.0, "Card corner radius must be exactly 20.0pt")
+        XCTAssertTrue(EditorialInsightMomentView.canonicalHeight == 136.0, "Canonical fixed height must be exactly 136.0pt")
+        XCTAssertTrue(EditorialInsightMomentView.railCardWidth == 296.0, "Rail card width must be exactly 296.0pt")
+        XCTAssertTrue(EditorialInsightMomentView.cardCornerRadius == 20.0, "Card corner radius must be exactly 20.0pt")
     }
     
     // MARK: - 10. Maximum 3 Moments Selection
@@ -398,13 +401,13 @@ enum SmartInsightsUnitTests {
         )
         
         let moments = engine.evaluate(facts: facts, surface: .home, period: .month, recordExposures: false)
-        assert(moments.count <= 5, "Home must NEVER return more than 5 moments")
+        XCTAssertTrue(moments.count <= 5, "Home must NEVER return more than 5 moments")
         
         let categoryMoments = engine.evaluate(facts: facts, surface: .category(id: "c1"), period: .month, recordExposures: false)
-        assert(categoryMoments.count <= 5, "Category sheet must return at most 5 moments")
+        XCTAssertTrue(categoryMoments.count <= 5, "Category sheet must return at most 5 moments")
         
         let budgetMoments = engine.evaluate(facts: facts, surface: .budget, period: .month, recordExposures: false)
-        assert(budgetMoments.count <= 5, "Budget must return at most 5 moments")
+        XCTAssertTrue(budgetMoments.count <= 5, "Budget must return at most 5 moments")
     }
     
     // MARK: - 11. Realistic Family Support 24-Transactions Fixture (PART 18)
@@ -422,7 +425,7 @@ enum SmartInsightsUnitTests {
             transactions.append(Transaction(title: "Family Transfer A", amount: 1000, type: .expense, categoryId: catId, accountId: "acc_1", date: d1))
             transactions.append(Transaction(title: "Family Transfer B", amount: 1000, type: .expense, categoryId: catId, accountId: "acc_1", date: d2))
         }
-        assert(transactions.count == 24, "Must have exactly 24 transactions in fixture")
+        XCTAssertTrue(transactions.count == 24, "Must have exactly 24 transactions in fixture")
         
         // 1. Test 1 Year Context (Jan 1, 2026 -> Dec 31, 2026)
         let yearContext = AnalyticsInsightContext(
@@ -442,8 +445,8 @@ enum SmartInsightsUnitTests {
             context: yearContext,
             calendar: calendar
         )
-        assert(facts1Y.totalExpenseTxCount == 24, "1Y context must analyze all 24 transactions (got \(facts1Y.totalExpenseTxCount))")
-        assert(facts1Y.currentSpendTotal == 24000.0, "1Y spend must be ₹24,000")
+        XCTAssertTrue(facts1Y.totalExpenseTxCount == 24, "1Y context must analyze all 24 transactions (got \(facts1Y.totalExpenseTxCount))")
+        XCTAssertTrue(facts1Y.currentSpendTotal == 24000.0, "1Y spend must be ₹24,000")
         
         // 2. Test 6 Months Context (Jul 1, 2026 -> Dec 31, 2026)
         let sixMonthsContext = AnalyticsInsightContext(
@@ -463,9 +466,9 @@ enum SmartInsightsUnitTests {
             context: sixMonthsContext,
             calendar: calendar
         )
-        assert(facts6M.totalExpenseTxCount == 12, "6M context must analyze exactly 12 transactions (got \(facts6M.totalExpenseTxCount))")
-        assert(facts6M.currentSpendTotal == 12000.0, "6M spend must be ₹12,000")
-        assert(facts6M.baselineSpendTotal == 12000.0, "6M baseline spend must be ₹12,000 (from H1 2026)")
+        XCTAssertTrue(facts6M.totalExpenseTxCount == 12, "6M context must analyze exactly 12 transactions (got \(facts6M.totalExpenseTxCount))")
+        XCTAssertTrue(facts6M.currentSpendTotal == 12000.0, "6M spend must be ₹12,000")
+        XCTAssertTrue(facts6M.baselineSpendTotal == 12000.0, "6M baseline spend must be ₹12,000 (from H1 2026)")
         
         // 3. Test 3 Months Context (Oct 1, 2026 -> Dec 31, 2026)
         let threeMonthsContext = AnalyticsInsightContext(
@@ -485,8 +488,8 @@ enum SmartInsightsUnitTests {
             context: threeMonthsContext,
             calendar: calendar
         )
-        assert(facts3M.totalExpenseTxCount == 6, "3M context must analyze exactly 6 transactions (got \(facts3M.totalExpenseTxCount))")
-        assert(facts3M.currentSpendTotal == 6000.0, "3M spend must be ₹6,000")
+        XCTAssertTrue(facts3M.totalExpenseTxCount == 6, "3M context must analyze exactly 6 transactions (got \(facts3M.totalExpenseTxCount))")
+        XCTAssertTrue(facts3M.currentSpendTotal == 6000.0, "3M spend must be ₹6,000")
         
         // 4. Test 1 Month Context (Dec 1, 2026 -> Dec 31, 2026)
         let oneMonthContext = AnalyticsInsightContext(
@@ -506,8 +509,8 @@ enum SmartInsightsUnitTests {
             context: oneMonthContext,
             calendar: calendar
         )
-        assert(facts1M.totalExpenseTxCount == 2, "1M context must analyze exactly 2 transactions (got \(facts1M.totalExpenseTxCount))")
-        assert(facts1M.currentSpendTotal == 2000.0, "1M spend must be ₹2,000")
+        XCTAssertTrue(facts1M.totalExpenseTxCount == 2, "1M context must analyze exactly 2 transactions (got \(facts1M.totalExpenseTxCount))")
+        XCTAssertTrue(facts1M.currentSpendTotal == 2000.0, "1M spend must be ₹2,000")
     }
     
     // MARK: - 12. Category & Account Scoping Isolation
@@ -527,14 +530,14 @@ enum SmartInsightsUnitTests {
         // Scope to Cat A
         let catContext = AnalyticsInsightContext.standard(period: .month, scope: .category(id: "cat_a"), referenceDate: now, calendar: calendar)
         let catFacts = InsightFactsExtractor.extractFacts(transactions: txs, budget: Budget(amount: 0, period: .monthly, isActive: false), categories: [catA, catB], subscriptions: [], context: catContext)
-        assert(catFacts.totalExpenseTxCount == 2, "Category scoped facts must include only Cat A transactions")
-        assert(catFacts.currentSpendTotal == 1000.0, "Cat A spend must equal 1000")
+        XCTAssertTrue(catFacts.totalExpenseTxCount == 2, "Category scoped facts must include only Cat A transactions")
+        XCTAssertTrue(catFacts.currentSpendTotal == 1000.0, "Cat A spend must equal 1000")
         
         // Scope to SBI Account
         let accContext = AnalyticsInsightContext.standard(period: .month, scope: .account(id: "acc_sbi"), referenceDate: now, calendar: calendar)
         let accFacts = InsightFactsExtractor.extractFacts(transactions: txs, budget: Budget(amount: 0, period: .monthly, isActive: false), categories: [catA, catB], subscriptions: [], context: accContext)
-        assert(accFacts.totalExpenseTxCount == 2, "Account scoped facts must include only SBI transactions")
-        assert(accFacts.currentSpendTotal == 1300.0, "SBI account spend must equal 1300")
+        XCTAssertTrue(accFacts.totalExpenseTxCount == 2, "Account scoped facts must include only SBI transactions")
+        XCTAssertTrue(accFacts.currentSpendTotal == 1300.0, "SBI account spend must equal 1300")
     }
     
     // MARK: - 13. Custom Date Range & Exact Baseline Duration
@@ -547,9 +550,9 @@ enum SmartInsightsUnitTests {
         
         let duration = customContext.endDate.timeIntervalSince(customContext.startDate)
         let baselineDuration = customContext.baselineEndDate.timeIntervalSince(customContext.baselineStartDate)
-        assert(abs(duration - baselineDuration) < 60, "Baseline duration must match custom range duration exactly")
-        assert(customContext.isCustomRange == true, "Must be flagged as custom range")
-        assert(customContext.customRangeLabel == "Jun 12 - Aug 17", "Must format human label correctly")
+        XCTAssertTrue(abs(duration - baselineDuration) < 60, "Baseline duration must match custom range duration exactly")
+        XCTAssertTrue(customContext.isCustomRange == true, "Must be flagged as custom range")
+        XCTAssertTrue(customContext.customRangeLabel == "Jun 12 - Aug 17", "Must format human label correctly")
     }
     
     // MARK: - 14. Contextual Exposure Fatigue Keys
@@ -563,11 +566,11 @@ enum SmartInsightsUnitTests {
         
         // Verify Family Support 1M is NOT suppressed!
         let key1M = "category_trend:cat_family_support:1m"
-        assert(store.calculateNovelty(for: key1M) == 1.0, "Family Support 1M must have full 1.0 novelty despite 1Y exposure")
+        XCTAssertTrue(store.calculateNovelty(for: key1M) == 1.0, "Family Support 1M must have full 1.0 novelty despite 1Y exposure")
         
         // Verify Shopping 1Y is NOT suppressed!
         let keyShop1Y = "category_trend:cat_shopping:1y"
-        assert(store.calculateNovelty(for: keyShop1Y) == 1.0, "Shopping 1Y must have full 1.0 novelty despite Family Support exposure")
+        XCTAssertTrue(store.calculateNovelty(for: keyShop1Y) == 1.0, "Shopping 1Y must have full 1.0 novelty despite Family Support exposure")
         
         store.reset()
     }
@@ -599,7 +602,7 @@ enum SmartInsightsUnitTests {
         let facts1W = InsightFactsExtractor.extractFacts(transactions: txs, budget: Budget(amount: 0, period: .monthly, isActive: false), categories: [cat], subscriptions: [], context: context1W)
         let moments1W_1 = engine.evaluate(facts: facts1W, surface: .category(id: catId), recordExposures: true)
         
-        assert(!moments1W_1.isEmpty && !moments1W_1.first!.isInsufficientData, "1W must produce a valid insight initially")
+        XCTAssertTrue(!moments1W_1.isEmpty && !moments1W_1.first!.isInsufficientData, "1W must produce a valid insight initially")
         let firstHeadline = moments1W_1.first!.headline
         
         // 2. Switch to 1M Evaluation
@@ -609,8 +612,8 @@ enum SmartInsightsUnitTests {
         
         // 3. Switch back to 1W Evaluation
         let moments1W_2 = engine.evaluate(facts: facts1W, surface: .category(id: catId), recordExposures: true)
-        assert(!moments1W_2.isEmpty && !moments1W_2.first!.isInsufficientData, "1W insight MUST NOT disappear after returning from 1M!")
-        assert(moments1W_2.first!.headline == firstHeadline, "Returning to 1W must return the same valid insight")
+        XCTAssertTrue(!moments1W_2.isEmpty && !moments1W_2.first!.isInsufficientData, "1W insight MUST NOT disappear after returning from 1M!")
+        XCTAssertTrue(moments1W_2.first!.headline == firstHeadline, "Returning to 1W must return the same valid insight")
         
         exposureStore.reset()
     }
@@ -641,7 +644,7 @@ enum SmartInsightsUnitTests {
         
         // 1W -> 1M -> 3M -> 1W
         let m1 = engine.evaluate(facts: facts1W, surface: .category(id: catId), recordExposures: true)
-        assert(!m1.first!.isInsufficientData, "1W step 1 valid")
+        XCTAssertTrue(!m1.first!.isInsufficientData, "1W step 1 valid")
         
         let context1M = AnalyticsInsightContext.standard(period: .month, scope: .category(id: catId), referenceDate: now, calendar: calendar)
         let facts1M = InsightFactsExtractor.extractFacts(transactions: txs, budget: Budget(amount: 0, period: .monthly, isActive: false), categories: [cat], subscriptions: [], context: context1M)
@@ -652,7 +655,7 @@ enum SmartInsightsUnitTests {
         _ = engine.evaluate(facts: facts3M, surface: .category(id: catId), recordExposures: true)
         
         let mReturn = engine.evaluate(facts: facts1W, surface: .category(id: catId), recordExposures: true)
-        assert(!mReturn.first!.isInsufficientData, "1W insight must remain valid through 1W -> 1M -> 3M -> 1W hop")
+        XCTAssertTrue(!mReturn.first!.isInsufficientData, "1W insight must remain valid through 1W -> 1M -> 3M -> 1W hop")
         
         exposureStore.reset()
     }
@@ -675,7 +678,7 @@ enum SmartInsightsUnitTests {
             destination: .subscriptionDetail(id: "sub_1")
         )
         let subPayload = InsightMessageBuilder.buildMessage(for: subCandidate, currencySymbol: "₹")
-        assert(subPayload.actionTitle == "View Apple Music →", "Actionable candidate must have actionTitle")
+        XCTAssertTrue(subPayload.actionTitle == "View Apple Music →", "Actionable candidate must have actionTitle")
         
         // Case B: Informational candidate (Habit with destination: nil)
         let habitCandidate = InsightCandidate(
@@ -691,7 +694,7 @@ enum SmartInsightsUnitTests {
             destination: nil
         )
         let habitPayload = InsightMessageBuilder.buildMessage(for: habitCandidate, currencySymbol: "₹")
-        assert(habitPayload.actionTitle == nil, "Informational candidate with destination: nil must NOT have actionTitle")
+        XCTAssertTrue(habitPayload.actionTitle == nil, "Informational candidate with destination: nil must NOT have actionTitle")
         
         // Case C: Self-referential resolution in Category Analytics
         let catId = "groceries"
@@ -708,6 +711,7 @@ enum SmartInsightsUnitTests {
             actionTitle: "View Groceries →",
             destination: .category(id: catId)
         )
+        XCTAssertTrue(catCandidate.destination == .category(id: catId))
         let catTxs = [
             Transaction(title: "T1", amount: 1000, type: .expense, categoryId: catId, accountId: "a1", date: Date()),
             Transaction(title: "T2", amount: 1000, type: .expense, categoryId: catId, accountId: "a1", date: Date()),
@@ -724,14 +728,14 @@ enum SmartInsightsUnitTests {
         // Evaluate on Home surface -> should keep destination & actionTitle
         let homeMoments = engine.evaluate(facts: catFacts, surface: .home, recordExposures: false)
         let catHomeMoment = homeMoments.first(where: { $0.family == .category }) ?? homeMoments.first
-        assert(catHomeMoment?.destination == .category(id: catId), "On Home, destination must be preserved")
-        assert(catHomeMoment?.actionTitle == "View Groceries →", "On Home, actionTitle must be preserved")
+        XCTAssertTrue(catHomeMoment?.destination == .category(id: catId), "On Home, destination must be preserved")
+        XCTAssertTrue(catHomeMoment?.actionTitle == "View Groceries →", "On Home, actionTitle must be preserved")
         
         // Evaluate on Category surface -> self-referential destination must be stripped to nil
         let categoryMoments = engine.evaluate(facts: catFacts, surface: .category(id: catId), recordExposures: false)
         let catCategoryMoment = categoryMoments.first(where: { $0.family == .category }) ?? categoryMoments.first
-        assert(catCategoryMoment?.destination == nil, "On Category surface, self-referential destination must be nil")
-        assert(catCategoryMoment?.actionTitle == nil, "On Category surface, actionTitle must be nil")
+        XCTAssertTrue(catCategoryMoment?.destination == nil, "On Category surface, self-referential destination must be nil")
+        XCTAssertTrue(catCategoryMoment?.actionTitle == nil, "On Category surface, actionTitle must be nil")
     }
     
     // MARK: - 18. Label Capitalization Normal Title Case
@@ -747,8 +751,8 @@ enum SmartInsightsUnitTests {
         ]
         
         for (family, title) in expected {
-            assert(family.title == title, "Family title must be normal casing '\(title)', got '\(family.title)'")
-            assert(family.title != family.title.uppercased(), "Family title must not be ALL CAPS for \(family)")
+            XCTAssertTrue(family.title == title, "Family title must be normal casing '\(title)', got '\(family.title)'")
+            XCTAssertTrue(family.title != family.title.uppercased(), "Family title must not be ALL CAPS for \(family)")
         }
     }
 
@@ -772,8 +776,8 @@ enum SmartInsightsUnitTests {
             )
             let isOverdue = candidates.contains { $0.semanticKey == "sub_overdue" }
             let isDue = candidates.contains { $0.semanticKey == "sub_upcoming_due" }
-            assert(isOverdue == (dayOffset < 0), "Only a past calendar day is overdue")
-            assert(isDue == (dayOffset >= 0), "Today and tomorrow must be due, not overdue")
+            XCTAssertTrue(isOverdue == (dayOffset < 0), "Only a past calendar day is overdue")
+            XCTAssertTrue(isDue == (dayOffset >= 0), "Today and tomorrow must be due, not overdue")
         }
     }
 
@@ -795,8 +799,8 @@ enum SmartInsightsUnitTests {
             accounts: accounts,
             transactions: [legacyTransfer]
         )
-        assert(balances["bank"] == 91)
-        assert(balances["cash"] == 59)
-        assert(balances.values.reduce(0, +) == 150, "A transfer must preserve total balance")
+        XCTAssertTrue(balances["bank"] == 91)
+        XCTAssertTrue(balances["cash"] == 59)
+        XCTAssertTrue(balances.values.reduce(0, +) == 150, "A transfer must preserve total balance")
     }
 }

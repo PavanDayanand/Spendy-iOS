@@ -87,9 +87,7 @@ struct ShinyHeadlineText: View {
         let match = String(text[range])
         let suffix = String(text[range.upperBound...])
         
-        return Text(prefix).font(font).foregroundStyle(color)
-            + Text(match).font(emphasisFont).foregroundStyle(color)
-            + Text(suffix).font(font).foregroundStyle(color)
+        return Text("\(Text(prefix).font(font))\(Text(match).font(emphasisFont))\(Text(suffix).font(font))").foregroundStyle(color)
     }
 }
 
@@ -117,8 +115,6 @@ struct InsightSupportingText: View {
         let prefix = String(text[..<range.lowerBound])
         let match = String(text[range])
         let suffix = String(text[range.upperBound...])
-        return Text(prefix).font(font).foregroundStyle(color)
-            + Text(match).font(font).bold().foregroundStyle(color)
-            + Text(suffix).font(font).foregroundStyle(color)
+        return Text("\(Text(prefix).font(font))\(Text(match).font(font).bold())\(Text(suffix).font(font))").foregroundStyle(color)
     }
 }

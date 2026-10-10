@@ -22,17 +22,17 @@ struct SpendyAmountView: View {
     var showDecimals: Bool = true
     var color: Color = SpendyColors.textPrimary
     var secondaryColor: Color? = nil
-    
+
     private var parts: (sign: String, integer: String, decimal: String) {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = showDecimals ? 2 : 0
         formatter.maximumFractionDigits = showDecimals ? 2 : 0
-        
+
         let absAmount = abs(amount)
         let formattedString = formatter.string(from: NSNumber(value: absAmount)) ?? String(format: "%.2f", absAmount)
         let signStr = amount < 0 ? "-" : ""
-        
+
         if showDecimals && formattedString.contains(".") {
             let comp = formattedString.components(separatedBy: ".")
             return (signStr, comp[0], ".\(comp[1])")
@@ -40,41 +40,46 @@ struct SpendyAmountView: View {
             return (signStr, formattedString, "")
         }
     }
-    
+
     var body: some View {
-        if isHidden {
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(currencySymbol)
-                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .monospaced))
-                    .foregroundStyle(color)
-                
-                Text("••••••")
-                    .font(.system(size: mainSize, weight: weight, design: .monospaced))
-                    .foregroundStyle(color)
-            }
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                // Currency Symbol (with optional minus sign)
-                Text("\(parts.sign)\(currencySymbol)")
-                    .font(.system(size: mainSize * 0.82, weight: .bold, design: .monospaced))
-                    .foregroundStyle(color)
-                
-                // Main Integer Amount
-                Text(parts.integer)
-                    .font(.system(size: mainSize, weight: weight, design: .monospaced))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .foregroundStyle(color)
-                
-                // Baseline-aligned Decimal Value
-                if showDecimals && !parts.decimal.isEmpty {
-                    Text(parts.decimal)
-                        .font(.system(size: max(16, mainSize * 0.55), weight: .bold, design: .monospaced))
+        Group {
+            if isHidden {
+                HStack(alignment: .firstTextBaseline, spacing: 1) {
+                    Text(currencySymbol)
+                        .font(.system(size: mainSize * 0.82, weight: .bold, design: .monospaced))
+                        .foregroundStyle(color)
+
+                    Text("••••••")
+                        .font(.system(size: mainSize, weight: weight, design: .monospaced))
+                        .foregroundStyle(color)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 1) {
+                    // Currency Symbol (with optional minus sign)
+                    Text("\(parts.sign)\(currencySymbol)")
+                        .font(.system(size: mainSize * 0.82, weight: .bold, design: .monospaced))
+                        .foregroundStyle(color)
+
+                    // Main Integer Amount
+                    Text(parts.integer)
+                        .font(.system(size: mainSize, weight: weight, design: .monospaced))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .foregroundStyle(secondaryColor ?? color.opacity(0.85))
+                        .foregroundStyle(color)
+
+                    // Baseline-aligned Decimal Value
+                    if showDecimals && !parts.decimal.isEmpty {
+                        Text(parts.decimal)
+                            .font(.system(size: max(16, mainSize * 0.55), weight: .bold, design: .monospaced))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .foregroundStyle(secondaryColor ?? color.opacity(0.85))
+                    }
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isHidden ? "Amount hidden" : "Amount, \(amount.formattedCurrency(symbol: currencySymbol, decimals: showDecimals ? 2 : 0))")
+
     }
 }

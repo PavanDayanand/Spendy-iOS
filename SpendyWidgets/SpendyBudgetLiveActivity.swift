@@ -285,7 +285,7 @@ private struct LockScreenLiveActivityView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "clock.badge.exclamationmark")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#FF9500"))
+                        .foregroundStyle(Color.orange)
                     
                     Text("Upcoming: **\(subTitle)** (\(SpendyWidgetFormat.amount(subAmount, symbol: context.attributes.currencySymbol, decimals: 2))) in **\(subDays) \(subDays == 1 ? "day" : "days")**")
                         .font(.system(size: 12, weight: .medium))

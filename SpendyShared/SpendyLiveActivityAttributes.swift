@@ -10,8 +10,8 @@ import ActivityKit
 import Foundation
 import SwiftUI
 
-public struct BudgetPacingActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable, Sendable {
+nonisolated public struct BudgetPacingActivityAttributes: ActivityAttributes {
+    nonisolated public struct ContentState: Codable, Hashable, Sendable {
         public var spentToday: Double
         public var dailyBudget: Double
         public var remainingToday: Double

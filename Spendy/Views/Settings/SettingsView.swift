@@ -378,7 +378,7 @@ struct SettingsView: View {
             Text("Spendy")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(SpendyColors.textSecondary)
-            Text("Version 2.0.0")
+            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
                 .font(AppTypography.captionMedium)
                 .foregroundStyle(SpendyColors.textTertiary)
             Text("Made by Pavan")

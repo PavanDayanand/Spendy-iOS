@@ -54,7 +54,24 @@ enum DashboardSectionId: String, Codable, CaseIterable, Identifiable {
 @Observable
 @MainActor
 final class ExpenseStore {
-    static let shared = ExpenseStore()
+    static let shared: ExpenseStore = {
+        #if DEBUG
+        // UI tests get their own temporary ledger, including a reproducible recovery fixture.
+        if let mode = ProcessInfo.processInfo.environment["SPENDY_UI_TEST_MODE"] {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("ui-test-\(UUID().uuidString).json")
+            let fixture = ExpenseStore(storageURL: url, startsServices: false)
+            fixture.hasCompletedOnboarding = true
+            fixture.transactions = [Transaction(title: "Readiness expense", amount: 25, categoryId: "groceries", accountId: "cash")]
+            fixture.flushPendingSave()
+            fixture.flushPendingSave()
+            if mode == "recovery" { try? Data("unreadable UI test fixture".utf8).write(to: url) }
+            return ExpenseStore(storageURL: url, startsServices: false)
+        }
+        #endif
+        return ExpenseStore()
+    }()
+
+    var systemIntegrationsEnabled: Bool { startsServices && loadError == nil }
     
     // MARK: - App State
     
@@ -63,7 +80,20 @@ final class ExpenseStore {
     @ObservationIgnored private var _cachedCategoryMap: [String: Category]?
     @ObservationIgnored private var _cachedAccountMap: [String: Account]?
     
+    @ObservationIgnored private let storageURL: URL
+    @ObservationIgnored private let writer = LocalStoreWriter()
+    @ObservationIgnored private let startsServices: Bool
+    @ObservationIgnored private var canSave = false
+    @ObservationIgnored private var saveRevision = 0
+    var loadError: String?
+    var persistenceError: String?
+
+    var hasRecoveryBackup: Bool {
+        FileManager.default.fileExists(atPath: storageURL.appendingPathExtension("backup").path)
+    }
+
     private func scheduleSave() {
+        guard canSave else { return }
         _saveTask?.cancel()
         _saveTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(300))
@@ -307,23 +337,16 @@ final class ExpenseStore {
     // MARK: - JSON Coders with Multi-Format Date Support
     static var jsonDecoder: JSONDecoder {
         let decoder = JSONDecoder()
-        let isoFormatterWithFrac = ISO8601DateFormatter()
-        isoFormatterWithFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime]
-        let yyyyMMddFormatter = DateFormatter()
-        yyyyMMddFormatter.dateFormat = "yyyy-MM-dd"
-        yyyyMMddFormatter.locale = Locale(identifier: "en_US_POSIX")
-        yyyyMMddFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-
         decoder.dateDecodingStrategy = .custom { decoder in
+            let fractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+            let iso = Date.ISO8601FormatStyle()
+            let dateOnly = Date.ISO8601FormatStyle().year().month().day()
+
             let container = try decoder.singleValueContainer()
             if let dateStr = try? container.decode(String.self) {
-                if let d = isoFormatterWithFrac.date(from: dateStr) { return d }
-                if let d = isoFormatter.date(from: dateStr) { return d }
-                if let d = yyyyMMddFormatter.date(from: dateStr) { return d }
-                let df = ISO8601DateFormatter()
-                if let d = df.date(from: dateStr) { return d }
+                if let date = try? fractional.parse(dateStr) { return date }
+                if let date = try? iso.parse(dateStr) { return date }
+                if let date = try? dateOnly.parse(dateStr) { return date }
             }
             if let ms = try? container.decode(Double.self) {
                 if ms > 10_000_000_000 { // Millisecond timestamp
@@ -332,7 +355,7 @@ final class ExpenseStore {
                     return Date(timeIntervalSince1970: ms)
                 }
             }
-            return Date()
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date in backup")
         }
         return decoder
     }
@@ -345,10 +368,15 @@ final class ExpenseStore {
     }
     
     // MARK: - Initializer & Persistence
-    init() {
+    init(storageURL: URL? = nil, startsServices: Bool = true) {
+        self.storageURL = storageURL ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("spendy_local_store.json")
+        self.startsServices = startsServices
         loadFromDisk()
-        Task { await refreshExchangeRates() }
-        HapticsManager.shared.isEnabled = hapticsEnabled
+        if startsServices && loadError == nil {
+            Task { await refreshExchangeRates() }
+            HapticsManager.shared.isEnabled = hapticsEnabled
+        }
     }
     
     private struct StoragePayload: Codable, Sendable {
@@ -387,16 +415,15 @@ final class ExpenseStore {
         var selectedSticker: String?
     }
     
-    private var storageURL: URL {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0].appendingPathComponent("spendy_local_store.json")
-    }
-    
-    private func loadFromDisk() {
+    func loadFromDisk() {
+        _saveTask?.cancel()
+        canSave = false
+        loadError = nil
         if FileManager.default.fileExists(atPath: storageURL.path) {
             do {
                 let data = try Data(contentsOf: storageURL)
                 let payload = try ExpenseStore.jsonDecoder.decode(StoragePayload.self, from: data)
+                try Self.validate(payload)
                 self.userName = payload.userName ?? ""
                 self.hapticsEnabled = payload.hapticsEnabled ?? true
                 self.profileImageData = payload.profileImageData
@@ -464,20 +491,56 @@ final class ExpenseStore {
                         self.categories[i].colorHex = "#34C759"
                     }
                 }
-                WidgetDataManager.shared.publish(from: self)
+                canSave = true
+                if startsServices { WidgetDataManager.shared.publish(from: self) }
                 return
             } catch {
-                print("Failed to load local store: \(error.localizedDescription)")
+                loadError = "Spendy couldn’t read your saved data. Your original file is safe. Try again, or restore a backup."
+                return
             }
         }
         
         // Seed initial default user state for first run
+        canSave = true
         seedInitialData()
-        WidgetDataManager.shared.publish(from: self)
+        if startsServices { WidgetDataManager.shared.publish(from: self) }
     }
-    
-    private func saveToDisk() {
-        WidgetDataManager.shared.publish(from: self)
+
+    func restoreRecoveryBackup() {
+        guard loadError != nil else { return }
+        do {
+            let backup = try Data(contentsOf: storageURL.appendingPathExtension("backup"))
+            restoreRecoveryData(backup)
+        } catch {
+            loadError = "The backup couldn’t be opened. Try importing another backup. Your original files are safe."
+        }
+    }
+
+    func restoreRecoveryData(_ backup: Data) {
+        guard loadError != nil else { return }
+        do {
+            let payload = try Self.jsonDecoder.decode(StoragePayload.self, from: backup)
+            try Self.validate(payload)
+            if FileManager.default.fileExists(atPath: storageURL.path) {
+                try FileManager.default.copyItem(at: storageURL, to: storageURL.appendingPathExtension("unreadable-\(UUID().uuidString)"))
+            }
+            try backup.write(to: storageURL, options: .atomic)
+            loadFromDisk()
+        } catch {
+            loadError = "This backup couldn’t be restored. Choose a valid Spendy JSON backup. Your original files are safe."
+        }
+    }
+
+    /// Drain queued writes and commit the latest snapshot before the app is suspended.
+    func flushPendingSave() {
+        guard canSave else { return }
+        _saveTask?.cancel()
+        saveToDisk(flush: true)
+    }
+
+    private func saveToDisk(flush: Bool = false, clearRecovery: Bool = false) {
+        guard canSave else { return }
+        if startsServices { WidgetDataManager.shared.publish(from: self) }
         let payload = StoragePayload(
             userName: userName,
             hapticsEnabled: hapticsEnabled,
@@ -512,17 +575,41 @@ final class ExpenseStore {
             hasCompletedOnboarding: hasCompletedOnboarding,
             selectedSticker: nil
         )
-        let destinationURL = storageURL
-        Task.detached(priority: .utility) {
-            do {
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                encoder.dateEncodingStrategy = .iso8601
-                let data = try encoder.encode(payload)
-                try data.write(to: destinationURL, options: .atomic)
-            } catch {
-                print("Failed to save local store: \(error.localizedDescription)")
+        saveRevision += 1
+        let revision = saveRevision
+        do {
+            let data = try Self.jsonEncoder.encode(payload)
+            if flush {
+                persistenceError = writer.flush(data, to: storageURL, clearRecovery: clearRecovery)
+            } else {
+                writer.enqueue(data, to: storageURL) { [self] error in
+                    Task { @MainActor in
+                        guard self.saveRevision == revision else { return }
+                        self.persistenceError = error
+                    }
+                }
             }
+        } catch {
+            persistenceError = error.localizedDescription
+        }
+    }
+
+    private static func validate(_ payload: StoragePayload) throws {
+        let accountIDs = Set(payload.accounts.map(\.id))
+        let valid = accountIDs.count == payload.accounts.count
+            && Set(payload.categories.map(\.id)).count == payload.categories.count
+            && Set(payload.transactions.map(\.id)).count == payload.transactions.count
+            && Set(payload.subscriptions.map(\.id)).count == payload.subscriptions.count
+            && payload.accounts.allSatisfy { $0.openingBalance.isFinite }
+            && payload.budget.amount.isFinite && payload.budget.amount >= 0
+            && payload.budget.categoryBudgets.values.allSatisfy { $0.isFinite && $0 >= 0 }
+            && payload.transactions.allSatisfy {
+                $0.amount.isFinite && $0.amount >= 0 && accountIDs.contains($0.accountId)
+                && ($0.type != .transfer || accountIDs.contains($0.toAccountId ?? ""))
+            }
+            && payload.subscriptions.allSatisfy { $0.amount.isFinite && $0.amount >= 0 && accountIDs.contains($0.accountId) }
+        guard valid else {
+            throw NSError(domain: "Spendy.Backup", code: 1, userInfo: [NSLocalizedDescriptionKey: "The backup contains duplicate IDs, invalid amounts, or missing accounts."])
         }
     }
     
@@ -722,10 +809,12 @@ final class ExpenseStore {
         var transaction = transaction
         if transaction.type == .transfer { transaction.toAmount = transaction.amount }
         transactions.insert(transaction, at: 0)
+        flushPendingSave()
     }
 
     func ingestPendingWidgetTransactions() {
-        let pending = WidgetDataManager.shared.consumePendingTransactions()
+        guard loadError == nil else { return }
+        let pending = WidgetDataManager.shared.loadPendingTransactions()
         guard !pending.isEmpty else { return }
 
         var didInsert = false
@@ -754,9 +843,11 @@ final class ExpenseStore {
             didInsert = true
         }
 
-        if didInsert {
-            HapticsManager.shared.trigger(.success)
+        if didInsert { flushPendingSave() }
+        if persistenceError == nil {
+            WidgetDataManager.shared.acknowledgePendingTransactions(ids: Set(pending.map(\.id)))
         }
+        if didInsert { HapticsManager.shared.trigger(.success) }
     }
     
     func deleteTransaction(id: UUID) {
@@ -814,6 +905,8 @@ final class ExpenseStore {
     }
     
     func deleteAccount(id: String, fallbackId: String? = nil) {
+        guard accounts.count > 1, accounts.contains(where: { $0.id == id }) else { return }
+        if let fallbackId, (fallbackId == id || !accounts.contains(where: { $0.id == fallbackId })) { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             let resolvedFallback = fallbackId ?? accounts.first(where: { $0.id != id })?.id
             if let fallbackId = resolvedFallback {
@@ -950,7 +1043,8 @@ final class ExpenseStore {
                 categoryId: sub.categoryId,
                 accountId: sub.accountId,
                 date: Date(),
-                notes: "Subscription payment for \(sub.name)"
+                notes: "Subscription payment for \(sub.name)",
+                subscriptionId: sub.id.uuidString
             )
             addTransaction(newTx)
             
@@ -993,7 +1087,7 @@ final class ExpenseStore {
     
     /// Total monthly normalized committed amount for all active, non-trial subscriptions
     var totalMonthlySubscriptionCommitted: Double {
-        subscriptions.filter { !$0.isPaused && !$0.isTrial }.reduce(0.0) { sum, sub in
+        subscriptions.filter { !$0.isPaused && !$0.isTrial && !$0.isCancelled }.reduce(0.0) { sum, sub in
             switch sub.cycle {
             case .monthly: return sum + sub.amount
             case .yearly:  return sum + (sub.amount / 12.0)
@@ -1284,7 +1378,7 @@ final class ExpenseStore {
         HapticsManager.shared.trigger(.selection)
     }
     
-    func refreshExchangeRates(force: Bool = false) async {
+    func refreshExchangeRates(force: Bool = false, session: URLSession = .shared) async {
         guard !isRefreshingRates else { return }
         if !force, let nextCheck = ratesNextUpdate, Date() < nextCheck { return }
 
@@ -1296,7 +1390,7 @@ final class ExpenseStore {
             let url = URL(string: "https://open.er-api.com/v6/latest/USD")!
             var request = URLRequest(url: url)
             request.timeoutInterval = 15
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
                 throw ExchangeRateError.invalidResponse
             }
@@ -1360,7 +1454,8 @@ final class ExpenseStore {
             self.accounts = Account.defaultAccounts
             self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
         }
-        scheduleSave()
+        _saveTask?.cancel()
+        saveToDisk(flush: true, clearRecovery: true)
     }
     
     func exportJSONData() -> Data? {
@@ -1447,8 +1542,21 @@ final class ExpenseStore {
     func importJSONData(data: Data) -> Bool {
         do {
             let payload = try ExpenseStore.jsonDecoder.decode(StoragePayload.self, from: data)
+            try Self.validate(payload)
             withAnimation(.spring(response: 0.35)) {
                 self.userName = payload.userName ?? self.userName
+                self.profileImageData = payload.profileImageData
+                self.profileIconSymbol = payload.profileIconSymbol
+                self.profileColorHex = payload.profileColorHex
+                self.notificationsEnabled = payload.notificationsEnabled ?? self.notificationsEnabled
+                self.ratesLastUpdated = payload.ratesLastUpdated
+                self.ratesNextUpdate = payload.ratesNextUpdate
+                self.ratesToUSD = payload.ratesToUSD ?? ["USD": 1]
+                self.dashboardHiddenSections = payload.dashboardHiddenSections ?? []
+                if let raw = payload.dashboardSectionOrder {
+                    let order = raw.compactMap(DashboardSectionId.init(rawValue:))
+                    self.dashboardSectionOrder = order + DashboardSectionId.allCases.filter { !order.contains($0) }
+                }
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
                 self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
                 self.appearanceMode = payload.appearanceMode ?? self.appearanceMode
@@ -1483,7 +1591,8 @@ final class ExpenseStore {
             HapticsManager.shared.trigger(.success)
             return true
         } catch {
-            if importWebExportJSON(data: data) {
+            if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               object["categories"] is [String: Any], importWebExportJSON(data: data) {
                 return true
             }
             print("Failed to import JSON data: \(error.localizedDescription)")
@@ -1502,7 +1611,7 @@ final class ExpenseStore {
         let isoFormatterNoFrac = ISO8601DateFormatter()
         isoFormatterNoFrac.formatOptions = [.withInternetDateTime]
         
-        func parseDate(_ val: Any?) -> Date {
+        func parseDate(_ val: Any?) -> Date? {
             if let dStr = val as? String {
                 if let d = isoFormatter.date(from: dStr) { return d }
                 if let d = isoFormatterNoFrac.date(from: dStr) { return d }
@@ -1516,7 +1625,7 @@ final class ExpenseStore {
                     return Date(timeIntervalSince1970: ms)
                 }
             }
-            return Date()
+            return nil
         }
         
         func parseUUID(_ str: String) -> UUID {
@@ -1527,6 +1636,9 @@ final class ExpenseStore {
             return UUID(uuidString: clean) ?? UUID()
         }
         
+        guard let accountRows = jsonObject["accounts"] as? [[String: Any]],
+              let transactionRows = jsonObject["transactions"] as? [[String: Any]],
+              jsonObject["categories"] is [String: Any] else { return false }
         let importedUserName = jsonObject["userName"] as? String
         let importedCurrency = jsonObject["currency"] as? String
         
@@ -1621,7 +1733,7 @@ final class ExpenseStore {
                 let cycleStr = dict["cycle"] as? String ?? dict["billingCycle"] as? String ?? "monthly"
                 let cycle = BillingCycle(rawValue: cycleStr) ?? .monthly
                 let dateVal = dict["nextBillingDate"] ?? dict["nextBilling"] ?? dict["startDate"] ?? dict["originalDate"]
-                let date = parseDate(dateVal)
+                guard let date = parseDate(dateVal) else { return false }
                 let accountId = dict["accountId"] as? String ?? "bank"
                 let isTrial = dict["isTrial"] as? Bool ?? false
                 let isPaused = dict["isPaused"] as? Bool ?? false
@@ -1665,8 +1777,7 @@ final class ExpenseStore {
                       let catId = (dict["category"] as? String) ?? (dict["categoryId"] as? String),
                       let accId = dict["accountId"] as? String else { continue }
                 
-                let txType = TransactionType(rawValue: typeStr) ?? .expense
-                let txDate = parseDate(dict["date"])
+                guard let txDate = parseDate(dict["date"]), let txType = TransactionType(rawValue: typeStr) else { return false }
                 let subId = dict["subscriptionId"] as? String
                 let notes = dict["notes"] as? String
                 
@@ -1695,6 +1806,22 @@ final class ExpenseStore {
             }
         }
         
+        guard newAccounts.count == accountRows.count,
+              newTransactions.count == transactionRows.count,
+              Set(newAccounts.map(\.id)).count == newAccounts.count,
+              Set(newCategories.map(\.id)).count == newCategories.count,
+              Set(newTransactions.map(\.id)).count == newTransactions.count,
+              newBudget.amount.isFinite, newBudget.amount >= 0,
+              Set(newSubscriptions.map(\.id)).count == newSubscriptions.count,
+              newSubscriptions.count == (jsonObject["subscriptions"] as? [[String: Any]] ?? []).count,
+              newSubscriptions.allSatisfy({ sub in sub.amount.isFinite && sub.amount >= 0 && newAccounts.contains(where: { $0.id == sub.accountId }) }),
+              newAccounts.allSatisfy({ $0.openingBalance.isFinite }),
+              newTransactions.allSatisfy({ tx in
+                  tx.amount.isFinite && tx.amount >= 0
+                  && newAccounts.contains(where: { $0.id == tx.accountId })
+                  && (tx.type != .transfer || (tx.toAccountId != tx.accountId && newAccounts.contains(where: { $0.id == tx.toAccountId })))
+              }) else { return false }
+
         withAnimation(.spring(response: 0.35)) {
             if let userName = importedUserName, !userName.isEmpty {
                 self.userName = userName

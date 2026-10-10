@@ -146,6 +146,7 @@ final class ReceiptScannerEngine {
     
     private func performVisionOCR(on cgImage: CGImage, orientation: CGImagePropertyOrientation) async -> [RecognizedLine] {
         await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
             let request = VNRecognizeTextRequest { request, error in
                 guard error == nil, let observations = request.results as? [VNRecognizedTextObservation] else {
                     continuation.resume(returning: [])
@@ -184,7 +185,6 @@ final class ReceiptScannerEngine {
             request.automaticallyDetectsLanguage = true
             
             let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
-            DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     try handler.perform([request])
                 } catch {

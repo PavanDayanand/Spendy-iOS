@@ -44,14 +44,6 @@ struct SpendyApp: App {
     @State private var quickActionManager = QuickActionManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
-    init() {
-        #if DEBUG
-        Task { @MainActor in
-            SmartInsightsUnitTests.runAllTests()
-        }
-        #endif
-    }
-
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -69,12 +61,15 @@ struct SpendyApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 activateSpendySystemIntegrations()
+            } else {
+                store.flushPendingSave()
             }
         }
     }
 
     @MainActor
     private func activateSpendySystemIntegrations() {
+        guard store.systemIntegrationsEnabled else { return }
         store.ingestPendingWidgetTransactions()
         WidgetDataManager.shared.publish(from: store)
         SpendyShortcutsProvider.updateAppShortcutParameters()

@@ -806,6 +806,7 @@ struct DashboardView: View {
             
             if hideBalance {
                 Text("••••••")
+                    .accessibilityLabel("Spending hidden")
                     .spendyNumberFont(size: 42, weight: .heavy, tracking: -1.0)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .padding(.bottom, 6)
@@ -817,6 +818,7 @@ struct DashboardView: View {
                     tracking: -1.0,
                     colors: SpendyGradientPresets.electricBlueToWhite
                 )
+                .accessibilityLabel("Spending, \(displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
                 .padding(.bottom, 6)
                 .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scrubbedBarPoint?.id)
             }
@@ -1128,6 +1130,7 @@ struct DashboardView: View {
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 20)
         }
+        .accessibilityIdentifier("transactionFilters")
     }
     
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
@@ -1235,6 +1238,7 @@ struct DashboardView: View {
                 // Amount Value
                 if hideBalance {
                     Text("••••")
+                        .accessibilityLabel("Amount hidden")
                         .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
                         .foregroundStyle(SpendyColors.textSecondary)
                 } else {
@@ -1242,6 +1246,7 @@ struct DashboardView: View {
                     Text(tx.type == .income ? "+\(formatted)" : formatted)
                         .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
                         .foregroundStyle(rowAmountColor(tx))
+                        .accessibilityLabel("\(tx.type.title) amount, \(formatted)")
                 }
             }
             .padding(.horizontal, 16)

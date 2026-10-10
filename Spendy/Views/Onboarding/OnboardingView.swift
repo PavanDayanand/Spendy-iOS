@@ -226,7 +226,8 @@ public struct OnboardingView: View {
     }
 
     private var welcome: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let reduceWelcomeMotion = reduceMotion
+        return VStack(alignment: .leading, spacing: 16) {
             Image("AppIconPreview-Default")
                 .resizable().scaledToFit()
                 .frame(width: 64, height: 64)
@@ -238,7 +239,7 @@ public struct OnboardingView: View {
                     Image(systemName: "cup.and.saucer.fill")
                         .font(.title2)
                         .keyframeAnimator(initialValue: CGFloat(1), trigger: triedExpense) { content, scale in
-                            content.scaleEffect(reduceMotion ? 1 : scale)
+                            content.scaleEffect(reduceWelcomeMotion ? 1 : scale)
                         } keyframes: { _ in
                             CubicKeyframe(0.9, duration: 0.08)
                             SpringKeyframe(1.12, duration: 0.18, spring: .bouncy)

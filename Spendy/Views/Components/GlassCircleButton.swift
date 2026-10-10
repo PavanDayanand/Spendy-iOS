@@ -38,7 +38,7 @@ struct GlassCircleIcon<Content: View>: View {
     var size: CGFloat = 44
     var tintColor: Color? = nil
     var isInteractive: Bool = true
-    var morphID: AnyHashable? = nil
+    var morphID: String? = nil
     var namespace: Namespace.ID? = nil
     @ViewBuilder var content: () -> Content
     
@@ -46,7 +46,7 @@ struct GlassCircleIcon<Content: View>: View {
         size: CGFloat = 44,
         tintColor: Color? = nil,
         isInteractive: Bool = true,
-        morphID: AnyHashable? = nil,
+        morphID: String? = nil,
         namespace: Namespace.ID? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -69,7 +69,7 @@ struct GlassCircleIcon<Content: View>: View {
 }
 
 struct OptionalGlassMorphModifier: ViewModifier {
-    var id: AnyHashable?
+    var id: String?
     var namespace: Namespace.ID?
     
     func body(content: Content) -> some View {
@@ -90,7 +90,7 @@ extension GlassCircleIcon where Content == GlassCircleDefaultIconView {
         tintColor: Color? = nil,
         foregroundColor: Color = SpendyColors.textPrimary,
         isInteractive: Bool = true,
-        morphID: AnyHashable? = nil,
+        morphID: String? = nil,
         namespace: Namespace.ID? = nil
     ) {
         self.size = size
@@ -115,7 +115,7 @@ struct GlassCircleButton<Content: View>: View {
     var tintColor: Color? = nil
     var haptic: HapticsManager.FeedbackStyle? = .light
     var accessibilityLabel: String? = nil
-    var morphID: AnyHashable? = nil
+    var morphID: String? = nil
     var namespace: Namespace.ID? = nil
     var action: () -> Void
     @ViewBuilder var content: () -> Content
@@ -126,7 +126,7 @@ struct GlassCircleButton<Content: View>: View {
         tintColor: Color? = nil,
         haptic: HapticsManager.FeedbackStyle? = .light,
         accessibilityLabel: String? = nil,
-        morphID: AnyHashable? = nil,
+        morphID: String? = nil,
         namespace: Namespace.ID? = nil,
         action: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
@@ -175,7 +175,7 @@ extension GlassCircleButton where Content == GlassCircleDefaultIconView {
         foregroundColor: Color = SpendyColors.textPrimary,
         haptic: HapticsManager.FeedbackStyle? = .light,
         accessibilityLabel: String? = nil,
-        morphID: AnyHashable? = nil,
+        morphID: String? = nil,
         namespace: Namespace.ID? = nil,
         action: @escaping () -> Void
     ) {

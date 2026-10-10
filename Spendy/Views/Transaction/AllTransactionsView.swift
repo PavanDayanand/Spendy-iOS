@@ -363,6 +363,7 @@ struct AllTransactionsView: View {
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 16)
         }
+        .accessibilityIdentifier("transactionFilters")
     }
     
     // MARK: - 3. Individual Transaction Card (Matching Category Card Design)

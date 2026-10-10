@@ -159,13 +159,18 @@ struct DataManagementView: View {
             switch result {
             case .success(let urls):
                 guard let fileURL = urls.first else { return }
-                if fileURL.startAccessingSecurityScopedResource() {
-                    defer { fileURL.stopAccessingSecurityScopedResource() }
-                    if let data = try? Data(contentsOf: fileURL) {
-                        let success = store.importJSONData(data: data)
-                        importAlertMessage = success ? "Data imported successfully!" : "Failed to parse JSON backup."
-                        HapticsManager.shared.trigger(success ? .success : .error)
-                    }
+                let scoped = fileURL.startAccessingSecurityScopedResource()
+                defer { if scoped { fileURL.stopAccessingSecurityScopedResource() } }
+                do {
+                    let data = try Data(contentsOf: fileURL)
+                    let success = store.importJSONData(data: data)
+                    if success { store.flushPendingSave() }
+                    importAlertMessage = success
+                        ? (store.persistenceError == nil ? "Data imported successfully!" : "Imported data could not be saved. Export a backup and retry saving.")
+                        : "The backup is invalid. Your current data has not been changed."
+                    HapticsManager.shared.trigger(success ? .success : .error)
+                } catch {
+                    importAlertMessage = "Import failed: \(error.localizedDescription)"
                 }
             case .failure(let error):
                 importAlertMessage = "Import failed: \(error.localizedDescription)"

@@ -551,6 +551,11 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
         return items
     }
 
+    /// Acknowledge only records already committed by the app; keep newer queued items.
+    func acknowledgePendingTransactions(ids: Set<String>) {
+        savePendingTransactions(loadPendingTransactions().filter { !ids.contains($0.id) })
+    }
+
     func consumePendingTransactions() -> [PendingWidgetTransaction] {
         let items = loadPendingTransactions()
         defaults.removeObject(forKey: SpendyAppGroup.pendingTransactionsKey)

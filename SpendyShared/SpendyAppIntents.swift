@@ -14,6 +14,7 @@ import WidgetKit
 enum SpendyIntentError: Error, CustomLocalizedStringResourceConvertible {
     case invalidAmount
     case missingCategory
+    case storageUnavailable
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
@@ -21,6 +22,8 @@ enum SpendyIntentError: Error, CustomLocalizedStringResourceConvertible {
             "Enter an amount greater than zero."
         case .missingCategory:
             "Choose a category."
+        case .storageUnavailable:
+            "Open Spendy to recover your data or retry saving before logging another transaction."
         }
     }
 }
@@ -287,6 +290,7 @@ struct LogTransactionIntent: AppIntent {
         )
         #else
         let store = ExpenseStore.shared
+        guard store.loadError == nil else { throw SpendyIntentError.storageUnavailable }
         store.ingestPendingWidgetTransactions()
         let accountId = store.accounts.first(where: { $0.id == "cash" })?.id
             ?? store.accounts.first?.id
@@ -302,6 +306,7 @@ struct LogTransactionIntent: AppIntent {
                 notes: nil
             )
         )
+        guard store.persistenceError == nil else { throw SpendyIntentError.storageUnavailable }
         #endif
     }
 
