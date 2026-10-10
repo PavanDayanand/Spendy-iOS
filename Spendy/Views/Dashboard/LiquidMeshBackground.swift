@@ -48,7 +48,7 @@ public struct LiquidMeshBackground: View {
     public var height: CGFloat? = nil
     public var opacity: Double = 0.44
     
-    @State private var isDrifting: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     
@@ -95,7 +95,7 @@ public struct LiquidMeshBackground: View {
     public var body: some View {
         GeometryReader { proxy in
             let totalScreenHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
-            let calculatedHeight = height ?? (style == .sheet ? totalScreenHeight * 0.55 : totalScreenHeight * 0.80)
+            let calculatedHeight = height ?? (style == .sheet ? totalScreenHeight * 0.55 : totalScreenHeight * 0.95)
             
             ZStack {
                 canvasColor
@@ -105,7 +105,7 @@ public struct LiquidMeshBackground: View {
                     // Sheet Ambient Multi-Blue Header Glow
                     sheetAmbientHeader(effectiveHeight: calculatedHeight)
                 } else if store.isGradientBackgroundEnabled {
-                    // Main App Screen Fluid Multi-Blue Animated Liquid Mesh (Covers 80% of screen, 20% black base)
+                    // Broad screen mesh with a gradual fade into the canvas.
                     screenFluidMesh(effectiveHeight: calculatedHeight)
                 }
             }
@@ -115,95 +115,62 @@ public struct LiquidMeshBackground: View {
         }
     }
     
-    // MARK: - Screen Fluid Multi-Blue Mesh Background
+    // MARK: - Screen Mesh
     private func screenFluidMesh(effectiveHeight: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                LinearGradient(
-                    stops: [
-                        .init(color: baseTopColor.opacity(opacity * meshStrength * (isLight ? 0.72 : 1.0)), location: 0.0),
-                        .init(color: baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.88 : 1.05)), location: 0.20),
-                        .init(color: (isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.70 : 1.15)), location: 0.45),
-                        .init(color: (isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.28 : 0.60)), location: 0.72),
-                        .init(color: canvasColor.opacity(0.0), location: 1.0)
-                    ],
-                    startPoint: (isDrifting && !reduceMotion) ? .topTrailing : .topLeading,
-                    endPoint: (isDrifting && !reduceMotion) ? .bottomLeading : .bottomTrailing
+        let pausesMotion = reduceMotion || scenePhase != .active || ProcessInfo.processInfo.isLowPowerModeEnabled
+        return VStack(spacing: 0) {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: pausesMotion)) { context in
+                let time = pausesMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+                MeshGradient(
+                    width: 4,
+                    height: 4,
+                    points: meshPoints(at: time),
+                    colors: meshColors,
+                    background: canvasColor,
+                    smoothsColors: true,
+                    colorSpace: .perceptual
                 )
-                
-                Circle()
-                    .fill((isLight ? baseRoyalBlue : baseDeepElectricBlue).opacity(opacity * meshStrength * (isLight ? 0.55 : 1.0)))
-                    .frame(width: 420, height: 420)
-                    .offset(
-                        x: (isDrifting && !reduceMotion) ? 35 : -55,
-                        y: (isDrifting && !reduceMotion) ? 20 : -30
-                    )
-                    .scaleEffect((isDrifting && !reduceMotion) ? 1.10 : 0.94)
-                    .blur(radius: isLight ? 88 : 78)
-                
-                Circle()
-                    .fill(baseRoyalBlue.opacity(opacity * meshStrength * (isLight ? 0.42 : 0.85)))
-                    .frame(width: 360, height: 360)
-                    .offset(
-                        x: (isDrifting && !reduceMotion) ? -60 : 50,
-                        y: (isDrifting && !reduceMotion) ? 80 : 40
-                    )
-                    .scaleEffect((isDrifting && !reduceMotion) ? 0.95 : 1.14)
-                    .blur(radius: isLight ? 78 : 68)
-                
-                Circle()
-                    .fill((isLight ? SpendySignatureTheme.skyBlue : baseRoyalBlue).opacity(opacity * meshStrength * (isLight ? 0.38 : 0.65)))
-                    .frame(width: 280, height: 280)
-                    .offset(
-                        x: (isDrifting && !reduceMotion) ? 70 : -35,
-                        y: (isDrifting && !reduceMotion) ? -40 : -10
-                    )
-                    .scaleEffect((isDrifting && !reduceMotion) ? 1.15 : 0.90)
-                    .blur(radius: isLight ? 64 : 54)
+                .opacity(isLight ? opacity * meshStrength : min(1, opacity * 1.65))
             }
             .frame(height: effectiveHeight)
-            .mask(
-                LinearGradient(
-                    stops: isLight
-                        ? [
-                            .init(color: .white, location: 0.0),
-                            .init(color: .white, location: 0.30),
-                            .init(color: .white.opacity(0.85), location: 0.55),
-                            .init(color: .white.opacity(0.45), location: 0.75),
-                            .init(color: .white.opacity(0.12), location: 0.90),
-                            .init(color: .clear, location: 1.0)
-                        ]
-                        : [
-                            .init(color: .white, location: 0.0),
-                            .init(color: .white, location: 0.40),
-                            .init(color: .white.opacity(0.90), location: 0.65),
-                            .init(color: .white.opacity(0.50), location: 0.82),
-                            .init(color: .white.opacity(0.15), location: 0.94),
-                            .init(color: .clear, location: 1.0)
-                        ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .ignoresSafeArea(edges: .top)
-            
-            Spacer()
+            Spacer(minLength: 0)
         }
         .ignoresSafeArea(edges: .top)
         .allowsHitTesting(false)
-        .onAppear {
-            if !reduceMotion {
-                withAnimation(
-                    .easeInOut(duration: 4.8)
-                    .repeatForever(autoreverses: true)
-                ) {
-                    isDrifting = true
-                }
-            }
-        }
         .transition(.opacity)
     }
-    
+
+    private var meshColors: [Color] {
+        let quiet = isLight ? Color(hex: "#D7E4FF") : Color(hex: "#06102D")
+        let middle = isLight ? SpendySignatureTheme.skyBlue : baseDeepElectricBlue
+        let edgeBlue = isLight ? Color(hex: "#BDD5FF") : Color(hex: "#122773")
+        return [
+            canvasColor, quiet, quiet, canvasColor,
+            edgeBlue, baseRoyalBlue, middle, edgeBlue,
+            quiet, middle, middle, quiet,
+            canvasColor, canvasColor, canvasColor, canvasColor
+        ]
+    }
+
+    private func meshPoints(at time: TimeInterval) -> [SIMD2<Float>] {
+        // Keep the perimeter fixed; interior points drift on separate, slow cycles.
+        func wave(_ seconds: Double, _ phase: Double = 0) -> Float {
+            Float(sin(time * 2 * .pi / seconds + phase))
+        }
+        return [
+            [0, 0], [0.33, 0], [0.67, 0], [1, 0],
+            [0, 0.33],
+            [0.28 + 0.045 * wave(23), 0.33 + 0.035 * wave(29, 1)],
+            [0.72 + 0.040 * wave(31, 2), 0.33 + 0.050 * wave(37)],
+            [1, 0.33],
+            [0, 0.67],
+            [0.28 + 0.055 * wave(41, 1), 0.70 + 0.040 * wave(31, 3)],
+            [0.72 + 0.035 * wave(29, 4), 0.70 + 0.055 * wave(43, 2)],
+            [1, 0.67],
+            [0, 1], [0.33, 1], [0.67, 1], [1, 1]
+        ]
+    }
+
     // MARK: - Sheet Ambient Multi-Blue Header Glow
     private func sheetAmbientHeader(effectiveHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
