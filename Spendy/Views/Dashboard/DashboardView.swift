@@ -31,6 +31,7 @@ struct HeroSpendBarChart: View {
     @Binding var scrubbedPoint: MinimalBarPoint?
     @Binding var isScrubbing: Bool
     var barColor: Color = SpendyColors.textPrimary
+    var showsLine: Bool = false
     var gridColor: Color = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.12),
         dark: UIColor(white: 1.0, alpha: 0.18)
@@ -40,12 +41,14 @@ struct HeroSpendBarChart: View {
         dataPoints: [MinimalBarPoint],
         scrubbedPoint: Binding<MinimalBarPoint?> = .constant(nil),
         isScrubbing: Binding<Bool> = .constant(false),
-        barColor: Color = SpendyColors.textPrimary
+        barColor: Color = SpendyColors.textPrimary,
+        showsLine: Bool = false
     ) {
         self.dataPoints = dataPoints
         self._scrubbedPoint = scrubbedPoint
         self._isScrubbing = isScrubbing
         self.barColor = barColor
+        self.showsLine = showsLine
     }
     
     private var maxAmount: Double {
@@ -116,42 +119,46 @@ struct HeroSpendBarChart: View {
                     }
                     .frame(height: chartHeight)
                     
-                    // 2. Solid Rounded Vertical Bars
-                    HStack(spacing: spacing) {
-                        Spacer(minLength: 0)
-                        
-                        ForEach(dataPoints) { point in
-                            let isSelected = scrubbedPoint?.id == point.id
-                            let isAnySelected = scrubbedPoint != nil
-                            let ratio = maxAmount > 0 ? CGFloat(min(1.0, max(0.0, point.amount / maxAmount))) : 0.0
-                            let barH = point.amount > 0 ? max(4, ratio * (chartHeight - 4)) : 0
-                            
-                            VStack {
-                                Spacer(minLength: 0)
-                                
-                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                    .fill(barColor)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                            .stroke(isSelected ? Color.white : Color.clear, lineWidth: 1.5)
-                                    )
-                                    .shadow(
-                                        color: isSelected ? Color.white.opacity(0.4) : Color.clear,
-                                        radius: 8,
-                                        y: 0
-                                    )
-                                    .frame(width: barWidth, height: barH)
-                                    .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
-                                    .opacity(isAnySelected && !isSelected ? 0.30 : 1.0)
+                    // Both views use the same scale, month positions, and scrubbing.
+                    if showsLine {
+                        spendingLine(width: chartWidth, height: chartHeight)
+                    } else {
+                        HStack(spacing: spacing) {
+                            Spacer(minLength: 0)
+
+                            ForEach(dataPoints) { point in
+                                let isSelected = scrubbedPoint?.id == point.id
+                                let isAnySelected = scrubbedPoint != nil
+                                let ratio = maxAmount > 0 ? CGFloat(min(1.0, max(0.0, point.amount / maxAmount))) : 0.0
+                                let barH = point.amount > 0 ? max(4, ratio * (chartHeight - 4)) : 0
+
+                                VStack {
+                                    Spacer(minLength: 0)
+
+                                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                        .fill(barColor)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                                .stroke(isSelected ? Color.white : Color.clear, lineWidth: 1.5)
+                                        )
+                                        .shadow(
+                                            color: isSelected ? Color.white.opacity(0.4) : Color.clear,
+                                            radius: 8,
+                                            y: 0
+                                        )
+                                        .frame(width: barWidth, height: barH)
+                                        .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
+                                        .opacity(isAnySelected && !isSelected ? 0.30 : 1.0)
+                                }
+                                .frame(width: barWidth, height: chartHeight)
+                                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
+                                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isAnySelected)
                             }
-                            .frame(width: barWidth, height: chartHeight)
-                            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
-                            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isAnySelected)
+
+                            Spacer(minLength: 0)
                         }
-                        
-                        Spacer(minLength: 0)
+                        .frame(width: chartWidth, height: chartHeight)
                     }
-                    .frame(width: chartWidth, height: chartHeight)
                 }
                 .contentShape(Rectangle())
                 .gesture(
@@ -199,17 +206,65 @@ struct HeroSpendBarChart: View {
         }
     }
     
+    private func spendingLine(width: CGFloat, height: CGFloat) -> some View {
+        let layout = barLayout(chartWidth: width)
+        let totalWidth = CGFloat(dataPoints.count) * layout.barWidth + CGFloat(max(0, dataPoints.count - 1)) * layout.spacing
+        let startX = (width - totalWidth) / 2 + layout.barWidth / 2
+        let coordinates = dataPoints.enumerated().map { index, point in
+            CGPoint(
+                x: startX + CGFloat(index) * (layout.barWidth + layout.spacing),
+                y: height - CGFloat(min(1, max(0, point.amount / maxAmount))) * (height - 4)
+            )
+        }
+        let curve = Path { path in
+            guard let first = coordinates.first else { return }
+            path.move(to: first)
+            for index in 1..<coordinates.count {
+                let previous = coordinates[index - 1]
+                let current = coordinates[index]
+                let midX = (previous.x + current.x) / 2
+                path.addCurve(to: current,
+                              control1: CGPoint(x: midX, y: previous.y),
+                              control2: CGPoint(x: midX, y: current.y))
+            }
+        }
+        return ZStack(alignment: .topLeading) {
+            Path { path in
+                guard let first = coordinates.first, let last = coordinates.last else { return }
+                path.addPath(curve)
+                path.addLine(to: CGPoint(x: last.x, y: height))
+                path.addLine(to: CGPoint(x: first.x, y: height))
+                path.closeSubpath()
+            }
+            .fill(LinearGradient(colors: [barColor.opacity(0.18), barColor.opacity(0)],
+                                 startPoint: .top, endPoint: .bottom))
+            curve.stroke(barColor, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+            ForEach(Array(dataPoints.enumerated()), id: \.element.id) { index, point in
+                if scrubbedPoint?.id == point.id || (scrubbedPoint == nil && index == dataPoints.count - 1) {
+                    Circle()
+                        .fill(SpendyColors.appBackground)
+                        .overlay(Circle().stroke(barColor, lineWidth: 2))
+                        .frame(width: 8, height: 8)
+                        .position(coordinates[index])
+                }
+            }
+        }
+        .frame(width: width, height: height)
+    }
+
     private func closestPoint(to locationX: CGFloat, chartWidth: CGFloat) -> MinimalBarPoint? {
         guard !dataPoints.isEmpty else { return nil }
         let layout = barLayout(chartWidth: chartWidth)
         let barWidth = layout.barWidth
         let spacing = layout.spacing
         
+        let totalWidth = CGFloat(dataPoints.count) * barWidth + CGFloat(max(0, dataPoints.count - 1)) * spacing
+        let startX = (chartWidth - totalWidth) / 2 + barWidth / 2
         var closest: MinimalBarPoint? = nil
         var minDistance: CGFloat = .infinity
         
         for (index, point) in dataPoints.enumerated() {
-            let barCenterX = spacing + CGFloat(index) * (barWidth + spacing) + barWidth / 2
+            let barCenterX = startX + CGFloat(index) * (barWidth + spacing)
             let distance = abs(locationX - barCenterX)
             if distance < minDistance {
                 minDistance = distance
@@ -260,6 +315,7 @@ struct DashboardView: View {
     
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
+    @AppStorage("homeSpendingLineChart") private var homeSpendingLineChart = false
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
     @State private var showEditBudgetSheet: Bool = false
@@ -799,6 +855,33 @@ struct DashboardView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
             }
+            .padding(.trailing, 72)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .trailing) {
+                Button {
+                    HapticsManager.shared.trigger(.selection)
+                    scrubbedBarPoint = nil
+                    isScrubbingChart = false
+                    homeSpendingLineChart.toggle()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundStyle(homeSpendingLineChart ? SpendyColors.textTertiary : SpendyColors.textPrimary)
+                        Image(systemName: "chart.xyaxis.line")
+                            .foregroundStyle(homeSpendingLineChart ? SpendyColors.textPrimary : SpendyColors.textTertiary)
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(SpendyColors.cardBackground, in: Capsule())
+                    .frame(minWidth: 64, minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Spending chart style")
+                .accessibilityValue(homeSpendingLineChart ? "Line" : "Bar")
+                .accessibilityHint(homeSpendingLineChart ? "Switch to bar chart" : "Switch to line chart")
+            }
             .animation(.easeInOut(duration: 0.15), value: scrubbedBarPoint?.id)
             
             // Large Amount Text with Vertical Gradient
@@ -827,7 +910,8 @@ struct DashboardView: View {
             HeroSpendBarChart(
                 dataPoints: barChartDataPoints,
                 scrubbedPoint: $scrubbedBarPoint,
-                isScrubbing: $isScrubbingChart
+                isScrubbing: $isScrubbingChart,
+                showsLine: homeSpendingLineChart
             )
             .padding(.top, 2)
         }
