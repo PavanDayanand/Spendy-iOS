@@ -681,7 +681,8 @@ struct SharedEntityAnalyticsSheet: View {
             dataPoints: chartDataPoints,
             scrubbedPoint: $scrubbedBarPoint,
             isScrubbing: $isScrubbingChart,
-            barColor: SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : SpendyColors.textPrimary
+            barColor: SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : SpendyColors.textPrimary,
+            barTopCornerRadius: 5
         )
         .id(chartTransitionID)
         .accessibilityLabel("Spending chart for \(entity.label)")

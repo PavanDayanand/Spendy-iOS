@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 enum SFIcons {
     // MARK: - Navigation Tabs
@@ -146,8 +147,14 @@ enum SFIcons {
     static let notificationOutline = "bell"
     static let language = "globe"
     
+    /// Hide symbols unavailable on this device instead of showing empty choices.
+    static func availableSymbols(_ names: [String]) -> [String] {
+        var seen = Set<String>()
+        return names.filter { seen.insert($0).inserted && UIImage(systemName: $0) != nil }
+    }
+
     /// Helper to safely resolve an SF Symbol with a fallback
     static func symbol(named name: String, fallback: String = "square.grid.2x2.fill") -> String {
-        return name.isEmpty ? fallback : name
+        return !name.isEmpty && UIImage(systemName: name) != nil ? name : fallback
     }
 }

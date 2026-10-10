@@ -46,12 +46,6 @@ struct ReceiptScannerSheet: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            SpendyAmbientHeaderBackground(
-                color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
-                height: 320,
-                opacity: 0.30
-            )
-
             if isScanning {
                 loadingView
             } else if let result = scanResult {
@@ -62,7 +56,6 @@ struct ReceiptScannerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
         }
-        .background(SpendyColors.appBackground)
         .safeAreaInset(edge: .bottom) {
             if scanResult != nil {
                 actionBar

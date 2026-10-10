@@ -33,6 +33,7 @@ struct HeroSpendBarChart: View {
     @Binding var isScrubbing: Bool
     var barColor: Color = SpendyColors.textPrimary
     var showsLine: Bool = false
+    var barTopCornerRadius: CGFloat? = nil
     var gridColor: Color = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.12),
         dark: UIColor(white: 1.0, alpha: 0.18)
@@ -43,13 +44,15 @@ struct HeroSpendBarChart: View {
         scrubbedPoint: Binding<MinimalBarPoint?> = .constant(nil),
         isScrubbing: Binding<Bool> = .constant(false),
         barColor: Color = SpendyColors.textPrimary,
-        showsLine: Bool = false
+        showsLine: Bool = false,
+        barTopCornerRadius: CGFloat? = nil
     ) {
         self.dataPoints = dataPoints
         self._scrubbedPoint = scrubbedPoint
         self._isScrubbing = isScrubbing
         self.barColor = barColor
         self.showsLine = showsLine
+        self.barTopCornerRadius = barTopCornerRadius
     }
     
     private var maxAmount: Double {
@@ -81,7 +84,7 @@ struct HeroSpendBarChart: View {
             spacing = max(4, chartWidth * 0.03)
         }
         let barWidth = min(48, max(4, (chartWidth - spacing * (count + 1)) / count))
-        let cornerRadius: CGFloat = 1
+        let cornerRadius = min(barTopCornerRadius ?? 1, barWidth / 2)
         return (barWidth, spacing, cornerRadius)
     }
     
@@ -127,7 +130,13 @@ struct HeroSpendBarChart: View {
                                 VStack {
                                     Spacer(minLength: 0)
 
-                                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                    UnevenRoundedRectangle(
+                                        topLeadingRadius: min(cornerRadius, barH / 2),
+                                        bottomLeadingRadius: barTopCornerRadius == nil ? cornerRadius : 0,
+                                        bottomTrailingRadius: barTopCornerRadius == nil ? cornerRadius : 0,
+                                        topTrailingRadius: min(cornerRadius, barH / 2),
+                                        style: .continuous
+                                    )
                                         .fill(barColor)
                                         .frame(width: barWidth, height: barH)
                                         .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
@@ -895,7 +904,8 @@ struct DashboardView: View {
                 dataPoints: barChartDataPoints,
                 scrubbedPoint: $scrubbedBarPoint,
                 isScrubbing: $isScrubbingChart,
-                showsLine: homeSpendingLineChart
+                showsLine: homeSpendingLineChart,
+                barTopCornerRadius: 5
             )
             .padding(.top, 2)
         }

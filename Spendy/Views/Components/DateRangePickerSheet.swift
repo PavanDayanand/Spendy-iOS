@@ -64,7 +64,7 @@ struct DateRangePickerSheet: View {
                     }) {
                         Text("Apply")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(SpendyColors.inverseText)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(SpendyColors.primaryBlue, in: Capsule())

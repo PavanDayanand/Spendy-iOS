@@ -4,7 +4,7 @@
 //
 //  Centralized, Reusable Universal Icon Picker Sheet Drawer
 //  Features:
-//  - Apple default grey theme (.systemGroupedBackground)
+//  - Native translucent sheet background
 //  - 2-toggle Liquid Glass Segmented Switcher (Defaults & Brands)
 //  - Direct PhotosPicker gallery launcher on the first slot
 //  - "Aa" dynamic monogram launcher on the second slot
@@ -18,6 +18,7 @@ import PhotosUI
 
 struct CategoryIconPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(ExpenseStore.self) private var store
     
     @Binding var selectedSymbol: String
@@ -55,7 +56,7 @@ struct CategoryIconPickerSheet: View {
     // "Aa" is a mode: the entity's name initial is shown on the icon, not the letters Aa.
     
     // MARK: - Curated System SF Symbols matching reference order
-    private let defaultSymbols: [String] = [
+    private static let defaultSymbols: [String] = [
         // Row 1 (cont)
         "sparkles", "sparkle", "alarm.fill",
         
@@ -136,7 +137,7 @@ struct CategoryIconPickerSheet: View {
     ]
     
     // MARK: - Curated Brand & Service Symbols
-    private let brandSymbols: [String] = [
+    private static let brandSymbols: [String] = [
         // Tech Platforms & Ecosystems
         "applelogo", "playstation.logo", "xbox.logo", "appletv.fill", "visionpro.fill",
         
@@ -190,9 +191,12 @@ struct CategoryIconPickerSheet: View {
         "y.circle.fill", "z.circle.fill"
     ]
     
+    private static let availableDefaults = SFIcons.availableSymbols(defaultSymbols)
+    private static let availableBrands = SFIcons.availableSymbols(brandSymbols)
+
     // MARK: - Active Filtered Symbols
     private var activeSymbols: [String] {
-        let baseList = (selectedTab == .defaults) ? defaultSymbols : brandSymbols
+        let baseList = (selectedTab == .defaults) ? Self.availableDefaults : Self.availableBrands
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if query.isEmpty {
             return baseList
@@ -250,7 +254,7 @@ struct CategoryIconPickerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
         }
-        .presentationDetents([.large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .onChange(of: selectedPhotoItem) { _, newItem in

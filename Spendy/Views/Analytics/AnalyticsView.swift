@@ -958,7 +958,7 @@ struct AnalyticsView: View {
                 }
             }
             
-            // Flat, square bars retain separate spending and income series.
+            // Soft top corners with a flat baseline for spending and income.
             Chart(intervals) { item in
                 let isSelected = selectedCashflowLabel == item.label
                 
@@ -968,7 +968,7 @@ struct AnalyticsView: View {
                 )
                 .foregroundStyle(SpendyColors.textPrimary.opacity(isSelected ? 0.65 : 0.35))
                 .position(by: .value("Type", "Spending"))
-                .cornerRadius(1)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 5))
 
                 BarMark(
                     x: .value("Period", item.label),
@@ -976,7 +976,7 @@ struct AnalyticsView: View {
                 )
                 .foregroundStyle(SpendyColors.incomeGreen.opacity(isSelected ? 1 : 0.9))
                 .position(by: .value("Type", "Income"))
-                .cornerRadius(1)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 5))
 
                 if let selectedLabel = selectedCashflowLabel, selectedLabel == item.label {
                     RuleMark(x: .value("Selected", item.label))
@@ -1709,7 +1709,6 @@ struct AnalyticsView: View {
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .presentationBackground(.ultraThinMaterial)
     }
     
     // MARK: - Computed Properties & Period Math

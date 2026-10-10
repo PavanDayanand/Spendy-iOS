@@ -77,9 +77,6 @@ struct EditBudgetSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
             VStack(spacing: 0) {
                 headerBar
                     .padding(.horizontal, 20)
@@ -99,7 +96,6 @@ struct EditBudgetSheet: View {
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .presentationBackground(SpendyColors.appBackground)
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
                 HapticsManager.shared.trigger(.warning)
@@ -174,7 +170,7 @@ struct EditBudgetSheet: View {
                 
                 Text(amountString)
                     .spendyNumberFont(size: 72, weight: .heavy, tracking: -1.2)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .layoutPriority(1)
