@@ -107,6 +107,7 @@ struct SharedEntityAnalyticsSheet: View {
     @State private var selectedSection: AnalyticsSheetSection = .overview
     
     // Sheet Modals State
+    @State private var pendingTransactionEdit: Transaction? = nil
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var editingCategoryToEdit: Category? = nil
@@ -493,12 +494,13 @@ struct SharedEntityAnalyticsSheet: View {
             AddAccountSheet(accountToEdit: acc)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $inspectingTransaction) { tx in
+        .sheet(item: $inspectingTransaction, onDismiss: {
+            editingTransaction = pendingTransactionEdit
+            pendingTransactionEdit = nil
+        }) { tx in
             TransactionDetailSheet(transaction: tx) { txToEdit in
+                pendingTransactionEdit = txToEdit
                 inspectingTransaction = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    editingTransaction = txToEdit
-                }
             }
         }
         .fullScreenCover(item: $editingTransaction) { tx in

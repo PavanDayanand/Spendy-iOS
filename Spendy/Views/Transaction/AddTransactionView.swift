@@ -49,6 +49,7 @@ struct AddTransactionView: View {
     @State private var toAccountId: String = "cash"
     @State private var note: String = ""
     @State private var date: Date = Date()
+    @State private var initialDate: Date
     
     // UI Mode State (Inline Note Editor)
     @State private var isEditingNote: Bool = false
@@ -82,10 +83,11 @@ struct AddTransactionView: View {
                    note != (existing.notes ?? "") ||
                    selectedCategoryId != existing.categoryId ||
                    fromAccountId != existing.accountId ||
-                   toAccountId != (existing.toAccountId ?? "") ||
+                   (type == .transfer && toAccountId != existing.toAccountId) ||
+                   date != existing.date ||
                    type != existing.type
         } else {
-            return currentAmountValue > 0 || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return currentAmountValue > 0 || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || date != initialDate
         }
     }
     
@@ -148,6 +150,9 @@ struct AddTransactionView: View {
         defaultAccountId: String? = nil
     ) {
         self.transactionToEdit = transactionToEdit
+        let initialDate = transactionToEdit?.date ?? Date()
+        _initialDate = State(initialValue: initialDate)
+        _date = State(initialValue: initialDate)
         if let t = transactionToEdit {
             _type = State(initialValue: t.type)
             _amountString = State(initialValue: String(format: t.amount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", t.amount))

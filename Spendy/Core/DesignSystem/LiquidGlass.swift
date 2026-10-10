@@ -180,11 +180,14 @@ struct NativeLiquidGlassCircleModifier: ViewModifier {
 // MARK: - Native Liquid Glass Morphing Modifiers
 
 struct GlassEffectIDModifier<ID: Hashable & Sendable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var id: ID
     var namespace: Namespace.ID
     
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
+        if reduceMotion {
+            content
+        } else if #available(iOS 26, *) {
             content
                 .glassEffectID(id, in: namespace)
                 .glassEffectTransition(.matchedGeometry)
@@ -196,8 +199,12 @@ struct GlassEffectIDModifier<ID: Hashable & Sendable>: ViewModifier {
 }
 
 struct GlassEffectTransitionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
+        if reduceMotion {
+            content
+        } else if #available(iOS 26, *) {
             content
                 .glassEffectTransition(.matchedGeometry)
         } else {
@@ -502,14 +509,23 @@ struct GlassButtonGroup<Content: View>: View {
 }
 
 // MARK: - Optional Matched Geometry Extension
-extension View {
-    @ViewBuilder
-    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
-        if let namespace = namespace {
-            self.matchedGeometryEffect(id: id, in: namespace)
+private struct OptionalMatchedGeometryModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let id: String
+    let namespace: Namespace.ID?
+
+    func body(content: Content) -> some View {
+        if !reduceMotion, let namespace {
+            content.matchedGeometryEffect(id: id, in: namespace)
         } else {
-            self
+            content
         }
+    }
+}
+
+extension View {
+    func optionalMatchedGeometry(id: String, in namespace: Namespace.ID?) -> some View {
+        modifier(OptionalMatchedGeometryModifier(id: id, namespace: namespace))
     }
 }
 

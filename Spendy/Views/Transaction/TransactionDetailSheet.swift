@@ -13,9 +13,8 @@ struct TransactionDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     let initialTransaction: Transaction
-    var onEdit: ((Transaction) -> Void)?
+    let onEdit: (Transaction) -> Void
     
-    @State private var showEditSheet: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var toastMessage: String? = nil
     @State private var showToast: Bool = false
@@ -23,7 +22,7 @@ struct TransactionDetailSheet: View {
     @State private var toastColor: Color = SpendyColors.incomeGreen
     @Namespace private var sheetNamespace
     
-    init(transaction: Transaction, onEdit: ((Transaction) -> Void)? = nil) {
+    init(transaction: Transaction, onEdit: @escaping (Transaction) -> Void) {
         self.initialTransaction = transaction
         self.onEdit = onEdit
     }
@@ -133,9 +132,6 @@ struct TransactionDetailSheet: View {
         }
         .presentationDetents([.height(500), .large])
         .presentationDragIndicator(.hidden)
-        .fullScreenCover(isPresented: $showEditSheet) {
-            AddTransactionView(transactionToEdit: transaction)
-        }
         .onChange(of: store.transactions) { _, newTransactions in
             if !newTransactions.contains(where: { $0.id == initialTransaction.id }) {
                 dismiss()
@@ -335,14 +331,7 @@ struct TransactionDetailSheet: View {
     
     private func handleEdit() {
         HapticsManager.shared.trigger(.selection)
-        if let onEdit {
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                onEdit(transaction)
-            }
-        } else {
-            showEditSheet = true
-        }
+        onEdit(transaction)
     }
     
     private func showFeedback(message: String, icon: String, color: Color) {

@@ -20,12 +20,12 @@ struct SubscriptionQuickActionSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     let sub: Subscription
+    let onEdit: (Subscription) -> Void
     
     // Action & Animation States
     @State private var isPaidSuccess: Bool = false
     @State private var isProcessing: Bool = false
     @State private var showDeleteConfirmation: Bool = false
-    @State private var showEditSheet: Bool = false
     @State private var toastMessage: String? = nil
     @State private var showToast: Bool = false
     @State private var toastIcon: String = "checkmark.circle.fill"
@@ -244,9 +244,6 @@ struct SubscriptionQuickActionSheet: View {
         } message: {
             Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
         }
-        .sheet(isPresented: $showEditSheet) {
-            AddSubscriptionSheet(subscriptionToEdit: liveSub)
-        }
         .presentationDetents([.height(640), .large])
         .presentationDragIndicator(.hidden)
     }
@@ -283,7 +280,7 @@ struct SubscriptionQuickActionSheet: View {
                 morphID: "editButton",
                 namespace: sheetNamespace
             ) {
-                showEditSheet = true
+                onEdit(liveSub)
             }
         }
     }

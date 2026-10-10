@@ -25,6 +25,8 @@ struct AccountsView: View {
     
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
+    @Namespace private var accountTransitions
+    @State private var accountTransitionID: String? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
     @State private var insightPage: Int = 0
     
@@ -160,6 +162,7 @@ struct AccountsView: View {
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
             AccountAnalyticsSheet(account: acc)
+                .spendyNavigationZoom(from: accountTransitionID, in: accountTransitions)
         }
     }
     
@@ -364,6 +367,7 @@ struct AccountsView: View {
         Button {
             HapticsManager.shared.trigger(.selection)
             if let account = item.account {
+                accountTransitionID = nil
                 selectedAccountForAnalytics = account
             }
         } label: {
@@ -444,6 +448,7 @@ struct AccountsView: View {
         
         return Button {
             HapticsManager.shared.trigger(.selection)
+            accountTransitionID = AppTransitionIDs.accountCard(account.id)
             selectedAccountForAnalytics = account
         } label: {
             HStack(alignment: .center, spacing: 14) {
@@ -481,9 +486,11 @@ struct AccountsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .spendyNavigationSource(AppTransitionIDs.accountCard(account.id), in: accountTransitions)
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
+                accountTransitionID = AppTransitionIDs.accountCard(account.id)
                 selectedAccountForAnalytics = account
             } label: {
                 Label("View Analytics", systemImage: "chart.bar.xaxis")

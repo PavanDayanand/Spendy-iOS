@@ -109,6 +109,8 @@ struct AnalyticsView: View {
     @State private var selectedAccountForSheet: Account? = nil
     @State private var showSubscriptionSheet: Bool = false
     @State private var selectedSubscriptionIdForDetail: String? = nil
+    @State private var editingTransaction: Transaction? = nil
+    @State private var pendingTransactionEdit: Transaction? = nil
     @State private var inspectingTransaction: Transaction? = nil
     @State private var showEditBudgetSheet: Bool = false
     @State private var showAddTransaction: Bool = false
@@ -117,6 +119,7 @@ struct AnalyticsView: View {
     @State private var isSpendingListExpanded: Bool = false
     @State private var isIncomeListExpanded: Bool = false
     
+    @Namespace private var analyticsTransitions
     @Namespace private var analyticsControlsNamespace
     
     private var isSubpageActive: Bool {
@@ -177,23 +180,34 @@ struct AnalyticsView: View {
             .navigationDestination(isPresented: $showSubscriptionSheet) {
                 SubscriptionsView(initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
             }
-            .sheet(item: $inspectingTransaction) { tx in
-                TransactionDetailSheet(transaction: tx)
+            .fullScreenCover(item: $editingTransaction) { tx in
+                AddTransactionView(transactionToEdit: tx)
+            }
+            .sheet(item: $inspectingTransaction, onDismiss: {
+                editingTransaction = pendingTransactionEdit
+                pendingTransactionEdit = nil
+            }) { tx in
+                TransactionDetailSheet(transaction: tx) { txToEdit in
+                    pendingTransactionEdit = txToEdit
+                    inspectingTransaction = nil
+                }
             }
             .sheet(isPresented: $showEditBudgetSheet) {
-                EditBudgetSheet(isEditing: false)
+                EditBudgetSheet(isEditing: store.budget.isActive)
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
                     topControlsNamespace: analyticsControlsNamespace
                 )
+                .spendyNavigationZoom(from: AppTransitionIDs.accountCard(account.id), in: analyticsTransitions)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
                     topControlsNamespace: analyticsControlsNamespace
                 )
+                .spendyNavigationZoom(from: AppTransitionIDs.categoryCard(category.id), in: analyticsTransitions)
             }
 
             .onAppear {
@@ -516,6 +530,12 @@ struct AnalyticsView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                            .spendyNavigationSource(
+                                groupingMode == .categories
+                                    ? AppTransitionIDs.categoryCard(item.id)
+                                    : AppTransitionIDs.accountCard(item.id),
+                                in: analyticsTransitions
+                            )
                         } else {
                             breakdownLegendRow(item, index: index)
                         }

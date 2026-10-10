@@ -53,6 +53,7 @@ enum AppTab: String, CaseIterable, Identifiable {
 struct GlassTabBar: View {
     @Binding var selectedTab: AppTab
     var isExpanded: Bool = true
+    var composeNamespace: Namespace.ID? = nil
     let onQuickAdd: () -> Void
     @Namespace private var dockNamespace
 
@@ -104,6 +105,7 @@ struct GlassTabBar: View {
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
                     .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
+                    .spendyNavigationSource(AppTransitionIDs.quickAddButton, in: composeNamespace)
                     .accessibilityLabel("Add Transaction")
                     .accessibilityAddTraits(.isButton)
                 }

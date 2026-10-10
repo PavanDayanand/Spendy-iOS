@@ -15,6 +15,7 @@ struct AllTransactionsView: View {
     @Environment(\.dismiss) private var dismiss
     
     var onDismiss: (() -> Void)? = nil
+    var topControlsNamespace: Namespace.ID? = nil
     
     // Search & Filters
     @State private var searchQuery: String = ""
@@ -25,6 +26,7 @@ struct AllTransactionsView: View {
     @Namespace private var allTransactionsNamespace
     
     // Sheets
+    @State private var pendingTransactionEdit: Transaction? = nil
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var showAddTransaction: Bool = false
@@ -131,6 +133,8 @@ struct AllTransactionsView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
+                topHeaderBar
+
                 // Horizontal Scrollable Liquid Glass Filter Capsules
                 horizontalFilterBar
                     .padding(.vertical, 8)
@@ -187,6 +191,8 @@ struct AllTransactionsView: View {
         }
         .navigationTitle("All Transactions")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
@@ -194,16 +200,46 @@ struct AllTransactionsView: View {
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
         }
-        .sheet(item: $inspectingTransaction) { tx in
+        .sheet(item: $inspectingTransaction, onDismiss: {
+            editingTransaction = pendingTransactionEdit
+            pendingTransactionEdit = nil
+        }) { tx in
             TransactionDetailSheet(transaction: tx) { txToEdit in
+                pendingTransactionEdit = txToEdit
                 inspectingTransaction = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    editingTransaction = txToEdit
-                }
             }
         }
     }
     
+    private var topHeaderBar: some View {
+        HStack {
+            GlassCircleButton(
+                icon: "chevron.left",
+                size: 44,
+                iconSize: 15,
+                accessibilityLabel: "Back",
+                morphID: "topControl_left",
+                namespace: topControlsNamespace
+            ) {
+                if let onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
+            }
+            Spacer()
+            Text("All Transactions")
+                .font(.headline)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            Color.clear.frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
     // MARK: - 2. Horizontal Scrollable Liquid Glass Filter Capsules (On Top Layer)
     private var horizontalFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -324,6 +360,7 @@ struct AllTransactionsView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 16)
         }
     }

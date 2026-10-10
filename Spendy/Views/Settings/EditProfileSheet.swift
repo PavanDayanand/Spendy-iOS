@@ -20,7 +20,6 @@ struct EditProfileSheet: View {
     @State private var showIconPickerSheet: Bool = false
     
     
-    @State private var showCurrencyPicker: Bool = false
     @State private var showDiscardConfirm: Bool = false
     @Namespace private var profileNamespace
     
@@ -58,8 +57,6 @@ struct EditProfileSheet: View {
                         // Name field
                         nameAndColorCard
                         
-                        // Default Currency Selector Card (Matching reference design)
-                        defaultCurrencyCard
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 120) // Clearance for bottom Save button
@@ -121,9 +118,6 @@ struct EditProfileSheet: View {
                     selectedImageData = nil
                 }
             )
-        }
-        .sheet(isPresented: $showCurrencyPicker) {
-            CurrencyPickerSheet()
         }
     }
     
@@ -209,50 +203,6 @@ struct EditProfileSheet: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(SpendyColors.sheetCardBackground, in: Capsule())
-    }
-    
-    // MARK: - Default Currency Card
-    private var defaultCurrencyCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                HapticsManager.shared.trigger(.light)
-                showCurrencyPicker = true
-            }) {
-                HStack {
-                    Text("Default currency")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 6) {
-                        Text("\(CurrencyInfo.flag(for: store.currencyCode)) \(store.currencyCode)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(SpendyColors.sheetCardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(SpendyColors.separator, lineWidth: 0.8)
-                        }
-                }
-            }
-            .buttonStyle(.plain)
-            
-            Text("The default currency used for transactions and budgets in this space.")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.horizontal, 6)
-        }
     }
     
     // MARK: - Bottom Save Action Button (White Capsule)

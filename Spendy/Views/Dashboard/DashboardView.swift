@@ -250,6 +250,7 @@ struct DashboardView: View {
     @State private var showSubscriptionsHub: Bool = false
     @State private var initialSubscriptionIdForHub: String? = nil
     @State private var showAccounts: Bool = false
+    @State private var pendingTransactionEdit: Transaction? = nil
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var selectedCategoryForSheet: Category? = nil
@@ -260,7 +261,7 @@ struct DashboardView: View {
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
     @State private var hideBalance: Bool = false
-    @State private var showAllTransactionsSheet: Bool = false
+    @State private var showAllTransactions: Bool = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var showHomeConfigSheet: Bool = false
     @State private var scrubbedBarPoint: MinimalBarPoint? = nil
@@ -273,7 +274,7 @@ struct DashboardView: View {
     private var isSubpageActive: Bool {
         showBudgetHub ||
         showAccounts ||
-        showAllTransactionsSheet ||
+        showAllTransactions ||
         showSubscriptionsHub ||
         showAnalyticsView ||
         selectedCategoryForSheet != nil ||
@@ -516,12 +517,13 @@ struct DashboardView: View {
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
             }
-            .sheet(item: $inspectingTransaction) { tx in
+            .sheet(item: $inspectingTransaction, onDismiss: {
+                editingTransaction = pendingTransactionEdit
+                pendingTransactionEdit = nil
+            }) { tx in
                 TransactionDetailSheet(transaction: tx) { txToEdit in
+                    pendingTransactionEdit = txToEdit
                     inspectingTransaction = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        editingTransaction = txToEdit
-                    }
                 }
             }
             .navigationDestination(isPresented: $showAnalyticsView) {
@@ -542,8 +544,8 @@ struct DashboardView: View {
             .navigationDestination(isPresented: $showAccounts) {
                 AccountsView(topControlsNamespace: topControlsNamespace)
             }
-            .navigationDestination(isPresented: $showAllTransactionsSheet) {
-                AllTransactionsView()
+            .navigationDestination(isPresented: $showAllTransactions) {
+                AllTransactionsView(topControlsNamespace: topControlsNamespace)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
@@ -710,7 +712,7 @@ struct DashboardView: View {
                     showBudgetHub = true
                 }
             }
-            .matchedGeometryEffect(id: "topControl_right", in: topControlsNamespace)
+            .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
         }
     }
     
@@ -845,6 +847,17 @@ struct DashboardView: View {
                     .frame(width: 38, height: 5)
                     .padding(.top, 10)
                     .padding(.bottom, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        HapticsManager.shared.trigger(.selection)
+                        withAnimation(AppMotion.fluidSpring) {
+                            setExpandedState(!isSheetExpanded)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
+                    .accessibilityAddTraits(.isButton)
                 
                 // Transaction drawer header
                 HStack(alignment: .center) {
@@ -881,20 +894,33 @@ struct DashboardView: View {
                             .font(.system(size: 14, weight: .semibold).monospacedDigit())
                             .foregroundStyle(SpendyColors.textSecondary)
                             .accessibilityLabel("\(displayedTransactions.count) transactions")
+
+                        Button {
+                            showAllTransactions = true
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("See all transactions")
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, isSheetExpanded ? 10 : 8)
                 
-                // Integrated 44pt Standard Filter Bar (Revealed on Drag / Expand)
-                if isSheetExpanded {
-                    drawerFilterBar
-                        .padding(.bottom, 12)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
             }
             .contentShape(Rectangle())
             .highPriorityGesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
+
+            // Keep the horizontal filters outside the drawer's vertical drag gesture.
+            if isSheetExpanded {
+                drawerFilterBar
+                    .padding(.bottom, 12)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             
             // Transaction List Content
             if displayedTransactions.isEmpty {
@@ -1099,12 +1125,13 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 20)
         }
     }
     
     private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
                 // Only track vertical movement to prevent hijacking horizontal chart scrubbing
                 if abs(value.translation.width) > abs(value.translation.height) && abs(value.translation.height) < 8 {

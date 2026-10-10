@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .home
+    @State private var composeTransitionID: String? = nil
     @State private var showAddTransaction: Bool = false
     @State private var isHomeDrawerExpanded: Bool = false
     @State private var isHomeSubpageActive: Bool = false
@@ -39,12 +40,14 @@ struct MainTabView: View {
                 )
                 .opacity(selectedTab == .home ? 1 : 0)
                 .allowsHitTesting(selectedTab == .home)
+                .accessibilityHidden(selectedTab != .home)
 
                 NavigationStack {
                     SubscriptionsView()
                 }
                 .opacity(selectedTab == .subscriptions ? 1 : 0)
                 .allowsHitTesting(selectedTab == .subscriptions)
+                .accessibilityHidden(selectedTab != .subscriptions)
 
                 NavigationStack {
                     AnalyticsView(
@@ -54,6 +57,7 @@ struct MainTabView: View {
                 }
                 .opacity(selectedTab == .analytics ? 1 : 0)
                 .allowsHitTesting(selectedTab == .analytics)
+                .accessibilityHidden(selectedTab != .analytics)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -61,7 +65,9 @@ struct MainTabView: View {
             GlassTabBar(
                 selectedTab: $selectedTab,
                 isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
+                composeNamespace: composeNamespace,
                 onQuickAdd: {
+                    composeTransitionID = AppTransitionIDs.quickAddButton
                     showAddTransaction = true
                 }
             )
@@ -72,8 +78,11 @@ struct MainTabView: View {
             .animation(AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .fullScreenCover(isPresented: $showAddTransaction) {
+        .fullScreenCover(isPresented: $showAddTransaction, onDismiss: {
+            composeTransitionID = nil
+        }) {
             AddTransactionView()
+                .spendyNavigationZoom(from: composeTransitionID, in: composeNamespace)
         }
         .onChange(of: quickActionManager.shouldPresentQuickAdd) { _, shouldPresent in
             if shouldPresent {

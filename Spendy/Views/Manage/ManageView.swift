@@ -19,10 +19,13 @@ struct SubscriptionsView: View {
     var topControlsNamespace: Namespace.ID? = nil
 
     @State private var showAddSubscription: Bool = false
+    @State private var pendingSubscriptionEdit: Subscription? = nil
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
     @State private var showCancelledSubs: Bool = false
     @State private var insightPage: Int = 0
+    @Namespace private var subscriptionTransitions
+    @State private var subscriptionTransitionID: String? = nil
     @Namespace private var subsNamespace
 
     // MARK: - Computed Properties
@@ -167,8 +170,15 @@ struct SubscriptionsView: View {
             AddSubscriptionSheet(subscriptionToEdit: sub)
                 .presentationBackground(SpendyColors.appBackground)
         }
-        .sheet(item: $selectedSubscriptionForDetail) { sub in
-            SubscriptionQuickActionSheet(sub: sub)
+        .sheet(item: $selectedSubscriptionForDetail, onDismiss: {
+            subscriptionToEdit = pendingSubscriptionEdit
+            pendingSubscriptionEdit = nil
+        }) { sub in
+            SubscriptionQuickActionSheet(sub: sub) { subToEdit in
+                pendingSubscriptionEdit = subToEdit
+                selectedSubscriptionForDetail = nil
+            }
+            .spendyNavigationZoom(from: subscriptionTransitionID, in: subscriptionTransitions)
         }
         .onAppear {
             selectInitialSubscriptionIfNeeded()
@@ -181,6 +191,7 @@ struct SubscriptionsView: View {
     private func selectInitialSubscriptionIfNeeded() {
         if let targetId = initialSelectedSubscriptionId,
            let match = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == targetId.lowercased() }) {
+            subscriptionTransitionID = nil
             selectedSubscriptionForDetail = match
         }
     }
@@ -441,6 +452,7 @@ struct SubscriptionsView: View {
         
         return Button {
             HapticsManager.shared.trigger(.selection)
+            subscriptionTransitionID = AppTransitionIDs.nextBill(sub.id)
             selectedSubscriptionForDetail = sub
         } label: {
             HStack(spacing: 10) {
@@ -472,12 +484,14 @@ struct SubscriptionsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .spendyNavigationSource(AppTransitionIDs.nextBill(sub.id), in: subscriptionTransitions)
         .accessibilityLabel("Next up \(sub.name)")
     }
 
     private func handleInsightDestination(_ destination: InsightDestination) {
         if case .subscriptionDetail(let id) = destination {
             if let match = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == id.lowercased() }) {
+                subscriptionTransitionID = nil
                 selectedSubscriptionForDetail = match
             }
         }
@@ -513,6 +527,7 @@ struct SubscriptionsView: View {
     private func subscriptionRowCard(sub: Subscription) -> some View {
         Button(action: {
             HapticsManager.shared.trigger(.selection)
+            subscriptionTransitionID = AppTransitionIDs.subscriptionRow(sub.id)
             selectedSubscriptionForDetail = sub
         }) {
             HStack(alignment: .center, spacing: 14) {
@@ -568,9 +583,11 @@ struct SubscriptionsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .spendyNavigationSource(AppTransitionIDs.subscriptionRow(sub.id), in: subscriptionTransitions)
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
+                subscriptionTransitionID = AppTransitionIDs.subscriptionRow(sub.id)
                 selectedSubscriptionForDetail = sub
             } label: {
                 Label("View Details", systemImage: "info.circle")

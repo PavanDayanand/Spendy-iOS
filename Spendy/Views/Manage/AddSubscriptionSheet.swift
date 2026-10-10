@@ -17,6 +17,7 @@ struct AddSubscriptionSheet: View {
     @State private var amountString: String = ""
     @State private var cycle: BillingCycle = .monthly
     @State private var nextBillingDate: Date = Date()
+    @State private var initialBillingDate: Date
     @State private var isTrial: Bool = false
     @State private var selectedAccountId: String = "bank"
     @State private var selectedSymbol: String = SFIcons.subscriptions
@@ -37,6 +38,7 @@ struct AddSubscriptionSheet: View {
             return name != sub.name ||
                    amountDouble != sub.amount ||
                    cycle != sub.cycle ||
+                   nextBillingDate != sub.nextBillingDate ||
                    isTrial != sub.isTrial ||
                    selectedAccountId != sub.accountId ||
                    selectedSymbol != sub.sfSymbol
@@ -45,7 +47,10 @@ struct AddSubscriptionSheet: View {
             return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                    amountDouble != 0.0 ||
                    selectedSymbol != SFIcons.subscriptions ||
-                   isTrial != false
+                   isTrial != false ||
+                   cycle != .monthly ||
+                   selectedAccountId != "bank" ||
+                   nextBillingDate != initialBillingDate
         }
     }
 
@@ -55,6 +60,9 @@ struct AddSubscriptionSheet: View {
 
     init(subscriptionToEdit: Subscription? = nil) {
         self.subscriptionToEdit = subscriptionToEdit
+        let initialBillingDate = subscriptionToEdit?.nextBillingDate ?? Date()
+        _initialBillingDate = State(initialValue: initialBillingDate)
+        _nextBillingDate = State(initialValue: initialBillingDate)
 
         if let sub = subscriptionToEdit {
             _name = State(initialValue: sub.name)
@@ -69,7 +77,7 @@ struct AddSubscriptionSheet: View {
             _name = State(initialValue: "")
             _amountString = State(initialValue: "")
             _cycle = State(initialValue: .monthly)
-            _nextBillingDate = State(initialValue: Date())
+            _nextBillingDate = State(initialValue: initialBillingDate)
             _isTrial = State(initialValue: false)
             _selectedAccountId = State(initialValue: "bank")
             _selectedSymbol = State(initialValue: SFIcons.subscriptions)

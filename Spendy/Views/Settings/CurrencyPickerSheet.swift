@@ -2,14 +2,7 @@
 //  CurrencyPickerSheet.swift
 //  Spendy
 //
-//  Centralized, Reusable Universal Currency Picker Sheet Drawer
-//  Features:
-//  - Rates updated status card with relative timestamp
-//  - Continuous categorized list with "Suggested" section and alphabetical A–Z grouping
-//  - Interactive Alphabet Scrubber Index Bar on the right edge with haptic feedback
-//  - Floating liquid glass bottom search bar with real-time filtering
-//  - High-accuracy ISO 4217 flags, symbols, and localized country/currency names
-//  - Fully reusable across the entire app with custom selection bindings or ExpenseStore updates
+//  Shared currency drawer, consistent with category selection.
 //
 
 import SwiftUI
@@ -277,452 +270,195 @@ struct CurrencyInfo: Identifiable, Hashable {
     ]
 }
 
-// MARK: - Centralized CurrencyPickerSheet View
+// MARK: - Currency drawer
+// Matches the category drawer's header, grouped rows, detents, and bottom search.
 struct CurrencyPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ExpenseStore.self) private var store
-    
-    @State private var searchText: String = ""
-    @State private var lastScrubbedLetter: String? = nil
-    @Namespace private var currencySheetNamespace
-    
-    // Custom highlights & selection triggers
+    @State private var searchText = ""
+
     var selectedCode: String? = nil
     var onSelect: ((CurrencyInfo) -> Void)? = nil
     var allowedCodes: Set<String>? = nil
-    
-    private var activeSelectedCode: String {
-        selectedCode ?? store.currencyCode
-    }
-    
-    // Suggested currencies (Matches reference: Polish Złoty, Ukrainian Hryvnia, and popular world currencies)
-    private var suggestedCurrencies: [CurrencyInfo] {
-        let codes = ["PLN", "UAH", "USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "CHF"]
-        return codes.filter { allowedCodes?.contains($0) ?? true }.map { code in
-            CurrencyInfo(
-                code: code,
-                symbol: CurrencyInfo.symbol(for: code),
-                name: CurrencyInfo.name(for: code),
-                flag: CurrencyInfo.flag(for: code)
-            )
-        }
-    }
-    
-    // All Currencies merged from static ISO codes and store.ratesToUSD
+
+    private var activeSelectedCode: String { (selectedCode ?? store.currencyCode).uppercased() }
+    private var query: String { searchText.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     private var allCurrencies: [CurrencyInfo] {
-        var codesSet = Set(CurrencyInfo.allStandardCodes)
-        for code in store.ratesToUSD.keys {
-            codesSet.insert(code)
-        }
-        
-        return codesSet.filter { allowedCodes?.contains($0) ?? true }.sorted().map { code in
-            CurrencyInfo(
-                code: code,
-                symbol: CurrencyInfo.symbol(for: code),
-                name: CurrencyInfo.name(for: code),
-                flag: CurrencyInfo.flag(for: code)
-            )
-        }
+        let codes = Set(CurrencyInfo.allStandardCodes + Array(store.ratesToUSD.keys))
+        let allowed = allowedCodes.map { Set($0.map { $0.uppercased() }) }
+        return Set(codes.map { $0.uppercased() })
+            .filter { allowed?.contains($0) ?? true }
+            .map { code in
+                CurrencyInfo(code: code, symbol: CurrencyInfo.symbol(for: code),
+                             name: CurrencyInfo.name(for: code), flag: CurrencyInfo.flag(for: code))
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
-    
-    // Filtered Suggested Currencies
-    private var filteredSuggestedCurrencies: [CurrencyInfo] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if query.isEmpty {
-            return suggestedCurrencies
-        }
-        return suggestedCurrencies.filter {
-            $0.code.lowercased().contains(query) ||
-            $0.name.lowercased().contains(query) ||
-            $0.symbol.lowercased().contains(query)
-        }
+
+    private var suggestedCurrencies: [CurrencyInfo] {
+        guard query.isEmpty else { return [] }
+        let preferred = [activeSelectedCode, Locale.current.currency?.identifier ?? "USD", "USD", "EUR"]
+        var seen = Set<String>()
+        return Array(preferred.compactMap { code -> CurrencyInfo? in
+            guard seen.insert(code).inserted else { return nil }
+            return allCurrencies.first { $0.code == code }
+        }.prefix(2))
     }
-    
-    // Filtered and Grouped Alphabetical Currencies
-    private var groupedAllCurrencies: [(key: String, value: [CurrencyInfo])] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filtered = allCurrencies.filter {
-            if query.isEmpty { return true }
-            return $0.code.lowercased().contains(query) ||
-                   $0.name.lowercased().contains(query) ||
-                   $0.symbol.lowercased().contains(query)
-        }
-        
-        let grouped = Dictionary(grouping: filtered) { currency in
-            String(currency.code.prefix(1)).uppercased()
-        }
-        
-        return grouped.map { (key: $0.key, value: $0.value.sorted(by: { $0.code < $1.code })) }
-            .sorted(by: { $0.key < $1.key })
-    }
-    
-    // Available alphabetical scrubber letters
-    private var alphabetIndexLetters: [String] {
-        var letters = ["★"]
-        let groupKeys = groupedAllCurrencies.map { $0.key }
-        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
-            let str = String(letter)
-            if groupKeys.contains(str) {
-                letters.append(str)
+
+    private var filteredCurrencies: [CurrencyInfo] {
+        guard !query.isEmpty else { return allCurrencies }
+        return allCurrencies.filter { currency in
+            [currency.code, currency.name, currency.symbol].contains {
+                $0.localizedStandardContains(query)
             }
         }
-        return letters
     }
-    
-    // MARK: - Apple Default Grey Design Tokens
-    private var sheetBackgroundColor: Color {
-        Color(uiColor: .systemGroupedBackground)
-    }
-    
-    private var cardBackgroundColor: Color {
-        Color(uiColor: .secondarySystemGroupedBackground)
-    }
-    
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            sheetBackgroundColor
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // 1. Header Bar: Close & Centered Title "Select currency"
-                headerBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
-                
-                // 2. Continuous Scrollable Content with Section Anchors & Alphabet Index
-                ScrollViewReader { proxy in
-                    ZStack(alignment: .trailing) {
-                        ScrollView(showsIndicators: false) {
-                            LazyVStack(alignment: .leading, spacing: 18) {
-                                // Rates updated Status Card
-                                if searchText.isEmpty {
-                                    ratesUpdatedCard
-                                }
-                                
-                                // Suggested Section
-                                if !filteredSuggestedCurrencies.isEmpty {
-                                    suggestedSection
-                                        .id("section_suggested")
-                                }
-                                
-                                // Alphabetical Sections ("A", "B", "C", ... "Z")
-                                if groupedAllCurrencies.isEmpty && filteredSuggestedCurrencies.isEmpty {
-                                    emptyStateView
-                                } else {
-                                    ForEach(groupedAllCurrencies, id: \.key) { group in
-                                        alphabetGroupSection(key: group.key, currencies: group.value)
-                                            .id("section_\(group.key)")
-                                    }
-                                }
-                                
-                                // Bottom spacing to ensure items are never hidden behind floating search bar
-                                Color.clear
-                                    .frame(height: 72)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.trailing, searchText.isEmpty ? 16 : 0)
-                            .padding(.top, 4)
-                        }
-                        
-                        // 3. Right-side Alphabet Scrubber Index Bar
-                        if searchText.isEmpty {
-                            alphabetScrubberBar(proxy: proxy)
-                                .padding(.trailing, 4)
-                        }
+        VStack(spacing: 0) {
+            header
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 22) {
+                    if !suggestedCurrencies.isEmpty {
+                        currencyGroup("Suggested", currencies: suggestedCurrencies)
+                    }
+                    if filteredCurrencies.isEmpty {
+                        ContentUnavailableView.search(text: query)
+                    } else {
+                        currencyGroup(query.isEmpty ? "All currencies" : "Results", currencies: filteredCurrencies)
                     }
                 }
-            }
-            
-            // 4. Floating Liquid Glass Bottom Search Bar
-            floatingSearchCapsule
                 .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                searchBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+            }
         }
-        .presentationBackground(sheetBackgroundColor)
-        .presentationDetents([.large])
+        .presentationDetents([.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
     }
-    
-    // MARK: - Header Bar
-    private var headerBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            ZStack {
-                Text("Select currency")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 60)
-                
-                HStack {
-                    GlassCircleButton(
-                        icon: "xmark",
-                        size: 44,
-                        iconSize: 14,
-                        foregroundColor: SpendyColors.textPrimary,
-                        haptic: .selection,
-                        accessibilityLabel: "Close",
-                        morphID: "closeCurrencyButton",
-                        namespace: currencySheetNamespace
-                    ) {
-                        dismiss()
-                    }
-                    
-                    Spacer()
-                }
-            }
-        }
-    }
-    
-    // MARK: - Rates Updated Status Card
-    private var ratesUpdatedCard: some View {
+
+    private var header: some View {
         HStack {
-            Text("Rates updated")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
+            GlassCircleButton(icon: "xmark", size: 44, iconSize: 14,
+                              foregroundColor: SpendyColors.textPrimary,
+                              haptic: .selection, accessibilityLabel: "Close") {
+                dismiss()
+            }
             Spacer()
-            
-            Text(store.ratesLastUpdatedFormatted)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
+            Text("Select currency")
+                .font(.headline)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            Color.clear.frame(width: 44, height: 44)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(cardBackgroundColor)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
     }
-    
-    // MARK: - Suggested Section
-    private var suggestedSection: some View {
+
+    private func currencyGroup(_ title: String, currencies: [CurrencyInfo]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Suggested")
-                .font(.system(size: 15, weight: .semibold))
+            Text(title)
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.horizontal, 4)
-            
-            VStack(spacing: 0) {
-                ForEach(Array(filteredSuggestedCurrencies.enumerated()), id: \.element.id) { index, currency in
-                    currencyRow(currency: currency)
-                    
-                    if index < filteredSuggestedCurrencies.count - 1 {
+            LazyVStack(spacing: 0) {
+                ForEach(currencies) { currency in
+                    currencyRow(currency)
+                    if currency.id != currencies.last?.id {
                         Divider()
-                            .background(SpendyColors.separator)
-                            .padding(.leading, 48)
+                            .overlay(SpendyColors.separator)
+                            .padding(.leading, 68)
                     }
                 }
             }
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(cardBackgroundColor)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(SpendyColors.separator, lineWidth: 0.8)
                     }
             }
         }
     }
-    
-    // MARK: - Alphabetical Group Section Card
-    @ViewBuilder
-    private func alphabetGroupSection(key: String, currencies: [CurrencyInfo]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(key)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 4)
-            
-            VStack(spacing: 0) {
-                ForEach(Array(currencies.enumerated()), id: \.element.id) { index, currency in
-                    currencyRow(currency: currency)
-                    
-                    if index < currencies.count - 1 {
-                        Divider()
-                            .background(SpendyColors.separator)
-                            .padding(.leading, 48)
-                    }
-                }
-            }
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(cardBackgroundColor)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
-        }
-    }
-    
-    // MARK: - Currency Row Item (Matching Reference Screenshot)
-    @ViewBuilder
-    private func currencyRow(currency: CurrencyInfo) -> some View {
-        let isSelected = activeSelectedCode.uppercased() == currency.code.uppercased()
-        
-        Button {
+
+    private func currencyRow(_ currency: CurrencyInfo) -> some View {
+        let selected = activeSelectedCode == currency.code
+        return Button {
             HapticsManager.shared.trigger(.selection)
-            selectCurrency(currency)
+            if let onSelect {
+                onSelect(currency)
+            } else {
+                store.updateCurrency(symbol: currency.symbol, code: currency.code)
+            }
+            dismiss()
         } label: {
-            HStack(spacing: 12) {
-                // Flag
-                Text(currency.flag)
-                    .font(.system(size: 20))
-                    .frame(width: 28, alignment: .center)
-                
-                // Code (e.g. PLN, UAH, AFN)
-                Text(currency.code)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .frame(width: 44, alignment: .leading)
-                
-                // Name (e.g. Polish Złoty, Ukrainian Hryvnia, Afghan Afghani)
-                Text(currency.name)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
+            HStack(spacing: 14) {
+                Text(currency.symbol)
+                    .font(.body.weight(.medium))
                     .lineLimit(1)
-                
-                Spacer()
-                
-                // Selected Indicator Checkmark
-                if isSelected {
+                    .minimumScaleFactor(0.6)
+                    .padding(5)
+                    .frame(width: 38, height: 38)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(currency.name).font(.subheadline.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(currency.code).font(.caption)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                Spacer(minLength: 8)
+                if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(SpendyColors.primaryBlue)
-                        .transition(.scale.combined(with: .opacity))
                 }
             }
+            .foregroundStyle(SpendyColors.textPrimary)
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .frame(minHeight: 48)
+            .padding(.vertical, 13)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(currency.name), \(currency.code)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
-    
-    // MARK: - Right-side Alphabet Scrubber Index Bar
-    @ViewBuilder
-    private func alphabetScrubberBar(proxy: ScrollViewProxy) -> some View {
-        VStack(spacing: 2) {
-            ForEach(alphabetIndexLetters, id: \.self) { item in
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        if item == "★" {
-                            proxy.scrollTo("section_suggested", anchor: .top)
-                        } else {
-                            proxy.scrollTo("section_\(item)", anchor: .top)
-                        }
-                    }
-                } label: {
-                    Text(item)
-                        .font(.system(size: item == "★" ? 10 : 10, weight: .bold))
-                        .foregroundStyle(lastScrubbedLetter == item ? SpendyColors.textPrimary : SpendyColors.textSecondary)
-                        .scaleEffect(lastScrubbedLetter == item ? 1.25 : 1.0)
-                        .frame(width: 18, height: 14)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let totalHeight = geo.size.height
-                                guard totalHeight > 0, !alphabetIndexLetters.isEmpty else { return }
-                                let itemHeight = totalHeight / CGFloat(alphabetIndexLetters.count)
-                                let index = Int(value.location.y / itemHeight)
-                                let clampedIndex = max(0, min(alphabetIndexLetters.count - 1, index))
-                                let letter = alphabetIndexLetters[clampedIndex]
-                                if letter != lastScrubbedLetter {
-                                    lastScrubbedLetter = letter
-                                    HapticsManager.shared.trigger(.selection)
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                        if letter == "★" {
-                                            proxy.scrollTo("section_suggested", anchor: .top)
-                                        } else {
-                                            proxy.scrollTo("section_\(letter)", anchor: .top)
-                                        }
-                                    }
-                                }
-                            }
-                            .onEnded { _ in
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    lastScrubbedLetter = nil
-                                }
-                            }
-                    )
-            }
-        )
-        .accessibilityHidden(true)
-    }
-    
-    // MARK: - Floating Liquid Glass Bottom Search Bar
-    private var floatingSearchCapsule: some View {
+
+    private var searchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: SFIcons.search)
-                .font(.system(size: 16, weight: .semibold))
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(SpendyColors.textTertiary)
-            
             TextField("Search currency", text: $searchText)
-                .font(.system(size: 15, weight: .medium))
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(SpendyColors.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
-            
+                .submitLabel(.search)
             if !searchText.isEmpty {
-                Button {
-                    HapticsManager.shared.trigger(.tick)
-                    searchText = ""
-                } label: {
+                Button { searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
                         .foregroundStyle(SpendyColors.textTertiary)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
         .nativeLiquidGlassCapsule(isInteractive: true)
-        .shadow(color: Color.black.opacity(0.16), radius: 12, y: 4)
-    }
-    
-    // MARK: - Empty State
-    private var emptyStateView: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 28))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 30)
-            
-            Text("No currency matching \"\(searchText)\"")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-    }
-    
-    // MARK: - Selection Handler
-    private func selectCurrency(_ currency: CurrencyInfo) {
-        if let onSelect = onSelect {
-            onSelect(currency)
-        } else {
-            store.updateCurrency(symbol: currency.symbol, code: currency.code)
-        }
-        dismiss()
+        .shadow(color: Color.black.opacity(0.35), radius: 12, y: 4)
     }
 }
