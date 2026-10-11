@@ -52,6 +52,7 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertEqual(button(app, "filter-category-groceries").value as? String, "Selected")
         button(app, "Done").tap()
         XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("600"))
+        XCTAssertEqual(button(app, "breakdown-menu").value as? String, "1 selected")
         XCTAssertFalse(app.buttons.matching(identifier: "breakdown-food").allElementsBoundByIndex.contains { $0.isHittable })
         button(app, "breakdown-groceries").tap()
         XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.waitForExistence(timeout: 5))
@@ -63,6 +64,7 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(button(app, "breakdown-filter").label.contains("1 selected"))
         button(app, "breakdown-reset-filters").tap()
         XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("1,200"))
+        XCTAssertEqual(button(app, "breakdown-menu").value as? String, "All selected")
         button(app, "Back").tap()
         XCTAssertFalse(button(app, "spending-transactions").exists)
     }
@@ -133,6 +135,19 @@ final class SpendingChartUITests: XCTestCase {
         capture(app, "All transactions translucent pinned header after scrolling")
         button(app, "Categories").tap()
         XCTAssertTrue(app.navigationBars["Categories"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testTransactionEmptySearchCanRecover() {
+        let app = launch()
+        button(app, "See all transactions").tap()
+        XCTAssertTrue(app.staticTexts["All Transactions"].waitForExistence(timeout: 5))
+        let search = app.textFields["Search transactions"]
+        search.tap()
+        search.typeText("unmatched-transaction-query")
+        XCTAssertTrue(app.staticTexts["No matching transactions"].waitForExistence(timeout: 5))
+        button(app, "Clear search and filters").tap()
+        XCTAssertTrue(app.staticTexts["Chart groceries"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["No matching transactions"].exists)
+        capture(app, "Transaction search recovered")
     }
     @MainActor func testAnalyticsRecordedTotalsAndDrillThrough() {
         let app = launch()

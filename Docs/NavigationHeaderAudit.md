@@ -1,49 +1,26 @@
 # Navigation header audit
 
-Custom pinned headers use `SpendyPinnedHeaderLayout` or `spendyBarBackground`.
-The background is SwiftUI's adaptive `.bar` material, with no fixed black fill,
-custom tint, or opacity. Native navigation bars remain system-managed.
+## Transparent custom headers
 
-The layout measures its header and reserves that height in the scroll content.
-This keeps the initial content clear while allowing it to scroll beneath the bar.
-The material layer does not handle taps or appear in accessibility navigation.
+Custom headers keep their existing sticky buttons without a background bar or
+material layer. `SpendyPinnedHeaderLayout` measures the controls and reserves
+initial scroll spacing, allowing content to pass underneath the transparent header.
 
-## Custom scrolling headers updated
+This applies to transaction and subscription details, All Transactions, spending
+breakdown, custom category/account analytics, creation and editing forms,
+profile editing, currency/icon/entity pickers, dashboard configuration, converter,
+receipt report, voice review and expanded recent activity.
 
-- Recent activity (expanded state; collapsed state still shows three rows)
-- All Transactions
-- Spending by Category / Account breakdown
-- Category / Account analytics when opened with the custom Home header
-- New / Edit category, account, folder, subscription and profile
-- Currency and icon pickers
-- Transaction category and account pickers
-- Transaction and subscription details
-- Dashboard configuration
-- Currency converter
-- Receipt scan report
-- Voice transaction review
+Analytics keeps its original transparent sticky period/filter controls while
+its heading scrolls away. Budget and Subscriptions scroll their headings while
+their action buttons stay fixed. Subscriptions uses the plain adaptive background.
 
-## Existing native headers retained
+## Existing native headers
 
-Settings, Categories, Accounts from Settings, category/account analytics from
-Settings, Backup & Restore, Widgets, insight and notification preferences,
-Spendy Insights, spending explanations, period selection and breakdown filters.
-The internal insight and graphics demo galleries also retain native headers.
+Settings and its native navigation pages keep their system-managed header
+behavior. No custom blur is added to those screens.
 
-## Screens without scrolling under a pinned bar
+## Fixed and embedded content
 
-The Home summary, tab-root subscription heading and Monthly Receipt heading
-scroll with their content. Add/Edit Transaction, Account Balance, Edit Budget,
-calendar selection and the listening HUD use fixed controls; their content does
-not scroll beneath a title bar. Onboarding only scrolls its page inside a clipped
-accessibility viewport. Embedded cards and horizontal color/icon rails are not
-navigation headers. Camera scanning controls stay over the camera surface.
-
-## Main page headers
-
-Analytics uses transparent sticky period/filter controls while its title scrolls
-away. Budget and Subscriptions also scroll their headings while keeping their
-action buttons fixed over a transparent background. Accounts keeps its plain
-existing header without a material background. Subscriptions uses the adaptive app background
-instead of the mesh gradient. The bar treatment is scoped to scrolling sheets
-and detail screens.
+Keypads, calendar controls, onboarding, embedded charts and camera controls
+keep their existing layouts without an added header background.

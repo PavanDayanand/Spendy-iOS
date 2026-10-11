@@ -28,6 +28,7 @@ struct ShinyText: View {
     var alignment: TextAlignment = .leading
     
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         let label = Text(text)
@@ -35,7 +36,7 @@ struct ShinyText: View {
             .multilineTextAlignment(alignment)
             .fixedSize(horizontal: false, vertical: true)
         
-        if disabled || reduceMotion {
+        if disabled || reduceMotion || scenePhase != .active {
             label
                 .foregroundStyle(color)
         } else {

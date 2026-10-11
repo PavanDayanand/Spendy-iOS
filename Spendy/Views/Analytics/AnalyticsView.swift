@@ -351,15 +351,23 @@ struct AnalyticsView: View {
             if store.insightsEnabled {
                 Button { showsDirectInsights = true } label: {
                     HStack(spacing: 10) {
-                        SpendyInsightBrandMark(style: .kicker)
-                        Spacer()
+                        VStack(alignment: .leading, spacing: 4) {
+                            SpendyInsightBrandMark(style: .kicker, showsPersonalization: false)
+                            Text(analyticsInsights.first?.headline ?? "Explore your recorded spending")
+                                .font(.caption)
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 8)
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Open Spendy Insights, based on your activity")
+                .accessibilityLabel("Open Spendy Insights")
+                .accessibilityValue(analyticsInsights.first?.headline ?? "Explore your recorded spending")
                 .accessibilityIdentifier("open-spendy-insights")
                 .padding(.top, 4)
             }
@@ -817,6 +825,9 @@ struct AnalyticsView: View {
                         }
                     }
                     
+                    if isFiltered {
+                        Button("Reset account filter") { selectedAccountId = "all" }
+                    }
                     Section("Group Breakdown") {
                         Picker("Grouping", selection: $groupingMode) {
                             Label("Categories", systemImage: "square.grid.2x2.fill")
@@ -839,7 +850,19 @@ struct AnalyticsView: View {
                         namespace: analyticsControlsNamespace
                     )
                 }
+                .overlay(alignment: .topTrailing) {
+                    if isFiltered {
+                        Text("1")
+                            .font(.caption2.bold().monospacedDigit())
+                            .foregroundStyle(SpendyColors.inverseText)
+                            .padding(4)
+                            .background(SpendyColors.textPrimary, in: Circle())
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .accessibilityLabel("Analytics filters")
+                .accessibilityValue(isFiltered ? selectedAccountLabel : "All accounts")
                 .accessibilityIdentifier("analytics-filters")
             }
         }

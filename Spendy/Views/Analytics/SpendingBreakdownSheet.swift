@@ -72,6 +72,17 @@ struct SpendingBreakdownSheet: View {
                         .font(.system(size: 15, weight: .semibold))
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if let selectedIDs {
+                    Text("\(selectedIDs.count)")
+                        .font(.caption2.bold().monospacedDigit())
+                        .foregroundStyle(SpendyColors.inverseText)
+                        .padding(4)
+                        .background(SpendyColors.textPrimary, in: Capsule())
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
             .accessibilityLabel("Spending options")
             .accessibilityIdentifier("breakdown-menu")
             .accessibilityValue(selectedIDs.map { "\($0.count) selected" } ?? "All selected")
@@ -116,8 +127,13 @@ struct SpendingBreakdownSheet: View {
                         }
                     }
                     if visibleItems.isEmpty {
-                        ContentUnavailableView("No selections", systemImage: "line.3.horizontal.decrease",
-                            description: Text(byCategory ? "Choose categories or select all to see spending." : "Choose accounts or select all to see spending."))
+                        SpendyPlainEmptyState(
+                            title: items.isEmpty ? "No spending yet" : "No selections",
+                            message: items.isEmpty ? "Recorded expenses will appear here."
+                                : byCategory ? "Choose categories to see spending." : "Choose accounts to see spending.",
+                            actionTitle: items.isEmpty ? nil : "Select all",
+                            action: { selectedIDs = nil }
+                        )
                     }
                     VStack(spacing: 12) {
                         ForEach(visibleItems) { item in
@@ -154,7 +170,6 @@ struct SpendingBreakdownSheet: View {
             .safeAreaPadding(.top, 58)
             headerBar
                 .padding(.bottom, 8)
-                .spendyBarBackground()
                 .zIndex(1)
         }
         .background(SpendyColors.appBackground.ignoresSafeArea())
@@ -166,7 +181,10 @@ struct SpendingBreakdownSheet: View {
         .sheet(isPresented: $showsFilter) {
             SpendingBreakdownFilter(items: items, byCategory: byCategory, selectedIDs: $selectedIDs)
         }
-        .onChange(of: selectedIDs) { _, _ in selectedBucket = nil }
+        .onChange(of: selectedIDs) { _, selection in
+            selectedBucket = nil
+            if selection == Set(items.map(\.id)) { selectedIDs = nil }
+        }
         .onChange(of: showsChart) { _, _ in selectedBucket = nil }
         .tint(SpendyColors.textPrimary)
     }

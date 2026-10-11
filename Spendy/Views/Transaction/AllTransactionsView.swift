@@ -172,7 +172,6 @@ struct AllTransactionsView: View {
                 .padding(.vertical, 8)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pinnedHeaderHeight = $0 }
-        .spendyBarBackground()
 
     }
 
@@ -638,11 +637,26 @@ struct AllTransactionsView: View {
     }
     
     private var emptyStateView: some View {
-        SpendyPlainEmptyState(
-            title: "No transactions found",
-            message: "Try a different search or adjust your filters."
+        let hasFilters = !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || selectedCategoryIDs != nil || selectedAccountId != nil || selectedTransactionType != nil
+        let isScoped = spendingScope != nil || scopeStart != nil || scopeAccountID != nil
+        return SpendyPlainEmptyState(
+            title: hasFilters ? "No matching transactions" : "No transactions yet",
+            message: hasFilters ? "Try clearing your search and filters."
+                : isScoped ? "No transactions recorded for this selection." : "Add your first transaction to start tracking.",
+            actionTitle: hasFilters ? "Clear search and filters" : isScoped ? nil : "Add transaction",
+            action: {
+                if hasFilters {
+                    searchQuery = ""
+                    selectedCategoryIDs = nil
+                    selectedAccountId = nil
+                    selectedTransactionType = nil
+                    isSearchFocused = false
+                } else { showAddTransaction = true }
+            }
         )
     }
+
 }
 
 #Preview {

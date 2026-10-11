@@ -74,7 +74,6 @@ struct FloatingCurrencyConverterView: View {
             topActionBar
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .spendyBarBackground()
         }
         .background(Color.clear)
         .presentationDetents([.height(420), .large])

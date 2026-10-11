@@ -30,7 +30,7 @@ struct SpendyInsightSummary: View {
                                 Text("\(page + 1) / \(useful.count)")
                                 Image(systemName: "arrow.right")
                             }
-                            .font(.system(size: 11, weight: .medium).monospacedDigit())
+                            .font(.caption2.weight(.medium).monospacedDigit())
                             .foregroundStyle(SpendyColors.textSecondary)
                             .frame(minWidth: 60, minHeight: 44)
                             .contentShape(Rectangle())
@@ -63,11 +63,11 @@ struct SpendyInsightSummary: View {
             }
             .task(id: rotationKey) {
                 // Changing pages cancels this task and starts a fresh reading interval.
-                guard useful.count > 1, scenePhase == .active, !voiceOverEnabled else { return }
+                guard useful.count > 1, scenePhase == .active, !voiceOverEnabled, !reduceMotion else { return }
                 #if DEBUG
                 guard ProcessInfo.processInfo.environment["SPENDY_DISABLE_INSIGHT_ROTATION"] != "1" else { return }
                 #endif
-                do { try await Task.sleep(for: .seconds(3)) }
+                do { try await Task.sleep(for: .seconds(8)) }
                 catch { return }
                 guard !Task.isCancelled else { return }
                 advance()
@@ -79,7 +79,7 @@ struct SpendyInsightSummary: View {
     }
 
     private var rotationKey: [String] {
-        useful.map(\.id) + [selectedID ?? "", scenePhase == .active ? "active" : "paused", voiceOverEnabled ? "voiceover" : "visual"]
+        useful.map(\.id) + [selectedID ?? "", scenePhase == .active ? "active" : "paused", voiceOverEnabled ? "voiceover" : "visual", reduceMotion ? "still" : "animated"]
     }
 
     private func advance() {
@@ -92,9 +92,9 @@ struct SpendyInsightSummary: View {
     private func text(_ moment: InsightMoment) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis,
-                              font: .system(size: 15, weight: .semibold))
+                              font: .subheadline.weight(.semibold), emphasisFont: .subheadline.bold())
             if let supporting = moment.supportingText {
-                InsightSupportingText(text: supporting, emphasis: moment.emphasis)
+                InsightSupportingText(text: supporting, emphasis: moment.emphasis, font: .footnote)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

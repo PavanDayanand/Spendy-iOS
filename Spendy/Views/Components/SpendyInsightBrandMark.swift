@@ -4,9 +4,11 @@ import SwiftUI
 struct SpendyInsightSymbol: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @State private var appearance = 0
     var body: some View {
         Image(systemName: SpendyInsightBrandMark.symbol)
-            .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion && scenePhase == .active)
+            .symbolEffect(.pulse, value: appearance)
+            .onAppear { if !reduceMotion && scenePhase == .active { appearance += 1 } }
             .accessibilityHidden(true)
     }
 }

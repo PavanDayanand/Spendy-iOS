@@ -1,23 +1,7 @@
 import SwiftUI
 
-/// A custom header with the system navigation-bar material.
-/// The material adapts to appearance, contrast and the content underneath it.
-extension View {
-    func spendyBarBackground(isVisible: Bool = true) -> some View {
-        background {
-            if isVisible {
-                Rectangle()
-                    .fill(.bar)
-                    .ignoresSafeArea(edges: .top)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-        }
-    }
-}
-
-/// Measures the header so scoped labels and larger text keep the first row clear.
-/// Scrolling content can pass beneath the pinned bar, as with native navigation.
+/// Keeps custom header controls fixed over a transparent scrolling surface.
+/// Measured padding keeps the initial content clear, including with larger text.
 struct SpendyPinnedHeaderLayout<Header: View, Content: View>: View {
     let isEnabled: Bool
     private let header: Header
@@ -37,7 +21,6 @@ struct SpendyPinnedHeaderLayout<Header: View, Content: View>: View {
                 header
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
-                    .spendyBarBackground()
                     .zIndex(1)
             }
         } else {

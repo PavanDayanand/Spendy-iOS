@@ -49,13 +49,14 @@ struct ShinyHeadlineText: View {
     @Environment(\.colorSchemeContrast) private var contrast
     
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         let label = emphasizedLine(headline)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
         
-        if reduceMotion || contrast == .increased {
+        if reduceMotion || contrast == .increased || scenePhase != .active {
             label
         } else {
             label

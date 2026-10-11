@@ -122,15 +122,15 @@ enum SpendyColors {
         dark: UIColor(white: 1.0, alpha: 1.0)
     ))
 
-    static let textSecondary = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.0, alpha: 0.60),
-        dark: UIColor(white: 1.0, alpha: 0.60)
-    ))
+    static let textSecondary = Color(uiColor: UIColor { traits in
+        let alpha: CGFloat = traits.accessibilityContrast == .high ? 0.85 : 0.60
+        return UIColor(white: traits.userInterfaceStyle == .dark ? 1 : 0, alpha: alpha)
+    })
 
-    static let textTertiary = Color(uiColor: .dynamic(
-        light: UIColor(white: 0.0, alpha: 0.40),
-        dark: UIColor(white: 1.0, alpha: 0.40)
-    ))
+    static let textTertiary = Color(uiColor: UIColor { traits in
+        let alpha: CGFloat = traits.accessibilityContrast == .high ? 0.75 : 0.40
+        return UIColor(white: traits.userInterfaceStyle == .dark ? 1 : 0, alpha: alpha)
+    })
 
     // Monochrome Accents (Solid black in light mode, crisp white in dark mode)
     static let primaryBlue = Color(uiColor: .dynamic(

@@ -79,7 +79,6 @@ struct HomeConfigurationSheet: View {
             topActionBar
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
-                .spendyBarBackground()
         }
         .background(Color.clear)
         .presentationDetents([.height(540), .medium, .large])

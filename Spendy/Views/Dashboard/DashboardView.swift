@@ -897,7 +897,6 @@ struct DashboardView: View {
             }
             
         }
-        .spendyBarBackground(isVisible: isSheetExpanded)
 
         return ZStack(alignment: .top) {
             // Activity scrolls behind the pinned controls and floating dock.

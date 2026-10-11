@@ -224,7 +224,6 @@ struct SubscriptionQuickActionSheet: View {
             topActionBar
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .spendyBarBackground()
             
             // MARK: - Floating Toast Feedback
             if showToast, let toast = toastMessage {
