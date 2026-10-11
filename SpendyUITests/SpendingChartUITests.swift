@@ -23,6 +23,7 @@ final class SpendingChartUITests: XCTestCase {
     }
     @MainActor func testViewAllSpendingBreakdown() {
         let app = launch(light: true)
+        capture(app, "Recent activity differentiated light surface")
         app.buttons["Analytics and statistics"].tap()
         let all = button(app, "expand-spending-breakdown")
         for _ in 0..<3 {

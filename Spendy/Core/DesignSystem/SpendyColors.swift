@@ -95,6 +95,15 @@ enum SpendyColors {
         dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
+    // Home's activity drawer stays distinct from the flat page in both appearances.
+    static let recentActivityBackground = Color(uiColor: UIColor { traits in
+        let highContrast = traits.accessibilityContrast == .high
+        let white: CGFloat = traits.userInterfaceStyle == .dark
+            ? (highContrast ? 36.0 / 255.0 : 28.0 / 255.0)
+            : (highContrast ? 232.0 / 255.0 : 242.0 / 255.0)
+        return UIColor(white: white, alpha: 1)
+    })
+
     // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
         light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0), // #F5F6F8

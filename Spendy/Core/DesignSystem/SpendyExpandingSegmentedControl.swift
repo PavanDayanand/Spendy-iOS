@@ -2,106 +2,62 @@
 //  SpendyExpandingSegmentedControl.swift
 //  Spendy
 //
-//  Original Pixel-Perfect Expanding Capsule Type Switcher
-//  Restored directly from commit 800293beedaaf070ee8c18bec37820548fd10def
-//  Supports both SF Symbols (e.g. arrow icons) and Letter Badges (e.g. "M", "W").
+//  Compact monochrome switcher with equal-width, always-visible labels.
 //
 
 import SwiftUI
 
-// MARK: - Generic Expanding Segmented Control
+// MARK: - Shared Compact Segmented Control
+// Existing call sites retain their API; every option now stays labeled.
 struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selection: T
     let items: [T]
     var titleFor: (T) -> String
     var iconFor: (T) -> String
     var onSelect: ((T) -> Void)? = nil
-    
+    @Namespace private var selectionAnimation
+
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 0) {
             ForEach(items) { item in
                 let isSelected = selection == item
-                let iconKey = iconFor(item)
-                let isLetterBadge = iconKey.count == 1
-                
-                Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                Button {
+                    guard selection != item else { return }
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                         selection = item
                         onSelect?(item)
                     }
                     HapticsManager.shared.trigger(.selection)
-                }) {
-                    if isSelected {
-                        // Selected Tab: Elevated dark capsule with pure white circular badge + bold title
-                        HStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 24, height: 24)
-                                
-                                if isLetterBadge {
-                                    Text(iconKey)
-                                        .font(.system(size: 11, weight: .heavy))
-                                        .foregroundStyle(Color.black)
-                                } else {
-                                    Image(systemName: iconKey)
-                                        .font(.system(size: 11.5, weight: .bold))
-                                        .foregroundStyle(Color.black)
-                                        .symbolEffect(.bounce.byLayer, value: isSelected)
-                                }
-                            }
-                            
-                            Text(titleFor(item))
-                                .font(.system(size: 14.5, weight: .semibold))
-                                .foregroundStyle(Color.white)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
-                        }
-                        .padding(.leading, 6)
-                        .padding(.trailing, 14)
-                        .frame(height: 36)
+                } label: {
+                    Text(titleFor(item))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isSelected ? SpendyColors.inverseText : SpendyColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
                         .background {
-                            Capsule()
-                                .fill(colorScheme == .light ? Color.black : Color(hex: "#242426"))
-                                .overlay {
-                                    Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                        .shadow(color: Color.black.opacity(0.25), radius: 4, y: 1.5)
-                    } else {
-                        // Unselected Tab: Grey circular disc with dark icon (Matching Reference)
-                        ZStack {
-                            Circle()
-                                .fill(Color(hex: "#636366"))
-                                .frame(width: 28, height: 28)
-                            
-                            if isLetterBadge {
-                                Text(iconKey)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(colorScheme == .light ? SpendyColors.textPrimary : Color.white)
-                            } else {
-                                Image(systemName: iconKey)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(colorScheme == .light ? SpendyColors.textPrimary : Color.white)
+                            if isSelected {
+                                Capsule()
+                                    .fill(SpendyColors.textPrimary)
+                                    .padding(.vertical, 4)
+                                    .matchedGeometryEffect(id: "selection", in: selectionAnimation)
                             }
                         }
-                        .frame(width: 36, height: 36)
-                        .contentShape(Circle())
-                    }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(titleFor(item))
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
             }
         }
-        .padding(4)
+        .padding(.horizontal, 4)
+        .frame(maxWidth: CGFloat(items.count) * 80 + 8)
         .frame(height: 44)
         .background {
             Capsule()
-                .fill(colorScheme == .light ? SpendyColors.transactionControlSurface : Color(hex: "#161618"))
+                .fill(SpendyColors.transactionControlSurface)
                 .overlay {
                     Capsule().stroke(SpendyColors.separator, lineWidth: 0.8)
                 }

@@ -296,6 +296,7 @@ struct HeroSpendBarChart: View {
 
 // MARK: - Dashboard View
 struct DashboardView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ExpenseStore.self) private var store
     @Environment(QuickActionManager.self) private var quickActionManager
     @Binding var showAddTransaction: Bool
@@ -962,12 +963,12 @@ struct DashboardView: View {
         .background {
             // Smooth Stable Rounded Surface with dynamic top/bottom corner radii
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(SpendyColors.recentActivityBackground)
                 .overlay {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
                         .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
                 }
-                .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 20, x: 0, y: -4)
         }
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(.horizontal, isSheetExpanded ? 0 : 8)
