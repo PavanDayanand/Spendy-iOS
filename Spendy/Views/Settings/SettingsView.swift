@@ -80,18 +80,6 @@ struct SettingsView: View {
                         settingsGroup(title: "Display") {
                             appearanceRow
                             groupDivider
-                            toggleRow(
-                                icon: "sparkles",
-                                title: "Home gradient",
-                                isOn: Binding(
-                                    get: { store.isGradientBackgroundEnabled },
-                                    set: {
-                                        store.isGradientBackgroundEnabled = $0
-                                        HapticsManager.shared.trigger(.selection)
-                                    }
-                                )
-                            )
-                            groupDivider
                             NavigationLink(value: SettingsDestination.widgets) {
                                 linkRow(icon: "square.grid.2x2", title: "Home Screen widgets", value: nil)
                             }

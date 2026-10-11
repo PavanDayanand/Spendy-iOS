@@ -34,6 +34,7 @@ struct HeroSpendBarChart: View {
     var barColor: Color = SpendyColors.textPrimary
     var showsLine: Bool = false
     var barTopCornerRadius: CGFloat? = nil
+    var softensPastBars: Bool = false
     var gridColor: Color = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.12),
         dark: UIColor(white: 1.0, alpha: 0.18)
@@ -45,7 +46,8 @@ struct HeroSpendBarChart: View {
         isScrubbing: Binding<Bool> = .constant(false),
         barColor: Color = SpendyColors.textPrimary,
         showsLine: Bool = false,
-        barTopCornerRadius: CGFloat? = nil
+        barTopCornerRadius: CGFloat? = nil,
+        softensPastBars: Bool = false
     ) {
         self.dataPoints = dataPoints
         self._scrubbedPoint = scrubbedPoint
@@ -53,6 +55,7 @@ struct HeroSpendBarChart: View {
         self.barColor = barColor
         self.showsLine = showsLine
         self.barTopCornerRadius = barTopCornerRadius
+        self.softensPastBars = softensPastBars
     }
     
     private var maxAmount: Double {
@@ -75,6 +78,12 @@ struct HeroSpendBarChart: View {
     
     private func barLayout(chartWidth: CGFloat) -> (barWidth: CGFloat, spacing: CGFloat, cornerRadius: CGFloat) {
         let count = CGFloat(max(1, dataPoints.count))
+        if softensPastBars && !showsLine {
+            // Keep each bar centered under its month while opening up the gaps.
+            let columnWidth = chartWidth / count
+            let barWidth = min(26, columnWidth * 0.55)
+            return (barWidth, columnWidth - barWidth, min(barTopCornerRadius ?? 1, barWidth / 2))
+        }
         let spacing: CGFloat
         if count >= 10 {
             spacing = 3
@@ -140,7 +149,9 @@ struct HeroSpendBarChart: View {
                                         .fill(barColor)
                                         .frame(width: barWidth, height: barH)
                                         .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
-                                        .opacity(isAnySelected && !isSelected ? 0.30 : 1.0)
+                                        .opacity(isAnySelected
+                                            ? (isSelected ? 1.0 : 0.30)
+                                            : (softensPastBars && point.id != dataPoints.last?.id ? 0.45 : 1.0))
                                 }
                                 .frame(width: barWidth, height: chartHeight)
                                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: isSelected)
@@ -510,7 +521,7 @@ struct DashboardView: View {
                 let bottomInset = geometry.safeAreaInsets.bottom
                 
                 ZStack(alignment: .topLeading) {
-                    LiquidMeshBackground()
+                    SpendyColors.appBackground
                         .ignoresSafeArea()
                     
                     // 1. Fixed Top Canvas (50% Screen Area)
@@ -905,7 +916,8 @@ struct DashboardView: View {
                 scrubbedPoint: $scrubbedBarPoint,
                 isScrubbing: $isScrubbingChart,
                 showsLine: homeSpendingLineChart,
-                barTopCornerRadius: 5
+                barTopCornerRadius: 5,
+                softensPastBars: true
             )
             .padding(.top, 2)
         }
