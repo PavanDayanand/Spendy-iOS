@@ -322,8 +322,7 @@ struct DashboardView: View {
     @State private var showAllTransactions: Bool = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var showHomeConfigSheet: Bool = false
-    @State private var scrubbedBarPoint: MinimalBarPoint? = nil
-    @State private var isScrubbingChart: Bool = false
+    @State private var analyticsInitialDate: Date? = nil
     
     // MARK: - Interactive Split Dashboard Drawer State
     @State private var internalSheetExpanded: Bool = false
@@ -467,37 +466,6 @@ struct DashboardView: View {
         return store.accounts.first(where: { $0.id == selectedAccountId })?.sfSymbol ?? "creditcard.fill"
     }
     
-    private var currentMonthSpent: Double {
-        let calendar = Calendar.current
-        let now = Date()
-        return displayedTransactions
-            .filter { $0.type == .expense && calendar.isDate($0.date, equalTo: now, toGranularity: .month) }
-            .reduce(0) { $0 + $1.amount }
-    }
-    
-    // Last 6 Months Historical Spend Points for Bar Chart
-    private var barChartDataPoints: [MinimalBarPoint] {
-        let calendar = Calendar.current
-        let now = Date()
-        let expenses = displayedTransactions.filter { $0.type == .expense }
-        let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMM"
-        
-        return (0..<6).reversed().compactMap { offset -> MinimalBarPoint? in
-            guard let targetDate = calendar.date(byAdding: .month, value: -offset, to: now) else { return nil }
-            let year = calendar.component(.year, from: targetDate)
-            let month = calendar.component(.month, from: targetDate)
-            
-            let sum = expenses.filter {
-                calendar.component(.year, from: $0.date) == year &&
-                calendar.component(.month, from: $0.date) == month
-            }.reduce(0) { $0 + $1.amount }
-            
-            let label = monthFormatter.string(from: targetDate)
-            return MinimalBarPoint(id: "\(year)-\(month)", label: label, amount: sum)
-        }
-    }
-    
     // Ambient Header Glow Color (Account accent if selected, else Profile accent)
     private var ambientHeaderColor: Color {
         if selectedAccountId != "all", let acc = store.accounts.first(where: { $0.id == selectedAccountId }) {
@@ -524,24 +492,22 @@ struct DashboardView: View {
                     SpendyColors.appBackground
                         .ignoresSafeArea()
                     
-                    // 1. Fixed Top Canvas (50% Screen Area)
-                    VStack(alignment: .leading, spacing: 14) {
-                        // Top Bar: Profile (Left) + Action Toggles (Right: Stats, Converter, Eye, Budget)
-                        headerBar
-                            .padding(.top, topInset + 4)
-                        
-                        // Account Dropdown Selector (Below Top Toggles)
-                        accountDropdownSelector
-                        
-                        // Hero Spend Section with On-Screen Month Bar Chart
-                        heroSpendBarSection
-                            .padding(.top, 2)
-                        
-                        Spacer(minLength: 0)
+                    // The summary can scroll independently at larger text sizes.
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            headerBar
+                                .padding(.top, topInset + 4)
+                            accountDropdownSelector
+                            heroSpendBarSection
+                                .padding(.top, 2)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(height: max(0, totalHeight * 0.55 - 8), alignment: .top)
+                    .accessibilityIdentifier("home-spending-canvas")
+
                     // 2. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
                     recentTransactionsDrawer(
                         totalHeight: totalHeight,
@@ -583,7 +549,9 @@ struct DashboardView: View {
             .navigationDestination(isPresented: $showAnalyticsView) {
                 AnalyticsView(
                     selectedTab: selectedTab,
-                    topControlsNamespace: topControlsNamespace
+                    topControlsNamespace: topControlsNamespace,
+                    initialAccountID: selectedAccountId,
+                    initialDate: analyticsInitialDate
                 )
             }
             .navigationDestination(isPresented: $showBudgetHub) {
@@ -722,6 +690,7 @@ struct DashboardView: View {
             HStack(spacing: 0) {
                 Button {
                     HapticsManager.shared.trigger(.selection)
+                    analyticsInitialDate = nil
                     showAnalyticsView = true
                 } label: {
                     Image(systemName: SFIcons.tabAnalytics)
@@ -846,83 +815,15 @@ struct DashboardView: View {
     
     // MARK: - 3. Hero Spend Section with On-Screen Month Bar Chart
     private var heroSpendBarSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header Label
-            Group {
-                if let scrubbed = scrubbedBarPoint {
-                    Text("Spent in \(scrubbed.label) • Drag to inspect")
-                        .font(AppTypography.itemTitle)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                } else {
-                    Text("Spent this month")
-                        .font(AppTypography.itemTitle)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
+        HomeSpendingSummary(transactions: store.transactions, categories: store.categories,
+            accountID: selectedAccountId, accountLabel: selectedAccountLabel,
+            currencySymbol: store.currencySymbol, amountsHidden: hideBalance,
+            insightsEnabled: store.insightsEnabled, showsLine: $homeSpendingLineChart) { date in
+                analyticsInitialDate = date
+                showAnalyticsView = true
             }
-            .padding(.trailing, 72)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .trailing) {
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    scrubbedBarPoint = nil
-                    isScrubbingChart = false
-                    homeSpendingLineChart.toggle()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chart.bar.fill")
-                            .foregroundStyle(homeSpendingLineChart ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                        Image(systemName: "chart.xyaxis.line")
-                            .foregroundStyle(homeSpendingLineChart ? SpendyColors.textPrimary : SpendyColors.textTertiary)
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
-                    .background(SpendyColors.cardBackground, in: Capsule())
-                    .frame(minWidth: 64, minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Spending chart style")
-                .accessibilityValue(homeSpendingLineChart ? "Line" : "Bar")
-                .accessibilityHint(homeSpendingLineChart ? "Switch to bar chart" : "Switch to line chart")
-            }
-            .animation(.easeInOut(duration: 0.15), value: scrubbedBarPoint?.id)
-            
-            // Large Amount Text with Vertical Gradient
-            let displayAmount = scrubbedBarPoint?.amount ?? currentMonthSpent
-            
-            if hideBalance {
-                Text("••••••")
-                    .accessibilityLabel("Spending hidden")
-                    .spendyNumberFont(size: 42, weight: .heavy, tracking: -1.0)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .padding(.bottom, 6)
-            } else {
-                SpendyGradientText(
-                    displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
-                    size: 42,
-                    weight: .heavy,
-                    tracking: -1.0,
-                    colors: SpendyGradientPresets.electricBlueToWhite
-                )
-                .accessibilityLabel("Spending, \(displayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
-                .padding(.bottom, 6)
-                .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scrubbedBarPoint?.id)
-            }
-            
-            // On-Screen Bar Chart with Interactive Scrubbing (Last 6 Months)
-            HeroSpendBarChart(
-                dataPoints: barChartDataPoints,
-                scrubbedPoint: $scrubbedBarPoint,
-                isScrubbing: $isScrubbingChart,
-                showsLine: homeSpendingLineChart,
-                barTopCornerRadius: 5,
-                softensPastBars: true
-            )
-            .padding(.top, 2)
-        }
     }
-    
+
     // MARK: - 4. Interactive Bottom Transactions Drawer
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
         let restingOffset = totalHeight * 0.55

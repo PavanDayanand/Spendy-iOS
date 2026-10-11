@@ -67,6 +67,24 @@ final class ExpenseStore {
                     Transaction(title: "Analytics expense \(index)", amount: Double(60 - index * 5), categoryId: category.id, accountId: "cash")
                 }
             }
+            if mode == "charts" {
+                let calendar = Calendar.current
+                let now = Date()
+                let start = calendar.dateInterval(of: .month, for: now)!.start
+                fixture.transactions = (-5...0).flatMap { offset -> [Transaction] in
+                    let month = calendar.date(byAdding: .month, value: offset, to: start)!
+                    let total = [1800.0, 1100, 2100, 1350, 1500, 1200][offset + 5]
+                    return [
+                        Transaction(title: "Chart groceries", amount: total * 0.5, categoryId: "groceries", accountId: "cash", date: month),
+                        Transaction(title: "Chart dining", amount: total * 0.3, categoryId: "food", accountId: "bank", date: month),
+                        Transaction(title: "Chart coffee", amount: total * 0.2, categoryId: "coffee", accountId: "cash", date: month)
+                    ]
+                }
+                fixture.transactions += [
+                    Transaction(title: "Future chart expense", amount: 9999, categoryId: "groceries", accountId: "cash", date: now.addingTimeInterval(86400)),
+                    Transaction(title: "Chart salary", amount: 5000, type: .income, categoryId: "salary", accountId: "cash", date: now)
+                ]
+            }
             if mode == "subscription-detail" {
                 fixture.subscriptions = [Subscription(name: "Readiness Music", amount: 12, nextBillingDate: Date().addingTimeInterval(86400))]
             }
