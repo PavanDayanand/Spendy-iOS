@@ -1,5 +1,24 @@
 import Foundation
 
+/// Immutable expense context carried between charts, entity details and transaction browsing.
+/// End is exclusive; nil entity selections mean all and an empty set means none.
+struct SpendingScope {
+    let start: Date
+    let end: Date
+    let referenceDate: Date
+    var accountIDs: Set<String>? = nil
+    var categoryIDs: Set<String>? = nil
+
+    func contains(_ transaction: Transaction, includeDates: Bool = true, expensesOnly: Bool = true) -> Bool {
+        (!expensesOnly || transaction.type == .expense) && transaction.amount.isFinite && transaction.amount >= 0
+            && transaction.date <= referenceDate
+            && (!includeDates || (transaction.date >= start && transaction.date < end))
+            && (accountIDs?.contains(transaction.accountId) ?? true)
+            && (categoryIDs?.contains(transaction.categoryId) ?? true)
+    }
+}
+
+
 /// All dates are calendar boundaries; bucket ends are exclusive.
 struct SpendingChartBucket: Identifiable, Equatable {
     let start: Date

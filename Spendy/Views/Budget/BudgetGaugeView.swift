@@ -106,14 +106,12 @@ struct BudgetGaugeView: View {
             // 3. Pacing insight (without card background!)
             if let msg = pacingInsightMessage {
                 HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "sparkles")
+                    SpendyInsightSymbol()
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(isExceeded ? SpendyColors.warningOrange : SpendyColors.statusBeaconGreen)
                         .padding(.top, 2)
                     
-                    Text(msg)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
+                    ShinyHeadlineText(headline: msg, emphasis: [], font: .footnote.weight(.medium), emphasisFont: .footnote.bold())
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)

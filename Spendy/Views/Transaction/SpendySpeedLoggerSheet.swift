@@ -198,7 +198,8 @@ struct SpendySpeedLoggerSheet: View {
     
     // MARK: - 2. Review Transactions View (Screenshot 2)
     private var reviewView: some View {
-        VStack(spacing: 0) {
+        SpendyPinnedHeaderLayout {
+
             // Header Bar (Screenshot 2)
             HStack {
                 GlassCircleButton(
@@ -261,8 +262,9 @@ struct SpendySpeedLoggerSheet: View {
             }
             .padding(.horizontal, 22)
             .padding(.bottom, 8)
-            
-            ScrollView(showsIndicators: false) {
+        } content: {
+            VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     if drafts.isEmpty {
                         VStack(spacing: 12) {
@@ -323,6 +325,7 @@ struct SpendySpeedLoggerSheet: View {
                 .disabled(!canSave || isSubmitting)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
+            }
             }
         }
     }

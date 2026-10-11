@@ -34,14 +34,15 @@ struct EditProfileSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 // Top Header Bar: Close, Title "Edit Space" (Sticky at top!)
                 topHeaderBar
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
                     .zIndex(10)
-                
+            } content: {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Hero Circle Avatar (Matching AddCategorySheet)

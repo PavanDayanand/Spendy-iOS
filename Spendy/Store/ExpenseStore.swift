@@ -63,7 +63,7 @@ final class ExpenseStore {
             fixture.hasCompletedOnboarding = true
             fixture.transactions = [Transaction(title: "Readiness expense", amount: 25, categoryId: "groceries", accountId: "cash")]
             if mode == "analytics" {
-                fixture.transactions = Array(fixture.categories.filter { $0.type == .expense }.prefix(6)).enumerated().map { index, category in
+                fixture.transactions = Array(fixture.categories.filter { $0.type == .expense }.prefix(10)).enumerated().map { index, category in
                     Transaction(title: "Analytics expense \(index)", amount: Double(60 - index * 5), categoryId: category.id, accountId: "cash")
                 }
             }
@@ -218,6 +218,10 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    private static func displayCurrencySymbol(_ symbol: String, code: String) -> String {
+        code.uppercased() == "AOA" && symbol.uppercased() == "AOA" ? "Kz" : symbol
+    }
+
     var currencySymbol: String = "₹" {
         didSet { scheduleSave() }
     }
@@ -513,7 +517,7 @@ final class ExpenseStore {
                 self.categories = payload.categories
                 self.subscriptions = payload.subscriptions
                 self.budget = payload.budget
-                self.currencySymbol = payload.currencySymbol
+                self.currencySymbol = Self.displayCurrencySymbol(payload.currencySymbol, code: payload.currencyCode)
                 self.currencyCode = payload.currencyCode
                 self.customFolders = payload.customFolders ?? []
                 self.ratesLastUpdated = payload.ratesLastUpdated
@@ -1413,7 +1417,7 @@ final class ExpenseStore {
     }
     
     func updateCurrency(symbol: String, code: String) {
-        self.currencySymbol = symbol
+        self.currencySymbol = Self.displayCurrencySymbol(symbol, code: code)
         self.currencyCode = code
         HapticsManager.shared.trigger(.selection)
     }
@@ -1620,7 +1624,7 @@ final class ExpenseStore {
                 self.categories = payload.categories
                 self.subscriptions = payload.subscriptions
                 self.budget = payload.budget
-                self.currencySymbol = payload.currencySymbol
+                self.currencySymbol = Self.displayCurrencySymbol(payload.currencySymbol, code: payload.currencyCode)
                 self.currencyCode = payload.currencyCode
                 
                 var folders = payload.customFolders ?? []

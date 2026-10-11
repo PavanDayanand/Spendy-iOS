@@ -95,10 +95,9 @@ struct AnalyticsView: View {
     var initialDate: Date? = nil
     @State private var appliedInitialScope = false
     @State private var selectedSpendingBucketID: String?
-    @State private var showsSpendingInfo = false
+    @State private var showsDirectInsights = false
+    @State private var showsSpendingBreakdown = false
     @State private var pendingSpendingInsight: InsightDestination?
-    @State private var showsSpendingTransactions = false
-    @State private var pendingSpendingTransaction: Transaction?
     @State private var referenceDate = Date()
 
     private var spendingSnapshot: SpendingChartSnapshot {
@@ -145,7 +144,7 @@ struct AnalyticsView: View {
     @Namespace private var analyticsControlsNamespace
     
     private var isSubpageActive: Bool {
-        showSubscriptionSheet ||
+        showsSpendingBreakdown || showSubscriptionSheet ||
         selectedAccountForSheet != nil ||
         selectedCategoryForSheet != nil
     }
@@ -164,55 +163,51 @@ struct AnalyticsView: View {
             
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                    // 1. Unpinned Header Bar: Top Control / Title
                     headerBar
                         .padding(.horizontal, 20)
                         .padding(.top, topControlsNamespace != nil ? 4 : 10)
-                        
-                        // 2. Pinned Section: Sticky 3-Toggle Toolbar & Cards Stack
-                        Section {
-                            VStack(spacing: 16) {
-                                spendingRhythmCard
-                                spendingMixSection
-                                cashflowChartSection
-                                noSpendDaysSection
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 8)
-                            .padding(.bottom, 30)
-                        } header: {
-                            // Sticky Toolbar floating on top
-                            compactHeader
-                                .padding(.horizontal, 20)
-                                .padding(.top, 6)
-                                .padding(.bottom, 12)
-                        }
-                    }
-                    .padding(.bottom, 140) // Full clearance for floating bottom GlassTabBar
-                }
 
+                    Section {
+                        VStack(spacing: 16) {
+                            spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 12))
+                            spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
+                            cashflowChartSection
+                            noSpendDaysSection
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 30)
+                    } header: {
+                        compactHeader
+                            .padding(.horizontal, 20)
+                            .padding(.top, 6)
+                            .padding(.bottom, 12)
+                    }
+                }
+                .padding(.bottom, 140)
             }
+        }
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $showAddTransaction) {
                 AddTransactionView()
             }
-            .sheet(isPresented: $showsSpendingInfo, onDismiss: {
+            .sheet(isPresented: $showsDirectInsights, onDismiss: {
                 if let destination = pendingSpendingInsight {
                     pendingSpendingInsight = nil
                     openInsight(destination)
                 }
             }) {
                 SpendingChartInfoSheet(snapshot: spendingSnapshot, accountLabel: selectedAccountLabel,
-                    currencySymbol: store.currencySymbol, insights: analyticsInsights, onSelectInsight: { destination in
+                    currencySymbol: store.currencySymbol, insights: analyticsInsights, insightsOnly: true,
+                    onSelectInsight: { destination in
                         pendingSpendingInsight = destination
-                        showsSpendingInfo = false
+                        showsDirectInsights = false
                     })
             }
-            .sheet(isPresented: $showsSpendingTransactions, onDismiss: {
-                inspectingTransaction = pendingSpendingTransaction
-                pendingSpendingTransaction = nil
-            }) {
-                spendingTransactionsSheet
+            .navigationDestination(isPresented: $showsSpendingBreakdown) {
+                SpendingBreakdownSheet(snapshot: spendingSnapshot, items: spendingBreakdownItems,
+                    byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
+                    topControlsNamespace: analyticsControlsNamespace)
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
@@ -239,12 +234,15 @@ struct AnalyticsView: View {
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
+                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate),
                     topControlsNamespace: analyticsControlsNamespace
                 )
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
+                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end,
+                        referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId]),
                     topControlsNamespace: analyticsControlsNamespace
                 )
             }
@@ -326,55 +324,48 @@ struct AnalyticsView: View {
     private var spendingRhythmCard: some View {
         let snapshot = spendingSnapshot
         let selected = snapshot.buckets.first { $0.id == selectedSpendingBucketID }
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Recorded spending")
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(selected.map { spendingPeriodLabel(snapshot, selected: $0) } ?? "Spending")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SpendyColors.textSecondary)
-                Spacer()
-                Button { showsSpendingInfo = true } label: {
-                    Image(systemName: "info.circle").frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("About spending")
+                Spacer(minLength: 4)
+
             }
-            Text((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+            Text((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
                 .font(.largeTitle.bold().monospacedDigit())
                 .foregroundStyle(SpendyColors.textPrimary)
                 .lineLimit(1).minimumScaleFactor(0.5)
-            Text(spendingPeriodLabel(snapshot, selected: selected))
-                .font(.caption)
-                .foregroundStyle(SpendyColors.textSecondary)
-            if selected == nil {
-                Text(snapshot.comparisonText(currencySymbol: store.currencySymbol))
-                    .font(.subheadline)
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
+                .accessibilityIdentifier("analytics-spending-total")
+                .accessibilityValue((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
             if !snapshot.transactions.isEmpty {
                 SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
-                                  selectedID: $selectedSpendingBucketID, height: 190)
-                Text("Bars show recorded expenses · tap or drag to inspect a period")
-                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
-                HStack {
-                    Button("Show transactions") { showsSpendingTransactions = true }
-                        .accessibilityIdentifier("spending-transactions")
-                    Spacer()
-                    if selected != nil {
-                        Button("Reset") { selectedSpendingBucketID = nil }
-                            .accessibilityLabel("Reset chart selection")
-                    }
-                }
-                .font(.subheadline)
-                .frame(minHeight: 44)
+                                  selectedID: $selectedSpendingBucketID, height: 140)
+                    .padding(.top, 8)
             } else {
                 Text("No spending recorded for this period.")
                     .font(.subheadline)
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(.vertical, 12)
             }
+            if store.insightsEnabled {
+                Button { showsDirectInsights = true } label: {
+                    HStack(spacing: 10) {
+                        SpendyInsightBrandMark(style: .kicker)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Spendy Insights, based on your activity")
+                .accessibilityIdentifier("open-spendy-insights")
+                .padding(.top, 4)
+            }
+
         }
         .tint(SpendyColors.textPrimary)
-        .modifier(AnalyticsPanelStyle())
     }
 
     private func spendingPeriodLabel(_ snapshot: SpendingChartSnapshot, selected: SpendingChartBucket?) -> String {
@@ -385,49 +376,6 @@ struct AnalyticsView: View {
         let start = snapshot.start.formatted(.dateTime.day().month(.abbreviated).year())
         let end = max(snapshot.start, snapshot.recordedEnd).formatted(.dateTime.day().month(.abbreviated).year())
         return "\(start) – \(end)" + (snapshot.isInProgress ? " · To date" : "")
-    }
-
-    private var spendingTransactionsSheet: some View {
-        let snapshot = spendingSnapshot
-        let selected = snapshot.buckets.first { $0.id == selectedSpendingBucketID }
-        let transactions = snapshot.transactions.filter { tx in
-            selected.map { tx.date >= $0.start && tx.date < $0.end } ?? true
-        }
-        return NavigationStack {
-            List {
-                Section {
-                    ForEach(transactions) { transaction in
-                        Button {
-                            pendingSpendingTransaction = transaction
-                            showsSpendingTransactions = false
-                        } label: {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(transaction.title).foregroundStyle(SpendyColors.textPrimary)
-                                    Text(transaction.date, format: .dateTime.day().month().year())
-                                        .font(.caption).foregroundStyle(SpendyColors.textSecondary)
-                                }
-                                Spacer()
-                                Text(transaction.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                                    .foregroundStyle(SpendyColors.textPrimary).monospacedDigit()
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .accessibilityIdentifier("spending-transaction-\(transaction.id)")
-                    }
-                } header: {
-                    Text("\(selectedAccountLabel) · \(transactions.count) transactions")
-                } footer: {
-                    Text("Total: \(transactions.reduce(0) { $0 + $1.amount }.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
-                }
-            }
-            .navigationTitle("Spending transactions")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { showsSpendingTransactions = false }
-            } }
-        }
-        .tint(SpendyColors.textPrimary)
     }
 
     private var noSpendDaysSection: some View {
@@ -562,29 +510,15 @@ struct AnalyticsView: View {
     private var spendingMixSection: some View {
         let allItems = spendingBreakdownItems
         let items = Array(allItems.prefix(3))
-        let remaining = Array(allItems.dropFirst(3))
-        let otherAmount = remaining.reduce(0.0) { $0 + $1.amount }
-        let slices = items + (remaining.isEmpty ? [] : [AnalyticsBreakdownItem(
-            id: "analytics-other",
-            label: "Other \(remaining.count)",
-            sfSymbol: "square.grid.2x2",
-            colorHex: "",
-            txCount: remaining.reduce(0) { $0 + $1.txCount },
-            amount: otherAmount,
-            percentage: totalSpending > 0 ? otherAmount / totalSpending * 100 : 0
-        )])
+        let visibleItems = items
 
-        let visibleItems = isBreakdownExpanded ? allItems : slices
-
-        return VStack(alignment: .leading, spacing: 17) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(groupingMode == .categories ? "Category spending" : "Account spending")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
-                Text("\(allItems.count) \(groupingMode == .categories ? "categories" : "accounts")")
-                    .font(.system(size: 11))
-                    .foregroundStyle(SpendyColors.textSecondary)
+
             }
 
             if items.isEmpty {
@@ -593,113 +527,71 @@ struct AnalyticsView: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(.vertical, 8)
             } else {
-                Chart(visibleItems, id: \.id) { item in
-                    BarMark(x: .value("Recorded spending", item.amount), y: .value("Category or account", item.label))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .cornerRadius(3)
-                        .accessibilityLabel(item.label)
-                        .accessibilityValue(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                }
-                .chartXScale(domain: 0...max(1, visibleItems.map(\.amount).max() ?? 0))
-                .chartYAxis { AxisMarks(position: .leading) { AxisValueLabel().font(.caption) } }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine().foregroundStyle(SpendyColors.separator)
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0)).font(.caption2)
-                        }
-                    }
-                } }
-                .frame(height: CGFloat(visibleItems.count) * 38 + 28)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .accessibilityIdentifier("category-spending-chart")
-                Text("Bar length = amount spent · percentages = share of recorded spending")
-                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
                 VStack(spacing: 0) {
                     ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
-                        if item.id != "analytics-other" {
-                            Button {
-                                HapticsManager.shared.trigger(.selection)
-                                if groupingMode == .categories {
-                                    selectedCategoryForSheet = store.categories.first { $0.id == item.id }
-                                } else {
-                                    selectedAccountForSheet = store.accounts.first { $0.id == item.id }
-                                }
-                            } label: {
-                                breakdownLegendRow(item, index: index)
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            if groupingMode == .categories {
+                                selectedCategoryForSheet = store.categories.first { $0.id == item.id }
+                            } else {
+                                selectedAccountForSheet = store.accounts.first { $0.id == item.id }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
-                            .accessibilityIdentifier("breakdown-\(item.id)")
-                            .spendyNavigationSource(
-                                groupingMode == .categories
-                                    ? AppTransitionIDs.categoryCard(item.id)
-                                    : AppTransitionIDs.accountCard(item.id),
-                                in: analyticsTransitions
-                            )
-                        } else {
-                            Button {
-                                withAnimation(AppMotion.fluidSpring) { isBreakdownExpanded = true }
-                            } label: {
-                                HStack {
-                                    breakdownLegendRow(item, index: index)
-                                    Image(systemName: "chevron.down").font(.caption)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityHint("Show all remaining categories or accounts")
-                            .accessibilityIdentifier("expand-spending-breakdown")
+                        } label: {
+                            breakdownLegendRow(item, index: index)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                        .accessibilityIdentifier("breakdown-\(item.id)")
+                        .spendyNavigationSource(
+                            groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
+                            in: analyticsTransitions)
                         if index < visibleItems.count - 1 {
                             Divider().overlay(SpendyColors.separator)
                         }
                     }
                 }
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 8) {
-            if isBreakdownExpanded && !remaining.isEmpty {
-                Button("Show less") {
-                    withAnimation(AppMotion.fluidSpring) { isBreakdownExpanded = false }
+            if !allItems.isEmpty {
+                Button { showsSpendingBreakdown = true } label: {
+                    HStack {
+                        Text("View all")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .font(.caption)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("expand-spending-breakdown")
             }
-        }
-        .modifier(AnalyticsPanelStyle())
-    }
 
-    private func breakdownTone(at index: Int) -> Color {
-        switch index {
-        case 0: SpendyColors.textPrimary
-        case 1: SpendyColors.textSecondary
-        case 2: SpendyColors.textTertiary
-        default: SpendyColors.cardBackgroundSecondary
+
         }
     }
 
     private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(item.label)
-                    .font(.subheadline.weight(.medium))
+        HStack(spacing: 10) {
+            SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
+                size: .small, style: .circle, monogramName: item.label)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.label).font(.subheadline.weight(.medium))
                     .foregroundStyle(SpendyColors.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 6)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                        .font(.subheadline.weight(.semibold)).monospacedDigit()
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    Text((item.percentage / 100).formatted(.percent.precision(.fractionLength(0...1))))
-                        .font(.caption).foregroundStyle(SpendyColors.textSecondary)
-                }
+                Text("\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")")
+                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
             }
-
+            Spacer(minLength: 4)
+            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .font(.subheadline.weight(.semibold)).monospacedDigit()
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1).minimumScaleFactor(0.75)
         }
-        .padding(.vertical, 12)
-        .frame(minHeight: 44)
+        .padding(.vertical, 8)
+        .frame(minHeight: 48)
         .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.label), \(item.txCount) expenses, \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
     }
 
     private var cashflowChartSection: some View {
@@ -934,14 +826,7 @@ struct AnalyticsView: View {
                         }
                     }
                     
-                    Section("Management") {
-                        Button(action: {
-                            HapticsManager.shared.trigger(.selection)
-                            showSubscriptionSheet = true
-                        }) {
-                            Label("Subscriptions", systemImage: SFIcons.subscriptions)
-                        }
-                    }
+
                 } label: {
                     GlassCircleIcon(
                         icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
@@ -1050,6 +935,7 @@ struct AnalyticsView: View {
                 }
             }
             .chartXSelection(value: $selectedCashflowLabel)
+            .spendyHoldPreview(selection: $selectedCashflowLabel)
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()
@@ -1218,6 +1104,7 @@ struct AnalyticsView: View {
                 }
             }
             .chartXSelection(value: $selectedSpendingLabel)
+            .spendyHoldPreview(selection: $selectedSpendingLabel)
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()
@@ -1439,6 +1326,7 @@ struct AnalyticsView: View {
                 }
             }
             .chartXSelection(value: $selectedIncomeLabel)
+            .spendyHoldPreview(selection: $selectedIncomeLabel)
             .chartXAxis {
                 AxisMarks { _ in
                     AxisValueLabel()

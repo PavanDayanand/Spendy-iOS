@@ -2,6 +2,24 @@ import XCTest
 @testable import Spendy
 
 final class SpendingChartSnapshotTests: XCTestCase {
+    func testSpendingScopeKeepsDatesAccountsAndCategorySelections() {
+        let now = date(10, 11)
+        let scope = SpendingScope(start: date(10, 1, hour: 0), end: date(11, 1, hour: 0), referenceDate: now,
+            accountIDs: ["cash"], categoryIDs: ["food", "groceries"])
+        XCTAssertTrue(scope.contains(expense(10, at: now)))
+        XCTAssertTrue(scope.contains(expense(10, at: now, category: "groceries")))
+        XCTAssertFalse(scope.contains(expense(10, at: now, account: "bank")))
+        XCTAssertFalse(scope.contains(expense(10, at: now, category: "fuel")))
+        XCTAssertFalse(scope.contains(expense(10, at: now.addingTimeInterval(1))))
+        XCTAssertFalse(scope.contains(expense(10, at: date(9, 2))))
+        XCTAssertTrue(scope.contains(expense(10, at: date(9, 2)), includeDates: false))
+        let income = Transaction(title: "Income", amount: 50, type: .income, categoryId: "food", accountId: "cash", date: now)
+        XCTAssertFalse(scope.contains(income))
+        XCTAssertTrue(scope.contains(income, expensesOnly: false))
+        let none = SpendingScope(start: scope.start, end: scope.end, referenceDate: now, categoryIDs: [])
+        XCTAssertFalse(none.contains(expense(10, at: now)))
+    }
+
     private var calendar: Calendar {
         var value = Calendar(identifier: .gregorian)
         value.timeZone = TimeZone(secondsFromGMT: 0)!

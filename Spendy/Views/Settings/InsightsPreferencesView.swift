@@ -16,7 +16,7 @@ struct InsightsPreferencesView: View {
                 Section("What you'll see") {
                     Label { Text("Spending patterns and category changes") } icon: { Image(systemName: "chart.bar").foregroundStyle(SpendyColors.textPrimary) }
                     Label { Text("Budget pace and upcoming bills") } icon: { Image(systemName: "target").foregroundStyle(SpendyColors.textPrimary) }
-                    Label { Text("One useful insight at a time") } icon: { Image(systemName: "sparkles").foregroundStyle(SpendyColors.textPrimary) }
+                    Label { Text("One useful insight at a time") } icon: { Image(systemName: SpendyInsightBrandMark.symbol).foregroundStyle(SpendyColors.textPrimary) }
                 }
                 Section {
                     Text("Insights appear in Analytics, Budget, subscriptions, and category details. They follow the selected dates and account. Small samples are held back, and forecasts are estimates—not promises.")

@@ -327,7 +327,7 @@ public struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             heading("From entries to understanding", "See what your\nspending tells you.", "Spending patterns and budget insights, calculated on your device. No generative AI.")
             VStack(alignment: .leading, spacing: 14) {
-                Label("Example insight", systemImage: "chart.xyaxis.line")
+                Label("Example insight", systemImage: SpendyInsightBrandMark.symbol)
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(insightTitle)
                     .font(.title2.bold()).fontDesign(.rounded)

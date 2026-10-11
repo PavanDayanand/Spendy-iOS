@@ -87,6 +87,8 @@ struct SharedEntityAnalyticsSheet: View {
     let entity: AnalyticsEntity
     var isSettingsPage: Bool = false
     var initialType: TransactionType = .expense
+    var spendingScope: SpendingScope? = nil
+    @State private var appliedSpendingScope = false
     var topControlsNamespace: Namespace.ID? = nil
     var backButtonMorphID: String = "topControl_left"
     var editButtonMorphID: String = "topControl_right"
@@ -160,13 +162,14 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - Transactions & Calculation Engine
     private var allEntityTransactions: [Transaction] {
+        let transactions = store.transactions.filter { spendingScope?.contains($0, includeDates: false, expensesOnly: false) ?? true }
         switch entity {
         case .category(let cat):
-            return store.transactions.filter {
+            return transactions.filter {
                 $0.categoryId == cat.id && $0.type == cat.type
             }.sorted { $0.date > $1.date }
         case .account(let acc):
-            return store.transactions.filter {
+            return transactions.filter {
                 $0.accountId == acc.id
             }.sorted { $0.date > $1.date }
         }
@@ -334,7 +337,7 @@ struct SharedEntityAnalyticsSheet: View {
                 startDate: custom.start,
                 endDate: custom.end,
                 scope: scope,
-                referenceDate: Date()
+                referenceDate: spendingScope?.referenceDate ?? Date()
             )
         } else {
             let insightPeriod: InsightPeriod = {
@@ -360,7 +363,7 @@ struct SharedEntityAnalyticsSheet: View {
                 baselineEndDate: prevEnd,
                 isCustomRange: false,
                 customRangeLabel: nil,
-                referenceDate: Date()
+                referenceDate: spendingScope?.referenceDate ?? Date()
             )
         }
     }
@@ -376,7 +379,7 @@ struct SharedEntityAnalyticsSheet: View {
         }()
         
         let facts = InsightFactsExtractor.extractFacts(
-            transactions: store.transactions,
+            transactions: store.transactions.filter { spendingScope?.contains($0, includeDates: false, expensesOnly: false) ?? true },
             budget: store.budget,
             categories: store.categories,
             subscriptions: store.subscriptions,
@@ -411,11 +414,12 @@ struct SharedEntityAnalyticsSheet: View {
                 )
             }
             
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout(isEnabled: isHomeOrigin) {
+
                 if isHomeOrigin {
                     topHeaderBar
                 }
-                
+            } content: {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         heroIdentityAndAmount
@@ -503,6 +507,12 @@ struct SharedEntityAnalyticsSheet: View {
             AddTransactionView(transactionToEdit: tx)
         }
         .onAppear {
+            if !appliedSpendingScope, let spendingScope {
+                customDateRange = (spendingScope.start, spendingScope.end.addingTimeInterval(-0.000001))
+                customStartDate = spendingScope.start
+                customEndDate = spendingScope.end.addingTimeInterval(-0.000001)
+                appliedSpendingScope = true
+            }
             selectedSection = .overview
         }
         .onChange(of: availableSections) { _, newSections in
@@ -607,6 +617,10 @@ struct SharedEntityAnalyticsSheet: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                     .animation(.easeInOut(duration: 0.15), value: activeBarPoint?.id)
                 
+                if let ids = spendingScope?.accountIDs {
+                    Text(ids.count == 1 ? store.account(for: ids.first!).label : "\(ids.count) selected accounts")
+                        .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                }
                 SpendyGradientText(
                     heroDisplayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
                     size: 38,
@@ -614,6 +628,7 @@ struct SharedEntityAnalyticsSheet: View {
                     tracking: -1.0,
                     colors: SpendyGradientPresets.electricBlueToWhite
                 )
+                .accessibilityIdentifier("entity-spending-total")
                 .animation(.spring(response: 0.25, dampingFraction: 0.8), value: activeBarPoint?.id)
                 
                 if activeBarPoint == nil {

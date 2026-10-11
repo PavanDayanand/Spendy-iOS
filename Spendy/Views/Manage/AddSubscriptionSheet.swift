@@ -88,12 +88,13 @@ struct AddSubscriptionSheet: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 // Top Header Bar
                 topHeaderBar
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
-
+            } content: {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Hero Circle Avatar

@@ -125,18 +125,21 @@ struct SubscriptionsView: View {
 
     var body: some View {
         ZStack {
-            LiquidMeshBackground()
+            SpendyColors.appBackground.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                if topControlsNamespace != nil {
-                    topHeaderBar
-                        .padding(.bottom, 6)
-                }
-
+            ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         if topControlsNamespace == nil {
-                            tabHeaderBar
+                            tabHeaderBar(showsControls: false)
+                        } else {
+                            Text("Subscriptions")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .padding(.top, 8)
+                                .accessibilityAddTraits(.isHeader)
                         }
 
                         summaryCard
@@ -154,6 +157,12 @@ struct SubscriptionsView: View {
                     .padding(.bottom, 120)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                if topControlsNamespace != nil {
+                    topHeaderBar
+                        .padding(.bottom, 6)
+                } else {
+                    tabHeaderBar(showsControls: true)
+                }
             }
         }
         .navigationTitle("")
@@ -194,15 +203,18 @@ struct SubscriptionsView: View {
     }
 
     // MARK: - Tab Header Bar (Large Title with Top Right 44pt Add Button)
-    private var tabHeaderBar: some View {
+    private func tabHeaderBar(showsControls: Bool) -> some View {
         HStack(alignment: .center) {
             Text("Subscriptions")
                 .font(.system(size: 32, weight: .heavy))
                 .foregroundStyle(SpendyColors.textPrimary)
+                .opacity(showsControls ? 0 : 1)
+                .accessibilityHidden(showsControls)
                 .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
+            if showsControls {
             GlassCircleButton(
                 icon: "plus",
                 size: 44,
@@ -214,6 +226,9 @@ struct SubscriptionsView: View {
             ) {
                 HapticsManager.shared.trigger(.selection)
                 showAddSubscription = true
+            }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
             }
         }
         .padding(.horizontal, 20)
@@ -244,6 +259,8 @@ struct SubscriptionsView: View {
             Spacer()
 
             Text("Subscriptions")
+                .hidden()
+                .accessibilityHidden(true)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)

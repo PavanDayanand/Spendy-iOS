@@ -17,7 +17,7 @@ struct CurrencyInfo: Identifiable, Hashable {
     
     static func symbol(for code: String) -> String {
         let specialSymbols: [String: String] = [
-            "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹",
+            "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "AOA": "Kz",
             "JPY": "¥", "CAD": "$", "AUD": "$", "SGD": "$",
             "AED": "د.إ", "BRL": "R$", "CNY": "¥", "RUB": "₽",
             "CHF": "CHF", "KRW": "₩", "PLN": "zł", "UAH": "₴",
@@ -316,9 +316,11 @@ struct CurrencyPickerSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        SpendyPinnedHeaderLayout {
+
             header
-            ScrollView(showsIndicators: false) {
+            } content: {
+                ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 22) {
                     if !suggestedCurrencies.isEmpty {
                         currencyGroup("Suggested", currencies: suggestedCurrencies)
@@ -340,7 +342,7 @@ struct CurrencyPickerSheet: View {
                     .padding(.top, 8)
                     .padding(.bottom, 16)
             }
-        }
+            }
         .presentationDetents([.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
     }

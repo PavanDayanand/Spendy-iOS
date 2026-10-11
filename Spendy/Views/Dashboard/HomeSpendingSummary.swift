@@ -9,7 +9,12 @@ struct HomeSpendingSummary: View {
     let amountsHidden: Bool
     let insightsEnabled: Bool
     @Binding var showsLine: Bool
+    var onInsight: ((InsightDestination, Date) -> Void)? = nil
     var onExplore: (Date) -> Void
+    @Environment(ExpenseStore.self) private var store
+    @State private var showsInsights = false
+    @State private var pendingInsight: InsightDestination?
+    @State private var insightDate = Date()
     @State private var selectedID: String?
     @State private var showsInfo = false
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 40.0
@@ -77,19 +82,19 @@ struct HomeSpendingSummary: View {
                             .font(.caption2)
                             .foregroundStyle(SpendyColors.textSecondary)
                         Spacer()
-                        if selected != nil {
-                            Button("Reset") { selectedID = nil }
-                                .font(.caption)
-                                .frame(minWidth: 44, minHeight: 44)
-                                .accessibilityLabel("Reset chart selection")
-                        }
+
                     }
-                    Button { onExplore(snapshot.start) } label: {
+                    Button {
+                        if insightsEnabled {
+                            insightDate = snapshot.start
+                            showsInsights = true
+                        } else { onExplore(snapshot.start) }
+                    } label: {
                         HStack(spacing: 6) {
                             if insightsEnabled, let leading = snapshot.leadingCategory,
                                let category = categories.first(where: { $0.id == leading.id }) {
-                                Image(systemName: category.sfSymbol)
-                                Text("\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending")
+                                SpendyInsightSymbol()
+                                ShinyHeadlineText(headline: "\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending", emphasis: [], font: .caption, emphasisFont: .caption.bold())
                             } else {
                                 Text("View spending insights")
                             }
@@ -106,6 +111,23 @@ struct HomeSpendingSummary: View {
                     .accessibilityHint("Open spending analytics for this account and month")
                 }
             }
+            .sheet(isPresented: $showsInsights, onDismiss: {
+                if let destination = pendingInsight {
+                    pendingInsight = nil
+                    if destination == .analytics { onExplore(insightDate) }
+                    else { onInsight?(destination, insightDate) }
+                }
+            }) {
+                SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
+                    currencySymbol: currencySymbol, insights: insights(for: snapshot), insightsOnly: true,
+                    onSelectInsight: { destination in
+                        pendingInsight = destination
+                        showsInsights = false
+                    }, onViewSpending: {
+                        pendingInsight = .analytics
+                        showsInsights = false
+                    })
+            }
             .sheet(isPresented: $showsInfo) {
                 SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
                                        currencySymbol: currencySymbol, amountsHidden: amountsHidden)
@@ -114,6 +136,18 @@ struct HomeSpendingSummary: View {
         .onChange(of: accountID) { _, _ in selectedID = nil }
         .onChange(of: amountsHidden) { _, _ in selectedID = nil }
         .onChange(of: showsLine) { _, _ in selectedID = nil }
+    }
+
+    private func insights(for snapshot: SpendingChartSnapshot) -> [InsightMoment] {
+        let context = AnalyticsInsightContext(scope: accountID == "all" ? .global : .account(id: accountID),
+            period: .month, startDate: snapshot.start,
+            endDate: snapshot.end.addingTimeInterval(-0.000001),
+            baselineStartDate: snapshot.baselineStart,
+            baselineEndDate: snapshot.baselineEnd.addingTimeInterval(-0.000001),
+            referenceDate: snapshot.referenceDate)
+        let facts = InsightFactsExtractor.extractFacts(transactions: transactions, budget: store.budget,
+            categories: categories, subscriptions: store.subscriptions, context: context)
+        return InsightDecisionEngine.shared.evaluate(facts: facts, surface: .analytics, currencySymbol: currencySymbol)
     }
 
     private var styleButton: some View {

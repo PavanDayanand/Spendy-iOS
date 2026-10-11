@@ -206,7 +206,8 @@ struct CategoryIconPickerSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 // 1. Header Bar: Close Button & Centered Title "Choose Icon"
                 headerBar
                     .padding(.horizontal, 20)
@@ -219,6 +220,7 @@ struct CategoryIconPickerSheet: View {
                     .padding(.bottom, 14)
                 
                 // 3. Scrollable Unified Icon Grid
+            } content: {
                 ScrollView(showsIndicators: false) {
                     if activeSymbols.isEmpty {
                         emptyStateView

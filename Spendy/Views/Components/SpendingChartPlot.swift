@@ -29,9 +29,9 @@ struct SpendingChartPlot: View {
                         .accessibilityLabel(bucket.start.formatted(.dateTime.month(.wide).day().year()))
                         .accessibilityValue(accessibleValue(bucket))
                 } else {
-                    BarMark(x: .value("Period", bucket.id), y: .value("Spending", bucket.amount), width: .ratio(0.55))
-                        .cornerRadius(3)
-                        .foregroundStyle(SpendyColors.textPrimary)
+                    BarMark(x: .value("Period", bucket.id), y: .value("Spending", bucket.amount), width: .ratio(0.68))
+                        .cornerRadius(5)
+                        .foregroundStyle(LinearGradient(colors: [SpendyColors.textPrimary, SpendyColors.textPrimary.opacity(0.55)], startPoint: .top, endPoint: .bottom))
                         .opacity(selectedID == nil || selectedID == bucket.id ? 1 : (contrast == .increased ? 0.65 : 0.35))
                         .accessibilityLabel(bucket.start.formatted(.dateTime.month(.wide).day().year()))
                         .accessibilityValue(accessibleValue(bucket))
@@ -59,7 +59,7 @@ struct SpendingChartPlot: View {
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 4]))
                     .foregroundStyle(SpendyColors.separator)
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
@@ -71,15 +71,7 @@ struct SpendingChartPlot: View {
             }
         }
         .chartXSelection(value: $selectedID)
-        .chartGesture { proxy in
-            SpatialTapGesture().onEnded { value in
-                proxy.selectXValue(at: value.location.x)
-            }
-            .simultaneously(with: DragGesture(minimumDistance: 8).onChanged { value in
-                guard abs(value.translation.width) >= abs(value.translation.height) else { return }
-                proxy.selectXValue(at: value.location.x)
-            })
-        }
+        .spendyHoldPreview(selection: $selectedID)
         // Keep dense axis ticks legible without collisions. Full values remain
         // available through selection and the accessible chart descriptor.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -102,19 +94,21 @@ struct SpendingChartInfoSheet: View {
     let currencySymbol: String
     var amountsHidden = false
     var insights: [InsightMoment] = []
+    var insightsOnly = false
     var onSelectInsight: ((InsightDestination) -> Void)? = nil
+    var onViewSpending: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
                 if !amountsHidden && !insights.isEmpty {
-                    Section("Spendy insights") {
+                    Section {
                         ForEach(insights) { moment in
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(moment.headline).font(.headline)
+                                ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis, font: .headline, emphasisFont: .headline.bold())
                                 if let supporting = moment.supportingText {
-                                    Text(supporting).font(.subheadline).foregroundStyle(.secondary)
+                                    InsightSupportingText(text: supporting, emphasis: moment.emphasis, font: .subheadline)
                                 }
                                 if let destination = moment.destination, let onSelectInsight {
                                     Button(moment.actionTitle ?? "Explore insight") { onSelectInsight(destination) }
@@ -122,12 +116,25 @@ struct SpendingChartInfoSheet: View {
                             }
                             .padding(.vertical, 4)
                         }
+                    } header: {
+                        SpendyInsightBrandMark(style: .kicker)
+                            .textCase(nil)
+                            .padding(.vertical, 6)
                     }
                     .accessibilityIdentifier("spending-info-insights")
                 }
+                if insightsOnly && insights.isEmpty {
+                    Section {
+                        Text("Keep recording expenses to discover personalized insights from your activity.")
+                    }
+                }
+                if insightsOnly, let onViewSpending {
+                    Section { Button("View spending details", action: onViewSpending) }
+                }
+                if !insightsOnly {
                 Section("Reading the charts") {
-                    Text("Bars and points show recorded expense totals. Taller bars or higher points mean more spending. A dashed line marks your selected period; tap Reset to return to the full total.")
-                    Text("Category bar lengths compare amounts. Each percentage is that category’s share of spending for the selected account and period.")
+                    Text("Bars and points show recorded expense totals. Taller bars or higher points mean more spending. Hold a chart to preview a period, then slide to explore. Release to return to the full total.")
+                    Text("Category rows show recorded expense counts and totals for the selected account and period.")
                 }
                 Section("Recorded spending") {
                     Text("Expense transactions in \(accountLabel), using your app currency. Income and transfers are excluded. Future-dated transactions are included only when their date arrives.")
@@ -150,8 +157,9 @@ struct SpendingChartInfoSheet: View {
                     }
                     Text("‘Less spent’ describes recorded expenses, not money saved. Refunds recorded as income do not reduce this expense total.")
                 }
+                }
             }
-            .navigationTitle("About spending")
+            .navigationTitle(insightsOnly ? "Spendy insights" : "About spending")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .tint(SpendyColors.textPrimary)
@@ -181,5 +189,39 @@ private struct SpendingChartAccessibility: AXChartDescriptorRepresentable {
             summary: "Expense totals by period. Any current period includes only spending recorded to date.",
             xAxis: xAxis, yAxis: yAxis,
             series: [AXDataSeriesDescriptor(name: "Expenses", isContinuous: false, dataPoints: points)])
+    }
+}
+
+
+/// Chart previews last only while holding; release or cancellation restores the overview.
+private struct SpendyHoldPreviewModifier: ViewModifier {
+    @Binding var selection: String?
+    @GestureState private var isHolding = false
+
+    func body(content: Content) -> some View {
+        content
+            .chartGesture { proxy in
+                LongPressGesture(minimumDuration: 0.2, maximumDistance: 12)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .updating($isHolding) { value, state, _ in
+                        if case .second(true, _) = value { state = true }
+                    }
+                    .onChanged { value in
+                        if case .second(true, let drag?) = value {
+                            proxy.selectXValue(at: drag.location.x)
+                        }
+                    }
+                    .onEnded { _ in selection = nil }
+            }
+            .onChange(of: isHolding) { _, holding in
+                if !holding { selection = nil }
+            }
+            .accessibilityHint("Hold and slide to preview a period. Release to return to the total.")
+    }
+}
+
+extension View {
+    func spendyHoldPreview(selection: Binding<String?>) -> some View {
+        modifier(SpendyHoldPreviewModifier(selection: selection))
     }
 }

@@ -14,7 +14,7 @@ The information sheet explains inclusion, recorded-data limitations, current and
 
 The existing Day/Week/Month/Year navigation now feeds the recorded-spending chart through the shared snapshot. Future transactions are excluded. Selection shows the bucket amount and transaction count. Show transactions presents only the matching expenses for the selected account, period and optional bucket. Opening transaction details dismisses the list first; existing parent-owned editing behavior is retained.
 
-Category/account breakdown rows now use ranked horizontal bars with exact amounts and shares. Existing entity-analytics navigation remains available from the rows.
+Category/account breakdown rows combine icons, exact amounts, shares, and native horizontal bars on one shared amount scale. Existing entity-analytics navigation remains available from the rows.
 
 ## Data rules
 
@@ -30,6 +30,22 @@ The simulator uses the isolated `charts` fixture; screenshots contain demo data.
 
 Validated: Xcode simulator build succeeded; 9 calculation tests, 5 chart UI tests and 2 existing Home/category accessibility-navigation regression tests passed. Final Home screenshots were visually reviewed in light/dark appearance; large text, privacy, selected months and Analytics detail were also reviewed. `git diff --check` passed.
 
-Analytics refinement: Spendy insights now live at the top of About spending, with destination actions deferred until the info sheet dismisses. A native horizontal category/account chart compares amounts; exact amount/share rows retain drill-through. Reading guides explain spending bars, category shares, cash-flow fill, and all three streak calendar states. Streak dates remain visible in filled and outlined cells; incomplete days are distinct and the recorded-data caveat is explicit.
+Analytics refinement: Home and Analytics provide direct insight entries, with destination actions deferred until the insight sheet dismisses. About spending contains chart explanations. Category/account rows combine the chart and navigation without repeating labels. Reading guides explain spending bars, category shares, cash-flow fill, and all three streak calendar states. Streak dates remain visible in filled and outlined cells; incomplete days are distinct and the recorded-data caveat is explicit.
 
 Refinement validation: fresh simulator build, info/legend/streak UI verification, transaction drill-through, and existing remaining-category navigation passed. Category chart, info insights, and streak screenshots were visually reviewed and saved in Design. git diff --check passed.
+
+Direct-access refinement: Home's insight shortcut opens a scoped insights sheet in one tap, and a visible shiny brand button does the same in Analytics. The shared laser.burst symbol pulses only while the app is active and Reduce Motion is off. Recorded-spending bars use rounded corners, neutral gradient fills, and subdued dashed grid lines. Show transactions reuses AllTransactionsView with a fixed expense/date/account scope, keeping existing search, filters, details, and editing.
+
+Compact-panel refinement: recorded spending and category/account breakdown share one panel, with a subtly distinct chart area. The headline leads directly into dates, comparison, and a 150-point plot. Transactions and the shiny one-line insight entry share the footer. The lower section uses shared circle badges and compact right-aligned bar/value content; remaining entities use Show N more / Show less rather than a synthetic Other row. Exact amounts remain accessible.
+
+View-all refinement: the overview retains the leading three category/account rows. View all opens SpendingBreakdownSheet with the same snapshot, recorded total, comparison, chart, and all ranked entity rows with expense counts and shares. Entity-detail navigation stays inside the sheet; Back returns to the list, and its own Back dismisses to Analytics.
+
+Breakdown controls: the top-right options menu contains the remembered Show chart toggle and Filter action. The searchable picker supports select all, clear all, and multiple specific selections. The same filter applies to current and baseline expenses, chart buckets, totals, counts, and category/account shares. Changing the filter clears chart selection; an empty selection has an explicit empty state.
+
+Sheet consistency: Spending by Category/Account is a full-screen presentation with the same fixed header spacing and shared glass controls as entity analytics. It passes the controls namespace into category/account navigation, preserving the back control identity and allowing the options control to transition into the entity edit control. Simulator tests verified menu/filter actions and category detail/back navigation.
+
+Linked spending context: SpendingScope carries exclusive date bounds, the recorded-data reference time, and optional account/category sets. Category/account details inherit this context, while their own period controls can change the date range. The browser reuses the same searchable multi-select category picker, and Select all stays inside the inherited scope. Active breakdown selections appear in the period caption and menu, with Reset filters available. Scoped transaction menus offer only permitted accounts and expense types.
+
+Navigation refinement: View all and both spending transaction shortcuts use the existing navigation stack and standard horizontal push/pop transitions. SpendingBreakdownSheet no longer owns a nested NavigationStack. Header controls reuse the presenting Analytics namespace. Category selection remains a searchable filter sheet.
+
+Breakdown presentation: the custom back/menu controls sit over a translucent material header, with the scrollable content passing behind it. The breakdown shows its category/account rows directly; the recorded-spending card remains the transaction shortcut. Currency AOA now displays as Kz, including for previously saved AOA symbols.

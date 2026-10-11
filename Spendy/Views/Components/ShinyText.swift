@@ -54,6 +54,8 @@ struct ShinyText: View {
                         }
                     }
                     .mask(label)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
                 .mask(label)
         }

@@ -34,12 +34,16 @@ struct BudgetView: View {
         ZStack {
             SpendyColors.appBackground.ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                topHeaderBar
-                    .padding(.bottom, 6)
-                
+            ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
+                        Text("Budget")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .padding(.top, 8)
+                            .accessibilityAddTraits(.isHeader)
                         // Title Subtitle Range Chip
                         HStack {
                             Text(cycleDateRangeString)
@@ -64,6 +68,8 @@ struct BudgetView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 36)
                 }
+                topHeaderBar
+                    .padding(.bottom, 6)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -112,6 +118,8 @@ struct BudgetView: View {
             Spacer()
 
             Text("Budget")
+                .hidden()
+                .accessibilityHidden(true)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(SpendyColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)

@@ -83,7 +83,8 @@ struct AddAccountSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 SpendyCreateSheetHeader(
                     title: isEditing ? "Edit Account" : "New Account",
                     showDelete: canDelete,
@@ -100,7 +101,7 @@ struct AddAccountSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
-                
+            } content: {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         avatarHeroSection

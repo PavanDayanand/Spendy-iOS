@@ -17,9 +17,18 @@ struct AllTransactionsView: View {
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
     
+    // Optional chart scope stays applied even when the browser filters change.
+    var spendingScope: SpendingScope? = nil
+    var scopeStart: Date? = nil
+    var scopeEnd: Date? = nil
+    var scopeAccountID: String? = nil
+    var scopeTitle: String? = nil
+
     // Search & Filters
+    @State private var pinnedHeaderHeight: CGFloat = 116
     @State private var searchQuery: String = ""
-    @State private var selectedCategoryId: String? = nil
+    @State private var selectedCategoryIDs: Set<String>? = nil
+    @State private var showsCategoryFilter = false
     @State private var selectedAccountId: String? = nil
     @State private var selectedTransactionType: TransactionType? = nil
     @FocusState private var isSearchFocused: Bool
@@ -33,7 +42,13 @@ struct AllTransactionsView: View {
     
     // MARK: - Filtered Transactions
     private var filteredTransactions: [Transaction] {
-        var txs = store.transactions
+        var txs = store.transactions.filter { spendingScope?.contains($0) ?? true }
+        if let scopeStart, let scopeEnd {
+            txs = txs.filter { $0.type == .expense && $0.date >= scopeStart && $0.date < scopeEnd && $0.date <= (spendingScope?.referenceDate ?? Date()) && $0.amount.isFinite && $0.amount >= 0 }
+        }
+        if let scopeAccountID, scopeAccountID != "all" {
+            txs = txs.filter { $0.accountId == scopeAccountID }
+        }
         
         // 1. Type Filter
         if let type = selectedTransactionType {
@@ -41,8 +56,8 @@ struct AllTransactionsView: View {
         }
         
         // 2. Category Filter
-        if let catId = selectedCategoryId {
-            txs = txs.filter { $0.categoryId == catId }
+        if let selectedCategoryIDs {
+            txs = txs.filter { selectedCategoryIDs.contains($0.categoryId) }
         }
         
         // 3. Account Filter
@@ -102,21 +117,35 @@ struct AllTransactionsView: View {
     }
     
     // MARK: - Labels
-    private var categoryButtonLabel: String {
-        if let catId = selectedCategoryId, let cat = store.categories.first(where: { $0.id == catId }) {
-            return cat.label
+    private var categoryFilterItems: [AnalyticsBreakdownItem] {
+        store.categories.filter { (spendingScope?.categoryIDs?.contains($0.id) ?? true) && (scopeStart == nil || $0.type == .expense) }.map {
+            AnalyticsBreakdownItem(id: $0.id, label: $0.label, sfSymbol: $0.sfSymbol,
+                colorHex: $0.colorHex, txCount: 0, amount: 0, percentage: 0)
         }
+    }
+
+    private var categoryButtonLabel: String {
+        if let selectedCategoryIDs {
+            if selectedCategoryIDs.count == 1, let id = selectedCategoryIDs.first { return store.category(for: id).label }
+            return "Categories · \(selectedCategoryIDs.count)"
+        }
+        if let ids = spendingScope?.categoryIDs { return "Categories · \(ids.count)" }
         return "Categories"
     }
-    
+
     private var accountButtonLabel: String {
         if let accId = selectedAccountId, let acc = store.accounts.first(where: { $0.id == accId }) {
             return acc.label
+        }
+        if let ids = spendingScope?.accountIDs {
+            if ids.count == 1, let id = ids.first { return store.account(for: id).label }
+            return "Accounts · \(ids.count)"
         }
         return "Accounts"
     }
     
     private var typeButtonLabel: String {
+        if scopeStart != nil || spendingScope != nil { return "Expenses" }
         switch selectedTransactionType {
         case .expense: return "Expenses"
         case .income: return "Income"
@@ -125,6 +154,28 @@ struct AllTransactionsView: View {
         }
     }
     
+    private var pinnedHeader: some View {
+        VStack(spacing: 0) {
+            topHeaderBar
+            if let scopeStart, let scopeEnd {
+                VStack(spacing: 3) {
+                    Text("Expenses · \(spendingScope?.accountIDs != nil ? accountButtonLabel : (store.accounts.first { $0.id == scopeAccountID }?.label ?? "All accounts"))")
+                    if let ids = spendingScope?.categoryIDs { Text("\(ids.count) selected categories") }
+                    Text(scopeStart.formatted(.dateTime.day().month(.abbreviated).year()) + " – " + scopeEnd.addingTimeInterval(-0.000001).formatted(.dateTime.day().month(.abbreviated).year()))
+                }
+                .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                .padding(.vertical, 6)
+            }
+
+            // Horizontal Scrollable Liquid Glass Filter Capsules
+            horizontalFilterBar
+                .padding(.vertical, 8)
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pinnedHeaderHeight = $0 }
+        .spendyBarBackground()
+
+    }
+
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -132,13 +183,7 @@ struct AllTransactionsView: View {
             SpendyColors.appBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                topHeaderBar
-
-                // Horizontal Scrollable Liquid Glass Filter Capsules
-                horizontalFilterBar
-                    .padding(.vertical, 8)
-                
+            ZStack(alignment: .top) {
                 // Scrollable Content Layer
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
@@ -167,6 +212,7 @@ struct AllTransactionsView: View {
                                         VStack(spacing: 12) {
                                             ForEach(txs) { tx in
                                                 transactionCard(tx)
+                                                    .accessibilityIdentifier("spending-transaction-\(tx.id)")
                                             }
                                         }
                                     }
@@ -177,7 +223,12 @@ struct AllTransactionsView: View {
                             .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                         }
                     }
-                }
+                }                .safeAreaPadding(.top, pinnedHeaderHeight)
+                .accessibilityIdentifier("allTransactionsViewport")
+
+                pinnedHeader
+                    .zIndex(1)
+
             }
             
             // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
@@ -189,7 +240,7 @@ struct AllTransactionsView: View {
             }
             .zIndex(100)
         }
-        .navigationTitle("All Transactions")
+        .navigationTitle(scopeTitle ?? "All Transactions")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -199,6 +250,9 @@ struct AllTransactionsView: View {
         }
         .fullScreenCover(item: $editingTransaction) { tx in
             AddTransactionView(transactionToEdit: tx)
+        }
+        .sheet(isPresented: $showsCategoryFilter) {
+            SpendingBreakdownFilter(items: categoryFilterItems, byCategory: true, selectedIDs: $selectedCategoryIDs)
         }
         .sheet(item: $inspectingTransaction, onDismiss: {
             editingTransaction = pendingTransactionEdit
@@ -228,7 +282,7 @@ struct AllTransactionsView: View {
                 }
             }
             Spacer()
-            Text("All Transactions")
+            Text(scopeTitle ?? "All Transactions")
                 .font(.headline)
                 .foregroundStyle(SpendyColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)
@@ -244,27 +298,11 @@ struct AllTransactionsView: View {
     private var horizontalFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // 1. [Categories] Liquid Glass Menu
-                Menu {
-                    Button("All Categories") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedCategoryId = nil
-                        }
-                    }
-                    Divider()
-                    ForEach(store.categories) { cat in
-                        Button(cat.label) {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                selectedCategoryId = cat.id
-                            }
-                        }
-                    }
-                } label: {
-                    let isCatSelected = selectedCategoryId != nil
+                // Shared searchable, multi-select category picker.
+                Button { showsCategoryFilter = true } label: {
+                    let isCatSelected = selectedCategoryIDs != nil || spendingScope?.categoryIDs != nil
                     HStack(spacing: 6) {
-                        Image(systemName: isCatSelected ? (store.category(for: selectedCategoryId ?? "").sfSymbol) : "circle.grid.2x2")
+                        Image(systemName: "circle.grid.2x2")
                             .font(.system(size: 13, weight: .semibold))
                         Text(categoryButtonLabel)
                             .font(.system(size: 14, weight: .semibold))
@@ -282,14 +320,14 @@ struct AllTransactionsView: View {
                 
                 // 2. [Accounts] Liquid Glass Menu
                 Menu {
-                    Button("All Accounts") {
+                    Button(spendingScope?.accountIDs != nil || (scopeAccountID != nil && scopeAccountID != "all") ? "All scoped accounts" : "All Accounts") {
                         HapticsManager.shared.trigger(.selection)
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             selectedAccountId = nil
                         }
                     }
                     Divider()
-                    ForEach(store.accounts) { acc in
+                    ForEach(store.accounts.filter { spendingScope?.accountIDs?.contains($0.id) ?? (scopeAccountID == nil || scopeAccountID == "all" || scopeAccountID == $0.id) }) { acc in
                         Button(acc.label) {
                             HapticsManager.shared.trigger(.selection)
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -330,6 +368,7 @@ struct AllTransactionsView: View {
                             selectedTransactionType = .expense
                         }
                     }
+                    if scopeStart == nil && spendingScope == nil {
                     Button("Income") {
                         HapticsManager.shared.trigger(.selection)
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -341,6 +380,7 @@ struct AllTransactionsView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             selectedTransactionType = .transfer
                         }
+                    }
                     }
                 } label: {
                     let isTypeSelected = selectedTransactionType != nil

@@ -55,6 +55,7 @@ struct ReceiptScannerSheet: View {
             topActionBar
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
+                .spendyBarBackground()
         }
         .safeAreaInset(edge: .bottom) {
             if scanResult != nil {

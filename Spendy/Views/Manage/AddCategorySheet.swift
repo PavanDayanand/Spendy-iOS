@@ -75,7 +75,8 @@ struct AddCategorySheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 SpendyCreateSheetHeader(
                     showDelete: isEditing,
                     deleteLabel: "Delete Category",
@@ -96,7 +97,7 @@ struct AddCategorySheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
-                
+            } content: {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         avatarHeroSection

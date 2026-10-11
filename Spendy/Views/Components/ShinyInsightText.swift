@@ -22,7 +22,7 @@ struct ShinyInsightText: View {
                     LinearGradient(
                         colors: [
                             SpendyColors.textPrimary,
-                            SpendyColors.accentCyan,
+                            SpendyColors.textSecondary,
                             SpendyColors.textPrimary
                         ],
                         startPoint: .leading,
@@ -43,9 +43,10 @@ struct ShinyHeadlineText: View {
     let emphasis: [InsightEmphasis]
     var font: Font = .system(size: 15, weight: .semibold)
     var emphasisFont: Font = .system(size: 15, weight: .bold)
-    var color: Color = Color(hex: "#b5b5b5")
-    var shineColor: Color = Color.white
+    var color: Color = SpendyColors.textPrimary
+    var shineColor: Color = SpendyColors.textPrimary.opacity(0.75)
     var phaseOffset: Double = 0.55
+    @Environment(\.colorSchemeContrast) private var contrast
     
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
@@ -54,7 +55,7 @@ struct ShinyHeadlineText: View {
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
         
-        if reduceMotion {
+        if reduceMotion || contrast == .increased {
             label
         } else {
             label
@@ -63,7 +64,7 @@ struct ShinyHeadlineText: View {
                         InsightShineBand(
                             color: color,
                             shineColor: shineColor,
-                            progress: ShinyText.progress(at: context.date, direction: .right, phaseOffset: phaseOffset) / 100.0
+                            progress: ShinyText.progress(at: context.date, speed: 1.8, delay: 7, direction: .right, phaseOffset: phaseOffset) / 100.0
                         )
                     }
                     .mask(label)

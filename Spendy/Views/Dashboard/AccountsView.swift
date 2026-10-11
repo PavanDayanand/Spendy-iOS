@@ -108,10 +108,10 @@ struct AccountsView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
+
                 if topControlsNamespace != nil {
                     topHeaderBar
                 }
-                
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 16) {
                         summaryCard

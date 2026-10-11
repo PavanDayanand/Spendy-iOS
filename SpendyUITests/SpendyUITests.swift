@@ -32,12 +32,26 @@ final class SpendyUITests: XCTestCase {
             app.swipeUp()
             remaining = visibleButton("breakdown-coffee")
         }
+        XCTAssertTrue(visibleButton("breakdown-menu").isHittable)
+        let headerShot = XCTAttachment(screenshot: app.screenshot())
+        headerShot.name = "Category breakdown translucent header while scrolling"
+        headerShot.lifetime = .keepAlways
+        add(headerShot)
         XCTAssertTrue(remaining.waitForExistence(timeout: 5))
         remaining.tap()
         XCTAssertTrue(visibleButton("Back").waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Coffee & Cafés"].exists)
         visibleButton("Back").tap()
         XCTAssertTrue(visibleButton("breakdown-coffee").waitForExistence(timeout: 5))
+        let breakdownScroll = app.scrollViews["breakdown-scroll"]
+        XCTAssertTrue(breakdownScroll.waitForExistence(timeout: 5))
+        for _ in 0..<3 { breakdownScroll.swipeUp() }
+        XCTAssertFalse(app.staticTexts["breakdown-total"].isHittable)
+        XCTAssertTrue(visibleButton("breakdown-menu").isHittable)
+        let scrolledHeaderShot = XCTAttachment(screenshot: app.screenshot())
+        scrolledHeaderShot.name = "Category breakdown translucent header after scrolling"
+        scrolledHeaderShot.lifetime = .keepAlways
+        add(scrolledHeaderShot)
     }
 
     @MainActor func testRecoveryScreenRestoresPreservedLedger() {

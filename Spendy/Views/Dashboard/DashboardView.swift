@@ -27,6 +27,7 @@ struct SpendTrendPoint: Identifiable, Equatable {
 
 // MARK: - On-Screen Hero Spend Bar Chart Component with Interactive Scrubbing
 struct HeroSpendBarChart: View {
+    @GestureState private var isHoldingPreview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let dataPoints: [MinimalBarPoint]
     @Binding var scrubbedPoint: MinimalBarPoint?
@@ -165,28 +166,32 @@ struct HeroSpendBarChart: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 8)
+                    LongPressGesture(minimumDuration: 0.2, maximumDistance: 12)
+                        .sequenced(before: DragGesture(minimumDistance: 0))
+                        .updating($isHoldingPreview) { value, state, _ in
+                            if case .second(true, _) = value { state = true }
+                        }
                         .onChanged { value in
-                            // Only scrub horizontally if not dragging vertically
-                            if abs(value.translation.width) >= abs(value.translation.height) {
-                                isScrubbing = true
-                                if let closest = closestPoint(to: value.location.x, chartWidth: chartWidth) {
-                                    if closest.id != scrubbedPoint?.id {
-                                        HapticsManager.shared.trigger(.selection)
-                                        withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.85)) {
-                                            scrubbedPoint = closest
-                                        }
-                                    }
-                                }
+                            guard case .second(true, let drag?) = value else { return }
+                            isScrubbing = true
+                            if let closest = closestPoint(to: drag.location.x, chartWidth: chartWidth),
+                               closest.id != scrubbedPoint?.id {
+                                HapticsManager.shared.trigger(.selection)
+                                scrubbedPoint = closest
                             }
                         }
                         .onEnded { _ in
                             isScrubbing = false
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                scrubbedPoint = nil
-                            }
+                            scrubbedPoint = nil
                         }
                 )
+                .onChange(of: isHoldingPreview) { _, holding in
+                    if !holding {
+                        isScrubbing = false
+                        scrubbedPoint = nil
+                    }
+                }
+                .accessibilityHint("Hold and slide to preview spending. Release to return to the total.")
             }
             .frame(height: 150)
             
@@ -818,7 +823,17 @@ struct DashboardView: View {
         HomeSpendingSummary(transactions: store.transactions, categories: store.categories,
             accountID: selectedAccountId, accountLabel: selectedAccountLabel,
             currencySymbol: store.currencySymbol, amountsHidden: hideBalance,
-            insightsEnabled: store.insightsEnabled, showsLine: $homeSpendingLineChart) { date in
+            insightsEnabled: store.insightsEnabled, showsLine: $homeSpendingLineChart,
+            onInsight: { destination, date in
+                switch destination {
+                case .category(let id): selectedCategoryForSheet = store.categories.first { $0.id == id }
+                case .budget: showBudgetHub = true
+                case .subscriptions: initialSubscriptionIdForHub = nil; showSubscriptionsHub = true
+                case .subscriptionDetail(let id): initialSubscriptionIdForHub = id; showSubscriptionsHub = true
+                case .transaction(let id): inspectingTransaction = store.transactions.first { $0.id == id }
+                case .analytics: analyticsInitialDate = date; showAnalyticsView = true
+                }
+            }) { date in
                 analyticsInitialDate = date
                 showAnalyticsView = true
             }
@@ -831,7 +846,7 @@ struct DashboardView: View {
         let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
         let drawerAvailableHeight = max(100, totalHeight - currentOffset)
         
-        return VStack(spacing: 0) {
+        let pinnedHeader = VStack(spacing: 0) {
             // A stable header keeps its identity and spacing throughout a drag.
             VStack(spacing: 0) {
                 Capsule()
@@ -881,7 +896,11 @@ struct DashboardView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             
-            // Only activity scrolls. Its viewport ends above the floating dock.
+        }
+        .spendyBarBackground(isVisible: isSheetExpanded)
+
+        return ZStack(alignment: .top) {
+            // Activity scrolls behind the pinned controls and floating dock.
             ScrollView(showsIndicators: isSheetExpanded) {
                 if displayedTransactions.isEmpty {
                     emptyRecentActivityView
@@ -931,11 +950,13 @@ struct DashboardView: View {
                     .padding(.horizontal, 4)
                 }
             }
+            .safeAreaPadding(.top, isSheetExpanded ? 128 : 72)
+            .safeAreaPadding(.bottom, isSheetExpanded ? bottomInset + 78 : 0)
             .scrollDisabled(!isSheetExpanded)
             .frame(maxHeight: .infinity, alignment: .top)
-            .clipped()
             .accessibilityIdentifier("homeActivityViewport")
-            .padding(.bottom, bottomInset + 78)
+
+            pinnedHeader
         }
         .frame(maxWidth: .infinity)
         .frame(height: drawerAvailableHeight)
@@ -949,6 +970,7 @@ struct DashboardView: View {
                 }
                 .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: -4)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(.horizontal, isSheetExpanded ? 0 : 8)
         .offset(y: currentOffset)
     }

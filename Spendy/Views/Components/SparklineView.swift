@@ -232,6 +232,7 @@ struct TrendSparkline: View {
 
 // MARK: - Interactive Touch-Scrubbing Sparkline (Pure White Monochrome)
 struct InteractiveSparklineView: View {
+    @GestureState private var isHoldingPreview = false
     let dataPoints: [SpendTrendPoint]
     var currencySymbol: String = "$"
     var height: CGFloat = 80
@@ -346,9 +347,14 @@ struct InteractiveSparklineView: View {
             }
             .contentShape(Rectangle())
             .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { val in
-                        let locationX = val.location.x
+                LongPressGesture(minimumDuration: 0.2, maximumDistance: 12)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .updating($isHoldingPreview) { value, state, _ in
+                        if case .second(true, _) = value { state = true }
+                    }
+                    .onChanged { value in
+                        guard case .second(true, let drag?) = value else { return }
+                        let locationX = drag.location.x
                         dragX = locationX
                         let newIdx = max(0, min(count - 1, Int(round((locationX / w) * CGFloat(count - 1)))))
                         if selectedIndex != newIdx {
@@ -363,6 +369,13 @@ struct InteractiveSparklineView: View {
                         }
                     }
             )
+            .onChange(of: isHoldingPreview) { _, holding in
+                if !holding {
+                    selectedIndex = nil
+                    dragX = nil
+                }
+            }
+            .accessibilityHint("Hold and slide to preview a value. Release to dismiss the preview.")
         }
         .frame(height: height)
     }

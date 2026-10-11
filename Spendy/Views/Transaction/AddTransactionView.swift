@@ -1124,7 +1124,8 @@ struct CategoryPickerDrawer: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 // Custom Header
                 HStack {
                     GlassCircleButton(
@@ -1151,7 +1152,7 @@ struct CategoryPickerDrawer: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 12)
-                
+            } content: {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 22) {
                         // 1. Suggested Section
@@ -1283,7 +1284,8 @@ struct AccountPickerDrawer: View {
     
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+
                 // Clean Custom Header
                 HStack {
                     GlassCircleButton(
@@ -1310,7 +1312,7 @@ struct AccountPickerDrawer: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 14)
-                
+            } content: {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         VStack(spacing: 0) {

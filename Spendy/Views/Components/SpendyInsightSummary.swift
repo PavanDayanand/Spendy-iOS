@@ -19,7 +19,7 @@ struct SpendyInsightSummary: View {
                     SpendyInsightBrandMark(style: .kicker)
                     Spacer()
                 }
-                .frame(height: 24)
+                .frame(minHeight: 44)
                 .overlay(alignment: .trailing) {
                     if useful.count > 1 {
                         Button {

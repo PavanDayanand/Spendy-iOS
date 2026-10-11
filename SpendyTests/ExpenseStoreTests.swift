@@ -10,6 +10,20 @@ final class ExpenseStoreTests: XCTestCase {
         return (ExpenseStore(storageURL: url, startsServices: false), url)
     }
 
+    @MainActor func testAngolanKwanzaUsesSymbolForNewAndSavedCurrency() throws {
+        XCTAssertEqual(CurrencyInfo.symbol(for: "AOA"), "Kz")
+        let (store, url) = try temporaryStore()
+        store.currencyCode = "AOA"
+        store.currencySymbol = "AOA" // Symbol stored by older currency picker versions.
+        store.flushPendingSave()
+
+        let reloaded = ExpenseStore(storageURL: url, startsServices: false)
+        XCTAssertEqual(reloaded.currencyCode, "AOA")
+        XCTAssertEqual(reloaded.currencySymbol, "Kz")
+        reloaded.updateCurrency(symbol: "AOA", code: "AOA")
+        XCTAssertEqual(reloaded.currencySymbol, "Kz")
+    }
+
     @MainActor func testBackupWithRetiredBackgroundColorsStillImports() throws {
         let (source, _) = try temporaryStore()
         source.appearanceMode = .light

@@ -111,6 +111,7 @@ struct TransactionDetailSheet: View {
             topActionBar
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
+                .spendyBarBackground()
             
             if showToast, let toast = toastMessage {
                 feedbackToastView(message: toast, icon: toastIcon, color: toastColor)

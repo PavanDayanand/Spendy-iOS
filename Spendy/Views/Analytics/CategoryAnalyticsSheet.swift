@@ -11,6 +11,7 @@ import SwiftUI
 
 struct CategoryAnalyticsSheet: View {
     let category: Category
+    var spendingScope: SpendingScope? = nil
     var initialType: TransactionType = .expense
     var topControlsNamespace: Namespace.ID? = nil
     var backButtonMorphID: String = "topControl_left"
@@ -34,6 +35,7 @@ struct CategoryAnalyticsSheet: View {
         SharedEntityAnalyticsSheet(
             entity: .category(category),
             initialType: initialType,
+            spendingScope: spendingScope,
             topControlsNamespace: topControlsNamespace,
             backButtonMorphID: backButtonMorphID,
             editButtonMorphID: editButtonMorphID,

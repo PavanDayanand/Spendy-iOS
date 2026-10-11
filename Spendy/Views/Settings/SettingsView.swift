@@ -99,7 +99,7 @@ struct SettingsView: View {
                             )
                             groupDivider
                             NavigationLink(value: SettingsDestination.insights) {
-                                linkRow(icon: "sparkles", title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
+                                linkRow(icon: SpendyInsightBrandMark.symbol, title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
                             }.buttonStyle(.plain)
                             groupDivider
                             NavigationLink(value: SettingsDestination.notifications) {
