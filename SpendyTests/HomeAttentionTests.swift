@@ -26,6 +26,23 @@ final class HomeAttentionTests: XCTestCase {
         XCTAssertEqual(moments[1].destination, .budget)
     }
 
+    func testTodayDoesNotHideOtherUpcomingDays() {
+        let subs = (12...15).map { Subscription(name: "Day \($0)", amount: 99, nextBillingDate: date($0)) }
+        let moments = HomeAttentionInsights.build(subscriptions: subs, budget: Budget(amount: 0, isActive: false),
+            cycleSpent: 0, currencySymbol: "₹", now: date(12), calendar: calendar)
+        XCTAssertEqual(moments.count, 4)
+        XCTAssertEqual(moments.first?.attentionLabel, "Today")
+        XCTAssertTrue(moments.contains { $0.headline.contains("tomorrow") })
+        XCTAssertTrue(moments.contains { $0.headline.contains("in 2 days") })
+        XCTAssertTrue(moments.contains { $0.headline.contains("in 3 days") })
+    }
+
+    func testHiddenInsightTextConcealsNumericClaims() {
+        XCTAssertEqual(InsightMoment.concealedText("Music renews today · ₹1,299.50"), "Music renews today · ₹••••")
+        XCTAssertEqual(InsightMoment.concealedText("Groceries · 62.9% of spending"), "Groceries · •••• of spending")
+        XCTAssertEqual(InsightMoment.concealedText("Expected charges. Record payments once confirmed."), "Expected charges. Record payments once confirmed.")
+    }
+
     func testSingleRenewalTargetsDetailAndRecordedPaymentSuppressesIt() {
         let sub = Subscription(name: "Music", amount: 12.99, nextBillingDate: date(12))
         func moments(_ transactions: [Transaction]) -> [InsightMoment] {

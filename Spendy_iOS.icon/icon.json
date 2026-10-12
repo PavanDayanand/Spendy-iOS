@@ -1,70 +1,43 @@
 {
-  "fill-specializations" : [
+  "fill-specializations": [
     {
-      "value" : "automatic"
+      "value": "automatic"
     },
     {
-      "appearance" : "dark",
-      "value" : "system-dark"
+      "appearance": "dark",
+      "value": "system-dark"
     }
   ],
-  "groups" : [
+  "groups": [
     {
-      "blur-material" : 1,
-      "hidden" : true,
-      "layers" : [
+      "layers": [
         {
-          "blend-mode" : "normal",
-          "image-name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM.png",
-          "name" : "ChatGPT Image Sep 4, 2026, 01_52_19 PM",
-          "opacity" : 1,
-          "position" : {
-            "scale" : 0.85,
-            "translation-in-points" : [
-              -36.85000000000002,
-              -37.94436965374916
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "layers" : [
-        {
-          "glass" : true,
-          "image-name" : "c8.PNG",
-          "name" : "c8",
-          "position" : {
-            "scale" : 2.07,
-            "translation-in-points" : [
+          "glass": true,
+          "image-name": "c8.PNG",
+          "name": "c8",
+          "position": {
+            "scale": 2.07,
+            "translation-in-points": [
               -27.925000000000068,
               -6.210000000000036
             ]
           }
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.3
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
+  "supported-platforms": {
+    "circles": [
       "watchOS"
     ],
-    "squares" : "shared"
+    "squares": "shared"
   }
 }

@@ -53,6 +53,139 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["View spending details"].exists)
     }
 
+    @MainActor func testHiddenAmountsKeepFullInsightsAccessible() {
+        let app = launch("home-attention-single")
+        XCTAssertTrue(app.buttons["More actions"].waitForExistence(timeout: 10))
+        app.buttons["More actions"].tap()
+        app.buttons["Hide Amounts"].tap()
+        let entry = app.buttons["home-spending-insights"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertEqual(entry.label, "Spendy insights")
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Spendy insights"].waitForExistence(timeout: 5))
+        let renewal = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Today Music renews today")).firstMatch
+        XCTAssertTrue(renewal.exists)
+        XCTAssertTrue(renewal.label.contains("••••"))
+        XCTAssertFalse(renewal.label.contains("99"))
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Hidden amounts insight sheet"
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    @MainActor func testDisabledInsightsClearlyOpenAnalytics() {
+        let app = launch("insights-disabled")
+        let entry = app.buttons["home-spending-insights"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        XCTAssertTrue(entry.label.contains("View analytics"))
+        entry.tap()
+        XCTAssertTrue(app.staticTexts["Analytics"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Spendy insights"].exists)
+    }
+
+    @MainActor func testHomeSummaryStaysStillAndRecentActivityExpands() {
+        let app = launch("home-stability")
+        let total = app.staticTexts["home-spending-total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Third recent expense"].isHittable)
+        let initialY = total.frame.minY
+        let canvas = app.scrollViews["home-spending-canvas"]
+        canvas.swipeUp()
+        XCTAssertEqual(total.frame.minY, initialY, accuracy: 2)
+        canvas.swipeDown()
+        XCTAssertEqual(total.frame.minY, initialY, accuracy: 2)
+        XCTAssertTrue(app.buttons["home-priority-insight"].isHittable)
+        XCTAssertTrue(app.buttons["Expand recent activity"].isHittable)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Stable Home and compact activity"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["Expand recent activity"].tap()
+        XCTAssertTrue(app.buttons["Collapse recent activity"].waitForExistence(timeout: 5))
+        app.buttons["Collapse recent activity"].tap()
+        XCTAssertTrue(app.buttons["Expand recent activity"].waitForExistence(timeout: 5))
+        XCTAssertEqual(total.frame.minY, initialY, accuracy: 2)
+    }
+
+    @MainActor func testCreateCategoryFromTransactionPickerSelectsIt() {
+        let app = launch()
+        app.buttons["Add Transaction"].tap()
+        XCTAssertTrue(app.buttons["Groceries"].waitForExistence(timeout: 5))
+        app.buttons["Groceries"].tap()
+        XCTAssertTrue(app.buttons["Create category"].waitForExistence(timeout: 5))
+        app.buttons["Create category"].tap()
+        XCTAssertTrue(app.textFields["Category name"].waitForExistence(timeout: 5))
+        app.textFields["Category name"].tap()
+        app.textFields["Category name"].typeText("Travel snacks")
+        app.buttons["Create"].tap()
+        XCTAssertTrue(app.buttons["Travel snacks"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["Category name"].exists)
+        XCTAssertFalse(app.staticTexts["Select category"].exists)
+    }
+
+    @MainActor func testInteractiveIntroDark() { verifyInteractiveIntro(light: false) }
+    @MainActor func testInteractiveIntroLight() { verifyInteractiveIntro(light: true) }
+
+    @MainActor private func verifyInteractiveIntro(light: Bool) {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "standard"
+        if light { app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = "light" }
+        app.launchArguments = ["--onboarding"]
+        app.launch()
+        func capture(_ name: String) {
+            Thread.sleep(forTimeInterval: 0.8) // Capture the settled state after the reveal/resize.
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name + (light ? " light" : " dark")
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Try logging a coffee"].exists)
+        capture("Spendy welcome")
+        app.buttons["Get started"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "intro-insight-brand").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continue"].isHittable)
+        capture("Spendy insight reveal")
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.staticTexts["Budget room"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Subscriptions"].exists)
+        capture("Spendy budgets and subscriptions")
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.staticTexts["Expense or income?"].waitForExistence(timeout: 5))
+        capture("Spendy shortcut choices")
+        XCTAssertTrue(app.staticTexts["11.11"].waitForExistence(timeout: 6))
+        capture("Spendy shortcut amount prompt")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Income"].waitForExistence(timeout: 5))
+        app.buttons["Continue"].tap()
+        let widget = app.buttons["intro-widget-resize"]
+        XCTAssertTrue(widget.waitForExistence(timeout: 5))
+        XCTAssertEqual(widget.value as? String, "Small")
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "intro-quick-launch-widget").firstMatch.exists)
+        let smallWidth = widget.frame.width
+        capture("Spendy small widget")
+        widget.tap()
+        XCTAssertEqual(widget.value as? String, "Medium")
+        XCTAssertGreaterThan(widget.frame.width, smallWidth + 70)
+        capture("Spendy medium widget")
+        widget.tap()
+        XCTAssertEqual(widget.value as? String, "Small")
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.buttons["Enable reminders"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Enable reminders"].isHittable)
+        XCTAssertEqual(app.alerts.count, 0)
+        capture("Spendy notification preview")
+        app.buttons["Not now"].tap()
+        XCTAssertTrue(app.buttons["Choose currency"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["Your name (optional)"].exists)
+        XCTAssertFalse(app.staticTexts["Appearance"].exists)
+        capture("Spendy branded currency setup")
+        app.buttons["Choose currency"].tap()
+        XCTAssertTrue(app.textFields["Search currency"].waitForExistence(timeout: 5))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["Open Spendy"].isHittable)
+    }
+
     @MainActor func testReceiptCameraGlassDark() { verifyReceiptCamera(light: false) }
     @MainActor func testReceiptCameraGlassLight() { verifyReceiptCamera(light: true) }
 
@@ -63,11 +196,20 @@ final class SpendyUITests: XCTestCase {
         app.buttons["Add receipt"].tap()
         app.buttons["Camera"].tap()
         XCTAssertTrue(app.buttons["Close camera"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Choose receipt photo"].isHittable)
-        XCTAssertTrue(app.staticTexts["Receipt"].exists)
+        let options = app.buttons["Camera options"]
+        XCTAssertTrue(options.isHittable)
+        XCTAssertFalse(app.staticTexts["Receipt"].exists)
         let viewport = app.descendants(matching: .any).matching(identifier: "receipt-camera-viewport").firstMatch
         XCTAssertTrue(viewport.exists)
-        XCTAssertGreaterThan(viewport.frame.minY, app.buttons["Close camera"].frame.maxY)
+        let close = app.buttons["Close camera"]
+        let shutter = app.buttons["Take receipt photo"]
+        XCTAssertGreaterThan(close.frame.midY, viewport.frame.midY)
+        XCTAssertLessThan(close.frame.maxY, viewport.frame.maxY)
+        XCTAssertEqual(close.frame.midY, options.frame.midY, accuracy: 2)
+        XCTAssertEqual(close.frame.midY, shutter.frame.midY, accuracy: 2)
+        options.tap()
+        XCTAssertTrue(app.buttons["Choose receipt photo"].waitForExistence(timeout: 5))
+        viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Receipt camera inset glass \(light ? "light" : "dark")"
         shot.lifetime = .keepAlways
@@ -139,6 +281,12 @@ final class SpendyUITests: XCTestCase {
             return
         }
         XCTAssertTrue(app.staticTexts["Corner Cafe"].exists)
+        XCTAssertTrue(app.staticTexts["Note"].exists)
+        XCTAssertFalse(app.staticTexts["Merchant"].exists)
+        let title = app.staticTexts["receipt-review-title"]
+        XCTAssertTrue(title.exists)
+        XCTAssertEqual(title.frame.midX, app.frame.midX, accuracy: 2)
+        XCTAssertLessThanOrEqual(title.frame.maxX, app.buttons["edit-scanned-receipt"].frame.minX)
         XCTAssertTrue(app.buttons["add-scanned-receipt"].isHittable)
         XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
         let shot = XCTAttachment(screenshot: app.screenshot())

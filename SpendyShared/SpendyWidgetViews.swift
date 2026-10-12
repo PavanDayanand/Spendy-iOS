@@ -139,11 +139,11 @@ struct SpendyMiniRing: View {
 }
 
 private extension View {
-    func spendyWidgetChrome() -> some View {
+    func spendyWidgetChrome(transparent: Bool = false) -> some View {
         self
             .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(SpendyWidgetPalette.canvas)
+            .background(transparent ? Color.clear : SpendyWidgetPalette.canvas)
             .containerBackground(for: .widget) {
                 SpendyWidgetPalette.canvas
             }
@@ -186,6 +186,7 @@ private struct WidgetActionLink: View {
 
 struct SpendyQuickActionsWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.spendyWidgetGlassPreview) private var glassPreview
     let snapshot: SpendyWidgetSnapshot
     var previewFamily: WidgetFamily? = nil
 
@@ -217,7 +218,7 @@ struct SpendyQuickActionsWidgetView: View {
             }
             Spacer(minLength: 8)
         }
-        .spendyWidgetChrome()
+        .spendyWidgetChrome(transparent: glassPreview)
     }
 }
 
@@ -265,7 +266,19 @@ private struct WidgetComparisonLine: View {
 // MARK: - Small · Today
 // Today’s amount with a compact seven-day context.
 
+private struct SpendyWidgetGlassPreviewKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var spendyWidgetGlassPreview: Bool {
+        get { self[SpendyWidgetGlassPreviewKey.self] }
+        set { self[SpendyWidgetGlassPreviewKey.self] = newValue }
+    }
+}
+
 struct SpendySmallWidgetView: View {
+    @Environment(\.spendyWidgetGlassPreview) private var glassPreview
     let snapshot: SpendyWidgetSnapshot
 
     var body: some View {
@@ -277,7 +290,7 @@ struct SpendySmallWidgetView: View {
             SpendyWeekBars(days: snapshot.weeklySpending, accentHex: "", height: 33)
                 .accessibilityLabel("Spending over the last seven days")
         }
-        .spendyWidgetChrome()
+        .spendyWidgetChrome(transparent: glassPreview)
         .widgetURL(URL(string: "spendy://home"))
         .accessibilityElement(children: .combine)
     }
@@ -506,6 +519,7 @@ struct SpendyConfiguredWidgetView: View {
 // Huge today number. Chunky 7-day bars. Nothing else.
 
 struct SpendyMediumWeekWidgetView: View {
+    @Environment(\.spendyWidgetGlassPreview) private var glassPreview
     let snapshot: SpendyWidgetSnapshot
 
     private var weekTotal: Double { snapshot.weeklySpending.reduce(0) { $0 + $1.amount } }
@@ -532,7 +546,7 @@ struct SpendyMediumWeekWidgetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .spendyWidgetChrome()
+        .spendyWidgetChrome(transparent: glassPreview)
         .widgetURL(URL(string: "spendy://analytics"))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Spent today \(SpendyWidgetFormat.amount(snapshot.todayTotal, symbol: snapshot.currencySymbol)). Spent over the last seven days \(SpendyWidgetFormat.amount(weekTotal, symbol: snapshot.currencySymbol)).")

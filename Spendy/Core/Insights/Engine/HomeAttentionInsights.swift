@@ -43,12 +43,13 @@ enum HomeAttentionInsights {
                 emphasis: [.currency(value)], destination: .budget,
                 attentionPriority: exceeded ? 2 : 1, attentionLabel: "Budget"))
         }
-        if today.isEmpty,
-           let next = active.filter({ $0.nextBillingDate > now }).min(by: { $0.nextBillingDate < $1.nextBillingDate }) {
-            let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: next.nextBillingDate)).day ?? 99
-            if (1...3).contains(days) {
-                moments.append(renewal(active.filter { calendar.isDate($0.nextBillingDate, inSameDayAs: next.nextBillingDate) }, days: days))
+        // Keep every upcoming day in the full list, even when today's renewals lead.
+        for days in 1...3 {
+            let upcoming = active.filter {
+                calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                    to: calendar.startOfDay(for: $0.nextBillingDate)).day == days
             }
+            if !upcoming.isEmpty { moments.append(renewal(upcoming, days: days)) }
         }
         return moments.sorted { $0.attentionPriority == $1.attentionPriority ? $0.id < $1.id : $0.attentionPriority > $1.attentionPriority }
     }

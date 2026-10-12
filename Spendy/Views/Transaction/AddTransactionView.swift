@@ -13,6 +13,7 @@ import SwiftUI
 // MARK: - Active Sheet Enum for Single-Sheet Presentation
 enum TransactionActiveSheet: Identifiable {
     case category
+    case createCategory
     case account(isDestination: Bool)
     case calendar
     case scanner([UIImage])
@@ -20,6 +21,7 @@ enum TransactionActiveSheet: Identifiable {
     var id: String {
         switch self {
         case .category: return "category"
+        case .createCategory: return "createCategory"
         case .account(let isDest): return "account_\(isDest)"
         case .calendar: return "calendar"
         case .scanner: return "scanner"
@@ -60,6 +62,7 @@ struct AddTransactionView: View {
     
     // Single Active Sheet State
     @State private var activeSheet: TransactionActiveSheet? = nil
+    @State private var pendingCategoryCreation = false
     @State private var showDiscardConfirmation: Bool = false
     @State private var showReceiptCamera = false
     @State private var showReceiptPhotos = false
@@ -238,6 +241,10 @@ struct AddTransactionView: View {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
         .sheet(item: $activeSheet, onDismiss: {
+            if pendingCategoryCreation {
+                pendingCategoryCreation = false
+                activeSheet = .createCategory
+            }
             if dismissAfterReceiptAdd {
                 dismissAfterReceiptAdd = false
                 dismiss()
@@ -248,8 +255,17 @@ struct AddTransactionView: View {
                 CategoryPickerDrawer(
                     selectedCategoryId: $selectedCategoryId,
                     currentType: type,
-                    categories: availableCategories
+                    categories: availableCategories,
+                    onCreateCategory: {
+                        pendingCategoryCreation = true
+                        activeSheet = nil
+                    }
                 )
+            case .createCategory:
+                AddCategorySheet(defaultType: type, onCreated: { category in
+                    type = category.type
+                    selectedCategoryId = category.id
+                })
             case .account(let isDestination):
                 AccountPickerDrawer(
                     selectedAccountId: accountSelectionBinding(isDestination: isDestination),
@@ -287,7 +303,8 @@ struct AddTransactionView: View {
             }
             .presentationDetents([.fraction(0.72)])
             .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(32)
+            .presentationBackground(.clear)
+            .preferredColorScheme(.dark)
         }
         .photosPicker(
             isPresented: $showReceiptPhotos,
@@ -1144,6 +1161,7 @@ struct CategoryPickerDrawer: View {
     @Binding var selectedCategoryId: String
     var currentType: TransactionType
     var categories: [Category]
+    var onCreateCategory: (() -> Void)? = nil
     
     @State private var searchText: String = ""
     
@@ -1180,8 +1198,14 @@ struct CategoryPickerDrawer: View {
                     
                     Spacer()
                     
-                    Color.clear
-                        .frame(width: 44, height: 44)
+                    if let onCreateCategory {
+                        GlassCircleButton(icon: "plus", size: 44, iconSize: 17,
+                            foregroundColor: SpendyColors.textPrimary, haptic: .selection,
+                            action: onCreateCategory)
+                            .accessibilityLabel("Create category")
+                    } else {
+                        Color.clear.frame(width: 44, height: 44)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)

@@ -16,6 +16,7 @@ struct AddCategorySheet: View {
     var defaultType: TransactionType = .expense
     var defaultFolder: String? = nil
     var isSettingsPage: Bool = false
+    var onCreated: ((Category) -> Void)? = nil
     
     @State private var label: String = ""
     @State private var type: TransactionType = .expense
@@ -50,11 +51,12 @@ struct AddCategorySheet: View {
         }
     }
     
-    init(categoryToEdit: Category? = nil, defaultType: TransactionType = .expense, defaultFolder: String? = nil, isSettingsPage: Bool = false) {
+    init(categoryToEdit: Category? = nil, defaultType: TransactionType = .expense, defaultFolder: String? = nil, isSettingsPage: Bool = false, onCreated: ((Category) -> Void)? = nil) {
         self.categoryToEdit = categoryToEdit
         self.defaultType = defaultType
         self.defaultFolder = defaultFolder
         self.isSettingsPage = isSettingsPage
+        self.onCreated = onCreated
         
         if let cat = categoryToEdit {
             _label = State(initialValue: cat.label)
@@ -241,6 +243,7 @@ struct AddCategorySheet: View {
                 order: store.categories.count
             )
             store.addCategory(newCat)
+            onCreated?(newCat)
         }
         dismiss()
     }

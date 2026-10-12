@@ -102,7 +102,7 @@ struct SpendingChartInfoSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                if !amountsHidden && !insights.isEmpty {
+                if !insights.isEmpty {
                     let priority = insights.filter { $0.attentionPriority > 0 }
                     let remaining = insights.filter { $0.attentionPriority == 0 }
                     if !priority.isEmpty {
@@ -170,12 +170,12 @@ struct SpendingChartInfoSheet: View {
     private func insightRows(_ moments: [InsightMoment]) -> some View {
         ForEach(moments) { moment in
             VStack(alignment: .leading, spacing: 6) {
-                ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis, font: .headline, emphasisFont: .headline.bold())
+                ShinyHeadlineText(headline: amountsHidden ? InsightMoment.concealedText(moment.headline) : moment.headline, emphasis: amountsHidden ? [] : moment.emphasis, font: .headline, emphasisFont: .headline.bold())
                 if let supporting = moment.supportingText {
-                    InsightSupportingText(text: supporting, emphasis: moment.emphasis, font: .subheadline)
+                    InsightSupportingText(text: amountsHidden ? InsightMoment.concealedText(supporting) : supporting, emphasis: amountsHidden ? [] : moment.emphasis, font: .subheadline)
                 }
                 if let destination = moment.destination, let onSelectInsight {
-                    Button(moment.actionTitle ?? "Explore insight") { onSelectInsight(destination) }
+                    Button(amountsHidden ? InsightMoment.concealedText(moment.actionTitle ?? "Explore insight") : (moment.actionTitle ?? "Explore insight")) { onSelectInsight(destination) }
                 }
             }
             .padding(.vertical, 4)

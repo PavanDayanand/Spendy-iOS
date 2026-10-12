@@ -45,8 +45,18 @@ final class SpendingChartSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.total, 30)
         XCTAssertEqual(snapshot.transactions.count, 2)
         XCTAssertEqual(snapshot.buckets.reduce(0) { $0 + $1.amount }, snapshot.total)
-        XCTAssertEqual(snapshot.buckets.count, 11)
+        XCTAssertEqual(snapshot.buckets.count, 2)
+        XCTAssertEqual(snapshot.buckets.map(\.label), ["1–7", "8–14"])
         XCTAssertTrue(snapshot.buckets.last!.isInProgress)
+    }
+
+    func testMonthGroupsWeeklyTotalsAndClipsFinalRange() {
+        let snapshot = SpendingChartSnapshot(transactions: [expense(20, at: date(9, 7)), expense(30, at: date(9, 8)), expense(40, at: date(9, 30))],
+            anchor: date(9, 1), referenceDate: date(10, 12), calendar: calendar)
+        XCTAssertEqual(snapshot.buckets.map(\.label), ["1–7", "8–14", "15–21", "22–28", "29–30"])
+        XCTAssertEqual(snapshot.buckets.map(\.amount), [20, 30, 0, 0, 40])
+        XCTAssertEqual(snapshot.buckets.reduce(0) { $0 + $1.transactionCount }, 3)
+        XCTAssertEqual(snapshot.buckets.reduce(0) { $0 + $1.amount }, snapshot.total)
     }
 
     func testMonthBoundaryDoesNotCountMidnightTwice() {
@@ -104,9 +114,9 @@ final class SpendingChartSnapshotTests: XCTestCase {
         local.timeZone = TimeZone(identifier: "America/Los_Angeles")!
         let now = local.date(from: DateComponents(year: 2026, month: 3, day: 10, hour: 12))!
         let snapshot = SpendingChartSnapshot(transactions: [], anchor: now, referenceDate: now, calendar: local)
-        let eighth = snapshot.buckets[7]
-        XCTAssertEqual(eighth.end.timeIntervalSince(eighth.start), 23 * 3600)
-        XCTAssertEqual(snapshot.buckets.count, 10)
+        let secondWeek = snapshot.buckets[1]
+        XCTAssertEqual(secondWeek.end.timeIntervalSince(secondWeek.start), (7 * 24 - 1) * 3600)
+        XCTAssertEqual(snapshot.buckets.count, 2)
         XCTAssertTrue(snapshot.buckets.allSatisfy { $0.amount == 0 })
     }
 
@@ -124,7 +134,7 @@ final class SpendingChartSnapshotTests: XCTestCase {
         let past = SpendingChartSnapshot(transactions: transactions, anchor: date(9, 1), referenceDate: now, calendar: calendar)
         XCTAssertFalse(past.isInProgress)
         XCTAssertEqual(past.baselineTotal, 60)
-        XCTAssertEqual(past.buckets.count, 30)
+        XCTAssertEqual(past.buckets.count, 5)
         let future = SpendingChartSnapshot(transactions: transactions, anchor: date(11, 1), referenceDate: now, calendar: calendar)
         XCTAssertTrue(future.isFuture)
         XCTAssertTrue(future.buckets.isEmpty)

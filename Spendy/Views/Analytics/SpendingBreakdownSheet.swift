@@ -246,7 +246,9 @@ struct SpendingBreakdownFilter: View {
                         .onSubmit { searchFocused = false }
                     if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear search") }
                 }
-                .padding(14).background(.regularMaterial, in: Capsule()).padding()
+                .padding(14)
+                .nativeLiquidGlassCapsule(isInteractive: true)
+                .padding()
             }
         }
         .tint(SpendyColors.textPrimary)

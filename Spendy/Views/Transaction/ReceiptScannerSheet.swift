@@ -61,42 +61,50 @@ struct ReceiptScannerSheet: View {
         }
         .presentationDetents([.height(570), .large])
         .presentationDragIndicator(.hidden)
-        .background(SpendyColors.appBackground)
+        .background(Color.clear)
         .task { await processImages() }
     }
 
     private var topActionBar: some View {
-        HStack(spacing: 10) {
-            GlassCircleButton(icon: SFIcons.close, size: 44, iconSize: 16, iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary, haptic: .selection,
-                accessibilityLabel: "Close", morphID: "closeButton", namespace: sheetNamespace) { dismiss() }
-            Spacer(minLength: 0)
-            Text("Review receipt")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-            Spacer(minLength: 0)
-            if scanResult != nil {
-                GlassCircleButton(icon: SFIcons.edit, size: 44, iconSize: 16, iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary, haptic: .selection,
-                    accessibilityLabel: "Edit receipt", morphID: "editReceipt", namespace: sheetNamespace,
-                    action: editResult)
-                    .disabled(isFinishing)
-                    .accessibilityIdentifier("edit-scanned-receipt")
-                Button(action: addResult) {
-                    Label("Add", systemImage: "plus")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 13)
-                        .frame(height: 44)
-                        .foregroundStyle(SpendyColors.elevatedControlForeground)
-                        .background(SpendyColors.elevatedControlFill, in: Capsule())
+        GlassEffectContainer(spacing: 10) {
+            ZStack {
+                Text("Review receipt")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 116)
+                    .accessibilityIdentifier("receipt-review-title")
+
+                HStack {
+                    GlassCircleButton(icon: SFIcons.close, size: 44, iconSize: 16, iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary, haptic: .selection,
+                        accessibilityLabel: "Close", morphID: "closeButton", namespace: sheetNamespace) { dismiss() }
+                    Spacer(minLength: 0)
+                    if scanResult != nil {
+                        HStack(spacing: 10) {
+                            GlassCircleButton(icon: SFIcons.edit, size: 44, iconSize: 16, iconWeight: .bold,
+                                foregroundColor: SpendyColors.textPrimary, haptic: .selection,
+                                accessibilityLabel: "Edit receipt", morphID: "editReceipt", namespace: sheetNamespace,
+                                action: editResult)
+                                .disabled(isFinishing)
+                                .accessibilityIdentifier("edit-scanned-receipt")
+                            Button(action: addResult) {
+                                Label("Add", systemImage: "plus")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                                    .frame(width: 62, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .disabled(!canAdd)
+                            .opacity(canAdd ? 1 : 0.45)
+                            .accessibilityLabel("Add scanned transaction")
+                            .accessibilityIdentifier("add-scanned-receipt")
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(!canAdd)
-                .opacity(canAdd ? 1 : 0.45)
-                .accessibilityLabel("Add scanned transaction")
-                .accessibilityIdentifier("add-scanned-receipt")
             }
         }
     }
@@ -209,7 +217,7 @@ struct ReceiptScannerSheet: View {
 
     private func detailsCard(_ result: ReceiptScanResult) -> some View {
         VStack(spacing: 0) {
-            detailRow(label: result.receiptType == .paymentScreenshot ? (result.transactionType == .income ? "From" : "To") : "Merchant") {
+            detailRow(label: "Note") {
                 Text(merchant.isEmpty ? "Not found" : merchant)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(merchant.isEmpty ? SpendyColors.textSecondary : SpendyColors.textPrimary)
@@ -314,7 +322,7 @@ struct ReceiptScannerSheet: View {
         if result.currencySymbol != store.currencySymbol { return "Receipt shows \(result.currencySymbol). Tap Edit to check the amount in \(store.currencySymbol)." }
         if result.totalAmount == 0 { return "The amount needs checking. Tap Edit to enter it." }
         if !result.hasDetectedDate { return "The date wasn’t clear. Check it in Edit before adding." }
-        if merchant.isEmpty || category == nil || account == nil { return "Tap Edit to check the name, category, and account." }
+        if merchant.isEmpty || category == nil || account == nil { return "Tap Edit to check the note, category, and account." }
         return nil
     }
 

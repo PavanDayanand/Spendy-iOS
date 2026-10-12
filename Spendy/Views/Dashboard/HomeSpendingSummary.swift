@@ -8,7 +8,6 @@ struct HomeSpendingSummary: View {
     let currencySymbol: String
     let amountsHidden: Bool
     let insightsEnabled: Bool
-    @Binding var showsLine: Bool
     var onInsight: ((InsightDestination, Date) -> Void)? = nil
     var onExplore: (Date) -> Void
     @Environment(ExpenseStore.self) private var store
@@ -43,7 +42,6 @@ struct HomeSpendingSummary: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                     .accessibilityLabel("About spending")
                     Spacer(minLength: 0)
-                    styleButton
                 }
                 Text(amountsHidden ? "••••••" : snapshot.total.formattedCurrency(symbol: currencySymbol, decimals: 2))
                     .font(.system(size: amountSize, weight: .bold, design: .rounded))
@@ -68,7 +66,7 @@ struct HomeSpendingSummary: View {
                         .accessibilityIdentifier("home-spending-comparison")
                     if history.contains(where: { $0.transactionCount > 0 }) {
                         SpendingChartPlot(buckets: history, currencySymbol: currencySymbol,
-                                          selectedID: $selectedID, showsLine: showsLine, height: 110)
+                                          selectedID: $selectedID, height: 110)
                             .padding(.top, 4)
                     } else {
                         Text("Your spending history will appear here.")
@@ -104,7 +102,7 @@ struct HomeSpendingSummary: View {
                                 SpendyInsightSymbol()
                                 ShinyHeadlineText(headline: "\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending", emphasis: [], font: .caption, emphasisFont: .caption.bold())
                             } else {
-                                Text("View spending insights")
+                                Text(insightsEnabled ? "View spending insights" : "View analytics")
                             }
                             Spacer(minLength: 2)
                             Image(systemName: "chevron.right").font(.caption2)
@@ -116,8 +114,28 @@ struct HomeSpendingSummary: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("home-spending-insights")
-                    .accessibilityHint("Open spending analytics for this account and month")
+                    .accessibilityHint(insightsEnabled ? "Open the full Spendy insights list" : "Open spending analytics for this account and month")
                     }
+                }
+                if amountsHidden {
+                    Button {
+                        insightDate = snapshot.start
+                        if insightsEnabled { showsInsights = true }
+                        else { onExplore(snapshot.start) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if insightsEnabled { SpendyInsightSymbol() }
+                            Text(insightsEnabled ? "Spendy insights" : "View analytics")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption2)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home-spending-insights")
                 }
             }
             .sheet(isPresented: $showsInsights, onDismiss: {
@@ -128,7 +146,7 @@ struct HomeSpendingSummary: View {
                 }
             }) {
                 SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
-                    currencySymbol: currencySymbol, insights: HomeAttentionInsights.build(transactions: transactions, subscriptions: store.subscriptions, budget: store.budget,
+                    currencySymbol: currencySymbol, amountsHidden: amountsHidden, insights: HomeAttentionInsights.build(transactions: transactions, subscriptions: store.subscriptions, budget: store.budget,
                         cycleSpent: store.budgetCycleExpenses, currencySymbol: currencySymbol, now: referenceDate) + insights(for: snapshot), insightsOnly: true,
                     onSelectInsight: { destination in
                         pendingInsight = destination
@@ -145,7 +163,6 @@ struct HomeSpendingSummary: View {
         }
         .onChange(of: accountID) { _, _ in selectedID = nil }
         .onChange(of: amountsHidden) { _, _ in selectedID = nil }
-        .onChange(of: showsLine) { _, _ in selectedID = nil }
     }
 
     private func insights(for snapshot: SpendingChartSnapshot) -> [InsightMoment] {
@@ -160,24 +177,4 @@ struct HomeSpendingSummary: View {
         return InsightDecisionEngine.shared.evaluate(facts: facts, surface: .analytics, currencySymbol: currencySymbol)
     }
 
-    private var styleButton: some View {
-        Button { showsLine.toggle() } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "chart.bar.fill")
-                    .foregroundStyle(showsLine ? SpendyColors.textTertiary : SpendyColors.textPrimary)
-                Image(systemName: "chart.xyaxis.line")
-                    .foregroundStyle(showsLine ? SpendyColors.textPrimary : SpendyColors.textTertiary)
-            }
-            .font(.system(size: 12, weight: .semibold))
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(SpendyColors.cardBackground, in: Capsule())
-            .frame(minWidth: 64, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Spending chart style")
-        .accessibilityValue(showsLine ? "Line" : "Bar")
-        .accessibilityHint(showsLine ? "Switch to bar chart" : "Switch to line chart")
-    }
 }

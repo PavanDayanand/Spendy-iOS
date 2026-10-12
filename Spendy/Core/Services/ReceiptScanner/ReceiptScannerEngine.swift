@@ -95,7 +95,14 @@ final class ReceiptScannerEngine {
             guard let cgImage else { continue }
             let orientation = CGImagePropertyOrientation(image.imageOrientation)
             var pageLines = await performVisionOCR(on: cgImage, orientation: orientation)
-            let indianPayment = pageLines.contains { $0.text.range(of: #"(?i)phonepe|paytm|\bupi\b|\binr\b"#, options: .regularExpression) != nil }
+            let indianPayment = pageLines.contains { $0.text.range(of: #"(?i)phonepe|paytm|google pay|gpay|\bupi\b|\binr\b"#, options: .regularExpression) != nil }
+            if indianPayment {
+                // Vision can recognize the rupee glyph as the visually similar hryvnia glyph.
+                pageLines = pageLines.map { line in
+                    RecognizedLine(text: ReceiptOCRCurrencyRepair.repairIndianPaymentGlyph(line.text),
+                                   boundingBox: line.boundingBox, confidence: line.confidence)
+                }
+            }
             if indianPayment && pageLines.contains(where: { ReceiptOCRCurrencyRepair.isAmbiguous($0.text) }) {
                 let inverted = CIImage(cgImage: cgImage).applyingFilter("CIColorInvert")
                 if let invertedImage = CIContext().createCGImage(inverted, from: inverted.extent) {
@@ -254,66 +261,11 @@ final class ReceiptScannerEngine {
     }
     
     private func extractMerchantName(from lines: [RecognizedLine], receiptType: ReceiptType) -> String {
-        let excludedNoiseWords: Set<String> = [
-            "tax invoice", "tax receipt", "receipt", "sales receipt", "cash receipt", "customer copy",
-            "welcome", "store", "tel", "phone", "fax", "www", "http", "https", ".com", "order #",
-            "order no", "invoice", "date", "time", "cashier", "register", "terminal", "table #",
-            "guest", "server", "check #", "subtotal", "total", "amount", "change", "visa", "mastercard"
-        ]
-        
-        if receiptType == .paymentScreenshot {
-            let labels = #"(?i)^(?:paid to|payment to|transfer to|sent to|received from|received money from|to|from)\s*[:\-]?\s*"#
-            for (index, line) in lines.enumerated() {
-                let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard let range = text.range(of: labels, options: .regularExpression) else { continue }
-                var name = String(text[range.upperBound...]).trimmingCharacters(in: .whitespaces)
-                if name.isEmpty, index + 1 < lines.count { name = lines[index + 1].text }
-                guard name.count > 1, name.rangeOfCharacter(from: .letters) != nil,
-                      !ReceiptAmountParser.isIdentifierLine(name), !ReceiptAmountParser.hasCurrency(name) else { continue }
-                return cleanMerchantName(name)
-            }
-        }
+        ReceiptFieldParser.merchant(in: lines.map {
+            ReceiptAmountParser.Line(text: $0.text, bounds: $0.boundingBox, confidence: $0.confidence)
+        }, payment: receiptType == .paymentScreenshot)
+    }
 
-        // Scan the top 6 lines for the most prominent brand / merchant name
-        for line in lines.prefix(6) {
-            let t = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            let lower = t.lowercased()
-            
-            // Skip lines with only digits/dates/special chars
-            if t.count < 3 || t.rangeOfCharacter(from: CharacterSet.letters) == nil {
-                continue
-            }
-            
-            // Skip pure noise words
-            var isNoise = false
-            for noise in excludedNoiseWords {
-                if lower == noise || lower.hasPrefix(noise + " ") || lower.hasPrefix(noise + ":") {
-                    isNoise = true
-                    break
-                }
-            }
-            if isNoise || ReceiptAmountParser.isIdentifierLine(t) || ReceiptAmountParser.hasCurrency(t) { continue }
-            if receiptType == .paymentScreenshot && lower.range(of: #"phonepe|paytm|google pay|gpay|successful|completed|pending|failed|payment|transaction|powered by|money received"#, options: .regularExpression) != nil { continue }
-            
-            // If line is an address or phone number, skip
-            if lower.contains("street") || lower.contains("ave") || lower.contains("road") || lower.contains("blvd") || lower.contains("highway") || lower.contains("suite") {
-                continue
-            }
-            
-            return cleanMerchantName(t)
-        }
-        
-        return "Merchant"
-    }
-    
-    private func cleanMerchantName(_ name: String) -> String {
-        var cleaned = name
-        // Remove trailing punctuation or tax indicators
-        cleaned = cleaned.replacingOccurrences(of: #"[#*]+.*$"#, with: "", options: .regularExpression)
-        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-        return cleaned.capitalized
-    }
-    
     private func extractTotalAmount(from lines: [RecognizedLine], defaultCurrency: String) -> (Double, String) {
         let parsedLines = lines.map { ReceiptAmountParser.Line(text: $0.text, bounds: $0.boundingBox, confidence: $0.confidence) }
         let amount = ReceiptAmountParser.total(in: parsedLines)
@@ -354,53 +306,11 @@ final class ReceiptScannerEngine {
     }
     
     private func extractDate(from lines: [RecognizedLine], dayFirst: Bool) -> Date? {
-        let datePatterns = [
-            #"\b(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})\b"#, // MM/DD/YYYY or DD/MM/YYYY
-            #"\b(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})\b"#, // YYYY-MM-DD
-            #"\b(\d{1,2})\s+([A-Za-z]{3,9}),?\s+(\d{4})\b"#,
-            #"\b([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})\b"#   // Jan 15, 2026
-        ]
-        
-        let formatters: [DateFormatter] = {
-            let numericFormats = dayFirst
-                ? ["dd/MM/yyyy", "dd-MM-yyyy", "MM/dd/yyyy", "MM-dd-yyyy"]
-                : ["MM/dd/yyyy", "MM-dd-yyyy", "dd/MM/yyyy", "dd-MM-yyyy"]
-            let formats = numericFormats + [
-                "yyyy-MM-dd", "yyyy/MM/dd",
-                "MMM d, yyyy", "MMMM d, yyyy", "MMM d yyyy", "MMMM d yyyy", "d MMM yyyy", "d MMMM yyyy"
-            ]
-            return formats.map { fmt in
-                let df = DateFormatter()
-                df.dateFormat = fmt
-                df.locale = Locale(identifier: "en_US_POSIX")
-                return df
-            }
-        }()
-        
-        for line in lines {
-            let text = line.text
-            for pattern in datePatterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                    let nsStr = text as NSString
-                    let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsStr.length))
-                    for match in matches {
-                        let matchedStr = nsStr.substring(with: match.range)
-                        for df in formatters {
-                            if let parsed = df.date(from: matchedStr) {
-                                // Sanity check date is not 20 years in future/past
-                                let year = Calendar.current.component(.year, from: parsed)
-                                if year >= 2000 && year <= 2035 {
-                                    return parsed
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return nil
+        ReceiptFieldParser.date(in: lines.map {
+            ReceiptAmountParser.Line(text: $0.text, bounds: $0.boundingBox, confidence: $0.confidence)
+        }, dayFirst: dayFirst)
     }
-    
+
     private func extractLineItems(from lines: [RecognizedLine], totalAmount: Double) -> [ReceiptLineItem] {
         var items: [ReceiptLineItem] = []
         let skipKeywords = ["total", "subtotal", "tax", "vat", "gst", "tip", "balance", "change", "visa", "cash", "mastercard", "card", "payment", "discount"]

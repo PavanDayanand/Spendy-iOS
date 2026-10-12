@@ -87,18 +87,12 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Outlined date · spending recorded"].exists)
         capture(app, "Redesigned streak calendar")
     }
-    @MainActor func testHomeChartStyleInfoAndPrivacy() {
+    @MainActor func testHomeBarChartInfoAndPrivacy() {
         let app = launch()
         XCTAssertTrue(app.staticTexts["home-spending-total"].label.contains("1,200"))
         XCTAssertTrue(app.staticTexts["home-spending-comparison"].label.contains("300"))
         capture(app, "Home spending dark")
-        let style = app.buttons["Spending chart style"]
-        let previous = style.value as? String
-        style.tap()
-        XCTAssertNotEqual(style.value as? String, previous)
-        capture(app, "Home spending alternate style")
-        style.tap()
-        XCTAssertEqual(style.value as? String, previous)
+        XCTAssertFalse(app.buttons["Spending chart style"].exists)
         button(app, "About spending").tap()
         XCTAssertTrue(app.navigationBars["About spending"].waitForExistence(timeout: 5))
         capture(app, "Spending explanation")
@@ -107,7 +101,7 @@ final class SpendingChartUITests: XCTestCase {
         app.buttons["Hide Amounts"].tap()
         XCTAssertTrue(app.staticTexts["home-spending-total"].label.contains("hidden"))
         XCTAssertFalse(app.staticTexts["home-spending-comparison"].exists)
-        XCTAssertFalse(app.buttons["home-spending-insights"].exists)
+        XCTAssertTrue(app.buttons["home-spending-insights"].exists)
         capture(app, "Home spending privacy")
     }
     @MainActor func testDrawerFiltersDoNotChangeHomeSpending() {

@@ -17,59 +17,67 @@ struct ReceiptCameraCaptureView: View {
     var onCancel: () -> Void
     var onChoosePhoto: () -> Void
 
-    @Namespace private var cameraNamespace
-
     var body: some View {
-        VStack(spacing: 14) {
-            GlassEffectContainer(spacing: 12) {
-                HStack {
-                    GlassCircleButton(icon: "xmark", size: 44, iconSize: 16,
-                        accessibilityLabel: "Close camera", morphID: "cameraClose",
-                        namespace: cameraNamespace, action: onCancel)
-                    Spacer()
-                    Text("Receipt")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    Spacer()
-                    GlassCircleButton(icon: "photo", size: 44, iconSize: 18,
-                        accessibilityLabel: "Choose receipt photo", morphID: "cameraPhotos",
-                        namespace: cameraNamespace, action: onChoosePhoto)
-                }
+        ZStack {
+            Color.black
+            if camera.status == .ready {
+                ReceiptCameraPreview(session: camera.session)
+            } else {
+                cameraStatus
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 112)
             }
-            .padding(.horizontal, 8)
-
-            ZStack {
-                Color.black
-                if camera.status == .ready {
-                    ReceiptCameraPreview(session: camera.session)
-                        .overlay(alignment: .bottom) {
-                            shutter
-                                .padding(.bottom, 32)
-                        }
-                } else {
-                    cameraStatus
-                        .padding(28)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // The sheet is radius 32; a 12-point inset gives a concentric inner radius of 20.
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(.white.opacity(0.12), lineWidth: 0.5)
-            }
-            .accessibilityIdentifier("receipt-camera-viewport")
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .background(SpendyColors.appBackground.ignoresSafeArea())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            cameraControls
+                .padding(.horizontal, 24)
+                .padding(.bottom, 28)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Receipt camera")
+        .accessibilityIdentifier("receipt-camera-viewport")
         .ignoresSafeArea(.container, edges: .bottom)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             camera.onCapture = onCapture
             camera.start()
         }
         .onDisappear { camera.stop() }
+    }
+
+    private var cameraControls: some View {
+        GlassEffectContainer(spacing: 16) {
+            HStack {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 20, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("Close camera")
+
+                Spacer()
+                shutter
+                Spacer()
+
+                Menu {
+                    Button(action: onChoosePhoto) {
+                        Label("Choose Receipt Photo…", systemImage: "photo")
+                    }
+                    .accessibilityLabel("Choose receipt photo")
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 20, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("Camera options")
+            }
+        }
+        .environment(\.colorScheme, .dark)
     }
 
     private var shutter: some View {
@@ -85,7 +93,7 @@ struct ReceiptCameraCaptureView: View {
                 .environment(\.colorScheme, .dark)
         }
         .buttonStyle(.plain)
-        .disabled(camera.isCapturing)
+        .disabled(camera.status != .ready || camera.isCapturing)
         .accessibilityLabel("Take receipt photo")
     }
 
@@ -101,7 +109,7 @@ struct ReceiptCameraCaptureView: View {
                     .accessibilityHidden(true)
                 Text(camera.status == .denied
                      ? "Allow camera access in Settings to take a receipt photo."
-                     : "Camera is unavailable on this device. Use Photos above.")
+                     : "Camera is unavailable on this device. Choose a photo from the menu below.")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                 if camera.status == .denied {

@@ -61,13 +61,23 @@ enum ReceiptAmountParser {
         for (index, line) in lines.enumerated() {
             let text = line.text
             guard line.confidence >= 0.3, !isIdentifierLine(text) else { continue }
-            let previous = index > 0 ? lines[index - 1].text : ""
+            let priorLine = index > 0 ? lines[index - 1] : nil
+            // A label in the same printed row may sort after its right-aligned value.
+            let rowLabel = lines.filter { other in
+                other.bounds != .zero && line.bounds != .zero && other.bounds.maxX <= line.bounds.minX &&
+                abs(other.bounds.midY - line.bounds.midY) < max(other.bounds.height, line.bounds.height) * 0.75 &&
+                labelPriority(other.text) != 0
+            }.max { $0.bounds.maxX < $1.bounds.maxX }
+            let previous = rowLabel?.text ?? priorLine?.text ?? ""
             let currentPriority = labelPriority(text)
             guard currentPriority >= 0 else { continue }
             let previousHasNumber = matches(#"\d"#, in: previous)
-            let previousPriority = !previousHasNumber && !isIdentifierLine(previous) ? labelPriority(previous) : 0
+            let amountOnlyLine = matches(#"^\s*(?:[$€£₹¥₩]|INR|USD|EUR|GBP|AED|CHF|AUD|CAD|SGD|NZD|Rs\.?)?\s*[0-9,.]+\s*$"#, in: text)
+            let previousPriority = amountOnlyLine && !previousHasNumber && !isIdentifierLine(previous) ? labelPriority(previous) : 0
             // Exclude a value split onto the next OCR line after a balance/identifier label.
-            if currentPriority == 0 && (isIdentifierLine(previous) || previousPriority < 0) { continue }
+            let followsLabel = line.bounds == .zero || priorLine?.bounds == .zero || rowLabel != nil ||
+                (priorLine.map { abs($0.bounds.midX - line.bounds.midX) < max($0.bounds.width, line.bounds.width) / 2 } ?? false)
+            if currentPriority == 0 && followsLabel && (isIdentifierLine(previous) || previousPriority < 0) { continue }
             let ns = text as NSString
             let tokens = regex.matches(in: text, range: NSRange(location: 0, length: ns.length))
             let hasPrefixedMoney = tokens.contains { hasCurrency(ns.substring(with: $0.range)) }
@@ -98,8 +108,8 @@ enum ReceiptAmountParser {
     }
 
     private static func labelPriority(_ text: String) -> Int {
-        if matches(#"\b(sub[ -]?total|tax|vat|change|cash tendered|discount|cashback|reward|coupon|offer|available balance|balance available|bank balance|wallet balance|closing balance|opening balance|credit limit|paid by|debited from|credited to|from account)\b"#, in: text) { return -1 }
-        if matches(#"\b(grand total|total due|total amount|amount paid|amount due|final total|net amount|final payable|amount payable)\b"#, in: text) { return 30 }
+        if matches(#"\b(total qty|total quantity|no of item|sub[ -]?total|tax|vat|change|cash tendered|discount|cashback|reward|coupon|offer|available balance|balance available|bank balance|wallet balance|closing balance|opening balance|credit limit|paid by|debited from|credited to|from account)\b"#, in: text) { return -1 }
+        if matches(#"\b(gross|grand total|total due|total amount|amount paid|amount due|final total|net amount|final payable|amount payable)\b"#, in: text) { return 30 }
         if matches(#"\b(total|paid|payment amount|bal due|balance due|sent|received|debited|credited|payment successful|transaction successful|payment completed)\b"#, in: text) { return 20 }
         return 0
     }

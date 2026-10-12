@@ -2,8 +2,13 @@ import Foundation
 
 /// A second contrast pass must corroborate a mistaken currency glyph; never strip a leading 7 by itself.
 enum ReceiptOCRCurrencyRepair {
+    /// Call only after identifying an Indian payment provider or UPI evidence.
+    static func repairIndianPaymentGlyph(_ text: String) -> String {
+        text.replacingOccurrences(of: #"₴(?=\s*\d)"#, with: "₹", options: .regularExpression)
+    }
+
     static func isAmbiguous(_ text: String) -> Bool {
-        text.range(of: #"^\s*[R7·$]\s*[0-9][0-9,.]*\s*$"#, options: .regularExpression) != nil
+        text.range(of: #"^\s*[R7·$=]\s*[0-9][0-9,.]*\s*$"#, options: .regularExpression) != nil
     }
 
     static func repair(_ text: String, corroborating other: String?) -> String {
@@ -12,7 +17,7 @@ enum ReceiptOCRCurrencyRepair {
               let originalFirst = text.first, let otherFirst = other.first else { return text }
         let originalSuffix = String(text.dropFirst()).trimmingCharacters(in: .whitespaces)
         let otherSuffix = String(other.dropFirst()).trimmingCharacters(in: .whitespaces)
-        let symbols: Set<Character> = ["₹", "R", "·", "$"]
+        let symbols: Set<Character> = ["₹", "R", "·", "$", "="]
         if symbols.contains(originalFirst), originalSuffix == otherSuffix,
            symbols.contains(otherFirst) || otherFirst == "7" {
             return "₹" + originalSuffix

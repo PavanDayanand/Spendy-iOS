@@ -85,7 +85,7 @@ final class ExpenseStore {
                     Transaction(title: "Chart salary", amount: 5000, type: .income, categoryId: "salary", accountId: "cash", date: now)
                 ]
             }
-            if mode == "home-attention" || mode == "home-attention-single" {
+            if mode == "home-attention" || mode == "home-attention-single" || mode == "home-stability" {
                 let now = Date()
                 fixture.subscriptions = [
                     Subscription(name: "Today Music", amount: 99, nextBillingDate: now),
@@ -96,6 +96,13 @@ final class ExpenseStore {
                 fixture.budget = Budget(amount: 100, isActive: mode != "home-attention-single")
                 fixture.transactions = [Transaction(title: "Budget expense", amount: 125, categoryId: "groceries", accountId: "cash", date: now)]
             }
+            if mode == "home-stability" {
+                fixture.transactions += [
+                    Transaction(title: "Second recent expense", amount: 20, categoryId: "groceries", accountId: "cash"),
+                    Transaction(title: "Third recent expense", amount: 30, categoryId: "groceries", accountId: "cash")
+                ]
+            }
+            if mode == "insights-disabled" { fixture.insightsEnabled = false }
             if mode == "subscription-detail" {
                 fixture.subscriptions = [Subscription(name: "Readiness Music", amount: 12, nextBillingDate: Date().addingTimeInterval(86400))]
             }

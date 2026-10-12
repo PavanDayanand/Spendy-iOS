@@ -323,7 +323,7 @@ struct DashboardView: View {
     
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
-    @AppStorage("homeSpendingLineChart") private var homeSpendingLineChart = false
+    @State private var homeSummaryHeight: CGFloat = 0
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
     @State private var showEditBudgetSheet: Bool = false
@@ -509,9 +509,11 @@ struct DashboardView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 12)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 }
                     }
                     .scrollBounceBehavior(.basedOnSize)
-                    .frame(height: max(0, totalHeight * 0.55 - 8), alignment: .top)
+                    .scrollDisabled(homeSummaryHeight <= restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8)
+                    .frame(height: max(0, restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8), alignment: .top)
                     .accessibilityIdentifier("home-spending-canvas")
 
                     // 2. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
@@ -836,7 +838,7 @@ struct DashboardView: View {
         HomeSpendingSummary(transactions: store.transactions, categories: store.categories,
             accountID: selectedAccountId, accountLabel: selectedAccountLabel,
             currencySymbol: store.currencySymbol, amountsHidden: hideBalance,
-            insightsEnabled: store.insightsEnabled, showsLine: $homeSpendingLineChart,
+            insightsEnabled: store.insightsEnabled,
             onInsight: { destination, date in
                 switch destination {
                 case .category(let id): selectedCategoryForSheet = store.categories.first { $0.id == id }
@@ -854,9 +856,9 @@ struct DashboardView: View {
 
     // MARK: - 4. Interactive Bottom Transactions Drawer
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        let restingOffset = totalHeight * 0.55
+        let restingOffset = restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset)
         let expandedOffset = max(topInset + 10, 56)
-        let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset)
+        let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset, bottomInset: bottomInset)
         let drawerAvailableHeight = max(100, totalHeight - currentOffset)
         
         let pinnedHeader = VStack(spacing: 0) {
@@ -1178,8 +1180,14 @@ struct DashboardView: View {
             }
     }
     
-    private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat) -> CGFloat {
-        let restingOffset = totalHeight * 0.55
+    private func restingDrawerOffset(totalHeight: CGFloat, bottomInset: CGFloat) -> CGFloat {
+        // Header + three 60-point rows + a small gap + the existing dock and safe area.
+        let compactHeight: CGFloat = 72 + 3 * 60 + 42 + 56 + bottomInset
+        return max(totalHeight * 0.55, totalHeight - compactHeight)
+    }
+
+    private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> CGFloat {
+        let restingOffset = restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset)
         let expandedOffset = max(topInset + 10, 56)
         let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
         let rawOffset = baseOffset + sheetDragOffsetY

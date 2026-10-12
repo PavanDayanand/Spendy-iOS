@@ -124,7 +124,7 @@ struct SpendingChartSnapshot {
         baselineTotal = previous.reduce(0) { $0 + $1.amount }
         hasBaselineRecords = !previous.isEmpty
         let unit: Calendar.Component = period == .year ? .month : period == .day ? .hour : .day
-        let stride = period == .day ? 6 : 1
+        let stride = period == .day ? 6 : period == .month ? 7 : 1
         let format = DateFormatter()
         format.calendar = calendar
         format.timeZone = calendar.timeZone
@@ -135,9 +135,14 @@ struct SpendingChartSnapshot {
             guard let next = calendar.date(byAdding: unit, value: stride, to: date), next > date else { break }
             let bucketEnd = min(next, interval.end)
             let records = recorded.filter { $0.date >= date && $0.date < bucketEnd }
+            let label: String
+            if period == .month {
+                let lastDay = calendar.date(byAdding: .day, value: -1, to: bucketEnd) ?? date
+                label = "\(calendar.component(.day, from: date))–\(calendar.component(.day, from: lastDay))"
+            } else { label = format.string(from: date) }
             result.append(SpendingChartBucket(start: date, end: bucketEnd,
                 amount: records.reduce(0) { $0 + $1.amount }, transactionCount: records.count,
-                label: format.string(from: date), isInProgress: date <= referenceDate && referenceDate < bucketEnd))
+                label: label, isInProgress: date <= referenceDate && referenceDate < bucketEnd))
             date = next
         }
         buckets = result

@@ -379,6 +379,9 @@ struct AnalyticsView: View {
     private func spendingPeriodLabel(_ snapshot: SpendingChartSnapshot, selected: SpendingChartBucket?) -> String {
         if let selected {
             let date = selected.start.formatted(.dateTime.day().month(.abbreviated).year())
+            if snapshot.period == .month {
+                return "\(selected.label) \(selected.start.formatted(.dateTime.month(.abbreviated))) · \(selected.transactionCount) transactions\(selected.isInProgress ? " · To date" : "")"
+            }
             return "\(date) · \(selected.transactionCount) transactions"
         }
         let start = snapshot.start.formatted(.dateTime.day().month(.abbreviated).year())
@@ -840,12 +843,12 @@ struct AnalyticsView: View {
 
                 } label: {
                     GlassCircleIcon(
-                        icon: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
+                        icon: "line.3.horizontal.decrease",
                         size: 44,
                         iconSize: 18,
                         iconWeight: .semibold,
-                        tintColor: isFiltered ? SpendyColors.primaryBlue : nil,
-                        foregroundColor: isFiltered ? SpendyColors.primaryBlue : SpendyColors.textPrimary,
+                        tintColor: nil,
+                        foregroundColor: SpendyColors.textPrimary,
                         morphID: "settingsMenu",
                         namespace: analyticsControlsNamespace
                     )

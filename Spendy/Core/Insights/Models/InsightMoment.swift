@@ -73,6 +73,11 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
         self.attentionLabel = attentionLabel
     }
     
+    /// Conceal numeric claims too: percentages can reveal amounts through known totals.
+    static func concealedText(_ text: String) -> String {
+        text.replacingOccurrences(of: #"[0-9]+(?:[.,\s][0-9]+)*(?:%)?"#, with: "••••", options: .regularExpression)
+    }
+
     /// Canonical empty / insufficient data moment
     static func insufficientData(for surface: InsightSurface, period: InsightPeriod = .month) -> InsightMoment {
         InsightMoment(

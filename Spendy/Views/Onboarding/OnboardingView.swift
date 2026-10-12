@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 /// A small, hands-on introduction. Demo interactions never create financial records.
 public struct OnboardingView: View {
@@ -7,46 +8,18 @@ public struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @GestureState private var pageDrag: CGFloat = 0
-    @Namespace private var appearanceSelection
     @State private var currentStep: Int
     @State private var movingForward = true
-    @State private var inputName = ""
     @State private var showCurrencyPicker = false
-    @State private var triedExpense = false
-    @State private var focus: Focus?
-    @State private var insightIndex = 0
-    @State private var widgetIndex = 0
     @FocusState private var isNameFocused: Bool
-    private let totalSteps = 5
+    @State private var demoVisible = false
+    @State private var mediumWidget = false
+    @State private var shortcutType: TransactionType?
+    @State private var brandVisible = false
+    @State private var remindersAllowed = false
+    @State private var requestingReminders = false
+    private let totalSteps = 7
     private let onComplete: () -> Void
-
-    private enum Focus: String, CaseIterable {
-        case awareness = "Know where it goes"
-        case budget = "Find room in my budget"
-        case recurring = "Stay ahead of bills"
-
-        var detail: String {
-            switch self {
-            case .awareness: "Notice the small purchases that repeat."
-            case .budget: "See how your spending fits your plan."
-            case .recurring: "Make recurring payments easier to see."
-            }
-        }
-        var symbol: String {
-            switch self {
-            case .awareness: "chart.pie"
-            case .budget: "circle.dashed"
-            case .recurring: "calendar"
-            }
-        }
-        var firstStep: String {
-            switch self {
-            case .awareness: "Start by logging one everyday expense. Clarity grows from there."
-            case .budget: "Start with a comfortable budget. You can set it from Home."
-            case .recurring: "Start by adding a recurring payment in Subscriptions."
-            }
-        }
-    }
 
     public init(initialStep: Int = 0, onComplete: @escaping () -> Void = {}) {
         #if DEBUG
@@ -55,7 +28,7 @@ public struct OnboardingView: View {
         #else
         let requested: Int? = nil
         #endif
-        _currentStep = State(initialValue: min(max(requested ?? initialStep, 0), 4))
+        _currentStep = State(initialValue: min(max(requested ?? initialStep, 0), 6))
         self.onComplete = onComplete
     }
 
@@ -81,7 +54,7 @@ public struct OnboardingView: View {
             .clipped()
             footer
         }
-        .background(SpendyColors.appBackground.ignoresSafeArea())
+        .background(introBackground.ignoresSafeArea())
         .foregroundStyle(SpendyColors.textPrimary)
         .tint(SpendyColors.textPrimary)
         .sheet(isPresented: $showCurrencyPicker) {
@@ -90,8 +63,43 @@ public struct OnboardingView: View {
                 showCurrencyPicker = false
             }
         }
-        .onAppear { inputName = store.userName }
+        .task(id: currentStep) {
+            demoVisible = false
+            brandVisible = false
+            if currentStep == 4 { mediumWidget = false }
+            if currentStep == 3 { shortcutType = nil }
+            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? .easeIn(duration: 0.2) : .spring(response: 0.55, dampingFraction: 0.82)) {
+                demoVisible = true
+            }
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.6)) { brandVisible = true }
+            if currentStep == 3 {
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                guard !Task.isCancelled, shortcutType == nil else { return }
+                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.88)) {
+                    shortcutType = .expense
+                }
+            }
+        }
         .sensoryFeedback(.selection, trigger: currentStep)
+    }
+
+    private var introBackground: some View {
+        GeometryReader { geometry in
+            ZStack {
+                SpendyColors.appBackground
+                RadialGradient(colors: [SpendyColors.textPrimary.opacity(0.09), .clear],
+                    center: UnitPoint(x: currentStep.isMultiple(of: 2) ? 0.28 : 0.72, y: 0.36),
+                    startRadius: 12, endRadius: geometry.size.width * 0.95)
+                LinearGradient(colors: [.clear, SpendyColors.textPrimary.opacity(0.025)], startPoint: .top, endPoint: .bottom)
+            }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.8), value: currentStep)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var pageContent: some View {
@@ -100,6 +108,7 @@ public struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .top)
             .padding(.horizontal, 24)
             .padding(.vertical, isNameFocused ? 8 : 16)
+            .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? nil : .infinity)
             .id(currentStep)
             .transition(pageTransition)
     }
@@ -125,7 +134,7 @@ public struct OnboardingView: View {
     }
 
     private var continueTitle: String {
-        ["See how it helps", "Show my example", "Keep it close", "Make it yours", "Open Spendy"][currentStep]
+        ["Get started", "Continue", "Continue", "Continue", "Continue", remindersAllowed ? "Continue" : "Enable reminders", "Open Spendy"][currentStep]
     }
 
     // Forward and back retain their spatial meaning; each page starts at the top.
@@ -170,7 +179,8 @@ public struct OnboardingView: View {
     private var footer: some View {
         VStack(spacing: 8) {
             Button {
-                if currentStep == totalSteps - 1 { finishSetup() }
+                if currentStep == 5 && !remindersAllowed { enableReminders() }
+                else if currentStep == totalSteps - 1 { finishSetup() }
                 else { move(to: currentStep + 1) }
             } label: {
                 HStack {
@@ -181,15 +191,16 @@ public struct OnboardingView: View {
                 }
                 .font(.headline)
                 .padding(18)
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
-                .background(SpendyColors.elevatedControlFill, in: Capsule())
+                .foregroundStyle(SpendyColors.textPrimary)
+                .nativeLiquidGlassCapsule(isInteractive: false)
             }
             .buttonStyle(IntroPressStyle(reduceMotion: reduceMotion))
-            if !isNameFocused {
-            Text(currentStep == 4 ? "You can change these later in Settings." : "Explore at your pace. You can skip the introduction.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            .disabled(requestingReminders)
+            if currentStep == 5 {
+                Button("Not now") { move(to: 6) }
+                    .font(.subheadline).frame(minHeight: 44)
+                    .foregroundStyle(.secondary)
+                    .disabled(requestingReminders)
             }
         }
         .frame(maxWidth: 480)
@@ -201,9 +212,11 @@ public struct OnboardingView: View {
     @ViewBuilder private var stepContent: some View {
         switch currentStep {
         case 0: welcome
-        case 1: intention
-        case 2: insights
+        case 1: insights
+        case 2: planning
         case 3: shortcuts
+        case 4: widgets
+        case 5: reminders
         default: customization
         }
     }
@@ -214,8 +227,7 @@ public struct OnboardingView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(title)
-                .font(.title.bold())
-                .fontDesign(.rounded)
+                .font(AppTypography.largeTitle)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Text(detail)
@@ -225,292 +237,273 @@ public struct OnboardingView: View {
         }
     }
 
+    private func featurePage<Preview: View>(_ title: String, _ detail: String, @ViewBuilder preview: () -> Preview) -> some View {
+        VStack(spacing: 24) {
+            preview()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 12) {
+                Text(title)
+                    .font(AppTypography.largeTitle)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, 16)
+        }
+    }
+
     private var welcome: some View {
-        let reduceWelcomeMotion = reduceMotion
-        return VStack(alignment: .leading, spacing: 16) {
-            Image("SpendyLogo")
-                .resizable().scaledToFit()
-                .frame(width: 64, height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 17))
-                .accessibilityLabel("Spendy app icon")
-            heading("Meet Spendy", "Know where your\nmoney goes.", "Quick tracking. A clear view of your spending, budgets, and subscriptions.")
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Image(systemName: "cup.and.saucer.fill")
-                        .font(.title2)
-                        .keyframeAnimator(initialValue: CGFloat(1), trigger: triedExpense) { content, scale in
-                            content.scaleEffect(reduceWelcomeMotion ? 1 : scale)
-                        } keyframes: { _ in
-                            CubicKeyframe(0.9, duration: 0.08)
-                            SpringKeyframe(1.12, duration: 0.18, spring: .bouncy)
-                            SpringKeyframe(1, duration: 0.22, spring: .smooth)
-                        }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Coffee").font(.headline)
-                        Text("Food & drink").font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(25, format: .currency(code: store.currencyCode)).font(.title3.bold())
+        featurePage("A little clarity.\nEvery day.", "Spending, budgets, and bills. Together.") {
+            VStack(spacing: 24) {
+                Image("SpendyLogo").resizable().scaledToFit().frame(width: 140, height: 140)
+                VStack(spacing: 0) {
+                    introTransaction("Coffee & Cafés", icon: "cup.and.saucer.fill", amount: 25)
+                    Divider().padding(.leading, 64)
+                    introTransaction("Groceries", icon: "cart.fill", amount: 740)
+                    Divider().padding(.leading, 64)
+                    introTransaction("Fuel", icon: "fuelpump.fill", amount: 500)
                 }
-                Button {
-                    withAnimation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.82)) { triedExpense.toggle() }
-                } label: {
-                    Label(triedExpense ? "Added · tap to reset" : "Try logging a coffee", systemImage: triedExpense ? "checkmark.circle.fill" : "plus.circle")
-                        .contentTransition(.opacity)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .sensoryFeedback(.success, trigger: triedExpense)
-                Divider()
-                HStack {
-                    Text("Spent today").foregroundStyle(.secondary)
-                    Spacer()
-                    Text(triedExpense ? 25 : 0, format: .currency(code: store.currencyCode))
-                        .font(.title3.weight(.semibold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText(value: triedExpense ? 25 : 0))
-                }
-                .accessibilityElement(children: .combine)
+                .padding(.horizontal, 16)
+                .background(SpendyColors.recentActivityBackground, in: RoundedRectangle(cornerRadius: 26))
             }
-            .padding(18)
-            .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 26))
-            Text("Just a demo. Nothing is saved.")
-                .font(.caption).foregroundStyle(.secondary)
+            .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
         }
     }
 
-    private var intention: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            heading("Start with what matters", "What would you\nlike to see clearly?", "Choose a question. We’ll show how Spendy can help.")
-            ForEach(Focus.allCases, id: \.self) { option in
-                Button {
-                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) {
-                        focus = option
-                        insightIndex = option == .awareness ? 0 : option == .budget ? 1 : 2
-                    }
-                } label: {
-                    HStack(alignment: .top, spacing: 16) {
-                        Image(systemName: option.symbol).font(.title2).frame(width: 28)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(option.rawValue).font(.headline)
-                            Text(option.detail).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        Image(systemName: focus == option ? "checkmark.circle.fill" : "circle")
-                    }
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(focus == option ? .isSelected : [])
-                Divider()
-            }
-            Text("Just a starting point. Every feature is available whichever you choose.")
-                .font(.footnote).foregroundStyle(.secondary)
+    private func introTransaction(_ name: String, icon: String, amount: Double) -> some View {
+        HStack(spacing: 12) {
+            SpendyIconBadge(sfSymbol: icon, color: SpendyColors.textPrimary, size: .medium, style: .circle, monogramName: name)
+            Text(name).font(.subheadline.weight(.semibold))
+            Spacer(minLength: 4)
+            Text(amount.formattedCurrency(symbol: store.currencySymbol)).font(.subheadline.weight(.semibold)).monospacedDigit()
         }
-    }
-
-    private var insightTitle: String {
-        ["The little things add up.", "Know how much room you have.", "See what's coming."][insightIndex]
-    }
-
-    private var insightDetail: String {
-        [
-            "Five coffees at 25 each make 125. Small repeats are easier to notice when you see them together.",
-            "A budget of 1,000 with 600 spent leaves 400. Check your pace before your next purchase.",
-            "Three subscriptions at 100 each mean 300 in recurring costs. Seeing them together makes planning easier."
-        ][insightIndex]
+        .padding(.vertical, 12)
     }
 
     private var insights: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            heading("From entries to understanding", "See what your\nspending tells you.", "Spending patterns and budget insights, calculated on your device. No generative AI.")
-            VStack(alignment: .leading, spacing: 14) {
-                Label("Example insight", systemImage: SpendyInsightBrandMark.symbol)
-                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Text(insightTitle)
-                    .font(.title2.bold()).fontDesign(.rounded)
-                    .contentTransition(.opacity)
-                Text(insightDetail)
-                    .font(.body).foregroundStyle(.secondary)
-                insightIllustration
-                    .id(insightIndex)
-                    .transition(.opacity)
-                Button("Show another example", systemImage: "arrow.triangle.2.circlepath") {
-                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { insightIndex = (insightIndex + 1) % 3 }
+        featurePage("Your spending.\nUnderstood.", "Personal insights, calculated on your device.") {
+            VStack(spacing: 20) {
+                Image(systemName: SpendyInsightBrandMark.symbol)
+                    .font(.system(size: 48, weight: .light))
+                    .symbolEffect(.pulse, value: demoVisible)
+                    .scaleEffect(reduceMotion || demoVisible ? 1 : 0.6)
+                    .opacity(demoVisible ? 1 : 0)
+                    .accessibilityHidden(true)
+                ShinyText(text: "spendy insights", font: .title2.weight(.semibold),
+                    color: SpendyColors.textPrimary, shineColor: SpendyColors.textPrimary, speed: 1.8, delay: 0)
+                    .opacity(brandVisible ? 1 : 0)
+                    .offset(y: reduceMotion || brandVisible ? 0 : 8)
+                    .accessibilityIdentifier("intro-insight-brand")
+                VStack(alignment: .leading, spacing: 10) {
+                    let days = SpendyWidgetSnapshot.preview.weeklySpending
+                    let total = days.reduce(0) { $0 + $1.amount }
+                    let peak = days.enumerated().max { $0.element.amount < $1.element.amount }
+                    Text("Last 7 days").font(.caption).foregroundStyle(.secondary)
+                    Text(total.formattedCurrency(symbol: store.currencySymbol)).font(AppTypography.heroAmount)
+                    SpendyWeekBars(days: days, accentHex: "", height: 44)
+                    if let peak, total > 0 {
+                        let day = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][peak.offset % 7]
+                        ShinyHeadlineText(headline: "\(peak.element.amount.formattedCurrency(symbol: store.currencySymbol)) on \(day) · \(Int((peak.element.amount / total * 100).rounded()))% of the week.",
+                            emphasis: [], font: .subheadline.weight(.semibold), emphasisFont: .subheadline.bold())
+                    }
                 }
-                .font(.subheadline.weight(.semibold))
-                .frame(minHeight: 44)
+                .padding(20)
+                .nativeLiquidGlass(cornerRadius: 26, isInteractive: false)
+                .opacity(brandVisible ? 1 : 0)
             }
-            .padding(18)
-            .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 26))
-            Text("Illustrative data. Your insights take shape as you track.")
-                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder private var insightIllustration: some View {
-        // These visual summaries match the example above rather than inventing chart data.
-        switch insightIndex {
-        case 0:
-            HStack(spacing: 12) {
-                ForEach(0..<5) { _ in
-                    Image(systemName: "cup.and.saucer.fill")
-                        .font(.title3)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+    private var planning: some View {
+        featurePage("Room to spend.\nBills in view.", "Budgets and subscriptions, side by side.") {
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Budget room").font(.subheadline).foregroundStyle(.secondary)
+                    Text(4000.formattedCurrency(symbol: store.currencySymbol)).font(AppTypography.heroAmount)
+                    ProgressView(value: 0.6).tint(SpendyColors.textPrimary)
+                        .accessibilityLabel("Budget used").accessibilityValue("60 percent")
+                    HStack {
+                        Text("\(6000.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) spent")
+                        Spacer()
+                        Text("of \(10000.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
                 }
-            }
-            .accessibilityLabel("Five coffee purchases")
-        case 1:
-            VStack(alignment: .leading, spacing: 10) {
-                ProgressView(value: 0.6)
-                    .tint(.primary)
-                    .accessibilityLabel("Budget used")
-                    .accessibilityValue("60 percent")
-                HStack {
-                    Text("600 spent")
-                    Spacer()
-                    Text("400 left")
+                .padding(20)
+                .nativeLiquidGlass(cornerRadius: 26, isInteractive: false)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Subscriptions").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(148.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/mo").font(.subheadline.weight(.semibold))
+                    }
+                    ForEach(["Music", "Storage"], id: \.self) { name in
+                        HStack(spacing: 12) {
+                            SpendyIconBadge(sfSymbol: name == "Music" ? "music.note" : "externaldrive", color: SpendyColors.textPrimary, size: .small, style: .circle)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(name).font(.subheadline.weight(.semibold))
+                                Text(name == "Music" ? "Renews tomorrow" : "Renews in 3 days").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text((name == "Music" ? 99.0 : 49.0).formattedCurrency(symbol: store.currencySymbol, decimals: 0)).font(.subheadline.weight(.semibold))
+                        }
+                    }
                 }
-                .font(.subheadline.weight(.medium))
-                .monospacedDigit()
+                .padding(20)
+                .nativeLiquidGlass(cornerRadius: 26, isInteractive: false)
             }
-            .padding(.vertical, 12)
-        default:
-            HStack(spacing: 12) {
-                ForEach(["play.rectangle", "music.note", "externaldrive"], id: \.self) { symbol in
-                    Image(systemName: symbol)
-                        .font(.title2)
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
-                }
-            }
-            .accessibilityLabel("Three recurring subscriptions")
+            .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
         }
     }
 
     private var shortcuts: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            heading("Keep it close", "Your spending.\nA glance away.", "Check your spending with a widget. Log a transaction with Siri or Shortcuts.")
-            Group {
-                if widgetIndex == 0 {
-                    SpendyMediumWeekWidgetView(snapshot: .preview)
-                } else {
-                    SpendyMediumCategoriesWidgetView(snapshot: .preview)
-                }
-            }
-            .id(widgetIndex)
-            .transition(.opacity)
-            .frame(height: 150)
-            .clipShape(RoundedRectangle(cornerRadius: 26))
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-            Button(widgetIndex == 0 ? "Preview spending by category" : "Preview your spending pulse", systemImage: "rectangle.2.swap") {
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
-                    widgetIndex = 1 - widgetIndex
-                }
-            }
-            .font(.subheadline.weight(.semibold))
-            .frame(minHeight: 44)
-            Text("Widget preview · Example data")
-                .font(.caption).foregroundStyle(.secondary)
-            Label("“Siri, log a transaction in Spendy.”", systemImage: "waveform")
-                .font(.headline).padding(.vertical, 8)
-            Text("Add widgets from your Home Screen. Set up the Action Button for quick logging whenever you’re ready.")
-                .font(.subheadline).foregroundStyle(.secondary)
-        }
-    }
-
-    private var customization: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if !isNameFocused {
-                heading("One last thing", "Make it yours.", "A name, a currency, and your preferred look.")
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Your name").font(.headline)
-                TextField("Your name (optional)", text: $inputName)
-                    .textContentType(.nickname)
-                    .textInputAutocapitalization(.words)
-                    .focused($isNameFocused)
-                    .submitLabel(.done)
-                    .onSubmit { isNameFocused = false }
-                    .padding(16)
-                    .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 16))
-            }
-            Button {
-                isNameFocused = false
-                showCurrencyPicker = true
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Currency").font(.headline)
-                        Text("\(store.currencyCode) · \(CurrencyInfo.name(for: store.currencyCode))")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                }
-                .padding(.vertical, 12).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            if !isNameFocused {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Appearance").font(.headline)
-                    HStack(spacing: 8) {
-                        ForEach(AppearanceMode.allCases) { mode in
+        featurePage("A shortcut\nto your day.", "“Siri, log transaction in Spendy.”") {
+            VStack(alignment: .leading, spacing: 20) {
+                if shortcutType == nil {
+                    Text("Expense or income?").font(AppTypography.sectionTitle)
+                    VStack(spacing: 0) {
+                        ForEach([TransactionType.expense, .income], id: \.self) { type in
                             Button {
-                                withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
-                                    store.appearanceMode = mode
-                                }
+                                withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.88)) { shortcutType = type }
                             } label: {
-                                VStack(spacing: 12) {
-                                    HStack(spacing: 8) {
-                                        appearanceMark(mode)
-                                        Text(mode.rawValue)
-                                            .font(.subheadline.weight(store.appearanceMode == mode ? .semibold : .regular))
-                                    }
-                                    .foregroundStyle(store.appearanceMode == mode ? Color.primary : Color.secondary)
-                                    ZStack {
-                                        Color.clear
-                                        if store.appearanceMode == mode {
-                                            Capsule()
-                                                .fill(Color.primary)
-                                                .matchedGeometryEffect(id: "appearance", in: appearanceSelection)
-                                        }
-                                    }
-                                    .frame(width: 24, height: 2)
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 52)
-                                .contentShape(Rectangle())
+                                Label(type == .expense ? "Expense" : "Income", systemImage: type == .expense ? "arrow.up.right" : "arrow.down.left")
+                                    .font(.title3).frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                                    .padding(.horizontal, 18)
                             }
-                            .buttonStyle(IntroPressStyle(reduceMotion: reduceMotion))
-                            .accessibilityLabel(mode.rawValue + " appearance")
-                            .accessibilityAddTraits(store.appearanceMode == mode ? .isSelected : [])
+                            .buttonStyle(.plain)
+                            if type == .expense { Divider().padding(.horizontal, 18) }
+                        }
+                    }
+                    .background(SpendyColors.textPrimary.opacity(0.06), in: RoundedRectangle(cornerRadius: 22))
+                } else {
+                    Text("Amount").font(AppTypography.sectionTitle)
+                    Text("11.11").font(AppTypography.heroAmount).frame(maxWidth: .infinity, minHeight: 76)
+                        .background(SpendyColors.textPrimary.opacity(0.06), in: RoundedRectangle(cornerRadius: 22))
+                    HStack(spacing: 12) {
+                        ForEach(["Cancel", "Done"], id: \.self) { title in
+                            Button(title) { withAnimation { shortcutType = nil } }
+                                .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
+                                .nativeLiquidGlassCapsule(isInteractive: false)
                         }
                     }
                 }
             }
+            .padding(22)
+            .nativeLiquidGlass(cornerRadius: 30, isInteractive: false)
+            .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
+            .accessibilityIdentifier("intro-shortcut-preview")
         }
-        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.9), value: isNameFocused)
     }
 
-    private func appearanceMark(_ mode: AppearanceMode) -> some View {
-        Circle()
-            .strokeBorder(lineWidth: 1)
-            .background {
-                if mode == .dark {
-                    Circle().fill(.primary)
-                } else if mode == .system {
-                    Rectangle()
-                        .fill(.primary)
-                        .frame(width: 7)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .clipShape(Circle())
+    private var widgets: some View {
+        featurePage("Your day.\nAt a glance.", "Spendy, on your Home Screen.") {
+            GeometryReader { geometry in
+                let width = mediumWidget ? geometry.size.width : (geometry.size.width - 16) / 2
+                let layout = mediumWidget
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                    : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+                layout {
+                    Button {
+                        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.86)) { mediumWidget.toggle() }
+                    } label: {
+                        ZStack {
+                            SpendySmallWidgetView(snapshot: .preview).opacity(mediumWidget ? 0 : 1)
+                            SpendyMediumWeekWidgetView(snapshot: .preview).opacity(mediumWidget ? 1 : 0)
+                        }
+                        .frame(width: width, height: 170)
+                        .environment(\.spendyWidgetGlassPreview, true)
+                        .nativeLiquidGlass(cornerRadius: 24, isInteractive: false)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .accessibilityHidden(true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Resize widget preview")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityValue(mediumWidget ? "Medium" : "Small")
+                    .accessibilityHint("Double tap to switch between small and medium")
+                    .accessibilityIdentifier("intro-widget-resize")
+                    .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
+                    SpendyQuickActionsWidgetView(snapshot: .preview, previewFamily: mediumWidget ? .systemMedium : .systemSmall)
+                        .environment(\.spendyWidgetGlassPreview, true)
+                        .frame(width: width, height: mediumWidget ? 110 : 170)
+                        .nativeLiquidGlass(cornerRadius: 24, isInteractive: false)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Quick launch widget: Add, Scan, Trends")
+                        .accessibilityIdentifier("intro-quick-launch-widget")
+                        .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
                 }
             }
-            .frame(width: 14, height: 14)
-            .accessibilityHidden(true)
+            .frame(height: mediumWidget ? 296 : 170)
+        }
+    }
+
+    private var reminders: some View {
+        featurePage("A timely\nheads-up.", "Renewal reminders and weekly summaries.") {
+            VStack(spacing: 28) {
+                Text("11:11").font(.system(size: 64, weight: .light)).foregroundStyle(.secondary).accessibilityHidden(true)
+                HStack(spacing: 12) {
+                    Image("SpendyLogo").resizable().scaledToFit().frame(width: 40, height: 40)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Weekly summary").font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text("now").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("\(125.formattedCurrency(symbol: store.currencySymbol)) recorded this week.").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(16)
+                .nativeLiquidGlass(cornerRadius: 24, isInteractive: false)
+                .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
+            }
+        }
+    }
+
+    private func enableReminders() {
+        guard !requestingReminders else { return }
+        requestingReminders = true
+        Task {
+            let allowed = await NotificationManager.shared.requestAuthorization()
+            if allowed {
+                store.notificationsEnabled = true
+                store.weeklySummaryEnabled = true
+                NotificationManager.shared.refresh(from: store)
+            }
+            remindersAllowed = allowed
+            requestingReminders = false
+            move(to: 6)
+        }
+    }
+
+    private var customization: some View {
+        featurePage("Ready for\nyour everyday.", "Choose your currency.") {
+            VStack(spacing: 30) {
+                Image("SpendyLogo").resizable().scaledToFit().frame(width: 160, height: 160)
+                Button { showCurrencyPicker = true } label: {
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(store.currencyCode).font(AppTypography.heroAmount)
+                            Text(CurrencyInfo.name(for: store.currencyCode)).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down").font(.headline)
+                    }
+                    .padding(24)
+                    .nativeLiquidGlass(cornerRadius: 28, isInteractive: false)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Choose currency")
+            }
+            .modifier(IntroDemoEntrance(visible: demoVisible, reduceMotion: reduceMotion))
+        }
     }
 
     private func move(to step: Int) {
@@ -525,7 +518,6 @@ public struct OnboardingView: View {
 
     private func finishSetup() {
         isNameFocused = false
-        store.userName = inputName.trimmingCharacters(in: .whitespacesAndNewlines)
         HapticsManager.shared.trigger(.success)
         store.hasCompletedOnboarding = true
         onComplete()
@@ -545,5 +537,16 @@ private struct IntroPressStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
+    }
+}
+
+private struct IntroDemoEntrance: ViewModifier {
+    let visible: Bool
+    let reduceMotion: Bool
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .scaleEffect(reduceMotion || visible ? 1 : 0.94)
+            .offset(y: reduceMotion || visible ? 0 : -18)
     }
 }

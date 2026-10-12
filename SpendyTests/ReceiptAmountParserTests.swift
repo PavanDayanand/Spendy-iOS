@@ -52,6 +52,9 @@ final class ReceiptAmountParserTests: XCTestCase {
     }
 
     func testRupeeRepairNeedsCorroborationAndKeepsRealLeadingSeven() {
+        XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("=135", corroborating: "R135"), "₹135")
+        XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("=135", corroborating: nil), "=135")
+        XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("=135", corroborating: "R55"), "=135")
         XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("71,250.50", corroborating: "R1,250.50"), "₹1,250.50")
         XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("73,200", corroborating: "·3,200"), "₹3,200")
         XCTAssertEqual(ReceiptOCRCurrencyRepair.repair("71,250", corroborating: "71,250"), "71,250")
@@ -162,6 +165,67 @@ final class ReceiptAmountParserTests: XCTestCase {
             XCTAssertEqual(Calendar.current.component(.day, from: result.date), expectedDay)
             XCTAssertEqual(Calendar.current.component(.month, from: result.date), expectedMonth)
         }
+    }
+
+
+    func testRealGooglePayGlyphAndRecipientRegressions() {
+        for (raw, amount, recipient, date) in [
+            ("₴55", 55.0, "All Season Market Counter 3", "12 October 2026, 7:13pm"),
+            ("₴135", 135.0, "SRI GANESHA ENTERPRISES", "12 Oct 2026, 7:01pm")
+        ] {
+            let repaired = ReceiptOCRCurrencyRepair.repairIndianPaymentGlyph(raw)
+            let lines = [repaired, "Paid to", recipient, date, "UPI"]
+            XCTAssertEqual(ReceiptAmountParser.total(in: lines), amount)
+            XCTAssertEqual(ReceiptFieldParser.merchant(in: lines.map { .init(text: $0) }, payment: true), recipient.capitalized)
+            let detected = ReceiptFieldParser.date(in: lines.map { .init(text: $0) }, dayFirst: true)
+            XCTAssertNotNil(detected)
+            XCTAssertEqual(detected.map { Calendar.current.component(.month, from: $0) }, 10)
+            XCTAssertEqual(detected.map { Calendar.current.component(.day, from: $0) }, 12)
+        }
+        XCTAssertEqual(ReceiptOCRCurrencyRepair.repairIndianPaymentGlyph("7135"), "7135")
+    }
+
+    func testReceiptMerchantIgnoresSurroundingHandwritingAndJoinsBrand() {
+        let lines: [ReceiptAmountParser.Line] = [
+            .init(text: "nont props. pr", bounds: CGRect(x: 0.03, y: 0.88, width: 0.18, height: 0.13)),
+            .init(text: "ALL SEASON", bounds: CGRect(x: 0.33, y: 0.82, width: 0.28, height: 0.035)),
+            .init(text: "MARKET", bounds: CGRect(x: 0.42, y: 0.80, width: 0.09, height: 0.017)),
+            .init(text: "Ground & First Floor, Railway Layout", bounds: CGRect(x: 0.28, y: 0.78, width: 0.35, height: 0.023)),
+            .init(text: "INVOICE", bounds: CGRect(x: 0.40, y: 0.71, width: 0.12, height: 0.023))
+        ]
+        XCTAssertEqual(ReceiptFieldParser.merchant(in: lines, payment: false), "All Season Market")
+        let restaurant: [ReceiptAmountParser.Line] = [
+            .init(text: "SVS BANGARPETE CHATS", bounds: CGRect(x: 0.31, y: 0.75, width: 0.31, height: 0.05)),
+            .init(text: "Sri Ganesha Enterprises", bounds: CGRect(x: 0.31, y: 0.73, width: 0.33, height: 0.03)),
+            .init(text: "Phone: 6364385445", bounds: CGRect(x: 0.34, y: 0.62, width: 0.25, height: 0.028)),
+            .init(text: "Item", bounds: CGRect(x: 0.16, y: 0.44, width: 0.062, height: 0.02))
+        ]
+        XCTAssertEqual(ReceiptFieldParser.merchant(in: restaurant, payment: false), "Svs Bangarpete Chats")
+        XCTAssertEqual(ReceiptFieldParser.merchant(in: [.init(text: "C"), .init(text: "SVS BANGARPETE CHATS"), .init(text: "Sri Ganesha Enterprises"), .init(text: "Item")], payment: false), "Svs Bangarpete Chats")
+    }
+
+    func testShortYearAndStrictReceiptDates() {
+        for text in ["Date 12/10/26", "12-10-2026 19:01:37", "12.10.26", "2026-10-12"] {
+            let date = ReceiptFieldParser.date(in: [.init(text: text)], dayFirst: true)
+            XCTAssertNotNil(date, text)
+            XCTAssertEqual(date.map { Calendar.current.component(.year, from: $0) }, 2026, text)
+            XCTAssertEqual(date.map { Calendar.current.component(.month, from: $0) }, 10, text)
+            XCTAssertEqual(date.map { Calendar.current.component(.day, from: $0) }, 12, text)
+        }
+        XCTAssertNil(ReceiptFieldParser.date(in: [.init(text: "31/02/26")], dayFirst: true))
+    }
+
+    func testSplitReceiptRowsExcludeQuantityAndUseGross() {
+        let lines: [ReceiptAmountParser.Line] = [
+            .init(text: "Total Qty 4.00", bounds: CGRect(x: 0.27, y: 0.50, width: 0.12, height: 0.016)),
+            .init(text: "Gross", bounds: CGRect(x: 0.44, y: 0.465, width: 0.055, height: 0.015)),
+            .init(text: "55.00", bounds: CGRect(x: 0.60, y: 0.465, width: 0.078, height: 0.020)),
+            .init(text: "Total", bounds: CGRect(x: 0.29, y: 0.23, width: 0.04, height: 0.012)),
+            .init(text: "52.38", bounds: CGRect(x: 0.38, y: 0.23, width: 0.04, height: 0.012))
+        ]
+        XCTAssertEqual(ReceiptAmountParser.total(in: lines), 55)
+        XCTAssertFalse(ReceiptAmountParser.candidates(in: lines).contains { $0.amount == 4 })
+        XCTAssertEqual(ReceiptAmountParser.total(in: ["Total Qty 4.00", "Gross 55.00"]), 55)
     }
 
     private struct PaymentFixture {
