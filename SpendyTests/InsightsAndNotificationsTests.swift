@@ -80,15 +80,18 @@ final class InsightsAndNotificationsTests: XCTestCase {
         store.insightsEnabled = false
         store.weeklySummaryEnabled = true
         store.loggingRemindersEnabled = true
+        store.budgetAlertsEnabled = true
         store.flushPendingSave()
         let reloaded = ExpenseStore(storageURL: url, startsServices: false)
         XCTAssertFalse(reloaded.insightsEnabled)
         XCTAssertTrue(reloaded.weeklySummaryEnabled)
         XCTAssertTrue(reloaded.loggingRemindersEnabled)
+        XCTAssertTrue(reloaded.budgetAlertsEnabled)
         let imported = ExpenseStore(storageURL: folder.appendingPathComponent("import.json"), startsServices: false)
         XCTAssertTrue(imported.importJSONData(data: try XCTUnwrap(store.exportJSONData())))
         XCTAssertFalse(imported.insightsEnabled)
         XCTAssertTrue(imported.weeklySummaryEnabled)
+        XCTAssertTrue(imported.budgetAlertsEnabled)
     }
     @MainActor func testWeeklyBudgetUsesConfiguredCycleAndIgnoresOtherRanges() {
         let now = date(10)

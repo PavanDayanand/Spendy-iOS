@@ -84,6 +84,14 @@ struct HomeSpendingSummary: View {
                         Spacer()
 
                     }
+                    let attention = HomeAttentionInsights.build(transactions: transactions, subscriptions: store.subscriptions, budget: store.budget,
+                        cycleSpent: store.budgetCycleExpenses, currencySymbol: currencySymbol, now: referenceDate)
+                    if insightsEnabled && !attention.isEmpty {
+                        SpendyInsightSummary(moments: attention, compact: true, onSelect: { _ in
+                            insightDate = snapshot.start
+                            showsInsights = true
+                        })
+                    } else {
                     Button {
                         if insightsEnabled {
                             insightDate = snapshot.start
@@ -109,6 +117,7 @@ struct HomeSpendingSummary: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("home-spending-insights")
                     .accessibilityHint("Open spending analytics for this account and month")
+                    }
                 }
             }
             .sheet(isPresented: $showsInsights, onDismiss: {
@@ -119,7 +128,8 @@ struct HomeSpendingSummary: View {
                 }
             }) {
                 SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
-                    currencySymbol: currencySymbol, insights: insights(for: snapshot), insightsOnly: true,
+                    currencySymbol: currencySymbol, insights: HomeAttentionInsights.build(transactions: transactions, subscriptions: store.subscriptions, budget: store.budget,
+                        cycleSpent: store.budgetCycleExpenses, currencySymbol: currencySymbol, now: referenceDate) + insights(for: snapshot), insightsOnly: true,
                     onSelectInsight: { destination in
                         pendingInsight = destination
                         showsInsights = false

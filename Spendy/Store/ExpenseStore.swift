@@ -85,6 +85,17 @@ final class ExpenseStore {
                     Transaction(title: "Chart salary", amount: 5000, type: .income, categoryId: "salary", accountId: "cash", date: now)
                 ]
             }
+            if mode == "home-attention" || mode == "home-attention-single" {
+                let now = Date()
+                fixture.subscriptions = [
+                    Subscription(name: "Today Music", amount: 99, nextBillingDate: now),
+                    Subscription(name: "Today Storage", amount: 49, nextBillingDate: now),
+                    Subscription(name: "Paused Today", amount: 999, nextBillingDate: now, isPaused: true)
+                ]
+                if mode == "home-attention-single" { fixture.subscriptions = Array(fixture.subscriptions.prefix(1)) }
+                fixture.budget = Budget(amount: 100, isActive: mode != "home-attention-single")
+                fixture.transactions = [Transaction(title: "Budget expense", amount: 125, categoryId: "groceries", accountId: "cash", date: now)]
+            }
             if mode == "subscription-detail" {
                 fixture.subscriptions = [Subscription(name: "Readiness Music", amount: 12, nextBillingDate: Date().addingTimeInterval(86400))]
             }
@@ -179,6 +190,7 @@ final class ExpenseStore {
     var insightsEnabled = true { didSet { scheduleSave() } }
     var weeklySummaryEnabled = false { didSet { scheduleSave() } }
     var loggingRemindersEnabled = false { didSet { scheduleSave() } }
+    var budgetAlertsEnabled = false { didSet { scheduleSave() } }
 
     var notificationsEnabled: Bool = true {
         didSet { scheduleSave() }
@@ -437,6 +449,7 @@ final class ExpenseStore {
         var insightsEnabled: Bool?
         var weeklySummaryEnabled: Bool?
         var loggingRemindersEnabled: Bool?
+        var budgetAlertsEnabled: Bool?
         var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
         var isMonoIconMode: Bool?
@@ -484,6 +497,7 @@ final class ExpenseStore {
                 self.insightsEnabled = payload.insightsEnabled ?? true
                 self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? false
                 self.loggingRemindersEnabled = payload.loggingRemindersEnabled ?? false
+                self.budgetAlertsEnabled = payload.budgetAlertsEnabled ?? false
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = payload.appearanceMode ?? .dark
                 self.isMonoIconMode = true
@@ -605,6 +619,7 @@ final class ExpenseStore {
             insightsEnabled: insightsEnabled,
             weeklySummaryEnabled: weeklySummaryEnabled,
             loggingRemindersEnabled: loggingRemindersEnabled,
+            budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
             isMonoIconMode: isMonoIconMode,
@@ -676,6 +691,7 @@ final class ExpenseStore {
         self.insightsEnabled = true
         self.weeklySummaryEnabled = false
         self.loggingRemindersEnabled = false
+        self.budgetAlertsEnabled = false
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
         self.appearanceMode = .dark
@@ -1472,6 +1488,7 @@ final class ExpenseStore {
         self.insightsEnabled = true
         self.weeklySummaryEnabled = false
         self.loggingRemindersEnabled = false
+        self.budgetAlertsEnabled = false
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = true
         self.appearanceMode = SpendyDefaultData.appearanceMode
@@ -1516,6 +1533,7 @@ final class ExpenseStore {
             insightsEnabled: insightsEnabled,
             weeklySummaryEnabled: weeklySummaryEnabled,
             loggingRemindersEnabled: loggingRemindersEnabled,
+            budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
             isMonoIconMode: isMonoIconMode,
@@ -1601,6 +1619,7 @@ final class ExpenseStore {
                 self.insightsEnabled = payload.insightsEnabled ?? self.insightsEnabled
                 self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? self.weeklySummaryEnabled
                 self.loggingRemindersEnabled = payload.loggingRemindersEnabled ?? self.loggingRemindersEnabled
+                self.budgetAlertsEnabled = payload.budgetAlertsEnabled ?? self.budgetAlertsEnabled
                 self.notificationsEnabled = payload.notificationsEnabled ?? self.notificationsEnabled
                 self.ratesLastUpdated = payload.ratesLastUpdated
                 self.ratesNextUpdate = payload.ratesNextUpdate

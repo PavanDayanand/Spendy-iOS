@@ -15,7 +15,7 @@ enum TransactionActiveSheet: Identifiable {
     case category
     case account(isDestination: Bool)
     case calendar
-    case scanner
+    case scanner([UIImage])
     
     var id: String {
         switch self {
@@ -65,6 +65,7 @@ struct AddTransactionView: View {
     @State private var showReceiptPhotos = false
     @State private var openPhotosAfterCamera = false
     @State private var selectedReceiptPhoto: PhotosPickerItem?
+    @State private var pendingReceiptPhoto: UIImage?
     @State private var receiptImages: [UIImage] = []
     @State private var receiptImportError: String?
     @State private var dismissAfterReceiptAdd = false
@@ -257,9 +258,9 @@ struct AddTransactionView: View {
                 )
             case .calendar:
                 CustomCalendarDrawer(selectedDate: $date)
-            case .scanner:
+            case .scanner(let images):
                 ReceiptScannerSheet(
-                    images: receiptImages,
+                    images: images,
                     initialAccountId: fromAccountId,
                     initialCategoryId: selectedCategoryId,
                     onEditResult: { result in applyScanResult(result) },
@@ -294,6 +295,12 @@ struct AddTransactionView: View {
             matching: .images,
             preferredItemEncoding: .compatible
         )
+        .onChange(of: showReceiptPhotos) { _, isPresented in
+            if !isPresented, let image = pendingReceiptPhoto {
+                pendingReceiptPhoto = nil
+                activeSheet = .scanner([image])
+            }
+        }
         .onChange(of: selectedReceiptPhoto) { _, item in
             guard let item else { return }
             Task {
@@ -304,7 +311,11 @@ struct AddTransactionView: View {
                     }
                     selectedReceiptPhoto = nil
                     receiptImages = [image]
-                    activeSheet = .scanner
+                    if showReceiptPhotos {
+                        pendingReceiptPhoto = image
+                    } else {
+                        activeSheet = .scanner([image])
+                    }
                 } catch {
                     selectedReceiptPhoto = nil
                     receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
@@ -751,12 +762,12 @@ struct AddTransactionView: View {
                 // Source menu opens in place, like the other compact action menus.
                 Menu {
                     Button {
-                        guard let image = UIPasteboard.general.image else {
+                        guard let image = copiedReceiptImage else {
                             receiptImportError = "Copy a receipt image first, then choose Paste image again."
                             return
                         }
                         receiptImages = [image]
-                        activeSheet = .scanner
+                        activeSheet = .scanner([image])
                     } label: {
                         Label("Paste image", systemImage: "doc.on.clipboard")
                     }
@@ -971,10 +982,29 @@ struct AddTransactionView: View {
         }
     }
     
+    private var copiedReceiptImage: UIImage? {
+        #if DEBUG
+        // Reproducible OCR/UI fixture; the UI test runner's clipboard is isolated on newer simulators.
+        if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_MODE"] != nil,
+           let text = ProcessInfo.processInfo.environment["SPENDY_UI_TEST_RECEIPT_TEXT"] {
+            return UIGraphicsImageRenderer(size: CGSize(width: 900, height: 1000)).image { context in
+                UIColor.white.setFill()
+                context.fill(CGRect(x: 0, y: 0, width: 900, height: 1000))
+                for (index, line) in text.components(separatedBy: "\n").enumerated() {
+                    (line as NSString).draw(at: CGPoint(x: 40, y: 40 + index * 95), withAttributes: [
+                        .font: UIFont.systemFont(ofSize: index == 2 ? 60 : 36), .foregroundColor: UIColor.black
+                    ])
+                }
+            }
+        }
+        #endif
+        return UIPasteboard.general.image
+    }
+
     // MARK: - Apply Scanned Receipt Result
     private func presentCapturedReceipt() {
         guard !receiptImages.isEmpty else { return }
-        activeSheet = .scanner
+        activeSheet = .scanner(receiptImages)
     }
 
     private func applyScanResult(_ result: ReceiptScanResult) {
@@ -985,28 +1015,32 @@ struct AddTransactionView: View {
             note = result.merchantName
         }
         date = result.date
-        if let catId = result.suggestedCategoryId, store.categories.contains(where: { $0.id == catId }) {
+        type = result.transactionType
+        if let catId = result.suggestedCategoryId, store.categories.contains(where: { $0.id == catId && $0.type == type }) {
             selectedCategoryId = catId
+        } else if !store.categories.contains(where: { $0.id == selectedCategoryId && $0.type == type }) {
+            selectedCategoryId = availableCategories.first?.id ?? selectedCategoryId
         }
         if let accId = result.suggestedAccountId, store.accounts.contains(where: { $0.id == accId }) {
             fromAccountId = accId
         }
-        type = .expense
     }
 
     private func addScannedTransaction(_ result: ReceiptScanResult) {
         let merchant = result.merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
         let categoryId = result.suggestedCategoryId ?? selectedCategoryId
         let accountId = result.suggestedAccountId ?? fromAccountId
-        guard result.totalAmount > 0, !merchant.isEmpty,
-              store.categories.contains(where: { $0.id == categoryId && $0.type == .expense }),
+        guard result.totalAmount > 0, !merchant.isEmpty, result.hasDetectedDate,
+              result.paymentStatus != .pending, result.paymentStatus != .failed,
+              result.currencySymbol == store.currencySymbol,
+              store.categories.contains(where: { $0.id == categoryId && $0.type == result.transactionType }),
               store.accounts.contains(where: { $0.id == accountId }) else { return }
 
         HapticsManager.shared.trigger(.success)
         store.addTransaction(Transaction(
             title: merchant,
             amount: result.totalAmount,
-            type: .expense,
+            type: result.transactionType,
             categoryId: categoryId,
             accountId: accountId,
             date: result.date

@@ -17,90 +17,104 @@ struct ReceiptCameraCaptureView: View {
     var onCancel: () -> Void
     var onChoosePhoto: () -> Void
 
+    @Namespace private var cameraNamespace
+
     var body: some View {
-        ZStack {
-            Color.black
-
-            if camera.status == .ready {
-                ReceiptCameraPreview(session: camera.session)
-                    .ignoresSafeArea()
-            }
-
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.55)],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-            .allowsHitTesting(false)
-
-            VStack {
+        VStack(spacing: 14) {
+            GlassEffectContainer(spacing: 12) {
                 HStack {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(width: 44, height: 44)
-                            .background(.black.opacity(0.42), in: Circle())
-                    }
-                    .accessibilityLabel("Close camera")
+                    GlassCircleButton(icon: "xmark", size: 44, iconSize: 16,
+                        accessibilityLabel: "Close camera", morphID: "cameraClose",
+                        namespace: cameraNamespace, action: onCancel)
                     Spacer()
                     Text("Receipt")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 14)
-                        .frame(height: 36)
-                        .background(.black.opacity(0.42), in: Capsule())
-                }
-
-                Spacer()
-
-                if camera.status == .ready {
-                    Button { camera.capture() } label: {
-                        Circle()
-                            .fill(.white)
-                            .frame(width: 62, height: 62)
-                            .padding(6)
-                            .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
-                    }
-                    .disabled(camera.isCapturing)
-                    .accessibilityLabel("Take receipt photo")
-                    .padding(.bottom, 16)
-                } else {
-                    VStack(spacing: 14) {
-                        if camera.status == .loading {
-                            ProgressView().tint(.white)
-                        } else {
-                            Image(systemName: "camera.slash")
-                                .font(.title2)
-                            Text(camera.status == .denied
-                                 ? "Allow camera access in Settings to take a receipt photo."
-                                 : "Camera is unavailable on this device. Choose Photos instead.")
-                                .font(.subheadline)
-                                .multilineTextAlignment(.center)
-                            if camera.status == .denied {
-                                Button("Open Settings") {
-                                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                                        openURL(url)
-                                    }
-                                }
-                                .font(.subheadline.weight(.semibold))
-                            }
-                            Button("Choose photo", action: onChoosePhoto)
-                                .font(.subheadline.weight(.semibold))
-                                .frame(minWidth: 120, minHeight: 44)
-                        }
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.bottom, 24)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    Spacer()
+                    GlassCircleButton(icon: "photo", size: 44, iconSize: 18,
+                        accessibilityLabel: "Choose receipt photo", morphID: "cameraPhotos",
+                        namespace: cameraNamespace, action: onChoosePhoto)
                 }
             }
-            .padding(24)
-            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+
+            ZStack {
+                Color.black
+                if camera.status == .ready {
+                    ReceiptCameraPreview(session: camera.session)
+                        .overlay(alignment: .bottom) {
+                            shutter
+                                .padding(.bottom, 32)
+                        }
+                } else {
+                    cameraStatus
+                        .padding(28)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The sheet is radius 32; a 12-point inset gives a concentric inner radius of 20.
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(.white.opacity(0.12), lineWidth: 0.5)
+            }
+            .accessibilityIdentifier("receipt-camera-viewport")
         }
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
+        .background(SpendyColors.appBackground.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .bottom)
         .onAppear {
             camera.onCapture = onCapture
             camera.start()
         }
         .onDisappear { camera.stop() }
+    }
+
+    private var shutter: some View {
+        Button { camera.capture() } label: {
+            Circle()
+                .fill(.white)
+                .frame(width: 54, height: 54)
+                .overlay {
+                    if camera.isCapturing { ProgressView().tint(.black) }
+                }
+                .frame(width: 78, height: 78)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .environment(\.colorScheme, .dark)
+        }
+        .buttonStyle(.plain)
+        .disabled(camera.isCapturing)
+        .accessibilityLabel("Take receipt photo")
+    }
+
+    private var cameraStatus: some View {
+        VStack(spacing: 14) {
+            if camera.status == .loading {
+                ProgressView().tint(.white)
+                Text("Starting camera")
+                    .font(.subheadline)
+            } else {
+                Image(systemName: "camera.slash")
+                    .font(.title2)
+                    .accessibilityHidden(true)
+                Text(camera.status == .denied
+                     ? "Allow camera access in Settings to take a receipt photo."
+                     : "Camera is unavailable on this device. Use Photos above.")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                if camera.status == .denied {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minHeight: 44)
+                    .buttonStyle(.glass)
+                }
+            }
+        }
+        .foregroundStyle(.white)
     }
 }
 

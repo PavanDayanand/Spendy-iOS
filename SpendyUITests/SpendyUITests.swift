@@ -1,14 +1,188 @@
 import XCTest
+import UIKit
 
 final class SpendyUITests: XCTestCase {
-    @MainActor private func launch(_ mode: String = "standard", largeText: Bool = false, light: Bool = false) -> XCUIApplication {
+    @MainActor private func launch(_ mode: String = "standard", largeText: Bool = false, light: Bool = false, receiptText: String? = nil, rotatesInsights: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = mode
-        app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1"
+        if !rotatesInsights { app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1" }
+        if let receiptText { app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_TEXT"] = receiptText }
         if light { app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = "light" }
         if largeText { app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         app.launch()
         return app
+    }
+
+    @MainActor func testHomeAttentionDark() { verifyHomeAttention(light: false) }
+    @MainActor func testHomeAttentionLight() { verifyHomeAttention(light: true) }
+
+    @MainActor private func verifyHomeAttention(light: Bool) {
+        let app = launch("home-attention", light: light, rotatesInsights: true)
+        let priority = app.buttons["home-priority-insight"]
+        XCTAssertTrue(priority.waitForExistence(timeout: 10))
+        XCTAssertTrue(priority.label.contains("2 renewals today"))
+        XCTAssertTrue(priority.isHittable)
+        if !light {
+            let changed = expectation(for: NSPredicate(format: "label CONTAINS[c] %@", "budget"), evaluatedWith: priority)
+            changed.isInverted = true
+            wait(for: [changed], timeout: 9)
+        }
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Home renewals today priority \(light ? "light" : "dark")"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["home-next-insight"].tap()
+        XCTAssertTrue(priority.label.contains("budget"))
+        app.buttons["home-next-insight"].tap()
+        XCTAssertTrue(priority.label.contains("2 renewals today"))
+        priority.tap()
+        XCTAssertTrue(app.navigationBars["Spendy insights"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Needs your attention"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "2 renewals today")).firstMatch.exists)
+    }
+
+    @MainActor func testSingleHomeRenewalOpensFullInsights() {
+        let app = launch("home-attention-single")
+        let insight = app.buttons["home-priority-insight"]
+        XCTAssertTrue(insight.waitForExistence(timeout: 10))
+        XCTAssertTrue(insight.label.contains("Today Music renews today"))
+        insight.tap()
+        XCTAssertTrue(app.navigationBars["Spendy insights"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Needs your attention"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Today Music renews today")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["View spending details"].exists)
+    }
+
+    @MainActor func testReceiptCameraGlassDark() { verifyReceiptCamera(light: false) }
+    @MainActor func testReceiptCameraGlassLight() { verifyReceiptCamera(light: true) }
+
+    @MainActor private func verifyReceiptCamera(light: Bool) {
+        let app = launch("analytics", light: light)
+        app.buttons["Add Transaction"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        app.buttons["Add receipt"].tap()
+        app.buttons["Camera"].tap()
+        XCTAssertTrue(app.buttons["Close camera"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Choose receipt photo"].isHittable)
+        XCTAssertTrue(app.staticTexts["Receipt"].exists)
+        let viewport = app.descendants(matching: .any).matching(identifier: "receipt-camera-viewport").firstMatch
+        XCTAssertTrue(viewport.exists)
+        XCTAssertGreaterThan(viewport.frame.minY, app.buttons["Close camera"].frame.maxY)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Receipt camera inset glass \(light ? "light" : "dark")"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["Close camera"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["edit-scanned-receipt"].exists)
+    }
+
+    @MainActor private func openReceiptReview(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["Add Transaction"].waitForExistence(timeout: 10))
+        app.buttons["Add Transaction"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        app.buttons["Add receipt"].tap()
+        app.buttons["Paste image"].tap()
+        XCTAssertTrue(app.buttons["edit-scanned-receipt"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor func testIncomingReceiptReturnsToIncomeEditor() {
+        let receipt = ["Paytm", "Money Received", "Rs. 3200", "Received from", "Anjali", "12 Oct 2026", "UPI Ref 123456789012"].joined(separator: "\n")
+        let app = launch("analytics", receiptText: receipt)
+        openReceiptReview(app)
+        XCTAssertTrue(app.staticTexts["From"].exists)
+        app.buttons["edit-scanned-receipt"].tap()
+        XCTAssertTrue(app.buttons["Income"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Income"].isSelected)
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Amount,")).firstMatch.label.contains("3200"))
+    }
+
+    @MainActor func testPendingReceiptCannotBeAddedDirectly() {
+        let receipt = ["PhonePe", "Payment Pending", "Rs. 750", "Paid to", "Corner Cafe", "12 Oct 2026", "UPI Ref 123456789012"].joined(separator: "\n")
+        let app = launch("analytics", receiptText: receipt)
+        openReceiptReview(app)
+        XCTAssertFalse(app.buttons["add-scanned-receipt"].isEnabled)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Payment is pending")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["edit-scanned-receipt"].isEnabled)
+    }
+
+    @MainActor func testScannedReceiptAddsAndReturnsToHome() {
+        let receipt = ["Paytm", "Paid Successfully", "Rs. 750", "To", "Corner Cafe", "12 Oct 2026", "HDFC Bank XX2345"].joined(separator: "\n")
+        let app = launch("analytics", receiptText: receipt)
+        openReceiptReview(app)
+        XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
+        app.buttons["add-scanned-receipt"].tap()
+        let home = app.buttons["Add Transaction"]
+        let backHome = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: home)
+        wait(for: [backHome], timeout: 5)
+        XCTAssertFalse(app.buttons["edit-scanned-receipt"].exists)
+        XCTAssertFalse(app.buttons["Add receipt"].exists)
+    }
+
+    @MainActor func testReceiptReviewDark() { verifyReceiptReview(light: false) }
+    @MainActor func testReceiptReviewLight() { verifyReceiptReview(light: true) }
+
+    @MainActor private func verifyReceiptReview(light: Bool) {
+        let receipt = ["Paytm", "Paid Successfully", "Rs. 750", "To", "Corner Cafe", "12 Oct 2026", "UPI Ref No: 123456789012", "HDFC Bank XX2345"].joined(separator: "\n")
+        let app = launch("analytics", light: light, receiptText: receipt)
+        XCTAssertTrue(app.buttons["Add Transaction"].waitForExistence(timeout: 10))
+        app.buttons["Add Transaction"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        app.buttons["Add receipt"].tap()
+        app.buttons["Paste image"].tap()
+        if app.alerts.firstMatch.waitForExistence(timeout: 2) {
+            let allow = app.alerts.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "allow paste")).firstMatch
+            if allow.exists { allow.tap() }
+        }
+        guard app.buttons["edit-scanned-receipt"].waitForExistence(timeout: 15) else {
+            XCTFail("Receipt review did not finish: \(app.debugDescription)")
+            return
+        }
+        XCTAssertTrue(app.staticTexts["Corner Cafe"].exists)
+        XCTAssertTrue(app.buttons["add-scanned-receipt"].isHittable)
+        XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Receipt review compact controls \(light ? "light" : "dark")"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["edit-scanned-receipt"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["edit-scanned-receipt"].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Amount,")).firstMatch.label.contains("750"))
+        let editorShot = XCTAttachment(screenshot: app.screenshot())
+        editorShot.name = "Scanned amount returned to existing editor \(light ? "light" : "dark")"
+        editorShot.lifetime = .keepAlways
+        add(editorShot)
+    }
+
+    @MainActor func testMinimalWidgetsDark() { verifyMinimalWidgets(light: false) }
+    @MainActor func testMinimalWidgetsLight() { verifyMinimalWidgets(light: true) }
+
+    @MainActor private func verifyMinimalWidgets(light: Bool) {
+        let app = launch("analytics", light: light)
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
+        let widgets = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "widgets")).firstMatch
+        for _ in 0..<6 {
+            if widgets.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(widgets.waitForExistence(timeout: 5))
+        widgets.tap()
+        XCTAssertTrue(app.staticTexts["Home Screen widgets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Add"].exists)
+        XCTAssertTrue(app.links["Scan"].exists)
+        XCTAssertTrue(app.links["Trends"].exists)
+        func capture(_ section: String) {
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "Minimal widgets \(light ? "light" : "dark") \(section)"
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
+        capture("small and budget")
+        app.swipeUp()
+        capture("week and categories")
+        app.swipeUp()
+        capture("monthly")
     }
 
     @MainActor func testRemainingCategoriesOpenAndReturnToAnalytics() {

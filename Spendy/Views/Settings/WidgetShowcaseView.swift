@@ -36,14 +36,14 @@ struct WidgetShowcaseView: View {
                             SpendySmallWidgetView(snapshot: snapshot)
                                 .frame(height: 158)
                         }
-                        previewCard(title: "Budget room", badge: "Small") {
-                            SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
+                        previewCard(title: "Quick actions", badge: "Small") {
+                            SpendyQuickActionsWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
                                 .frame(height: 158)
                         }
                     }
 
-                    previewCard(title: "Quick actions", badge: "Small · Medium") {
-                        SpendyQuickActionsWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
+                    previewCard(title: "Budget room", badge: "Small · Medium") {
+                        SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
                             .frame(height: 158)
                     }
 

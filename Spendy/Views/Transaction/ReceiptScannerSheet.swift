@@ -18,6 +18,8 @@ struct ReceiptScannerSheet: View {
     var onAddResult: (ReceiptScanResult) -> Void
 
     @State private var isScanning = true
+    @State private var isUsingAppleIntelligence = false
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var scanResult: ReceiptScanResult?
     @State private var isFinishing = false
     @Namespace private var sheetNamespace
@@ -30,7 +32,7 @@ struct ReceiptScannerSheet: View {
 
     private var category: Category? {
         let id = scanResult?.suggestedCategoryId ?? initialCategoryId
-        return store.categories.first(where: { $0.id == id && $0.type == .expense })
+        return store.categories.first(where: { $0.id == id && $0.type == (scanResult?.transactionType ?? .expense) })
     }
 
     private var account: Account? {
@@ -41,7 +43,8 @@ struct ReceiptScannerSheet: View {
     private var canAdd: Bool {
         guard let result = scanResult else { return false }
         return !isFinishing && result.totalAmount > 0 && !merchant.isEmpty && category != nil && account != nil
-            && result.currencySymbol == store.currencySymbol
+            && result.currencySymbol == store.currencySymbol && result.hasDetectedDate
+            && result.paymentStatus != .pending && result.paymentStatus != .failed
     }
 
     var body: some View {
@@ -56,35 +59,45 @@ struct ReceiptScannerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
         }
-        .safeAreaInset(edge: .bottom) {
-            if scanResult != nil {
-                actionBar
-            }
-        }
         .presentationDetents([.height(570), .large])
         .presentationDragIndicator(.hidden)
+        .background(SpendyColors.appBackground)
         .task { await processImages() }
     }
 
     private var topActionBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: SFIcons.close,
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: sheetNamespace
-            ) {
-                dismiss()
-            }
-            Spacer()
+        HStack(spacing: 10) {
+            GlassCircleButton(icon: SFIcons.close, size: 44, iconSize: 16, iconWeight: .bold,
+                foregroundColor: SpendyColors.textPrimary, haptic: .selection,
+                accessibilityLabel: "Close", morphID: "closeButton", namespace: sheetNamespace) { dismiss() }
+            Spacer(minLength: 0)
             Text("Review receipt")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SpendyColors.textSecondary)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+            if scanResult != nil {
+                GlassCircleButton(icon: SFIcons.edit, size: 44, iconSize: 16, iconWeight: .bold,
+                    foregroundColor: SpendyColors.textPrimary, haptic: .selection,
+                    accessibilityLabel: "Edit receipt", morphID: "editReceipt", namespace: sheetNamespace,
+                    action: editResult)
+                    .disabled(isFinishing)
+                    .accessibilityIdentifier("edit-scanned-receipt")
+                Button(action: addResult) {
+                    Label("Add", systemImage: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 13)
+                        .frame(height: 44)
+                        .foregroundStyle(SpendyColors.elevatedControlForeground)
+                        .background(SpendyColors.elevatedControlFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canAdd)
+                .opacity(canAdd ? 1 : 0.45)
+                .accessibilityLabel("Add scanned transaction")
+                .accessibilityIdentifier("add-scanned-receipt")
+            }
         }
     }
 
@@ -93,15 +106,34 @@ struct ReceiptScannerSheet: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(SpendyColors.textPrimary)
-            Text("Reading receipt")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            Text("Finding the details on your device")
+            if isUsingAppleIntelligence {
+                intelligenceLabel("Using Apple Intelligence", animated: true)
+                    .accessibilityIdentifier("receipt-intelligence-processing")
+            } else {
+                Text("Reading receipt")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+            Text(isUsingAppleIntelligence ? "Checking the amount on your device" : "Finding the details on your device")
                 .font(.subheadline)
                 .foregroundStyle(SpendyColors.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
+    }
+
+    private func intelligenceLabel(_ title: String, animated: Bool) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(SpendyColors.textPrimary)
+                .accessibilityHidden(true)
+            ShinyText(text: title, font: .subheadline.weight(.semibold),
+                color: SpendyColors.textPrimary.opacity(0.85), shineColor: SpendyColors.textPrimary,
+                speed: 1.8, delay: 7, disabled: !animated || contrast == .increased,
+                alignment: .center)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
     }
 
     private func reportView(_ result: ReceiptScanResult) -> some View {
@@ -115,20 +147,29 @@ struct ReceiptScannerSheet: View {
 
                 detailsCard(result)
 
-                if result.rawRecognizedText.isEmpty {
-                    Label("We couldn't read this photo. Choose Edit to enter the details.", systemImage: "exclamationmark.circle")
-                        .font(.footnote)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if result.currencySymbol != store.currencySymbol {
-                    Label("Receipt shows \(result.currencySymbol). Choose Edit to check the amount in \(store.currencySymbol).", systemImage: "exclamationmark.circle")
+                if let guidance = reviewGuidance(result) {
+                    Label(guidance, systemImage: "exclamationmark.circle")
                         .font(.footnote)
                         .foregroundStyle(SpendyColors.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                if !result.lineItems.isEmpty {
+                if !result.lineItems.isEmpty && result.receiptType != .paymentScreenshot {
                     recognizedItemsCard(result)
+                }
+                if let image = result.originalImage {
+                    DisclosureGroup("Receipt image") {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 12)
+                            .accessibilityLabel("Original receipt image")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .padding(16)
+                    .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 18))
                 }
             }
             .padding(.horizontal, 20)
@@ -147,19 +188,28 @@ struct ReceiptScannerSheet: View {
             )
 
             Text(result.totalAmount > 0
-                 ? result.totalAmount.formattedCurrency(symbol: store.currencySymbol)
+                 ? result.totalAmount.formattedCurrency(symbol: result.currencySymbol)
                  : "Amount not found")
                 .font(.system(size: 38, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(result.totalAmount > 0 ? SpendyColors.textPrimary : SpendyColors.textSecondary)
 
+            if result.wasAssistedByAppleIntelligence {
+                intelligenceLabel("Assisted by Apple Intelligence", animated: false)
+                    .accessibilityIdentifier("receipt-intelligence-result")
+            } else if isUsingAppleIntelligence && result.totalAmount == 0 {
+                Text("Apple Intelligence couldn’t identify the amount. Check it manually.")
+                    .font(.footnote)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
     }
 
     private func detailsCard(_ result: ReceiptScanResult) -> some View {
         VStack(spacing: 0) {
-            detailRow(label: "Merchant") {
+            detailRow(label: result.receiptType == .paymentScreenshot ? (result.transactionType == .income ? "From" : "To") : "Merchant") {
                 Text(merchant.isEmpty ? "Not found" : merchant)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(merchant.isEmpty ? SpendyColors.textSecondary : SpendyColors.textPrimary)
@@ -167,16 +217,8 @@ struct ReceiptScannerSheet: View {
                     .lineLimit(2)
             }
             cardDivider
-            detailRow(label: "Amount") {
-                Text(result.totalAmount > 0
-                     ? result.totalAmount.formattedCurrency(symbol: store.currencySymbol)
-                     : "Not found")
-                    .font(.system(size: 16, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            cardDivider
             detailRow(label: "Date") {
-                Text(result.date.formatted(date: .long, time: .omitted))
+                Text(result.hasDetectedDate ? result.date.formatted(date: .abbreviated, time: .omitted) : "Check in Edit")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .multilineTextAlignment(.trailing)
@@ -265,34 +307,15 @@ struct ReceiptScannerSheet: View {
         }
     }
 
-    private var actionBar: some View {
-        HStack(spacing: 12) {
-            Button("Edit", action: editResult)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundStyle(SpendyColors.textPrimary)
-                .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-                .disabled(isFinishing)
-
-            Button("Add", action: addResult)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
-                .background(SpendyColors.elevatedControlFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .disabled(!canAdd)
-                .opacity(canAdd ? 1 : 0.45)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(SpendyColors.appBackground)
+    private func reviewGuidance(_ result: ReceiptScanResult) -> String? {
+        if result.rawRecognizedText.isEmpty { return "We couldn’t read this photo. Tap Edit to enter the details." }
+        if result.paymentStatus == .pending { return "Payment is pending. Confirm it completed before recording it." }
+        if result.paymentStatus == .failed { return "This payment failed. It hasn’t been added to your spending." }
+        if result.currencySymbol != store.currencySymbol { return "Receipt shows \(result.currencySymbol). Tap Edit to check the amount in \(store.currencySymbol)." }
+        if result.totalAmount == 0 { return "The amount needs checking. Tap Edit to enter it." }
+        if !result.hasDetectedDate { return "The date wasn’t clear. Check it in Edit before adding." }
+        if merchant.isEmpty || category == nil || account == nil { return "Tap Edit to check the name, category, and account." }
+        return nil
     }
 
     private func reviewedResult() -> ReceiptScanResult? {
@@ -323,7 +346,8 @@ struct ReceiptScannerSheet: View {
             images,
             categories: store.categories,
             accounts: store.accounts,
-            defaultCurrencySymbol: store.currencySymbol
+            defaultCurrencySymbol: store.currencySymbol,
+            onIntelligenceStarted: { isUsingAppleIntelligence = true }
         )
         scanResult = result
         isScanning = false

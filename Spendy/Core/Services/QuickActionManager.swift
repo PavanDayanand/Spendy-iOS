@@ -21,6 +21,7 @@ final class QuickActionManager {
     var requestedAnalyticsWeekDate: Date? = nil
     var shouldOpenBudget: Bool = false
     var requestedCategoryId: String? = nil
+    var requestedSubscriptionId: String? = nil
     
     // Shortcut Item Types
     enum ShortcutType: String {
@@ -108,8 +109,11 @@ final class QuickActionManager {
                 self.targetTab = .analytics
             }
         } else if host == "subscriptions" || path.contains("subscriptions") {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                self.targetTab = .subscriptions
+            if let id = url.pathComponents.dropFirst().first.flatMap({ UUID(uuidString: $0)?.uuidString.lowercased() }) {
+                requestedSubscriptionId = id
+                targetTab = .home
+            } else {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { targetTab = .subscriptions }
             }
         }
     }

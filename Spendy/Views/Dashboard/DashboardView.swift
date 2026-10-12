@@ -602,6 +602,13 @@ struct DashboardView: View {
                     quickActionManager.shouldOpenBudget = false
                 }
             }
+            .onChange(of: quickActionManager.requestedSubscriptionId) { _, id in
+                if let id {
+                    initialSubscriptionIdForHub = id
+                    showSubscriptionsHub = true
+                    quickActionManager.requestedSubscriptionId = nil
+                }
+            }
             .onChange(of: quickActionManager.requestedCategoryId) { _, id in
                 if let id, let category = store.categories.first(where: { $0.id == id }) {
                     selectedCategoryForSheet = category
@@ -609,6 +616,11 @@ struct DashboardView: View {
                 }
             }
             .onAppear {
+                if let id = quickActionManager.requestedSubscriptionId {
+                    initialSubscriptionIdForHub = id
+                    showSubscriptionsHub = true
+                    quickActionManager.requestedSubscriptionId = nil
+                }
                 isSubpageActiveBinding?.wrappedValue = isSubpageActive
                 if quickActionManager.shouldOpenBudget {
                     showBudgetHub = true

@@ -12,7 +12,10 @@ struct NotificationPreferencesView: View {
             Form {
                 Section {
                     Toggle("Bill reminders", isOn: preference(\.notificationsEnabled))
-                } footer: { Text("At 9 AM the day before, on the due day, and once three days later if the payment is still unrecorded. Logging, pausing, or cancelling updates the reminders.") }
+                } footer: { Text("At 9 AM the day before, on the due day, and once three days later if the payment is still unrecorded. A missed due-day reminder can arrive when you next open Spendy during the day. Logging, pausing, or cancelling updates the reminders.") }
+                Section {
+                    Toggle("Budget alerts", isOn: preference(\.budgetAlertsEnabled))
+                } footer: { Text("One alert at 80% and one when your budget limit is reached per cycle, based on recorded expenses. Open Spendy to keep alerts up to date.") }
                 Section {
                     Toggle("Weekly summary", isOn: preference(\.weeklySummaryEnabled))
                 } footer: {
@@ -21,6 +24,17 @@ struct NotificationPreferencesView: View {
                 Section {
                     Toggle("Logging reminders", isOn: preference(\.loggingRemindersEnabled))
                 } footer: { Text("Tuesday and Friday at 8 PM. A gentle prompt to record anything you missed. All times are local.") }
+                if status == .notDetermined {
+                    Section {
+                        Button("Allow notifications") {
+                            Task {
+                                _ = await NotificationManager.shared.requestAuthorization()
+                                status = await NotificationManager.shared.checkAuthorizationStatus()
+                                NotificationManager.shared.refresh(from: store)
+                            }
+                        }
+                    } footer: { Text("Allow Spendy to deliver the reminders you enable above.") }
+                }
                 if status == .denied {
                     Section {
                         Button("Open Notification Settings") {

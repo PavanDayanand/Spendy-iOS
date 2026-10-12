@@ -38,6 +38,8 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
     
     // Insufficient data flag
     let isInsufficientData: Bool
+    let attentionPriority: Int
+    let attentionLabel: String?
     
     init(
         id: String,
@@ -51,7 +53,9 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
         emphasis: [InsightEmphasis] = [],
         actionTitle: String? = nil,
         destination: InsightDestination? = nil,
-        isInsufficientData: Bool = false
+        isInsufficientData: Bool = false,
+        attentionPriority: Int = 0,
+        attentionLabel: String? = nil
     ) {
         self.id = id
         self.candidateId = candidateId
@@ -65,6 +69,8 @@ struct InsightMoment: Identifiable, Hashable, Sendable {
         self.actionTitle = actionTitle
         self.destination = destination
         self.isInsufficientData = isInsufficientData
+        self.attentionPriority = attentionPriority
+        self.attentionLabel = attentionLabel
     }
     
     /// Canonical empty / insufficient data moment

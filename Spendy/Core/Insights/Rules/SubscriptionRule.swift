@@ -96,6 +96,7 @@ struct SubscriptionRule: InsightRule {
                 }
             }
             
+            if SubscriptionRenewalAttention.isRecorded(sub, transactions: facts.subscriptionExpensesInPeriod, now: now) { continue }
             // 3. Billing Date Alerts (Overdue vs. Upcoming)
             let daysUntil = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: sub.nextBillingDate)).day ?? 999
             
@@ -147,14 +148,14 @@ struct SubscriptionRule: InsightRule {
                         affectedEntityId: subId,
                         period: context.period,
                         confidence: 1.0,
-                        severity: 0.45,
-                        relevance: 0.85,
+                        severity: daysUntil == 0 ? 0.95 : 0.45,
+                        relevance: daysUntil == 0 ? 1.0 : 0.85,
                         actionability: 0.70,
                         materiality: materiality,
                         evidence: evidence,
                         actionTitle: "View \(sub.name) →",
                         destination: .subscriptionDetail(id: subId),
-                        isCritical: false,
+                        isCritical: daysUntil == 0,
                         canActAsDriver: false
                     )
                 )

@@ -243,8 +243,8 @@ enum InsightMessageBuilder {
             let formattedAmount = formatCurrency(amount, symbol: currencySymbol)
             let dueText = daysAgoPhrase(daysOverdue)
             return InsightMessagePayload(
-                headline: "\(name) is past due.",
-                supportingText: "\(formattedAmount) was \(dueText).",
+                headline: "\(name)’s renewal is unrecorded.",
+                supportingText: "Expected \(formattedAmount) · \(dueText). Check whether it was paid.",
                 emphasis: [.highlight(name), .highlight(formattedAmount)],
                 actionTitle: hasDestination ? (candidate.actionTitle ?? "View \(name) →") : nil
             )

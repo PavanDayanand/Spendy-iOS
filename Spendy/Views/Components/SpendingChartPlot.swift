@@ -103,25 +103,24 @@ struct SpendingChartInfoSheet: View {
         NavigationStack {
             List {
                 if !amountsHidden && !insights.isEmpty {
-                    Section {
-                        ForEach(insights) { moment in
-                            VStack(alignment: .leading, spacing: 6) {
-                                ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis, font: .headline, emphasisFont: .headline.bold())
-                                if let supporting = moment.supportingText {
-                                    InsightSupportingText(text: supporting, emphasis: moment.emphasis, font: .subheadline)
-                                }
-                                if let destination = moment.destination, let onSelectInsight {
-                                    Button(moment.actionTitle ?? "Explore insight") { onSelectInsight(destination) }
-                                }
-                            }
-                            .padding(.vertical, 4)
+                    let priority = insights.filter { $0.attentionPriority > 0 }
+                    let remaining = insights.filter { $0.attentionPriority == 0 }
+                    if !priority.isEmpty {
+                        Section("Needs your attention") {
+                            insightRows(priority)
                         }
-                    } header: {
-                        SpendyInsightBrandMark(style: .kicker)
-                            .textCase(nil)
-                            .padding(.vertical, 6)
+                        .accessibilityIdentifier("spending-info-priority")
                     }
-                    .accessibilityIdentifier("spending-info-insights")
+                    if !remaining.isEmpty {
+                        Section {
+                            insightRows(remaining)
+                        } header: {
+                            SpendyInsightBrandMark(style: .kicker)
+                                .textCase(nil)
+                                .padding(.vertical, 6)
+                        }
+                        .accessibilityIdentifier("spending-info-insights")
+                    }
                 }
                 if insightsOnly && insights.isEmpty {
                     Section {
@@ -167,6 +166,22 @@ struct SpendingChartInfoSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
+
+    private func insightRows(_ moments: [InsightMoment]) -> some View {
+        ForEach(moments) { moment in
+            VStack(alignment: .leading, spacing: 6) {
+                ShinyHeadlineText(headline: moment.headline, emphasis: moment.emphasis, font: .headline, emphasisFont: .headline.bold())
+                if let supporting = moment.supportingText {
+                    InsightSupportingText(text: supporting, emphasis: moment.emphasis, font: .subheadline)
+                }
+                if let destination = moment.destination, let onSelectInsight {
+                    Button(moment.actionTitle ?? "Explore insight") { onSelectInsight(destination) }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
 }
 
 private struct SpendingChartAccessibility: AXChartDescriptorRepresentable {

@@ -28,7 +28,7 @@ struct SpendyQuickActionsWidget: Widget {
             SpendyQuickActionsWidgetView(snapshot: entry.snapshot)
         }
         .configurationDisplayName("Quick actions")
-        .description("Add an expense, scan a receipt, or open your budget and trends.")
+        .description("Add an expense, scan a receipt, or see your spending trends.")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
