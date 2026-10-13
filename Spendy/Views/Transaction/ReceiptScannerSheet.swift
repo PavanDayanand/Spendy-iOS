@@ -59,6 +59,24 @@ struct ReceiptScannerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if scanResult != nil {
+                Button(action: addResult) {
+                    Label("Add transaction", systemImage: "plus")
+                        .font(.headline)
+                        .foregroundStyle(SpendyColors.textPrimary)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .disabled(!canAdd)
+                .opacity(canAdd ? 1 : 0.45)
+                .accessibilityLabel("Add scanned transaction")
+                .accessibilityIdentifier("add-scanned-receipt")
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+        }
         .presentationDetents([.height(570), .large])
         .presentationDragIndicator(.hidden)
         .background(Color.clear)
@@ -74,7 +92,7 @@ struct ReceiptScannerSheet: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 116)
+                    .padding(.horizontal, 60)
                     .accessibilityIdentifier("receipt-review-title")
 
                 HStack {
@@ -90,18 +108,7 @@ struct ReceiptScannerSheet: View {
                                 action: editResult)
                                 .disabled(isFinishing)
                                 .accessibilityIdentifier("edit-scanned-receipt")
-                            Button(action: addResult) {
-                                Label("Add", systemImage: "plus")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(SpendyColors.textPrimary)
-                                    .frame(width: 62, height: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .disabled(!canAdd)
-                            .opacity(canAdd ? 1 : 0.45)
-                            .accessibilityLabel("Add scanned transaction")
-                            .accessibilityIdentifier("add-scanned-receipt")
+
                         }
                     }
                 }

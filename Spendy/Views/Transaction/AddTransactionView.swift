@@ -16,6 +16,7 @@ enum TransactionActiveSheet: Identifiable {
     case createCategory
     case account(isDestination: Bool)
     case calendar
+    case receiptIntroduction
     case scanner([UIImage])
     
     var id: String {
@@ -24,6 +25,7 @@ enum TransactionActiveSheet: Identifiable {
         case .createCategory: return "createCategory"
         case .account(let isDest): return "account_\(isDest)"
         case .calendar: return "calendar"
+        case .receiptIntroduction: return "receiptIntroduction"
         case .scanner: return "scanner"
         }
     }
@@ -64,6 +66,9 @@ struct AddTransactionView: View {
     @State private var activeSheet: TransactionActiveSheet? = nil
     @State private var pendingCategoryCreation = false
     @State private var showDiscardConfirmation: Bool = false
+    @AppStorage("hasSeenReceiptScanIntroduction") private var hasSeenReceiptScanIntroduction = false
+    @State private var openReceiptSourcesAfterIntroduction = false
+    @State private var receiptMenuPresentationRequest = 0
     @State private var showReceiptCamera = false
     @State private var showReceiptPhotos = false
     @State private var openPhotosAfterCamera = false
@@ -241,6 +246,10 @@ struct AddTransactionView: View {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
         .sheet(item: $activeSheet, onDismiss: {
+            if openReceiptSourcesAfterIntroduction {
+                openReceiptSourcesAfterIntroduction = false
+                receiptMenuPresentationRequest += 1
+            }
             if pendingCategoryCreation {
                 pendingCategoryCreation = false
                 activeSheet = .createCategory
@@ -274,6 +283,12 @@ struct AddTransactionView: View {
                 )
             case .calendar:
                 CustomCalendarDrawer(selectedDate: $date)
+            case .receiptIntroduction:
+                ReceiptScanIntroductionSheet {
+                    hasSeenReceiptScanIntroduction = true
+                    openReceiptSourcesAfterIntroduction = true
+                    activeSheet = nil
+                }
             case .scanner(let images):
                 ReceiptScannerSheet(
                     images: images,
@@ -776,46 +791,14 @@ struct AddTransactionView: View {
                 
                 Spacer()
                 
-                // Source menu opens in place, like the other compact action menus.
-                Menu {
-                    Button {
-                        guard let image = copiedReceiptImage else {
-                            receiptImportError = "Copy a receipt image first, then choose Paste image again."
-                            return
-                        }
-                        receiptImages = [image]
-                        activeSheet = .scanner([image])
-                    } label: {
-                        Label("Paste image", systemImage: "doc.on.clipboard")
-                    }
-                    Button {
-                        showReceiptPhotos = true
-                    } label: {
-                        Label("Photos", systemImage: "photo.on.rectangle")
-                    }
-                    Button {
-                        receiptImages = []
-                        showReceiptCamera = true
-                    } label: {
-                        Label("Camera", systemImage: "camera")
-                    }
-                } label: {
-                    Image(systemName: "doc.text.viewfinder")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .background {
-                            Circle()
-                                .fill(SpendyColors.transactionKeySurface)
-                                .overlay {
-                                    Circle()
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add receipt")
-                
+                ReceiptSourceMenuButton(
+                    needsIntroduction: !hasSeenReceiptScanIntroduction,
+                    presentationRequest: receiptMenuPresentationRequest,
+                    onIntroduction: { activeSheet = .receiptIntroduction },
+                    onSelect: selectReceiptSource
+                )
+                .frame(width: 44, height: 44)
+
                 // Note Button
                 Button {
                     HapticsManager.shared.trigger(.light)
@@ -999,6 +982,23 @@ struct AddTransactionView: View {
         }
     }
     
+    private func selectReceiptSource(_ source: ReceiptSourceMenuButton.Source) {
+        switch source {
+        case .paste:
+            guard let image = copiedReceiptImage else {
+                receiptImportError = "Copy a receipt image first, then choose Paste image again."
+                return
+            }
+            receiptImages = [image]
+            activeSheet = .scanner([image])
+        case .photos:
+            showReceiptPhotos = true
+        case .camera:
+            receiptImages = []
+            showReceiptCamera = true
+        }
+    }
+
     private var copiedReceiptImage: UIImage? {
         #if DEBUG
         // Reproducible OCR/UI fixture; the UI test runner's clipboard is isolated on newer simulators.

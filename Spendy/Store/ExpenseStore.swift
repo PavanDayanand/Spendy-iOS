@@ -58,6 +58,9 @@ final class ExpenseStore {
         #if DEBUG
         // UI tests get their own temporary ledger, including a reproducible recovery fixture.
         if let mode = ProcessInfo.processInfo.environment["SPENDY_UI_TEST_MODE"] {
+            if let introduction = ProcessInfo.processInfo.environment["SPENDY_UI_TEST_RECEIPT_INTRO"] {
+                UserDefaults.standard.set(introduction != "first-use", forKey: "hasSeenReceiptScanIntroduction")
+            }
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("ui-test-\(UUID().uuidString).json")
             let fixture = ExpenseStore(storageURL: url, startsServices: false)
             fixture.hasCompletedOnboarding = true

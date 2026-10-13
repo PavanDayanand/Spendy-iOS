@@ -5,6 +5,7 @@ final class SpendyUITests: XCTestCase {
     @MainActor private func launch(_ mode: String = "standard", largeText: Bool = false, light: Bool = false, receiptText: String? = nil, rotatesInsights: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = mode
+        app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "seen"
         if !rotatesInsights { app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1" }
         if let receiptText { app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_TEXT"] = receiptText }
         if light { app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = "light" }
@@ -261,6 +262,44 @@ final class SpendyUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Add receipt"].exists)
     }
 
+    @MainActor func testReceiptIntroductionOnlyOnFirstUse() {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "analytics"
+        app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "first-use"
+        app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1"
+        app.launch()
+        app.buttons["Add Transaction"].tap()
+        app.buttons["Add receipt"].tap()
+        XCTAssertTrue(app.staticTexts["Scan receipts"].waitForExistence(timeout: 5))
+        XCTAssertLessThan(app.buttons["Close receipt introduction"].frame.midX, app.frame.midX)
+        XCTAssertTrue(app.staticTexts["Apple Intelligence, when available"].exists)
+        let reviewReminder = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "still in development")).firstMatch
+        XCTAssertTrue(reviewReminder.exists)
+        XCTAssertLessThan(reviewReminder.frame.maxY, app.buttons["receipt-introduction-continue"].frame.minY)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Receipt first-use introduction"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["receipt-introduction-continue"].tap()
+        XCTAssertTrue(app.buttons["Camera"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Choose receipt image"].exists)
+        let sourceMenuShot = XCTAttachment(screenshot: app.screenshot())
+        sourceMenuShot.name = "Receipt native OCR menu after introduction"
+        sourceMenuShot.lifetime = .keepAlways
+        add(sourceMenuShot)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+        app.buttons["Add receipt"].tap()
+        XCTAssertTrue(app.buttons["Photos"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Scan receipts"].exists)
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "SPENDY_UI_TEST_RECEIPT_INTRO")
+        app.launch()
+        app.buttons["Add Transaction"].tap()
+        app.buttons["Add receipt"].tap()
+        XCTAssertTrue(app.buttons["Photos"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Scan receipts"].exists)
+    }
+
     @MainActor func testReceiptReviewDark() { verifyReceiptReview(light: false) }
     @MainActor func testReceiptReviewLight() { verifyReceiptReview(light: true) }
 
@@ -289,6 +328,7 @@ final class SpendyUITests: XCTestCase {
         XCTAssertLessThanOrEqual(title.frame.maxX, app.buttons["edit-scanned-receipt"].frame.minX)
         XCTAssertTrue(app.buttons["add-scanned-receipt"].isHittable)
         XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
+        XCTAssertGreaterThan(app.buttons["add-scanned-receipt"].frame.width, app.frame.width * 0.75)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Receipt review compact controls \(light ? "light" : "dark")"
         shot.lifetime = .keepAlways
