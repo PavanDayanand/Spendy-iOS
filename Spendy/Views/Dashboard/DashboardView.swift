@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 // MARK: - Bar Chart Data Point
 struct MinimalBarPoint: Identifiable, Equatable {
@@ -297,6 +298,7 @@ struct HeroSpendBarChart: View {
 // MARK: - Dashboard View
 struct DashboardView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @Environment(QuickActionManager.self) private var quickActionManager
     @Binding var showAddTransaction: Bool
@@ -720,6 +722,10 @@ struct DashboardView: View {
                 }
                 .buttonStyle(GlassCirclePressStyle())
                 .accessibilityLabel("Analytics and statistics")
+                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && store.transactions.contains(where: { $0.type == .expense }) && !showSettings && !isSubpageActive ? HomeAnalyticsTip() : nil)
+                .onChange(of: showAnalyticsView) { _, showing in
+                    if showing { HomeAnalyticsTip().invalidate(reason: .actionPerformed) }
+                }
 
                 Rectangle()
                     .fill(SpendyColors.separator)
@@ -852,6 +858,7 @@ struct DashboardView: View {
                 analyticsInitialDate = date
                 showAnalyticsView = true
             }
+            .environment(\.spendyTipsAllowed, tipsAllowed && !isSubpageActive && !showSettings)
     }
 
     // MARK: - 4. Interactive Bottom Transactions Drawer

@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 struct HomeSpendingSummary: View {
     let transactions: [Transaction]
@@ -10,6 +11,7 @@ struct HomeSpendingSummary: View {
     let insightsEnabled: Bool
     var onInsight: ((InsightDestination, Date) -> Void)? = nil
     var onExplore: (Date) -> Void
+    @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @State private var showsInsights = false
     @State private var pendingInsight: InsightDestination?
@@ -89,6 +91,10 @@ struct HomeSpendingSummary: View {
                             insightDate = snapshot.start
                             showsInsights = true
                         })
+                        .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showsInsights && !showsInfo ? HomeInsightTip() : nil)
+                        .onChange(of: showsInsights) { _, showing in
+                            if showing { HomeInsightTip().invalidate(reason: .actionPerformed) }
+                        }
                     } else {
                     Button {
                         if insightsEnabled {

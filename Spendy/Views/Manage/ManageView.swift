@@ -7,10 +7,12 @@
 //
 
 import SwiftUI
+import TipKit
 
 // MARK: - Subscriptions Full-Screen View
 
 struct SubscriptionsView: View {
+    @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
@@ -507,6 +509,7 @@ struct SubscriptionsView: View {
         }
         .buttonStyle(.plain)
         .spendyNavigationSource(AppTransitionIDs.subscriptionRow(sub.id), in: subscriptionTransitions)
+        .popoverTip(tipsAllowed && store.hasCompletedOnboarding && sub.id == displayedSubscriptions.first?.id && selectedSubscriptionForDetail == nil && !showAddSubscription && subscriptionToEdit == nil ? SubscriptionActionsTip() : nil)
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
@@ -518,6 +521,7 @@ struct SubscriptionsView: View {
 
             Button {
                 HapticsManager.shared.trigger(.light)
+                SubscriptionActionsTip().invalidate(reason: .actionPerformed)
                 subscriptionToEdit = sub
             } label: {
                 Label("Edit Subscription", systemImage: "pencil")
@@ -525,6 +529,7 @@ struct SubscriptionsView: View {
 
             Button {
                 HapticsManager.shared.trigger(.light)
+                SubscriptionActionsTip().invalidate(reason: .actionPerformed)
                 store.toggleSubscriptionPause(id: sub.id)
             } label: {
                 Label(
@@ -535,6 +540,7 @@ struct SubscriptionsView: View {
 
             Button {
                 HapticsManager.shared.trigger(.light)
+                SubscriptionActionsTip().invalidate(reason: .actionPerformed)
                 store.cancelSubscription(id: sub.id)
             } label: {
                 Label("Cancel Subscription", systemImage: "xmark.circle")

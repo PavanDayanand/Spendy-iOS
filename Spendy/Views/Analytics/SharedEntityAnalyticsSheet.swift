@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 // MARK: - Analytics Entity Enum
 enum AnalyticsEntity {
@@ -81,6 +82,7 @@ enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
 
 // MARK: - Shared Entity Analytics Sheet
 struct SharedEntityAnalyticsSheet: View {
+    @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
@@ -433,7 +435,7 @@ struct SharedEntityAnalyticsSheet: View {
                             .padding(.horizontal, 16)
                         
                         if !visibleInsights.isEmpty, !isScrubbingChart {
-                            SpendyInsightSummary(moments: visibleInsights, canSelect: { destination in
+                            SpendyInsightSummary(moments: visibleInsights, offersCategoryTip: !entity.isAccount && store.hasCompletedOnboarding, canSelect: { destination in
                                 if case .transaction = destination { return true }
                                 return false
                             }) { destination in
@@ -701,6 +703,12 @@ struct SharedEntityAnalyticsSheet: View {
         )
         .id(chartTransitionID)
         .accessibilityLabel("Spending chart for \(entity.label)")
+        .popoverTip(tipsAllowed && !entity.isAccount && store.hasCompletedOnboarding && chartDataPoints.contains(where: { $0.amount > 0 }) && !isScrubbingChart ? CategoryChartTip() : nil)
+        .onChange(of: isScrubbingChart) { _, scrubbing in
+            if scrubbing && !entity.isAccount {
+                CategoryChartTip().invalidate(reason: .actionPerformed)
+            }
+        }
     }
     
     // MARK: - 4. Period Scrubber Strip & Calendar Row

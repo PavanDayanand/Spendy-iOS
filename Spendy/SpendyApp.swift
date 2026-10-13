@@ -6,6 +6,7 @@
 import AppIntents
 import CoreSpotlight
 import SwiftUI
+import TipKit
 import UserNotifications
 
 final class SpendyAppDelegate: NSObject, UIApplicationDelegate {
@@ -49,6 +50,37 @@ struct SpendyApp: App {
     @State private var store = ExpenseStore.shared
     @State private var quickActionManager = QuickActionManager.shared
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        do {
+            #if DEBUG
+            let environment = ProcessInfo.processInfo.environment
+            if let tip = environment["SPENDY_UI_TEST_TIP"] {
+                // Dedicated tip tests use an isolated store, never the user's tip history.
+                let location = FileManager.default.temporaryDirectory.appendingPathComponent("tip-test-\(UUID().uuidString)")
+                try Tips.configure([.displayFrequency(.immediate), .datastoreLocation(.url(location))])
+                let tips: [String: any Tip.Type] = [
+                    "analytics": HomeAnalyticsTip.self,
+                    "home-insight": HomeInsightTip.self,
+                    "category-chart": CategoryChartTip.self,
+                    "category-insight": CategoryNextInsightTip.self,
+                    "subscription": SubscriptionActionsTip.self
+                ]
+                Tips.hideTipsForTesting(tips.filter { $0.key != tip }.map(\.value))
+                if let selected = tips[tip] { Tips.showTipsForTesting([selected]) }
+            } else {
+                try Tips.configure([.displayFrequency(.daily), .datastoreLocation(.applicationDefault)])
+                if environment["SPENDY_UI_TEST_MODE"] != nil { Tips.hideAllTipsForTesting() }
+            }
+            #else
+            try Tips.configure([.displayFrequency(.daily), .datastoreLocation(.applicationDefault)])
+            #endif
+        } catch {
+            #if DEBUG
+            print("TipKit configuration failed: \(error)")
+            #endif
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

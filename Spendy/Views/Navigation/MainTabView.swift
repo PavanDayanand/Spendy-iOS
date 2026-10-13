@@ -36,6 +36,7 @@ struct MainTabView: View {
                     isSheetExpandedBinding: $isHomeDrawerExpanded,
                     isSubpageActiveBinding: $isHomeSubpageActive
                 )
+                .environment(\.spendyTipsAllowed, selectedTab == .home && !showAddTransaction)
                 .opacity(selectedTab == .home ? 1 : 0)
                 .allowsHitTesting(selectedTab == .home)
                 .accessibilityHidden(selectedTab != .home)
@@ -43,6 +44,7 @@ struct MainTabView: View {
                 NavigationStack {
                     SubscriptionsView()
                 }
+                .environment(\.spendyTipsAllowed, selectedTab == .subscriptions && !showAddTransaction)
                 .opacity(selectedTab == .subscriptions ? 1 : 0)
                 .allowsHitTesting(selectedTab == .subscriptions)
                 .accessibilityHidden(selectedTab != .subscriptions)
@@ -53,6 +55,7 @@ struct MainTabView: View {
                         isSubpageActiveBinding: $isAnalyticsSubpageActive
                     )
                 }
+                .environment(\.spendyTipsAllowed, selectedTab == .analytics && !showAddTransaction)
                 .opacity(selectedTab == .analytics ? 1 : 0)
                 .allowsHitTesting(selectedTab == .analytics)
                 .accessibilityHidden(selectedTab != .analytics)

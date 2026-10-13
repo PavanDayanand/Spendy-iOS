@@ -2,8 +2,9 @@ import XCTest
 import UIKit
 
 final class SpendyUITests: XCTestCase {
-    @MainActor private func launch(_ mode: String = "standard", largeText: Bool = false, light: Bool = false, receiptText: String? = nil, rotatesInsights: Bool = false) -> XCUIApplication {
+    @MainActor private func launch(_ mode: String = "standard", largeText: Bool = false, light: Bool = false, receiptText: String? = nil, rotatesInsights: Bool = false, tip: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_TIP"] = tip
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = mode
         app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "seen"
         if !rotatesInsights { app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1" }
@@ -766,6 +767,71 @@ final class SpendyUITests: XCTestCase {
             next.tap()
         }
         XCTAssertEqual(next.value as? String, "Insight 1 of 5")
+    }
+
+    @MainActor func testAnalyticsDiscoveryTip() {
+        let app = launch("insights", tip: "analytics")
+        XCTAssertTrue(app.staticTexts["Explore your spending"].waitForExistence(timeout: 10))
+        captureTip(app, name: "Analytics discovery dark")
+        // Dismiss the popover before using its anchor.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["Analytics and statistics"].tap()
+        XCTAssertFalse(app.staticTexts["Explore your spending"].exists)
+    }
+
+    @MainActor func testHomeInsightDiscoveryTipLight() {
+        let app = launch("home-attention", light: true, tip: "home-insight")
+        XCTAssertTrue(app.staticTexts["Look closer"].waitForExistence(timeout: 10))
+        captureTip(app, name: "Home insight discovery light")
+    }
+
+    @MainActor func testSubscriptionDiscoveryTip() {
+        let app = launch("subscription-detail", tip: "subscription")
+        let subscriptions = app.buttons["Subscriptions"]
+        XCTAssertTrue(subscriptions.waitForExistence(timeout: 10))
+        // The glass dock can report no synthesized hit point; use its visible center.
+        subscriptions.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.staticTexts["Manage your subscription"].waitForExistence(timeout: 10))
+        captureTip(app, name: "Subscription management discovery")
+    }
+
+    @MainActor func testCategoryChartDiscoveryTip() {
+        let app = launch("insights", tip: "category-chart")
+        openTipTestCategory(app)
+        XCTAssertTrue(app.staticTexts["Inspect your spending"].waitForExistence(timeout: 10))
+        captureTip(app, name: "Category chart discovery")
+    }
+
+    @MainActor func testCategoryInsightDiscoveryTip() {
+        let app = launch("insights", tip: "category-insight")
+        openTipTestCategory(app)
+        for _ in 0..<4 {
+            if app.staticTexts["See another insight"].exists { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["See another insight"].waitForExistence(timeout: 10))
+        captureTip(app, name: "Category insight discovery")
+    }
+
+    @MainActor private func openTipTestCategory(_ app: XCUIApplication) {
+        app.buttons["Analytics and statistics"].tap()
+        let rows = app.buttons.matching(identifier: "breakdown-groceries")
+        for _ in 0..<5 {
+            if rows.allElementsBoundByIndex.contains(where: { $0.isHittable }) { break }
+            app.swipeUp()
+        }
+        guard let row = rows.allElementsBoundByIndex.first(where: { $0.isHittable }) else {
+            XCTFail("Missing category for tip verification")
+            return
+        }
+        row.tap()
+    }
+
+    @MainActor private func captureTip(_ app: XCUIApplication, name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
 }

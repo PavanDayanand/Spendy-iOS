@@ -1,10 +1,13 @@
 import SwiftUI
+import TipKit
 
 struct SpendyInsightSummary: View {
     let moments: [InsightMoment]
     var compact = false
+    var offersCategoryTip = false
     var canSelect: (InsightDestination) -> Bool = { _ in true }
     var onSelect: ((InsightDestination) -> Void)? = nil
+    @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
@@ -62,6 +65,7 @@ struct SpendyInsightSummary: View {
                         .overlay(alignment: .trailing) {
                             if useful.count > 1 {
                                 Button {
+                                    if offersCategoryTip { CategoryNextInsightTip().invalidate(reason: .actionPerformed) }
                                     advance()
                                     HapticsManager.shared.trigger(.selection)
                                 } label: {
@@ -78,6 +82,7 @@ struct SpendyInsightSummary: View {
                                 .accessibilityLabel("Next insight")
                                 .accessibilityValue("Insight \(page + 1) of \(useful.count)")
                                 .accessibilityIdentifier("next-insight")
+                                .popoverTip(tipsAllowed && offersCategoryTip ? CategoryNextInsightTip() : nil)
                             }
                         }
                         Group {
