@@ -346,12 +346,13 @@ struct AnalyticsView: View {
                                   selectedID: $selectedSpendingBucketID, height: 140, transactionType: snapshot.transactionType)
                     .padding(.top, 8)
             } else {
-                Text(isIncome ? "No income recorded for this period." : "No spending recorded for this period.")
-                    .font(.subheadline)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .padding(.vertical, 12)
+                SpendyPlainEmptyState(
+                    title: isIncome ? "No income yet" : "No spending yet",
+                    message: isIncome ? "Income for this period will appear here." : "Spending for this period will appear here.",
+                    compact: true
+                )
             }
-            if store.insightsEnabled && !isIncome {
+            if store.insightsEnabled && !isIncome && !snapshot.transactions.isEmpty {
                 Button { showsDirectInsights = true } label: {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -416,9 +417,11 @@ struct AnalyticsView: View {
             }
 
             if tracked.isEmpty {
-                Text("No completed days to track yet.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(SpendyColors.textSecondary)
+                SpendyPlainEmptyState(
+                    title: "No days to track yet",
+                    message: "Your no-spend streak will appear here.",
+                    compact: true
+                )
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 20) {
                     streakMetric(title: "Best run", value: "\(bestRun)", unit: bestRun == 1 ? "day" : "days")
@@ -536,10 +539,11 @@ struct AnalyticsView: View {
             }
 
             if items.isEmpty {
-                Text(isIncome ? "Your income breakdown will appear here." : "Your spending breakdown will appear here.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .padding(.vertical, 8)
+                SpendyPlainEmptyState(
+                    title: isIncome ? "No income yet" : "No spending yet",
+                    message: isIncome ? "Income by category will appear here." : "Spending by category will appear here.",
+                    compact: true
+                )
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
@@ -676,10 +680,11 @@ struct AnalyticsView: View {
                     cashFlowValue(title: "Money out", amount: totalSpending, symbol: "arrow.up.right", prefix: "−")
                 }
             } else {
-                Text("Record income or spending to see cash flow.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .padding(.vertical, 8)
+                SpendyPlainEmptyState(
+                    title: "No activity yet",
+                    message: "Record income or spending to see cash flow.",
+                    compact: true
+                )
             }
         }
         .modifier(AnalyticsPanelStyle())

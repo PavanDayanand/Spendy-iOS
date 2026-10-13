@@ -1209,12 +1209,17 @@ struct DashboardView: View {
         
         if rawOffset < expandedOffset {
             let overshoot = expandedOffset - rawOffset
-            return expandedOffset - sqrt(max(0, overshoot)) * 2.5
+            return expandedOffset - resistedDrawerOvershoot(overshoot)
         } else if rawOffset > restingOffset {
             let overshoot = rawOffset - restingOffset
-            return restingOffset + sqrt(max(0, overshoot)) * 2.5
+            return restingOffset + resistedDrawerOvershoot(overshoot)
         }
         return rawOffset
+    }
+
+    private func resistedDrawerOvershoot(_ distance: CGFloat) -> CGFloat {
+        let resistanceLength: CGFloat = 96
+        return distance * resistanceLength / (distance + resistanceLength)
     }
     
     // MARK: - Transaction Row Item (Matches Exact Visual Design)

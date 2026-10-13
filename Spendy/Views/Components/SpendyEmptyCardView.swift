@@ -91,16 +91,17 @@ struct SpendyPlainEmptyState: View {
     let title: String
     let message: String
     var actionTitle: String? = nil
+    var compact = false
     var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: compact ? 4 : 10) {
             Text(title)
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: compact ? 15 : 19, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
 
             Text(message)
-                .font(.system(size: 15))
+                .font(.system(size: compact ? 13 : 15))
                 .foregroundStyle(SpendyColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -109,14 +110,14 @@ struct SpendyPlainEmptyState: View {
                     HapticsManager.shared.trigger(.selection)
                     action()
                 }
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: compact ? 13 : 15, weight: .semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
-                .padding(.top, 8)
+                .padding(.top, compact ? 4 : 8)
                 .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 24)
+        .padding(.vertical, compact ? 8 : 24)
     }
 }
 
