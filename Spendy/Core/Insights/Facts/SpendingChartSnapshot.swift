@@ -8,9 +8,10 @@ struct SpendingScope {
     let referenceDate: Date
     var accountIDs: Set<String>? = nil
     var categoryIDs: Set<String>? = nil
+    var transactionType: TransactionType? = nil
 
     func contains(_ transaction: Transaction, includeDates: Bool = true, expensesOnly: Bool = true) -> Bool {
-        (!expensesOnly || transaction.type == .expense) && transaction.amount.isFinite && transaction.amount >= 0
+        (transactionType.map { transaction.type == $0 } ?? (!expensesOnly || transaction.type == .expense)) && transaction.amount.isFinite && transaction.amount >= 0
             && transaction.date <= referenceDate
             && (!includeDates || (transaction.date >= start && transaction.date < end))
             && (accountIDs?.contains(transaction.accountId) ?? true)
@@ -54,6 +55,7 @@ enum SpendingChartPeriod: String {
 
 struct SpendingChartSnapshot {
     let period: SpendingChartPeriod
+    let transactionType: TransactionType
     let start: Date
     let end: Date
     let referenceDate: Date
@@ -83,19 +85,20 @@ struct SpendingChartSnapshot {
 
     func comparisonText(currencySymbol: String) -> String {
         guard !isFuture else { return "This period hasn’t started yet" }
-        guard hasBaselineRecords else { return "No spending recorded in the comparison period" }
+        guard hasBaselineRecords else { return "No \(transactionType == .income ? "income" : "spending") recorded in the comparison period" }
         let difference = total - baselineTotal
         let comparison = isInProgress ? "the same period last \(period.rawValue)" : "the previous \(period.rawValue)"
-        if abs(difference) < 0.005 { return "Same recorded spending as \(comparison)" }
+        if abs(difference) < 0.005 { return "Same recorded \(transactionType == .income ? "income" : "spending") as \(comparison)" }
         return "\(abs(difference).formattedCurrency(symbol: currencySymbol, decimals: 2)) \(difference < 0 ? "less" : "more") than \(comparison)"
     }
 
     init(transactions allTransactions: [Transaction], accountID: String = "all",
          period: SpendingChartPeriod = .month, anchor: Date, referenceDate: Date,
-         calendar inputCalendar: Calendar = .current) {
+         calendar inputCalendar: Calendar = .current, transactionType: TransactionType = .expense) {
         var calendar = inputCalendar
         calendar.firstWeekday = 2
         self.period = period
+        self.transactionType = transactionType
         self.referenceDate = referenceDate
         let interval = calendar.dateInterval(of: period.component, for: anchor)!
         start = interval.start
@@ -114,7 +117,7 @@ struct SpendingChartSnapshot {
         let previousCutoff = InsightComparison.baselineEnd(context: context, calendar: calendar)
         baselineCutoff = previousCutoff
         let expenses = allTransactions.filter {
-            $0.type == .expense && $0.amount.isFinite && $0.amount >= 0 && $0.date <= referenceDate
+            $0.type == transactionType && $0.amount.isFinite && $0.amount >= 0 && $0.date <= referenceDate
                 && (accountID == "all" || $0.accountId == accountID)
         }
         let recorded = expenses.filter { $0.date >= interval.start && $0.date < interval.end }

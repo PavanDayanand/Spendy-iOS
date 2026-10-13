@@ -9,6 +9,7 @@ struct SpendingChartPlot: View {
     @Binding var selectedID: String?
     var showsLine = false
     var height: CGFloat = 150
+    var transactionType: TransactionType = .expense
     @Environment(\.colorSchemeContrast) private var contrast
 
     private var axisIDs: [String] {
@@ -20,16 +21,16 @@ struct SpendingChartPlot: View {
         Chart {
             ForEach(buckets) { bucket in
                 if showsLine {
-                    LineMark(x: .value("Period", bucket.id), y: .value("Spending", bucket.amount))
+                    LineMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount))
                         .interpolationMethod(.linear)
                         .foregroundStyle(SpendyColors.textPrimary)
-                    PointMark(x: .value("Period", bucket.id), y: .value("Spending", bucket.amount))
+                    PointMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount))
                         .symbolSize(selectedID == bucket.id ? 45 : 14)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .accessibilityLabel(bucket.start.formatted(.dateTime.month(.wide).day().year()))
                         .accessibilityValue(accessibleValue(bucket))
                 } else {
-                    BarMark(x: .value("Period", bucket.id), y: .value("Spending", bucket.amount), width: .ratio(0.68))
+                    BarMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount), width: .ratio(0.68))
                         .cornerRadius(5)
                         .foregroundStyle(LinearGradient(colors: [SpendyColors.textPrimary, SpendyColors.textPrimary.opacity(0.55)], startPoint: .top, endPoint: .bottom))
                         .opacity(selectedID == nil || selectedID == bucket.id ? 1 : (contrast == .increased ? 0.65 : 0.35))
@@ -75,7 +76,7 @@ struct SpendingChartPlot: View {
         // Keep dense axis ticks legible without collisions. Full values remain
         // available through selection and the accessible chart descriptor.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .accessibilityChartDescriptor(SpendingChartAccessibility(buckets: buckets, currencySymbol: currencySymbol))
+        .accessibilityChartDescriptor(SpendingChartAccessibility(buckets: buckets, currencySymbol: currencySymbol, transactionType: transactionType))
         .frame(height: height)
         .accessibilityIdentifier("spending-chart")
         .onChange(of: selectedID) { old, new in
@@ -185,6 +186,13 @@ struct SpendingChartInfoSheet: View {
 }
 
 private struct SpendingChartAccessibility: AXChartDescriptorRepresentable {
+    let transactionType: TransactionType
+
+    init(buckets: [SpendingChartBucket], currencySymbol: String, transactionType: TransactionType) {
+        self.buckets = buckets
+        self.currencySymbol = currencySymbol
+        self.transactionType = transactionType
+    }
     let buckets: [SpendingChartBucket]
     let currencySymbol: String
 
@@ -193,17 +201,17 @@ private struct SpendingChartAccessibility: AXChartDescriptorRepresentable {
         let xAxis = AXCategoricalDataAxisDescriptor(title: "Period starting", categoryOrder: labels)
         let maximum = max(1, buckets.map(\.amount).max() ?? 0)
         let symbol = currencySymbol
-        let yAxis = AXNumericDataAxisDescriptor(title: "Recorded spending", range: 0...maximum, gridlinePositions: []) {
+        let yAxis = AXNumericDataAxisDescriptor(title: transactionType == .income ? "Recorded income" : "Recorded spending", range: 0...maximum, gridlinePositions: []) {
             $0.formattedCurrency(symbol: symbol, decimals: 2)
         }
         let points = zip(labels, buckets).map { label, bucket in
             AXDataPoint(x: label, y: bucket.amount,
                 label: "\(bucket.transactionCount) transactions\(bucket.isInProgress ? ", to date" : "")")
         }
-        return AXChartDescriptor(title: "Recorded spending",
-            summary: "Expense totals by period. Any current period includes only spending recorded to date.",
+        return AXChartDescriptor(title: transactionType == .income ? "Recorded income" : "Recorded spending",
+            summary: "\(transactionType == .income ? "Income" : "Expense") totals by period, recorded to date.",
             xAxis: xAxis, yAxis: yAxis,
-            series: [AXDataSeriesDescriptor(name: "Expenses", isContinuous: false, dataPoints: points)])
+            series: [AXDataSeriesDescriptor(name: transactionType == .income ? "Income" : "Expenses", isContinuous: false, dataPoints: points)])
     }
 }
 

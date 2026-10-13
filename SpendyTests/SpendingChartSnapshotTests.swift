@@ -20,6 +20,24 @@ final class SpendingChartSnapshotTests: XCTestCase {
         XCTAssertFalse(none.contains(expense(10, at: now)))
     }
 
+    func testIncomeScopeAndSnapshotPreserveTypeAccountAndDates() {
+        let now = date(10, 11)
+        let income = Transaction(title: "Salary", amount: 500, type: .income, categoryId: "salary", accountId: "cash", date: now)
+        let otherAccount = Transaction(title: "Other", amount: 900, type: .income, categoryId: "salary", accountId: "bank", date: now)
+        let previous = Transaction(title: "Previous", amount: 300, type: .income, categoryId: "salary", accountId: "cash", date: date(9, 2))
+        let snapshot = SpendingChartSnapshot(transactions: [income, otherAccount, previous, expense(20, at: now)],
+            accountID: "cash", anchor: now, referenceDate: now, calendar: calendar, transactionType: .income)
+        XCTAssertEqual(snapshot.total, 500)
+        XCTAssertEqual(snapshot.baselineTotal, 300)
+        XCTAssertEqual(snapshot.buckets.reduce(0) { $0 + $1.amount }, 500)
+        let scope = SpendingScope(start: snapshot.start, end: snapshot.end, referenceDate: now,
+            accountIDs: ["cash"], transactionType: .income)
+        XCTAssertTrue(scope.contains(income))
+        XCTAssertFalse(scope.contains(otherAccount))
+        XCTAssertFalse(scope.contains(previous))
+        XCTAssertFalse(scope.contains(expense(20, at: now), expensesOnly: false))
+    }
+
     private var calendar: Calendar {
         var value = Calendar(identifier: .gregorian)
         value.timeZone = TimeZone(secondsFromGMT: 0)!

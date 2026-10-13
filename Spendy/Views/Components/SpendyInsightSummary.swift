@@ -5,6 +5,7 @@ struct SpendyInsightSummary: View {
     let moments: [InsightMoment]
     var compact = false
     var offersCategoryTip = false
+    var categoryTipGroup: TipGroup? = nil
     var canSelect: (InsightDestination) -> Bool = { _ in true }
     var onSelect: ((InsightDestination) -> Void)? = nil
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
@@ -82,7 +83,7 @@ struct SpendyInsightSummary: View {
                                 .accessibilityLabel("Next insight")
                                 .accessibilityValue("Insight \(page + 1) of \(useful.count)")
                                 .accessibilityIdentifier("next-insight")
-                                .popoverTip(tipsAllowed && offersCategoryTip ? CategoryNextInsightTip() : nil)
+                                .popoverTip(tipsAllowed && offersCategoryTip ? categoryTipGroup?.currentTip as? CategoryNextInsightTip : nil)
                             }
                         }
                         Group {

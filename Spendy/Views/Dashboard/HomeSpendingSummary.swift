@@ -9,6 +9,7 @@ struct HomeSpendingSummary: View {
     let currencySymbol: String
     let amountsHidden: Bool
     let insightsEnabled: Bool
+    let tipGroup: TipGroup
     var onInsight: ((InsightDestination, Date) -> Void)? = nil
     var onExplore: (Date) -> Void
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
@@ -91,7 +92,7 @@ struct HomeSpendingSummary: View {
                             insightDate = snapshot.start
                             showsInsights = true
                         })
-                        .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showsInsights && !showsInfo ? HomeInsightTip() : nil)
+                        .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showsInsights && !showsInfo ? tipGroup.currentTip as? HomeInsightTip : nil)
                         .onChange(of: showsInsights) { _, showing in
                             if showing { HomeInsightTip().invalidate(reason: .actionPerformed) }
                         }

@@ -100,6 +100,10 @@ struct SharedEntityAnalyticsSheet: View {
     
     // Period & Filter State
     @State private var selectedPeriod: ChartPeriod = .month
+    @State private var categoryTipGroup = TipGroup(.firstAvailable) {
+        CategoryChartTip()
+        CategoryNextInsightTip()
+    }
     @State private var customDateRange: (start: Date, end: Date)? = nil
     @State private var customStartDate: Date = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
     @State private var customEndDate: Date = Date()
@@ -199,6 +203,8 @@ struct SharedEntityAnalyticsSheet: View {
         }
     }
     
+    private var scopedType: TransactionType { spendingScope?.transactionType ?? entity.defaultType }
+
     private var totalSpent: Double {
         switch entity {
         case .category(let cat):
@@ -208,7 +214,7 @@ struct SharedEntityAnalyticsSheet: View {
                 return filteredTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
             }
         case .account:
-            return filteredTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+            return filteredTransactions.filter { $0.type == scopedType }.reduce(0) { $0 + $1.amount }
         }
     }
     
@@ -303,7 +309,7 @@ struct SharedEntityAnalyticsSheet: View {
             case .category(let cat):
                 return txs.filter { $0.type == cat.type }.reduce(0) { $0 + $1.amount }
             case .account:
-                return txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+                return txs.filter { $0.type == scopedType }.reduce(0) { $0 + $1.amount }
             }
         }
         return AnalyticsChartEngine.generateDiscreteBarPoints(
@@ -435,7 +441,8 @@ struct SharedEntityAnalyticsSheet: View {
                             .padding(.horizontal, 16)
                         
                         if !visibleInsights.isEmpty, !isScrubbingChart {
-                            SpendyInsightSummary(moments: visibleInsights, offersCategoryTip: !entity.isAccount && store.hasCompletedOnboarding, canSelect: { destination in
+                            SpendyInsightSummary(moments: visibleInsights, offersCategoryTip: !entity.isAccount && store.hasCompletedOnboarding,
+                                categoryTipGroup: categoryTipGroup, canSelect: { destination in
                                 if case .transaction = destination { return true }
                                 return false
                             }) { destination in
@@ -601,13 +608,13 @@ struct SharedEntityAnalyticsSheet: View {
     private var heroCaption: String {
         if let bar = activeBarPoint {
             let dateLabel = AnalyticsChartEngine.formattedPointDate(bar.date, period: selectedPeriod)
-            return entity.defaultType == .income ? "Received · \(dateLabel)" : "Spent · \(dateLabel)"
+            return scopedType == .income ? "Received · \(dateLabel)" : "Spent · \(dateLabel)"
         }
         switch entity {
         case .category(let cat):
             return cat.type == .income ? "Total received" : "Total spent"
         case .account:
-            return "Spent"
+            return scopedType == .income ? "Received" : "Spent"
         }
     }
     
@@ -666,7 +673,7 @@ struct SharedEntityAnalyticsSheet: View {
                 .foregroundStyle(SpendyColors.textSecondary)
         } else if let pct = comparisonPercentage {
             let isIncrease = pct > 0
-            let isGood = entity.defaultType == .income ? isIncrease : !isIncrease
+            let isGood = scopedType == .income ? isIncrease : !isIncrease
             HStack(spacing: 4) {
                 Image(systemName: isIncrease ? "arrow.up.right" : "arrow.down.right")
                     .font(.system(size: 11, weight: .bold))
@@ -702,8 +709,11 @@ struct SharedEntityAnalyticsSheet: View {
             barTopCornerRadius: 5
         )
         .id(chartTransitionID)
-        .accessibilityLabel("Spending chart for \(entity.label)")
-        .popoverTip(tipsAllowed && !entity.isAccount && store.hasCompletedOnboarding && chartDataPoints.contains(where: { $0.amount > 0 }) && !isScrubbingChart ? CategoryChartTip() : nil)
+        .accessibilityLabel("\(scopedType == .income ? "Income" : "Spending") chart for \(entity.label)")
+        .popoverTip(tipsAllowed && !entity.isAccount && store.hasCompletedOnboarding && !isScrubbingChart ? categoryTipGroup.currentTip as? CategoryChartTip : nil)
+        .onChange(of: chartDataPoints.contains(where: { $0.amount > 0 }), initial: true) { _, hasChartData in
+            CategoryChartTip.hasChartData = hasChartData
+        }
         .onChange(of: isScrubbingChart) { _, scrubbing in
             if scrubbing && !entity.isAccount {
                 CategoryChartTip().invalidate(reason: .actionPerformed)
@@ -875,12 +885,14 @@ struct SharedEntityAnalyticsSheet: View {
     private var overviewRows: [OverviewMetric] {
         var rows: [OverviewMetric] = []
         let showInflow: Bool = {
+            if let type = spendingScope?.transactionType { return type == .income }
             if case .category(let cat) = entity, cat.type == .expense, totalInflow == 0 {
                 return false
             }
             return true
         }()
         let showOutflow: Bool = {
+            if let type = spendingScope?.transactionType { return type == .expense }
             if case .category(let cat) = entity, cat.type == .income, totalOutflow == 0 {
                 return false
             }
@@ -924,7 +936,7 @@ struct SharedEntityAnalyticsSheet: View {
                 value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
                 valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
             ))
-        } else if case .account = entity {
+        } else if case .account = entity, spendingScope?.transactionType == nil {
             rows.append(OverviewMetric(
                 id: "balance",
                 flowType: currentBalance >= 0 ? .income : .expense,
@@ -955,7 +967,7 @@ struct SharedEntityAnalyticsSheet: View {
         rows.append(OverviewMetric(
             id: "rate",
             flowType: nil,
-            label: entity.defaultType == .income ? "Daily inflow rate" : "Daily outflow rate",
+            label: scopedType == .income ? "Daily inflow rate" : "Daily outflow rate",
             value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
             valueColor: SpendyColors.textPrimary
         ))

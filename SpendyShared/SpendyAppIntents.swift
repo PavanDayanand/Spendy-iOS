@@ -125,43 +125,62 @@ nonisolated struct CategoryAppEntityQuery: EntityStringQuery, Sendable {
 }
 
 struct TransactionSnippetView: View {
-    let amount: Double
-    let currencySymbol: String
+    let amountText: String
     let title: String
     let symbol: String
-    let colorHex: String
     let subtitle: String
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(SpendyHexColor.color(from: colorHex))
+                    .fill(.primary)
                     .frame(width: 44, height: 44)
-                Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(SpendyHexColor.glyphColor(from: colorHex))
+                Group {
+                    if symbol == "Aa" {
+                        Text(String(title.prefix(1)).uppercased())
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                    } else {
+                        Image(systemName: symbol)
+                            .font(.system(size: 20, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                    }
+                }
+                .foregroundStyle(Color(uiColor: .systemBackground))
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(1)
+            VStack(alignment: .leading, spacing: 3) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(title)
+                            .font(.headline)
+                            .fixedSize()
+                        Spacer(minLength: 0)
+                        amountLabel
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
+                        amountLabel
+                    }
+                }
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 8)
-
-            Text(SpendyWidgetFormat.amount(amount, symbol: currencySymbol))
-                .font(.title3.weight(.semibold).monospacedDigit())
-                .lineLimit(1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
+    }
+
+    private var amountLabel: some View {
+        Text(amountText)
+            .font(.title3.weight(.semibold).monospacedDigit())
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -229,15 +248,17 @@ struct LogTransactionIntent: AppIntent {
         )
 
         let symbol = currentCurrencySymbol()
-        let formatted = SpendyWidgetFormat.amount(resolvedAmount, symbol: symbol)
+        let formatted = SpendyWidgetFormat.amount(
+            resolvedAmount,
+            symbol: symbol,
+            decimals: resolvedAmount.rounded() == resolvedAmount ? 0 : 2
+        )
         return .result(
             dialog: IntentDialog("Logged \(formatted) for \(resolvedCategory.name)."),
             view: TransactionSnippetView(
-                amount: resolvedAmount,
-                currencySymbol: symbol,
+                amountText: formatted,
                 title: resolvedCategory.name,
                 symbol: resolvedCategory.sfSymbol,
-                colorHex: resolvedCategory.colorHex,
                 subtitle: resolvedType == .income ? "Income logged" : "Expense logged"
             )
         )

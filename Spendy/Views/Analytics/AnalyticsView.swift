@@ -103,7 +103,7 @@ struct AnalyticsView: View {
     private var spendingSnapshot: SpendingChartSnapshot {
         SpendingChartSnapshot(transactions: store.transactions, accountID: selectedAccountId,
             period: SpendingChartPeriod(rawValue: granularity.rawValue.lowercased()) ?? .month,
-            anchor: selectedDate, referenceDate: referenceDate)
+            anchor: selectedDate, referenceDate: referenceDate, transactionType: transactionType)
     }
 
     // View Filters & Navigation State
@@ -113,6 +113,9 @@ struct AnalyticsView: View {
     @State private var selectedDate: Date = Date()
     @State private var showMonthPicker: Bool = false
     @State private var selectedAccountId: String = "all"
+    @State private var transactionType: TransactionType = .expense
+    private var isIncome: Bool { transactionType == .income }
+    private var selectedBreakdownItems: [AnalyticsBreakdownItem] { isIncome ? incomeBreakdownItems : spendingBreakdownItems }
     
     // Chart State
     @State private var chartProgress: Double = 1.0
@@ -171,8 +174,7 @@ struct AnalyticsView: View {
                         VStack(spacing: 16) {
                             spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 12))
                             spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
-                            cashflowChartSection
-                            noSpendDaysSection
+                            if !isIncome { noSpendDaysSection }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
@@ -205,7 +207,7 @@ struct AnalyticsView: View {
                     })
             }
             .navigationDestination(isPresented: $showsSpendingBreakdown) {
-                SpendingBreakdownSheet(snapshot: spendingSnapshot, items: spendingBreakdownItems,
+                SpendingBreakdownSheet(snapshot: spendingSnapshot, items: selectedBreakdownItems,
                     byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
                     topControlsNamespace: analyticsControlsNamespace)
             }
@@ -234,7 +236,7 @@ struct AnalyticsView: View {
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
-                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate),
+                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate, transactionType: transactionType),
                     topControlsNamespace: analyticsControlsNamespace
                 )
             }
@@ -242,7 +244,7 @@ struct AnalyticsView: View {
                 CategoryAnalyticsSheet(
                     category: category,
                     spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end,
-                        referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId]),
+                        referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId], transactionType: transactionType),
                     topControlsNamespace: analyticsControlsNamespace
                 )
             }
@@ -273,6 +275,7 @@ struct AnalyticsView: View {
                 resetSelections()
                 chartProgress = 1.0
             }
+            .onChange(of: transactionType) { _, _ in resetSelections() }
             .onChange(of: selectedAccountId) { _, _ in
                 resetSelections()
                 chartProgress = 1.0
@@ -326,7 +329,7 @@ struct AnalyticsView: View {
         let selected = snapshot.buckets.first { $0.id == selectedSpendingBucketID }
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text(selected.map { spendingPeriodLabel(snapshot, selected: $0) } ?? "Spending")
+                Text(selected.map { spendingPeriodLabel(snapshot, selected: $0) } ?? (isIncome ? "Income" : "Spending"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer(minLength: 4)
@@ -340,15 +343,15 @@ struct AnalyticsView: View {
                 .accessibilityValue((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
             if !snapshot.transactions.isEmpty {
                 SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
-                                  selectedID: $selectedSpendingBucketID, height: 140)
+                                  selectedID: $selectedSpendingBucketID, height: 140, transactionType: snapshot.transactionType)
                     .padding(.top, 8)
             } else {
-                Text("No spending recorded for this period.")
+                Text(isIncome ? "No income recorded for this period." : "No spending recorded for this period.")
                     .font(.subheadline)
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(.vertical, 12)
             }
-            if store.insightsEnabled {
+            if store.insightsEnabled && !isIncome {
                 Button { showsDirectInsights = true } label: {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -519,13 +522,13 @@ struct AnalyticsView: View {
     }
 
     private var spendingMixSection: some View {
-        let allItems = spendingBreakdownItems
+        let allItems = selectedBreakdownItems
         let items = Array(allItems.prefix(3))
         let visibleItems = items
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(groupingMode == .categories ? "Category spending" : "Account spending")
+                Text(groupingMode == .categories ? (isIncome ? "Category income" : "Category spending") : (isIncome ? "Account income" : "Account spending"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
@@ -533,7 +536,7 @@ struct AnalyticsView: View {
             }
 
             if items.isEmpty {
-                Text("Your spending breakdown will appear here.")
+                Text(isIncome ? "Your income breakdown will appear here." : "Your spending breakdown will appear here.")
                     .font(.system(size: 13))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(.vertical, 8)
@@ -589,7 +592,7 @@ struct AnalyticsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.label).font(.subheadline.weight(.medium))
                     .foregroundStyle(SpendyColors.textPrimary)
-                Text("\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")")
+                Text("\(item.txCount) \(isIncome ? (item.txCount == 1 ? "income transaction" : "income transactions") : (item.txCount == 1 ? "expense" : "expenses"))")
                     .font(.caption).foregroundStyle(SpendyColors.textSecondary)
             }
             Spacer(minLength: 4)
@@ -602,7 +605,7 @@ struct AnalyticsView: View {
         .frame(minHeight: 48)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.label), \(item.txCount) expenses, \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
+        .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
     }
 
     private var cashflowChartSection: some View {
@@ -815,8 +818,15 @@ struct AnalyticsView: View {
                 Spacer()
                 
                 // Right: Settings Menu (Account Filter + Category/Account Grouping with Apple Native Pickers)
-                let isFiltered = selectedAccountId != "all"
+                let isFiltered = selectedAccountId != "all" || isIncome
+                let filterCount = (selectedAccountId != "all" ? 1 : 0) + (isIncome ? 1 : 0)
                 Menu {
+                    Section("Transaction type") {
+                        Picker("Transaction type", selection: $transactionType) {
+                            Label("Expenses", systemImage: "arrow.up.right").tag(TransactionType.expense)
+                            Label("Income", systemImage: "arrow.down.left").tag(TransactionType.income)
+                        }
+                    }
                     Section("Filter by Account") {
                         Picker("Account", selection: $selectedAccountId) {
                             Label("All Accounts", systemImage: "wallet.pass.fill")
@@ -828,7 +838,7 @@ struct AnalyticsView: View {
                         }
                     }
                     
-                    if isFiltered {
+                    if selectedAccountId != "all" {
                         Button("Reset account filter") { selectedAccountId = "all" }
                     }
                     Section("Group Breakdown") {
@@ -855,7 +865,7 @@ struct AnalyticsView: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     if isFiltered {
-                        Text("1")
+                        Text("\(filterCount)")
                             .font(.caption2.bold().monospacedDigit())
                             .foregroundStyle(SpendyColors.inverseText)
                             .padding(4)
@@ -865,7 +875,7 @@ struct AnalyticsView: View {
                     }
                 }
                 .accessibilityLabel("Analytics filters")
-                .accessibilityValue(isFiltered ? selectedAccountLabel : "All accounts")
+                .accessibilityValue("\(isIncome ? "Income" : "Expenses"), \(selectedAccountLabel)")
                 .accessibilityIdentifier("analytics-filters")
             }
         }

@@ -21,6 +21,31 @@ final class SpendingChartUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+    @MainActor func testAnalyticsIncomeFilter() {
+        let app = launch(light: true)
+        app.buttons["Analytics and statistics"].tap()
+        XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("1,200"))
+        button(app, "analytics-filters").tap()
+        button(app, "Income").tap()
+        XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("5,000"))
+        XCTAssertTrue(app.staticTexts["Category income"].exists)
+        XCTAssertFalse(app.buttons.matching(identifier: "open-spendy-insights").allElementsBoundByIndex.contains { $0.isHittable })
+        capture(app, "Analytics income selected")
+        button(app, "expand-spending-breakdown").tap()
+        XCTAssertTrue(app.staticTexts["Income by Category"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("5,000"))
+        button(app, "breakdown-paycheck").tap()
+        XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.label.contains("5,000"))
+        button(app, "Back").tap()
+        button(app, "Back").tap()
+        button(app, "analytics-filters").tap()
+        button(app, "Expenses").tap()
+        XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("1,200"))
+        XCTAssertTrue(app.staticTexts["Category spending"].exists)
+    }
+
     @MainActor func testViewAllSpendingBreakdown() {
         let app = launch(light: true)
         capture(app, "Recent activity differentiated light surface")
@@ -36,10 +61,18 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(app.buttons["breakdown-groceries"].exists)
         XCTAssertFalse(app.buttons["breakdown-show-transactions"].exists)
         capture(app, "Full spending breakdown")
+        let spendingChart = app.descendants(matching: .any)["breakdown-spending-chart"]
+        if !spendingChart.exists {
+            button(app, "breakdown-menu").tap()
+            button(app, "breakdown-chart-toggle").tap()
+        }
+        XCTAssertTrue(spendingChart.exists)
         button(app, "breakdown-menu").tap()
-        button(app, "Show chart").tap()
+        button(app, "breakdown-chart-toggle").tap()
+        XCTAssertFalse(spendingChart.exists)
         button(app, "breakdown-menu").tap()
-        button(app, "Show chart").tap()
+        button(app, "breakdown-chart-toggle").tap()
+        XCTAssertTrue(spendingChart.exists)
         button(app, "breakdown-menu").tap()
         button(app, "breakdown-filter").tap()
         XCTAssertTrue(app.navigationBars["Categories"].waitForExistence(timeout: 5))

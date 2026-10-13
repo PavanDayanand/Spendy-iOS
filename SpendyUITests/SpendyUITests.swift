@@ -785,6 +785,15 @@ final class SpendyUITests: XCTestCase {
         captureTip(app, name: "Home insight discovery light")
     }
 
+    @MainActor func testHomeTipsAdvanceWithoutWaiting() {
+        let app = launch("home-attention", tip: "home-sequence")
+        XCTAssertTrue(app.staticTexts["Explore your spending"].waitForExistence(timeout: 10))
+        let close = app.buttons["Close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+        XCTAssertTrue(app.staticTexts["Look closer"].waitForExistence(timeout: 10))
+    }
+
     @MainActor func testSubscriptionDiscoveryTip() {
         let app = launch("subscription-detail", tip: "subscription")
         let subscriptions = app.buttons["Subscriptions"]
@@ -811,6 +820,18 @@ final class SpendyUITests: XCTestCase {
         }
         XCTAssertTrue(app.staticTexts["See another insight"].waitForExistence(timeout: 10))
         captureTip(app, name: "Category insight discovery")
+    }
+
+    @MainActor func testCategoryTipsAdvanceWithoutWaiting() {
+        let app = launch("insights", tip: "category-sequence")
+        openTipTestCategory(app)
+        XCTAssertTrue(app.staticTexts["Inspect your spending"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap()
+        for _ in 0..<4 {
+            if app.staticTexts["See another insight"].exists { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["See another insight"].waitForExistence(timeout: 10))
     }
 
     @MainActor private func openTipTestCategory(_ app: XCUIApplication) {

@@ -308,6 +308,10 @@ struct DashboardView: View {
     
     // Sheets & Navigation State
     @State private var showSettings: Bool = false
+    @State private var homeTipGroup = TipGroup(.firstAvailable) {
+        HomeAnalyticsTip()
+        HomeInsightTip()
+    }
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showAnalyticsView: Bool = false
     @State private var showCurrencyConverter: Bool = false
@@ -722,7 +726,10 @@ struct DashboardView: View {
                 }
                 .buttonStyle(GlassCirclePressStyle())
                 .accessibilityLabel("Analytics and statistics")
-                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && store.transactions.contains(where: { $0.type == .expense }) && !showSettings && !isSubpageActive ? HomeAnalyticsTip() : nil)
+                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil)
+                .onChange(of: store.transactions.contains(where: { $0.type == .expense }), initial: true) { _, hasSpending in
+                    HomeAnalyticsTip.hasSpending = hasSpending
+                }
                 .onChange(of: showAnalyticsView) { _, showing in
                     if showing { HomeAnalyticsTip().invalidate(reason: .actionPerformed) }
                 }
@@ -845,6 +852,7 @@ struct DashboardView: View {
             accountID: selectedAccountId, accountLabel: selectedAccountLabel,
             currencySymbol: store.currencySymbol, amountsHidden: hideBalance,
             insightsEnabled: store.insightsEnabled,
+            tipGroup: homeTipGroup,
             onInsight: { destination, date in
                 switch destination {
                 case .category(let id): selectedCategoryForSheet = store.categories.first { $0.id == id }

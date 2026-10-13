@@ -66,14 +66,21 @@ struct SpendyApp: App {
                     "category-insight": CategoryNextInsightTip.self,
                     "subscription": SubscriptionActionsTip.self
                 ]
-                Tips.hideTipsForTesting(tips.filter { $0.key != tip }.map(\.value))
-                if let selected = tips[tip] { Tips.showTipsForTesting([selected]) }
+                let selected: [any Tip.Type] = switch tip {
+                case "home-sequence": [HomeAnalyticsTip.self, HomeInsightTip.self]
+                case "category-sequence": [CategoryChartTip.self, CategoryNextInsightTip.self]
+                default: tips[tip].map { [$0] } ?? []
+                }
+                Tips.hideTipsForTesting(tips.values.filter { candidate in
+                    !selected.contains { ObjectIdentifier($0) == ObjectIdentifier(candidate) }
+                })
+                Tips.showTipsForTesting(selected)
             } else {
-                try Tips.configure([.displayFrequency(.daily), .datastoreLocation(.applicationDefault)])
+                try Tips.configure([.displayFrequency(.immediate), .datastoreLocation(.applicationDefault)])
                 if environment["SPENDY_UI_TEST_MODE"] != nil { Tips.hideAllTipsForTesting() }
             }
             #else
-            try Tips.configure([.displayFrequency(.daily), .datastoreLocation(.applicationDefault)])
+            try Tips.configure([.displayFrequency(.immediate), .datastoreLocation(.applicationDefault)])
             #endif
         } catch {
             #if DEBUG

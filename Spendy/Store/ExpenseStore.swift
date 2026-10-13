@@ -85,7 +85,7 @@ final class ExpenseStore {
                 }
                 fixture.transactions += [
                     Transaction(title: "Future chart expense", amount: 9999, categoryId: "groceries", accountId: "cash", date: now.addingTimeInterval(86400)),
-                    Transaction(title: "Chart salary", amount: 5000, type: .income, categoryId: "salary", accountId: "cash", date: now)
+                    Transaction(title: "Chart salary", amount: 5000, type: .income, categoryId: "paycheck", accountId: "cash", date: now)
                 ]
             }
             if mode == "home-attention" || mode == "home-attention-single" || mode == "home-stability" {
@@ -1655,6 +1655,7 @@ final class ExpenseStore {
                 self.budget = payload.budget
                 self.currencySymbol = Self.displayCurrencySymbol(payload.currencySymbol, code: payload.currencyCode)
                 self.currencyCode = payload.currencyCode
+                self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? self.hasCompletedOnboarding
                 
                 var folders = payload.customFolders ?? []
                 if folders.isEmpty {

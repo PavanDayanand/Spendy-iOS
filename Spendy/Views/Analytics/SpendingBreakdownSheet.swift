@@ -18,12 +18,13 @@ struct SpendingBreakdownSheet: View {
     @State private var selectedBucket: String?
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
-    private var title: String { byCategory ? "Spending by Category" : "Spending by Account" }
+    private var isIncome: Bool { snapshot.transactionType == .income }
+    private var title: String { (isIncome ? "Income" : "Spending") + (byCategory ? " by Category" : " by Account") }
 
     private var spendingScope: SpendingScope {
         SpendingScope(start: snapshot.start, end: snapshot.end, referenceDate: snapshot.referenceDate,
             accountIDs: accountID != "all" ? (byCategory ? [accountID] : selectedIDs.map { $0.intersection([accountID]) } ?? [accountID]) : (byCategory ? nil : selectedIDs),
-            categoryIDs: byCategory ? selectedIDs : nil)
+            categoryIDs: byCategory ? selectedIDs : nil, transactionType: snapshot.transactionType)
     }
 
     private var filteredSnapshot: SpendingChartSnapshot {
@@ -32,7 +33,7 @@ struct SpendingBreakdownSheet: View {
             return selectedIDs.contains(byCategory ? transaction.categoryId : transaction.accountId)
         }
         return SpendingChartSnapshot(transactions: transactions, accountID: accountID,
-            period: snapshot.period, anchor: snapshot.start, referenceDate: snapshot.referenceDate)
+            period: snapshot.period, anchor: snapshot.start, referenceDate: snapshot.referenceDate, transactionType: snapshot.transactionType)
     }
 
     private var visibleItems: [AnalyticsBreakdownItem] {
@@ -56,8 +57,13 @@ struct SpendingBreakdownSheet: View {
             Text(title).font(.system(size: 17, weight: .bold)).accessibilityAddTraits(.isHeader)
             Spacer()
             Menu {
-                Toggle("Show chart", isOn: $showsChart)
-                    .accessibilityIdentifier("breakdown-chart-toggle")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showsChart.toggle() }
+                } label: {
+                    Label("Show chart", systemImage: showsChart ? "checkmark" : "chart.bar")
+                }
+                .accessibilityValue(showsChart ? "On" : "Off")
+                .accessibilityIdentifier("breakdown-chart-toggle")
                 Button { showsFilter = true } label: {
                     Label(selectedIDs.map { "Filter · \($0.count) selected" } ?? "Filter", systemImage: "line.3.horizontal.decrease")
                 }
@@ -83,7 +89,7 @@ struct SpendingBreakdownSheet: View {
                         .accessibilityHidden(true)
                 }
             }
-            .accessibilityLabel("Spending options")
+            .accessibilityLabel(isIncome ? "Income options" : "Spending options")
             .accessibilityIdentifier("breakdown-menu")
             .accessibilityValue(selectedIDs.map { "\($0.count) selected" } ?? "All selected")
         }
@@ -109,7 +115,7 @@ struct SpendingBreakdownSheet: View {
                             .font(.caption).foregroundStyle(SpendyColors.textSecondary)
                         if let bucket = snapshot.buckets.first(where: { $0.id == selectedBucket }) {
                             HStack {
-                                Text(bucket.start.formatted(.dateTime.day().month(.abbreviated)) + " · \(bucket.transactionCount) expenses")
+                                Text(bucket.start.formatted(.dateTime.day().month(.abbreviated)) + " · \(bucket.transactionCount) transactions")
                                 Spacer()
                             }.font(.caption)
                         } else {
@@ -118,7 +124,7 @@ struct SpendingBreakdownSheet: View {
                         }
                         if showsChart {
                             SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
-                                selectedID: $selectedBucket, height: 160)
+                                selectedID: $selectedBucket, height: 160, transactionType: snapshot.transactionType)
                                 .accessibilityIdentifier("breakdown-spending-chart")
                         }
                         if selectedBucket != nil {
@@ -128,9 +134,9 @@ struct SpendingBreakdownSheet: View {
                     }
                     if visibleItems.isEmpty {
                         SpendyPlainEmptyState(
-                            title: items.isEmpty ? "No spending yet" : "No selections",
-                            message: items.isEmpty ? "Recorded expenses will appear here."
-                                : byCategory ? "Choose categories to see spending." : "Choose accounts to see spending.",
+                            title: items.isEmpty ? (isIncome ? "No income yet" : "No spending yet") : "No selections",
+                            message: items.isEmpty ? "Recorded transactions will appear here."
+                                : byCategory ? "Choose categories to see transactions." : "Choose accounts to see transactions.",
                             actionTitle: items.isEmpty ? nil : "Select all",
                             action: { selectedIDs = nil }
                         )
@@ -146,7 +152,7 @@ struct SpendingBreakdownSheet: View {
                                         size: .medium, style: .circle, monogramName: item.label)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(item.label).font(AppTypography.rowTitle)
-                                        Text("\(item.txCount) \(item.txCount == 1 ? "expense" : "expenses")")
+                                        Text("\(item.txCount) \(isIncome ? "income transactions" : (item.txCount == 1 ? "expense" : "expenses"))")
                                             .font(AppTypography.footnoteMedium).foregroundStyle(SpendyColors.textSecondary)
                                     }
                                     Spacer(minLength: 4)
@@ -185,7 +191,6 @@ struct SpendingBreakdownSheet: View {
             selectedBucket = nil
             if selection == Set(items.map(\.id)) { selectedIDs = nil }
         }
-        .onChange(of: showsChart) { _, _ in selectedBucket = nil }
         .tint(SpendyColors.textPrimary)
     }
 }
