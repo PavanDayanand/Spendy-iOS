@@ -100,7 +100,7 @@ final class QuickActionManager {
             targetTab = .home
             requestedCategoryId = categoryId
         } else if host == "home" || path.contains("home") {
-            return
+            targetTab = .home
         } else if host == "weekly-summary" {
             requestedAnalyticsWeekDate = url.pathComponents.dropFirst().first.flatMap(Double.init).map { Date(timeIntervalSince1970: $0) } ?? Date()
             targetTab = .analytics

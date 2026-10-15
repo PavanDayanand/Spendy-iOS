@@ -320,8 +320,8 @@ final class SpendyUITests: XCTestCase {
             XCTFail("Receipt review did not finish: \(app.debugDescription)")
             return
         }
-        XCTAssertTrue(app.staticTexts["Corner Cafe"].exists)
-        XCTAssertTrue(app.staticTexts["Note"].exists)
+        XCTAssertEqual(app.buttons["receipt-review-note"].value as? String, "Corner Cafe")
+        XCTAssertTrue(app.buttons["receipt-review-note"].isHittable)
         XCTAssertFalse(app.staticTexts["Merchant"].exists)
         let title = app.staticTexts["receipt-review-title"]
         XCTAssertTrue(title.exists)
@@ -571,7 +571,7 @@ final class SpendyUITests: XCTestCase {
         shot.name = "Account analytics from Analytics black"
         shot.lifetime = .keepAlways
         add(shot)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["analytics-stack-back"].tap()
         XCTAssertTrue(row.waitForExistence(timeout: 5))
     }
 

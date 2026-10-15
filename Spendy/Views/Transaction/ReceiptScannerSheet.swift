@@ -10,6 +10,7 @@ import SwiftUI
 struct ReceiptScannerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var images: [UIImage]
     var initialAccountId: String?
@@ -22,10 +23,12 @@ struct ReceiptScannerSheet: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var scanResult: ReceiptScanResult?
     @State private var isFinishing = false
+    @State private var activeField: ReceiptReviewField?
+    @State private var pendingCategoryCreation = false
     @Namespace private var sheetNamespace
 
     private var merchant: String {
-        guard let result = scanResult, !result.rawRecognizedText.isEmpty else { return "" }
+        guard let result = scanResult else { return "" }
         let name = result.merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
         return ["Merchant", "Scanned Expense", "Scanned Receipt"].contains(name) ? "" : name
     }
@@ -77,7 +80,38 @@ struct ReceiptScannerSheet: View {
                 .padding(.vertical, 12)
             }
         }
-        .presentationDetents([.height(570), .large])
+        .sheet(item: $activeField, onDismiss: {
+            if pendingCategoryCreation {
+                pendingCategoryCreation = false
+                activeField = .createCategory
+            }
+        }) { field in
+            switch field {
+            case .note:
+                ReceiptNoteEditor(note: merchant) { note in
+                    scanResult?.merchantName = note
+                }
+            case .date:
+                CustomCalendarDrawer(selectedDate: reviewedDate)
+            case .category:
+                CategoryPickerDrawer(selectedCategoryId: reviewedCategoryID,
+                    currentType: scanResult?.transactionType ?? .expense,
+                    categories: store.categories.filter { $0.type == (scanResult?.transactionType ?? .expense) },
+                    onCreateCategory: {
+                        pendingCategoryCreation = true
+                        activeField = nil
+                    })
+            case .account:
+                AccountPickerDrawer(selectedAccountId: reviewedAccountID,
+                    title: "Select account", accounts: store.accounts)
+            case .createCategory:
+                AddCategorySheet(defaultType: scanResult?.transactionType ?? .expense, onCreated: { category in
+                    scanResult?.transactionType = category.type
+                    scanResult?.suggestedCategoryId = category.id
+                })
+            }
+        }
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(570), .large])
         .presentationDragIndicator(.hidden)
         .background(Color.clear)
         .task { await processImages() }
@@ -222,37 +256,52 @@ struct ReceiptScannerSheet: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var reviewedCategoryID: Binding<String> {
+        Binding(get: { category?.id ?? "" }, set: { scanResult?.suggestedCategoryId = $0 })
+    }
+
+    private var reviewedAccountID: Binding<String> {
+        Binding(get: { account?.id ?? "" }, set: { scanResult?.suggestedAccountId = $0 })
+    }
+
+    private var reviewedDate: Binding<Date> {
+        Binding(get: { scanResult?.date ?? Date() }, set: { date in
+            scanResult?.date = date
+            scanResult?.hasDetectedDate = true
+        })
+    }
+
     private func detailsCard(_ result: ReceiptScanResult) -> some View {
         VStack(spacing: 0) {
-            detailRow(label: "Note") {
-                Text(merchant.isEmpty ? "Not found" : merchant)
-                    .font(.system(size: 16, weight: .semibold))
+            editableDetailRow(.note, label: "Note", valueDescription: merchant.isEmpty ? "Add note" : merchant) {
+                Text(merchant.isEmpty ? "Add note" : merchant)
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(merchant.isEmpty ? SpendyColors.textSecondary : SpendyColors.textPrimary)
                     .multilineTextAlignment(.trailing)
                     .lineLimit(2)
             }
             cardDivider
-            detailRow(label: "Date") {
-                Text(result.hasDetectedDate ? result.date.formatted(date: .abbreviated, time: .omitted) : "Check in Edit")
-                    .font(.system(size: 16, weight: .semibold))
+            editableDetailRow(.date, label: "Date", valueDescription: result.hasDetectedDate ? result.date.formatted(date: .abbreviated, time: .omitted) : "Choose date") {
+                Text(result.hasDetectedDate ? result.date.formatted(date: .abbreviated, time: .omitted) : "Choose date")
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .multilineTextAlignment(.trailing)
             }
             cardDivider
-            detailRow(label: "Category") {
+            editableDetailRow(.category, label: "Category", valueDescription: category?.label ?? "Choose category") {
                 entityValue(
                     symbol: category?.sfSymbol ?? "tag.fill",
                     color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
-                    name: category?.label ?? "Choose in Edit",
+                    name: category?.label ?? "Choose category",
                     isCircle: true
                 )
             }
             cardDivider
-            detailRow(label: "Account") {
+            editableDetailRow(.account, label: "Account", valueDescription: account?.label ?? "Choose account") {
                 entityValue(
                     symbol: account?.sfSymbol ?? account?.type.defaultSymbol ?? "building.columns.fill",
                     color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
-                    name: account?.label ?? "Choose in Edit"
+                    name: account?.label ?? "Choose account"
                 )
             }
         }
@@ -295,15 +344,32 @@ struct ReceiptScannerSheet: View {
         Divider().background(SpendyColors.separator)
     }
 
-    private func detailRow<Value: View>(label: String, @ViewBuilder value: () -> Value) -> some View {
-        HStack(alignment: .center) {
-            Text(label)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            Spacer(minLength: 12)
-            value()
+    private func editableDetailRow<Value: View>(_ field: ReceiptReviewField, label: String,
+        valueDescription: String, @ViewBuilder value: () -> Value) -> some View {
+        Button {
+            HapticsManager.shared.trigger(.selection)
+            activeField = field
+        } label: {
+            HStack(alignment: .center, spacing: 10) {
+                Text(label)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer(minLength: 12)
+                value()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textTertiary)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 44)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 14)
+        .buttonStyle(.plain)
+        .disabled(isFinishing)
+        .accessibilityLabel("Edit \(label.lowercased())")
+        .accessibilityValue(valueDescription)
+        .accessibilityIdentifier("receipt-review-\(field.rawValue)")
     }
 
     private func entityValue(symbol: String, color: Color, name: String, isCircle: Bool = false) -> some View {
@@ -316,20 +382,20 @@ struct ReceiptScannerSheet: View {
                 monogramName: name
             )
             Text(name)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(SpendyColors.textPrimary)
                 .lineLimit(1)
         }
     }
 
     private func reviewGuidance(_ result: ReceiptScanResult) -> String? {
-        if result.rawRecognizedText.isEmpty { return "We couldn’t read this photo. Tap Edit to enter the details." }
+        if result.rawRecognizedText.isEmpty { return "We couldn’t read this photo. Choose the details below and tap Edit to enter the amount." }
         if result.paymentStatus == .pending { return "Payment is pending. Confirm it completed before recording it." }
         if result.paymentStatus == .failed { return "This payment failed. It hasn’t been added to your spending." }
         if result.currencySymbol != store.currencySymbol { return "Receipt shows \(result.currencySymbol). Tap Edit to check the amount in \(store.currencySymbol)." }
         if result.totalAmount == 0 { return "The amount needs checking. Tap Edit to enter it." }
-        if !result.hasDetectedDate { return "The date wasn’t clear. Check it in Edit before adding." }
-        if merchant.isEmpty || category == nil || account == nil { return "Tap Edit to check the note, category, and account." }
+        if !result.hasDetectedDate { return "The date wasn’t clear. Tap Date to choose it before adding." }
+        if merchant.isEmpty || category == nil || account == nil { return "Check the note, category, and account below before adding." }
         return nil
     }
 

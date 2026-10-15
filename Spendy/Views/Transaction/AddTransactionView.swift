@@ -156,10 +156,11 @@ struct AddTransactionView: View {
         transactionToEdit: Transaction? = nil,
         defaultType: TransactionType = .expense,
         defaultCategoryId: String? = nil,
-        defaultAccountId: String? = nil
+        defaultAccountId: String? = nil,
+        scannedReceipt: ReceiptScanResult? = nil
     ) {
         self.transactionToEdit = transactionToEdit
-        let initialDate = transactionToEdit?.date ?? Date()
+        let initialDate = transactionToEdit?.date ?? scannedReceipt?.date ?? Date()
         _initialDate = State(initialValue: initialDate)
         _date = State(initialValue: initialDate)
         if let t = transactionToEdit {
@@ -177,6 +178,19 @@ struct AddTransactionView: View {
             }
             if let accId = defaultAccountId {
                 _fromAccountId = State(initialValue: accId)
+            }
+            if let receipt = scannedReceipt {
+                _type = State(initialValue: receipt.transactionType)
+                if receipt.totalAmount > 0 {
+                    _amountString = State(initialValue: String(format: "%.2f", receipt.totalAmount))
+                }
+                _note = State(initialValue: receipt.merchantName)
+                if let categoryID = receipt.suggestedCategoryId {
+                    _selectedCategoryId = State(initialValue: categoryID)
+                }
+                if let accountID = receipt.suggestedAccountId {
+                    _fromAccountId = State(initialValue: accountID)
+                }
             }
         }
     }
@@ -999,24 +1013,7 @@ struct AddTransactionView: View {
         }
     }
 
-    private var copiedReceiptImage: UIImage? {
-        #if DEBUG
-        // Reproducible OCR/UI fixture; the UI test runner's clipboard is isolated on newer simulators.
-        if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_MODE"] != nil,
-           let text = ProcessInfo.processInfo.environment["SPENDY_UI_TEST_RECEIPT_TEXT"] {
-            return UIGraphicsImageRenderer(size: CGSize(width: 900, height: 1000)).image { context in
-                UIColor.white.setFill()
-                context.fill(CGRect(x: 0, y: 0, width: 900, height: 1000))
-                for (index, line) in text.components(separatedBy: "\n").enumerated() {
-                    (line as NSString).draw(at: CGPoint(x: 40, y: 40 + index * 95), withAttributes: [
-                        .font: UIFont.systemFont(ofSize: index == 2 ? 60 : 36), .foregroundColor: UIColor.black
-                    ])
-                }
-            }
-        }
-        #endif
-        return UIPasteboard.general.image
-    }
+    private var copiedReceiptImage: UIImage? { ReceiptImageClipboard.image }
 
     // MARK: - Apply Scanned Receipt Result
     private func presentCapturedReceipt() {
@@ -1028,7 +1025,7 @@ struct AddTransactionView: View {
         if result.totalAmount > 0 {
             amountString = String(format: result.totalAmount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", result.totalAmount)
         }
-        if !result.rawRecognizedText.isEmpty && !result.merchantName.isEmpty {
+        if !result.merchantName.isEmpty {
             note = result.merchantName
         }
         date = result.date

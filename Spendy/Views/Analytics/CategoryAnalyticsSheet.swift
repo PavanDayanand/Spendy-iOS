@@ -14,6 +14,7 @@ struct CategoryAnalyticsSheet: View {
     var spendingScope: SpendingScope? = nil
     var initialType: TransactionType = .expense
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     var backButtonMorphID: String = "topControl_left"
     var editButtonMorphID: String = "topControl_right"
     var periodControlMorphID: String = "periodNavCapsule"
@@ -37,6 +38,7 @@ struct CategoryAnalyticsSheet: View {
             initialType: initialType,
             spendingScope: spendingScope,
             topControlsNamespace: topControlsNamespace,
+            sharedNavigationHeader: sharedNavigationHeader,
             backButtonMorphID: backButtonMorphID,
             editButtonMorphID: editButtonMorphID,
             periodControlMorphID: periodControlMorphID,

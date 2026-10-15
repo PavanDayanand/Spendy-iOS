@@ -16,6 +16,7 @@ struct SubscriptionsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
+    var isPushed: Bool = false
     var initialSelectedSubscriptionId: String? = nil
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
@@ -132,7 +133,7 @@ struct SubscriptionsView: View {
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
-                        if topControlsNamespace == nil {
+                        if !isPushed {
                             tabHeaderBar(showsControls: false)
                         } else {
                             Text("Subscriptions")
@@ -146,7 +147,7 @@ struct SubscriptionsView: View {
 
                         summaryCard
                             .padding(.horizontal, 20)
-                            .padding(.top, topControlsNamespace != nil ? 12 : 2)
+                            .padding(.top, isPushed ? 12 : 2)
 
                         subscriptionsListSection
                             .padding(.horizontal, 20)
@@ -159,7 +160,7 @@ struct SubscriptionsView: View {
                     .padding(.bottom, 120)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                if topControlsNamespace != nil {
+                if isPushed {
                     topHeaderBar
                         .padding(.bottom, 6)
                 } else {

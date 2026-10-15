@@ -92,6 +92,7 @@ struct SharedEntityAnalyticsSheet: View {
     var spendingScope: SpendingScope? = nil
     @State private var appliedSpendingScope = false
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     var backButtonMorphID: String = "topControl_left"
     var editButtonMorphID: String = "topControl_right"
     var periodControlMorphID: String = "periodNavCapsule"
@@ -155,7 +156,8 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var isHomeOrigin: Bool {
-        topControlsNamespace != nil && periodControlMorphID == "accountDropdownCapsule"
+        sharedNavigationHeader != nil ||
+            (topControlsNamespace != nil && periodControlMorphID == "accountDropdownCapsule")
     }
     
     private var sharedMorphNamespace: Namespace.ID {
@@ -425,7 +427,11 @@ struct SharedEntityAnalyticsSheet: View {
             SpendyPinnedHeaderLayout(isEnabled: isHomeOrigin) {
 
                 if isHomeOrigin {
-                    topHeaderBar
+                    if sharedNavigationHeader != nil {
+                        Color.clear.frame(height: 50).accessibilityHidden(true)
+                    } else {
+                        topHeaderBar
+                    }
                 }
             } content: {
                 ScrollView(showsIndicators: false) {
@@ -516,6 +522,7 @@ struct SharedEntityAnalyticsSheet: View {
             AddTransactionView(transactionToEdit: tx)
         }
         .onAppear {
+            configureNavigationHeader()
             if !appliedSpendingScope, let spendingScope {
                 customDateRange = (spendingScope.start, spendingScope.end.addingTimeInterval(-0.000001))
                 customStartDate = spendingScope.start
@@ -588,6 +595,23 @@ struct SharedEntityAnalyticsSheet: View {
         .padding(.bottom, 2)
     }
     
+    private func configureNavigationHeader() {
+        let backAction = onDismiss
+        let dismissAction = dismiss
+        let categoryEditor = $editingCategoryToEdit
+        let accountEditor = $editingAccountToEdit
+        let currentEntity = entity
+        sharedNavigationHeader?.show(title: entity.label, subtitle: entity.subtitle,
+            onBack: {
+                if let backAction { backAction() } else { dismissAction() }
+            }, onEdit: {
+                switch currentEntity {
+                case .category(let category): categoryEditor.wrappedValue = category
+                case .account(let account): accountEditor.wrappedValue = account
+                }
+            })
+    }
+
     private func triggerEditEntity() {
         switch entity {
         case .category(let cat):

@@ -6,14 +6,31 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct MainTabView: View {
+    @Environment(ExpenseStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedTab: AppTab = .home
     @State private var showAddTransaction: Bool = false
     @State private var isHomeDrawerExpanded: Bool = false
     @State private var isHomeSubpageActive: Bool = false
     @State private var isAnalyticsSubpageActive: Bool = false
+    @State private var analyticsNavigationHeader = AnalyticsNavigationHeaderState()
     @State private var quickActionManager = QuickActionManager.shared
+
+    @AppStorage("hasSeenReceiptScanIntroduction") private var hasSeenReceiptIntroduction = false
+    @State private var receiptSheet: HomeReceiptSheet?
+    @State private var pendingReceiptSheet: HomeReceiptSheet?
+    @State private var openReceiptMenuOnDismiss = false
+    @State private var receiptMenuRequest = 0
+    @State private var showReceiptPhotos = false
+    @State private var openReceiptPhotosOnDismiss = false
+    @State private var selectedReceiptPhoto: PhotosPickerItem?
+    @State private var pendingReceiptPhoto: UIImage?
+    @State private var receiptImportError: String?
+    @State private var receiptToEdit: ReceiptScanResult?
+    @State private var pendingReceiptEdit: ReceiptScanResult?
 
     private var isDockVisible: Bool {
         switch selectedTab {
@@ -36,7 +53,7 @@ struct MainTabView: View {
                     isSheetExpandedBinding: $isHomeDrawerExpanded,
                     isSubpageActiveBinding: $isHomeSubpageActive
                 )
-                .environment(\.spendyTipsAllowed, selectedTab == .home && !showAddTransaction)
+                .environment(\.spendyTipsAllowed, selectedTab == .home && !showAddTransaction && receiptSheet == nil && !showReceiptPhotos)
                 .opacity(selectedTab == .home ? 1 : 0)
                 .allowsHitTesting(selectedTab == .home)
                 .accessibilityHidden(selectedTab != .home)
@@ -52,8 +69,17 @@ struct MainTabView: View {
                 NavigationStack {
                     AnalyticsView(
                         selectedTab: $selectedTab,
+                        sharedNavigationHeader: analyticsNavigationHeader,
                         isSubpageActiveBinding: $isAnalyticsSubpageActive
                     )
+                }
+                .overlay(alignment: .top) {
+                    if analyticsNavigationHeader.isVisible {
+                        AnalyticsNavigationHeader(state: analyticsNavigationHeader)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 4)
+                            .transition(.identity)
+                    }
                 }
                 .environment(\.spendyTipsAllowed, selectedTab == .analytics && !showAddTransaction)
                 .opacity(selectedTab == .analytics ? 1 : 0)
@@ -67,19 +93,91 @@ struct MainTabView: View {
                 selectedTab: $selectedTab,
                 isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
                 onQuickAdd: {
+                    receiptToEdit = nil
                     showAddTransaction = true
-                }
+                },
+                receiptNeedsIntroduction: !hasSeenReceiptIntroduction,
+                receiptMenuRequest: receiptMenuRequest,
+                onReceiptIntroduction: { receiptSheet = .introduction },
+                onReceiptSource: selectReceiptSource
             )
             .padding(.bottom, 6)
-            .offset(y: isDockVisible ? 0 : 120)
+            .offset(y: isDockVisible || reduceMotion ? 0 : 120)
             .opacity(isDockVisible ? 1 : 0)
             .allowsHitTesting(isDockVisible)
-            .animation(AppMotion.fluidSpring, value: isDockVisible)
+            .accessibilityHidden(!isDockVisible)
+            .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .fullScreenCover(isPresented: $showAddTransaction) {
-            AddTransactionView()
+        .fullScreenCover(isPresented: $showAddTransaction, onDismiss: { receiptToEdit = nil }) {
+            AddTransactionView(scannedReceipt: receiptToEdit)
         }
+        .sheet(item: $receiptSheet, onDismiss: receiptSheetDismissed) { sheet in
+            switch sheet {
+            case .introduction:
+                ReceiptScanIntroductionSheet {
+                    hasSeenReceiptIntroduction = true
+                    openReceiptMenuOnDismiss = true
+                    receiptSheet = nil
+                }
+            case .camera:
+                ReceiptCameraCaptureView { image in
+                    pendingReceiptSheet = .review([image])
+                    receiptSheet = nil
+                } onCancel: {
+                    receiptSheet = nil
+                } onChoosePhoto: {
+                    openReceiptPhotosOnDismiss = true
+                    receiptSheet = nil
+                }
+                .presentationDetents([.fraction(0.72)])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(.clear)
+                .preferredColorScheme(.dark)
+            case .review(let images):
+                ReceiptScannerSheet(images: images,
+                    initialAccountId: store.accounts.first?.id,
+                    initialCategoryId: store.categories.first(where: { $0.type == .expense })?.id,
+                    onEditResult: { result in
+                        pendingReceiptEdit = result
+                        receiptSheet = nil
+                    },
+                    onAddResult: addReceiptTransaction)
+            }
+        }
+        .photosPicker(isPresented: $showReceiptPhotos, selection: $selectedReceiptPhoto,
+            matching: .images, preferredItemEncoding: .compatible)
+        .onChange(of: showReceiptPhotos) { _, presented in
+            if !presented, let image = pendingReceiptPhoto {
+                pendingReceiptPhoto = nil
+                receiptSheet = .review([image])
+            }
+        }
+        .onChange(of: selectedReceiptPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self),
+                          let image = UIImage(data: data) else {
+                        receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
+                        selectedReceiptPhoto = nil
+                        return
+                    }
+                    selectedReceiptPhoto = nil
+                    if showReceiptPhotos { pendingReceiptPhoto = image }
+                    else { receiptSheet = .review([image]) }
+                } catch {
+                    selectedReceiptPhoto = nil
+                    receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
+                }
+            }
+        }
+        .alert("Receipt image", isPresented: Binding(
+            get: { receiptImportError != nil },
+            set: { if !$0 { receiptImportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { receiptImportError = nil }
+        } message: { Text(receiptImportError ?? "") }
         .onChange(of: quickActionManager.shouldPresentQuickAdd) { _, shouldPresent in
             if shouldPresent {
                 showAddTransaction = true
@@ -105,4 +203,50 @@ struct MainTabView: View {
             }
         }
     }
+
+    private func selectReceiptSource(_ source: ReceiptSourceMenuButton.Source) {
+        switch source {
+        case .paste:
+            guard let image = ReceiptImageClipboard.image else {
+                receiptImportError = "Copy a receipt image first, then choose Paste image again."
+                return
+            }
+            receiptSheet = .review([image])
+        case .photos: showReceiptPhotos = true
+        case .camera: receiptSheet = .camera
+        }
+    }
+
+    private func receiptSheetDismissed() {
+        if let result = pendingReceiptEdit {
+            pendingReceiptEdit = nil
+            receiptToEdit = result
+            showAddTransaction = true
+        } else if let sheet = pendingReceiptSheet {
+            pendingReceiptSheet = nil
+            receiptSheet = sheet
+        } else if openReceiptPhotosOnDismiss {
+            openReceiptPhotosOnDismiss = false
+            showReceiptPhotos = true
+        } else if openReceiptMenuOnDismiss {
+            openReceiptMenuOnDismiss = false
+            receiptMenuRequest += 1
+        }
+    }
+
+    private func addReceiptTransaction(_ result: ReceiptScanResult) {
+        let title = result.merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard result.totalAmount > 0, !title.isEmpty, result.hasDetectedDate,
+              result.paymentStatus != .pending, result.paymentStatus != .failed,
+              result.currencySymbol == store.currencySymbol,
+              let categoryID = result.suggestedCategoryId,
+              let accountID = result.suggestedAccountId,
+              store.categories.contains(where: { $0.id == categoryID && $0.type == result.transactionType }),
+              store.accounts.contains(where: { $0.id == accountID }) else { return }
+        HapticsManager.shared.trigger(.success)
+        store.addTransaction(Transaction(title: title, amount: result.totalAmount,
+            type: result.transactionType, categoryId: categoryID, accountId: accountID, date: result.date))
+        receiptSheet = nil
+    }
+
 }

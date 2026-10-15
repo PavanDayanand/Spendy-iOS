@@ -11,9 +11,12 @@
 import SwiftUI
 
 struct AllTransactionsView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     
+    var usesSharedHeader: Bool = false
+    var areFiltersExpanded: Bool = true
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
     
@@ -156,7 +159,12 @@ struct AllTransactionsView: View {
     
     private var pinnedHeader: some View {
         VStack(spacing: 0) {
-            topHeaderBar
+            if usesSharedHeader {
+                Color.clear.frame(height: 56)
+                    .accessibilityHidden(true)
+            } else {
+                topHeaderBar
+            }
             if let scopeStart, let scopeEnd {
                 VStack(spacing: 3) {
                     Text("Expenses · \(spendingScope?.accountIDs != nil ? accountButtonLabel : (store.accounts.first { $0.id == scopeAccountID }?.label ?? "All accounts"))")
@@ -168,76 +176,87 @@ struct AllTransactionsView: View {
             }
 
             // Horizontal Scrollable Liquid Glass Filter Capsules
-            horizontalFilterBar
-                .padding(.vertical, 8)
+            if areFiltersExpanded {
+                horizontalFilterBar
+                    .padding(.vertical, 8)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("transaction-filters")
+            }
         }
+        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: areFiltersExpanded)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pinnedHeaderHeight = $0 }
 
     }
 
     // MARK: - Body
     var body: some View {
-        ZStack {
-            // Clean Background
-            SpendyColors.appBackground
-                .ignoresSafeArea()
+        GeometryReader { viewport in
+            ZStack {
+                // Clean Background
+                SpendyColors.appBackground
+                    .ignoresSafeArea()
             
-            ZStack(alignment: .top) {
-                // Scrollable Content Layer
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // Grouped Transactions List
-                        if filteredTransactions.isEmpty {
-                            emptyStateView
-                        } else {
-                            LazyVStack(spacing: 20) {
-                                ForEach(groupedTransactions, id: \.0) { groupTitle, groupNet, txs in
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        // Section Header: Date (Left) & Group Total (Right)
-                                        HStack {
-                                            Text(groupTitle)
-                                                .font(AppTypography.subheadlineSemibold)
-                                                .foregroundStyle(SpendyColors.textSecondary)
+                ZStack(alignment: .top) {
+                    // Scrollable Content Layer
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            // Grouped Transactions List
+                            if filteredTransactions.isEmpty {
+                                emptyStateView
+                                    .frame(minHeight: max(0, viewport.size.height - pinnedHeaderHeight - 110))
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                LazyVStack(spacing: 20) {
+                                    ForEach(groupedTransactions, id: \.0) { groupTitle, groupNet, txs in
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            // Section Header: Date (Left) & Group Total (Right)
+                                            HStack {
+                                                Text(groupTitle)
+                                                    .font(AppTypography.subheadlineSemibold)
+                                                    .foregroundStyle(SpendyColors.textSecondary)
                                             
-                                            Spacer()
+                                                Spacer()
                                             
-                                            Text(formattedGroupNetTotal(groupNet))
-                                                .spendyNumberFont(size: 14, weight: .medium, tracking: -0.2)
-                                                .foregroundStyle(SpendyColors.textTertiary)
-                                        }
-                                        .padding(.horizontal, 4)
+                                                Text(formattedGroupNetTotal(groupNet))
+                                                    .spendyNumberFont(size: 14, weight: .medium, tracking: -0.2)
+                                                    .foregroundStyle(SpendyColors.textTertiary)
+                                            }
+                                            .padding(.horizontal, 4)
                                         
-                                        // Individual Transaction Cards (Matching Category Card Design)
-                                        VStack(spacing: 12) {
-                                            ForEach(txs) { tx in
-                                                transactionCard(tx)
-                                                    .accessibilityIdentifier("spending-transaction-\(tx.id)")
+                                            // Individual Transaction Cards (Matching Category Card Design)
+                                            VStack(spacing: 12) {
+                                                ForEach(txs) { tx in
+                                                    transactionCard(tx)
+                                                        .accessibilityIdentifier("spending-transaction-\(tx.id)")
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 2)
+                                .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 2)
-                            .padding(.bottom, 110) // Clearance for floating bottom search & add bar
                         }
                     }
-                }                .safeAreaPadding(.top, pinnedHeaderHeight)
-                .accessibilityIdentifier("allTransactionsViewport")
+                    .scrollBounceBehavior(.basedOnSize)
+                    .safeAreaPadding(.top, pinnedHeaderHeight)
+                    .accessibilityIdentifier("allTransactionsViewport")
 
-                pinnedHeader
-                    .zIndex(1)
+                    pinnedHeader
+                        .zIndex(1)
 
-            }
+                }
             
-            // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
-            VStack {
-                Spacer()
-                floatingBottomBar
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
+                // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
+                VStack {
+                    Spacer()
+                    floatingBottomBar
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
+                }
+                .zIndex(100)
             }
-            .zIndex(100)
         }
         .navigationTitle(scopeTitle ?? "All Transactions")
         .navigationBarTitleDisplayMode(.inline)
@@ -308,12 +327,12 @@ struct AllTransactionsView: View {
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isCatSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isCatSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
                 
@@ -344,12 +363,12 @@ struct AllTransactionsView: View {
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isAccSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isAccSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
                 
@@ -390,12 +409,12 @@ struct AllTransactionsView: View {
                             .font(.system(size: 14, weight: .semibold))
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isTypeSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isTypeSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 14)
                     .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
             }
@@ -586,7 +605,7 @@ struct AllTransactionsView: View {
                     if isSearchActive {
                         Button {
                             HapticsManager.shared.trigger(.tick)
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
                                 searchQuery = ""
                                 isSearchFocused = false
                             }
@@ -626,13 +645,13 @@ struct AllTransactionsView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add Transaction")
                     .glassMorphID("transactionsAddButton", in: allTransactionsNamespace)
-                    .transition(.asymmetric(
+                    .transition(reduceMotion ? .opacity : .asymmetric(
                         insertion: .scale(scale: 0.8).combined(with: .opacity),
                         removal: .scale(scale: 0.8).combined(with: .opacity)
                     ))
                 }
             }
-            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: isSearchActive)
+            .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: isSearchActive)
         }
     }
     
@@ -640,21 +659,29 @@ struct AllTransactionsView: View {
         let hasFilters = !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || selectedCategoryIDs != nil || selectedAccountId != nil || selectedTransactionType != nil
         let isScoped = spendingScope != nil || scopeStart != nil || scopeAccountID != nil
-        return SpendyPlainEmptyState(
-            title: hasFilters ? "No matching transactions" : "No transactions yet",
-            message: hasFilters ? "Try clearing your search and filters."
-                : isScoped ? "No transactions recorded for this selection." : "Add your first transaction to start tracking.",
-            actionTitle: hasFilters ? "Clear search and filters" : isScoped ? nil : "Add transaction",
-            action: {
-                if hasFilters {
-                    searchQuery = ""
-                    selectedCategoryIDs = nil
-                    selectedAccountId = nil
-                    selectedTransactionType = nil
-                    isSearchFocused = false
-                } else { showAddTransaction = true }
+        return ContentUnavailableView {
+            Label(hasFilters ? "No matching transactions" : "No transactions yet",
+                  systemImage: hasFilters ? "magnifyingglass" : "list.bullet.rectangle")
+        } description: {
+            Text(hasFilters ? "Try clearing your search and filters."
+                : isScoped ? "No transactions recorded for this selection." : "Add your first transaction to start tracking.")
+        } actions: {
+            if hasFilters || !isScoped {
+                Button(hasFilters ? "Clear search and filters" : "Add transaction") {
+                    if hasFilters {
+                        searchQuery = ""
+                        selectedCategoryIDs = nil
+                        selectedAccountId = nil
+                        selectedTransactionType = nil
+                        isSearchFocused = false
+                    } else { showAddTransaction = true }
+                }
+                .buttonStyle(.plain)
+                .font(.body.weight(.semibold))
+                .frame(minHeight: 44)
             }
-        )
+        }
+        .accessibilityIdentifier("transactions-empty-state")
     }
 
 }

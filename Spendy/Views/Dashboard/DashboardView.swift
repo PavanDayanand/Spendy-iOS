@@ -297,6 +297,7 @@ struct HeroSpendBarChart: View {
 
 // MARK: - Dashboard View
 struct DashboardView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
@@ -325,6 +326,7 @@ struct DashboardView: View {
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var selectedAccountForSheet: Account? = nil
     
+    @State private var analyticsNavigationHeader = AnalyticsNavigationHeaderState()
     @Namespace private var topControlsNamespace
     
     // Filter, Privacy & Expand State
@@ -332,6 +334,7 @@ struct DashboardView: View {
     @State private var homeSummaryHeight: CGFloat = 0
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
+    @State private var transactionFiltersExpanded = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var showHomeConfigSheet: Bool = false
     @State private var analyticsInitialDate: Date? = nil
@@ -507,7 +510,7 @@ struct DashboardView: View {
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 10) {
-                            headerBar
+                            homeHeaderPlaceholder
                                 .padding(.top, topInset + 4)
                             accountDropdownSelector
                             heroSpendBarSection
@@ -564,6 +567,7 @@ struct DashboardView: View {
                 AnalyticsView(
                     selectedTab: selectedTab,
                     topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader,
                     initialAccountID: selectedAccountId,
                     initialDate: analyticsInitialDate
                 )
@@ -573,6 +577,7 @@ struct DashboardView: View {
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView(
+                    isPushed: true,
                     initialSelectedSubscriptionId: initialSubscriptionIdForHub,
                     topControlsNamespace: topControlsNamespace
                 )
@@ -581,7 +586,11 @@ struct DashboardView: View {
                 AccountsView(topControlsNamespace: topControlsNamespace)
             }
             .navigationDestination(isPresented: $showAllTransactions) {
-                AllTransactionsView(topControlsNamespace: topControlsNamespace)
+                AllTransactionsView(
+                    usesSharedHeader: true,
+                    areFiltersExpanded: transactionFiltersExpanded,
+                    topControlsNamespace: topControlsNamespace
+                )
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
@@ -600,7 +609,7 @@ struct DashboardView: View {
                 )
             }
             .onChange(of: isSubpageActive) { _, active in
-                withAnimation(AppMotion.fluidSpring) {
+                withAnimation(reduceMotion ? nil : AppMotion.fluidSpring) {
                     isSubpageActiveBinding?.wrappedValue = active
                 }
             }
@@ -641,143 +650,76 @@ struct DashboardView: View {
                 }
             }
         }
-    }
-    
-    // MARK: - 1. Top Header Bar (Profile Left + Action Toggles Right)
-    private var profileDisplayName: String {
-        let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Personal" : name
-    }
-    
-    @ViewBuilder
-    private var profileAvatarView: some View {
-        let avatarSize: CGFloat = 34
-        
-        ZStack {
-            if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: avatarSize, height: avatarSize)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.8))
-            } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
-                Circle()
-                    .fill(SpendyColors.textPrimary)
-                    .frame(width: avatarSize, height: avatarSize)
-                
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SpendyColors.inverseText)
-            } else {
-                Circle()
-                    .fill(SpendyColors.textPrimary)
-                    .frame(width: avatarSize, height: avatarSize)
-                
-                let initial = store.userName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1).uppercased()
-                Text(initial.isEmpty ? "P" : String(initial))
-                    .font(.system(size: 14, weight: .heavy, design: .default))
-                    .foregroundStyle(SpendyColors.inverseText)
+        .overlay(alignment: .top) {
+            ZStack(alignment: .top) {
+                if isSharedHeaderVisible {
+                    sharedNavigationHeader
+                        .transition(.identity)
+                }
+                if showAnalyticsView && analyticsNavigationHeader.isVisible {
+                    AnalyticsNavigationHeader(state: analyticsNavigationHeader)
+                        .transition(.identity)
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .animation(nil, value: isSharedHeaderVisible)
+            .animation(nil, value: analyticsNavigationHeader.isVisible)
         }
-        .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
+        .onChange(of: showAnalyticsView) { _, showing in
+            if !showing { analyticsNavigationHeader.isVisible = false }
+        }
+        .onChange(of: showAllTransactions) { _, _ in
+            transactionFiltersExpanded = false
+        }
+        .onChange(of: store.transactions.contains(where: { $0.type == .expense }), initial: true) { _, hasSpending in
+            HomeAnalyticsTip.hasSpending = hasSpending
+        }
     }
-    
-    private var headerBar: some View {
-        HStack(alignment: .center) {
-            // Profile / Account Capsule Pill on Top-Left (Opens Settings)
-            Button(action: {
-                HapticsManager.shared.trigger(.light)
+
+    // TipKit stays inside the stack's presentation context; the visible chrome lives above it.
+    private var homeHeaderPlaceholder: some View {
+        HStack(spacing: 0) {
+            Spacer()
+            Color.clear
+                .frame(width: 44, height: 44)
+                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive && !isSheetExpanded
+                    ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil)
+            Color.clear.frame(width: 45, height: 44)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var isSharedHeaderVisible: Bool {
+        !showAnalyticsView && !showBudgetHub && !showSubscriptionsHub && !showAccounts
+            && selectedCategoryForSheet == nil && selectedAccountForSheet == nil
+            && (showAllTransactions || !isSheetExpanded)
+    }
+
+    // This header belongs to the stack, so it survives the pilot push/pop.
+    private var sharedNavigationHeader: some View {
+        HomeNavigationHeader(
+            isShowingTransactions: showAllTransactions,
+            filtersExpanded: $transactionFiltersExpanded,
+            hideBalance: $hideBalance,
+            namespace: topControlsNamespace,
+            onBack: { showAllTransactions = false },
+            onSettings: {
                 settingsInitialDestination = nil
                 showSettings = true
-            }) {
-                HStack(spacing: 8) {
-                    profileAvatarView
-                    
-                    Text(profileDisplayName)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .padding(.leading, 5)
-                .padding(.trailing, 14)
-                .frame(height: 44)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-                .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
-            }
-            .buttonStyle(ProfilePillPressStyle())
-            .accessibilityLabel("Profile, \(profileDisplayName). Opens settings.")
-            .glassMorphID("topControl_left", in: topControlsNamespace)
-            
-            Spacer()
-            
-            // Keep the frequent action visible; secondary actions share one menu.
-            HStack(spacing: 0) {
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    analyticsInitialDate = nil
-                    showAnalyticsView = true
-                } label: {
-                    Image(systemName: SFIcons.tabAnalytics)
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(GlassCirclePressStyle())
-                .accessibilityLabel("Analytics and statistics")
-                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil)
-                .onChange(of: store.transactions.contains(where: { $0.type == .expense }), initial: true) { _, hasSpending in
-                    HomeAnalyticsTip.hasSpending = hasSpending
-                }
-                .onChange(of: showAnalyticsView) { _, showing in
-                    if showing { HomeAnalyticsTip().invalidate(reason: .actionPerformed) }
-                }
-
-                Rectangle()
-                    .fill(SpendyColors.separator)
-                    .frame(width: 1, height: 18)
-                    .accessibilityHidden(true)
-
-                Menu {
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        showBudgetHub = true
-                    } label: {
-                        Label("Budget", systemImage: "target")
-                    }
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        showCurrencyConverter = true
-                    } label: {
-                        Label("Currency Converter", systemImage: "arrow.left.arrow.right")
-                    }
-                    Divider()
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.25)) {
-                            hideBalance.toggle()
-                        }
-                    } label: {
-                        Label(hideBalance ? "Show Amounts" : "Hide Amounts",
-                              systemImage: hideBalance ? SFIcons.eyeSlash : SFIcons.eye)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("More actions")
-                .accessibilityHint("Budget, currency converter, and amount visibility")
-            }
-            .foregroundStyle(SpendyColors.textPrimary)
-            .nativeLiquidGlassCapsule(isInteractive: true)
-            .optionalMatchedGeometry(id: "topControl_right", in: topControlsNamespace)
-        }
+            },
+            onAnalytics: {
+                let selection = $showAnalyticsView
+                analyticsNavigationHeader.show(title: "Analytics", onBack: { selection.wrappedValue = false })
+                analyticsInitialDate = nil
+                showAnalyticsView = true
+                HomeAnalyticsTip().invalidate(reason: .actionPerformed)
+            },
+            onBudget: { showBudgetHub = true },
+            onConverter: { showCurrencyConverter = true }
+        )
     }
-    
+
     // MARK: - 2. Account Selector Dropdown Menu Chip
     private var accountDropdownSelector: some View {
         SpendyGlassEffectContainer(spacing: 8) {
@@ -1035,12 +977,12 @@ struct DashboardView: View {
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isCatSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isCatSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 16)
                     .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
                 
@@ -1071,12 +1013,12 @@ struct DashboardView: View {
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isAccSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isAccSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 16)
                     .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
                 
@@ -1115,12 +1057,12 @@ struct DashboardView: View {
                             .font(.system(size: 14, weight: .semibold))
                         Image(systemName: "chevron.down")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isTypeSelected ? .white.opacity(0.8) : SpendyColors.textTertiary)
+                            .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                     }
-                    .foregroundStyle(isTypeSelected ? .white : SpendyColors.textPrimary)
+                    .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
                     .padding(.horizontal, 16)
                     .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.primaryBlue : nil)
+                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(.plain)
 

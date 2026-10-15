@@ -71,6 +71,7 @@ struct CategoriesSettingsView: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(isEditMode ? SpendyColors.primaryBlue : SpendyColors.textPrimary)
                 }
+                .accessibilityLabel(isEditMode ? "Done editing categories" : "Edit categories")
             }
         }
         .sheet(isPresented: $showAddCategory) {

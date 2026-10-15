@@ -88,6 +88,7 @@ struct AnalyticsView: View {
     @Environment(\.dismiss) private var dismiss
     var selectedTab: Binding<AppTab>? = nil
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     var onDismiss: (() -> Void)? = nil
     var isSubpageActiveBinding: Binding<Bool>? = nil
     
@@ -147,7 +148,7 @@ struct AnalyticsView: View {
     @Namespace private var analyticsControlsNamespace
     
     private var isSubpageActive: Bool {
-        showsSpendingBreakdown || showSubscriptionSheet ||
+        showsSpendingBreakdown || showSubscriptionSheet || showBudgetHub ||
         selectedAccountForSheet != nil ||
         selectedCategoryForSheet != nil
     }
@@ -166,9 +167,13 @@ struct AnalyticsView: View {
             
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                    headerBar
-                        .padding(.horizontal, 20)
-                        .padding(.top, topControlsNamespace != nil ? 4 : 10)
+                    if sharedNavigationHeader != nil && (topControlsNamespace != nil || onDismiss != nil) {
+                        Color.clear.frame(height: 48).accessibilityHidden(true)
+                    } else {
+                        headerBar
+                            .padding(.horizontal, 20)
+                            .padding(.top, topControlsNamespace != nil ? 4 : 10)
+                    }
 
                     Section {
                         VStack(spacing: 16) {
@@ -215,7 +220,7 @@ struct AnalyticsView: View {
                 datePickerSheet
             }
             .navigationDestination(isPresented: $showSubscriptionSheet) {
-                SubscriptionsView(initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
+                SubscriptionsView(isPushed: true, initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
@@ -237,7 +242,8 @@ struct AnalyticsView: View {
                 AccountAnalyticsSheet(
                     account: account,
                     spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate, transactionType: transactionType),
-                    topControlsNamespace: analyticsControlsNamespace
+                    topControlsNamespace: analyticsControlsNamespace,
+                    sharedNavigationHeader: sharedNavigationHeader
                 )
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
@@ -245,7 +251,8 @@ struct AnalyticsView: View {
                     category: category,
                     spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end,
                         referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId], transactionType: transactionType),
-                    topControlsNamespace: analyticsControlsNamespace
+                    topControlsNamespace: analyticsControlsNamespace,
+                    sharedNavigationHeader: sharedNavigationHeader
                 )
             }
 
@@ -259,9 +266,15 @@ struct AnalyticsView: View {
                     appliedInitialScope = true
                 }
                 openRequestedWeek()
+                configureNavigationHeader()
             }
             .onChange(of: quickActions.requestedAnalyticsWeekDate) { _, _ in openRequestedWeek() }
             .onChange(of: isSubpageActive) { _, active in
+                if showsSpendingBreakdown || showSubscriptionSheet || showBudgetHub {
+                    sharedNavigationHeader?.isVisible = false
+                } else if !active {
+                    configureNavigationHeader()
+                }
                 withAnimation(AppMotion.fluidSpring) {
                     isSubpageActiveBinding?.wrappedValue = active
                 }
@@ -282,6 +295,17 @@ struct AnalyticsView: View {
             }
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func configureNavigationHeader() {
+        guard selectedCategoryForSheet == nil, selectedAccountForSheet == nil else { return }
+        let backAction = onDismiss
+        let dismissAction = dismiss
+        sharedNavigationHeader?.show(title: "Analytics",
+            isVisible: topControlsNamespace != nil || onDismiss != nil,
+            onBack: {
+                if let backAction { backAction() } else { dismissAction() }
+            })
     }
 
     private func openRequestedWeek() {

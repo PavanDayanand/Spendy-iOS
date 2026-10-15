@@ -5,6 +5,7 @@ import UIKit
 struct ReceiptSourceMenuButton: UIViewRepresentable {
     enum Source { case paste, photos, camera }
 
+    var usesDockStyle: Bool = false
     var needsIntroduction: Bool
     var presentationRequest: Int
     var onIntroduction: () -> Void
@@ -18,7 +19,8 @@ struct ReceiptSourceMenuButton: UIViewRepresentable {
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold)), for: .normal)
         button.layer.cornerRadius = 22
         button.layer.borderWidth = 0.8
-        button.accessibilityLabel = "Add receipt"
+        button.accessibilityLabel = usesDockStyle ? "Scan receipt" : "Add receipt"
+        button.accessibilityIdentifier = usesDockStyle ? "home-receipt-scan" : "add-receipt-source"
         button.addAction(UIAction { [weak coordinator = context.coordinator] _ in
             guard let coordinator, coordinator.parent.needsIntroduction else { return }
             coordinator.parent.onIntroduction()
@@ -29,7 +31,8 @@ struct ReceiptSourceMenuButton: UIViewRepresentable {
     func updateUIView(_ button: UIButton, context: Context) {
         context.coordinator.parent = self
         button.tintColor = UIColor(SpendyColors.textPrimary)
-        button.backgroundColor = UIColor(SpendyColors.transactionKeySurface)
+        button.backgroundColor = usesDockStyle ? .clear : UIColor(SpendyColors.transactionKeySurface)
+        button.layer.borderWidth = usesDockStyle ? 0 : 0.8
         button.layer.borderColor = UIColor(SpendyColors.separator).resolvedColor(with: button.traitCollection).cgColor
         button.menu = needsIntroduction ? nil : UIMenu(children: [
             action("Paste image", symbol: "doc.on.clipboard", source: .paste),
