@@ -12,6 +12,7 @@ enum SettingsDestination: Hashable {
     case accounts
     case categories
     case dataBackup
+    case privacyPolicy
     case insightCardsGallery
     case widgets
     case insights
@@ -40,9 +41,10 @@ struct SettingsView: View {
     @State private var showCoffeeSheet: Bool = false
     @State private var showOnboardingTour: Bool = false
 
-    private let feedbackURL = URL(string: "https://spendy.featurebase.app/")
+    private let feedbackURL = URL(string: "https://spendy.userjot.com/")
     private let instagramURL = URL(string: "https://www.instagram.com/pav6n")
     private let websiteURL = URL(string: "https://studiopavan.netlify.app")
+    private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
     private let coffeeURL = URL(string: "https://www.buymeacoffee.com/spendy")
 
     var body: some View {
@@ -121,10 +123,31 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
 
+                        settingsGroup(title: "Legal") {
+                            if let privacyURL = PrivacyPolicyDocument.current?.websiteURL {
+                                Link(destination: privacyURL) {
+                                    externalRow(icon: "hand.raised", title: "Privacy Policy")
+                                }
+                                .accessibilityIdentifier("settings-privacy-policy")
+                            } else {
+                                NavigationLink(value: SettingsDestination.privacyPolicy) {
+                                    linkRow(icon: "hand.raised", title: "Privacy Policy", value: nil)
+                                }
+                                .accessibilityIdentifier("settings-privacy-policy")
+                            }
+                            if let termsOfUseURL {
+                                groupDivider
+                                Link(destination: termsOfUseURL) {
+                                    externalRow(icon: "doc.text", title: "Terms of Use", value: "Apple EULA")
+                                }
+                                .accessibilityIdentifier("settings-terms-of-use")
+                            }
+                        }
+
                         settingsGroup(title: "About") {
                             if let feedbackURL {
                                 Link(destination: feedbackURL) {
-                                    externalRow(icon: "envelope", title: "Send feedback")
+                                    externalRow(icon: "envelope", title: "Request a feature")
                                 }
                             }
                             groupDivider
@@ -186,6 +209,8 @@ struct SettingsView: View {
                     CategoriesSettingsView()
                 case .dataBackup:
                     DataManagementView()
+                case .privacyPolicy:
+                    PrivacyPolicyView()
                 case .insightCardsGallery:
                     InsightCardsGalleryView()
                 case .widgets:

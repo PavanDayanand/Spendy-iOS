@@ -260,7 +260,7 @@ public struct OnboardingView: View {
     private var welcome: some View {
         featurePage("A little clarity.\nEvery day.", "Spending, budgets, and bills. Together.") {
             VStack(spacing: 24) {
-                Image("SpendyLogo").resizable().scaledToFit().frame(width: 140, height: 140)
+                SpendyCoffeeMascot().frame(width: 160, height: 175)
                 VStack(spacing: 0) {
                     introTransaction("Coffee & Cafés", icon: "cup.and.saucer.fill", amount: 25)
                     Divider().padding(.leading, 64)

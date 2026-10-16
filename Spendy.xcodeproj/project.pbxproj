@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E16000000000000000000001 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = E16000000000000000000002 /* RiveRuntime */; };
 		D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -88,6 +89,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E16000000000000000000001 /* RiveRuntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -161,6 +163,7 @@
 			);
 			name = Spendy;
 			packageProductDependencies = (
+				E16000000000000000000002 /* RiveRuntime */,
 			);
 			productName = Spendy;
 			productReference = 8D0E763E3035F7EA006C03D1 /* Spendy.app */;
@@ -258,6 +261,9 @@
 			);
 			mainGroup = 8D0E76353035F7EA006C03D1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E16000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8D0E763F3035F7EA006C03D1 /* Products */;
 			projectDirPath = "";
@@ -350,6 +356,22 @@
 			targetProxy = D1400000000000000000000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+        E16000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */ = {
+            isa = XCRemoteSwiftPackageReference;
+            repositoryURL = "https://github.com/rive-app/rive-ios";
+            requirement = { kind = exactVersion; version = 6.24.0; };
+        };
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+        E16000000000000000000002 /* RiveRuntime */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = E16000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */;
+            productName = RiveRuntime;
+        };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8D0E76473035F7EA006C03D1 /* Debug */ = {

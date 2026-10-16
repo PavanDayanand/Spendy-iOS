@@ -1,0 +1,109 @@
+{
+  "title": "Privacy Policy",
+  "updated": "15 October 2026",
+  "developer": "Pavan Labs",
+  "contactEmail": "hello.pavanlabs@gmail.com",
+  "privacyPolicyURL": null,
+  "intro": "Spendy is a personal finance app built by Pavan Labs. This policy explains how the current app and the Spendy website handle information. The app is in development; the public website address will be confirmed before public release.",
+  "sections": [
+    {
+      "id": "app-data",
+      "title": "Information you keep in Spendy",
+      "scope": "app",
+      "paragraphs": [
+        "Spendy stores the records you enter on your device: expenses, income, transfers, amounts, dates, notes, account labels and balances, categories, budgets, subscriptions, and preferences. If you choose to add a profile name or photo, those are stored locally too.",
+        "These records are used to show your ledger, calculate balances, budgets and spending insights, and provide the features you request. Spending insights are calculated on your device. This version does not require a Spendy login and does not upload your ledger to a Spendy server.",
+        "Bank accounts in Spendy are records you create. The app does not connect to your bank or require online-banking passwords."
+      ]
+    },
+    {
+      "id": "receipts",
+      "title": "Receipt images and scanning",
+      "scope": "app",
+      "paragraphs": [
+        "If you use receipt scanning, you choose an image from Photos, capture one with the camera, or explicitly paste a copied image. The app reads that image using Apple’s Vision framework on your device. Optional Apple Intelligence assistance uses Apple’s on-device Foundation Models framework when available.",
+        "The current app processes receipt images and recognised text for the review flow without sending them to a Spendy server. The saved transaction contains the fields you confirm; this version does not attach the original image or full recognised text to your saved transaction. An image already in your photo library remains there until you delete it yourself."
+      ]
+    },
+    {
+      "id": "voice",
+      "title": "Voice logging and Apple services",
+      "scope": "app",
+      "paragraphs": [
+        "Voice logging requests microphone and speech-recognition permission. Spendy requests on-device recognition when the device and language support it. Otherwise, Apple’s speech-recognition service may process audio on Apple’s servers under Apple’s privacy terms.",
+        "Spendy does not maintain its own server-side archive of your voice recordings. The recognised words are used to prepare a transaction for you to review. Siri and Shortcuts also operate under your Apple settings and Apple’s privacy terms."
+      ],
+      "links": [
+        {
+          "title": "Apple: Ask Siri, Dictation & Privacy",
+          "url": "https://www.apple.com/legal/privacy/data/en/ask-siri-dictation/"
+        }
+      ]
+    },
+    {
+      "id": "exchange-rates",
+      "title": "Exchange-rate requests",
+      "scope": "app",
+      "paragraphs": [
+        "When Spendy refreshes exchange rates, it requests a table of rates from ExchangeRate-API at open.er-api.com. That service receives the network request, including technical information such as your IP address. The request uses a fixed USD base and does not include your transaction amounts, account labels, notes, or ledger.",
+        "The provider handles its service data under its own privacy policy."
+      ],
+      "links": [
+        {
+          "title": "ExchangeRate-API privacy policy",
+          "url": "https://www.exchangerate-api.com/privacy"
+        }
+      ]
+    },
+    {
+      "id": "system-features",
+      "title": "Widgets, reminders and permissions",
+      "scope": "app",
+      "paragraphs": [
+        "Spendy shares selected account, budget and transaction information with its own widgets and App Intents through local storage shared with those extensions. Widget content may be visible on your Home Screen or other system surfaces where you choose to place it.",
+        "If you enable notifications, the app uses Apple’s notification system for local reminders and budget alerts. Notification content can appear on your Lock Screen according to your settings.",
+        "Camera, photo selection, microphone, speech recognition, Siri and notification features are optional. You can decline the relevant permission and continue using manual transaction entry. You can change permissions and notification visibility in your device’s Settings."
+      ]
+    },
+    {
+      "id": "tracking",
+      "title": "Advertising, analytics and disclosures",
+      "scope": "all",
+      "paragraphs": [
+        "The current app does not include advertising trackers or a third-party analytics SDK. We do not sell your financial records or use them to target advertisements.",
+        "If you open an external link, send feedback, contact us, or share an exported file, the information you choose to provide is handled by that service as well. Apple may handle app diagnostics according to your Apple settings. Those services have their own privacy terms."
+      ]
+    },
+    {
+      "id": "retention",
+      "title": "Storage, backups and your controls",
+      "scope": "app",
+      "paragraphs": [
+        "App records remain in local storage until you change or remove them. Spendy keeps a local recovery copy of the previous saved ledger to help recover from a damaged save. Device protection and access controls provided by the operating system apply to app storage.",
+        "You can review and edit transactions in the app and export or restore a JSON backup under Settings → Backup & Restore. Exported JSON files contain your records and are not password-encrypted by Spendy. You choose where to save or share them.",
+        "The Erase All Local Data action in Backup & Restore clears your ledger, subscriptions, budgets, custom folders and profile name, and recreates the default account and category lists. It also clears the app’s local ledger recovery copies. You can remove a profile photo separately in Edit Profile. Other preferences may remain.",
+        "Deleting the app removes its local app storage. Exported files, images in Photos, and any copies held by Apple device backups or storage providers you choose must be managed separately. We do not hold a server copy of your ledger that we can retrieve or delete for you."
+      ]
+    },
+    {
+      "id": "website",
+      "title": "The website and optional beta waitlist",
+      "scope": "website",
+      "paragraphs": [
+        "If you join the Spendy website’s beta waitlist, the website stores your email address, signup time, consent time and the version of the consent wording in its server database. The waitlist does not ask for or receive your in-app financial records.",
+        "We use that address for Spendy beta availability and launch updates. Joining is optional. The current website does not automatically send promotional emails or verify ownership of a submitted address.",
+        "When you visit a website, its server and hosting service receive technical request information, such as an IP address and browser information, to deliver and secure the page. The current website uses temporary IP-based rate limiting to reduce repeated form submissions. It does not add advertising trackers, visitor-analytics scripts or tracking cookies.",
+        "Waitlist entries are retained for the beta and launch purpose until removed from the database. You may request access, correction, withdrawal from the waitlist, or deletion through the privacy contact below. A request may need verification so that someone else cannot remove your entry. The hosting service, any future email provider, and their applicable retention details will be added before public waitlist collection begins."
+      ]
+    },
+    {
+      "id": "requests",
+      "title": "Privacy requests and changes",
+      "scope": "all",
+      "paragraphs": [
+        "Depending on where you live, privacy law may give you rights to access, correct or delete personal information, or withdraw consent. Your app records can be managed directly on your device. Requests about information you send us, such as waitlist or support messages, can be made through the privacy contact below.",
+        "If the way Spendy handles information changes, this policy will be updated with a new revision date. If a new feature needs your permission or consent, we will request it when required. A policy update does not replace that permission."
+      ]
+    }
+  ]
+}

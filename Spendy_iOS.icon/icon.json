@@ -5,11 +5,41 @@
     },
     {
       "appearance" : "dark",
-      "value" : "system-light"
+      "value" : "system-dark"
     }
   ],
   "groups" : [
     {
+      "layers" : [
+        {
+          "glass" : true,
+          "hidden" : true,
+          "image-name" : "Monochrome Interwoven S-Loop Emblem.png",
+          "name" : "Monochrome Interwoven S-Loop Emblem"
+        },
+        {
+          "image-name" : "Group 14.png",
+          "name" : "Group 14",
+          "position" : {
+            "scale" : 2.1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : true,
       "layers" : [
         {
           "glass" : true,
