@@ -53,7 +53,7 @@ final class HomeReceiptShortcutUITests: XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Corner Cafe")
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Corner Cafe, Expense")).firstMatch
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Corner Cafe,", ", Expense,")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         XCTAssertTrue(row.label.contains("Cash"))
         XCTAssertTrue(row.label.contains("750"))

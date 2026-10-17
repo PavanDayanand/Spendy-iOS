@@ -288,12 +288,8 @@ public struct OnboardingView: View {
     private var insights: some View {
         featurePage("Your spending.\nUnderstood.", "Personal insights, calculated on your device.") {
             VStack(spacing: 20) {
-                Image(systemName: SpendyInsightBrandMark.symbol)
-                    .font(.system(size: 48, weight: .light))
-                    .symbolEffect(.pulse, value: demoVisible)
-                    .scaleEffect(reduceMotion || demoVisible ? 1 : 0.6)
-                    .opacity(demoVisible ? 1 : 0)
-                    .accessibilityHidden(true)
+                SpendyInsightsLogo()
+                    .frame(width: 112, height: 112)
                 ShinyText(text: "spendy insights", font: .title2.weight(.semibold),
                     color: SpendyColors.textPrimary, shineColor: SpendyColors.textPrimary, speed: 1.8, delay: 0)
                     .opacity(brandVisible ? 1 : 0)

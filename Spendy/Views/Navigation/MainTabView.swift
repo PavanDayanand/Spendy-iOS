@@ -110,6 +110,13 @@ struct MainTabView: View {
             .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_ACTION_PAYLOAD"] != nil {
+                ReceiptActionTestHost().padding(20)
+            }
+        }
+        #endif
         .fullScreenCover(isPresented: $showAddTransaction, onDismiss: {
             receiptToEdit = nil
             openReceivedReceipt()

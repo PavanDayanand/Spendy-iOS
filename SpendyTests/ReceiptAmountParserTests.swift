@@ -4,6 +4,43 @@ import FoundationModels
 @testable import Spendy
 
 final class ReceiptAmountParserTests: XCTestCase {
+    @MainActor func testReceiptCurrencyAlwaysUsesSettingsWithoutChangingAmount() async {
+        for selectedCurrency in ["₹", "€", "$"] {
+            for receiptCurrency in ["₹", "€", "$"] {
+                let result = await ReceiptScannerEngine.shared.scanText(
+                    "Corner Cafe\n17 Oct 2026\nGrand Total \(receiptCurrency)135.50",
+                    categories: [], accounts: [], defaultCurrencySymbol: selectedCurrency)
+                XCTAssertEqual(result.currencySymbol, selectedCurrency)
+                XCTAssertEqual(result.detectedCurrencySymbol, receiptCurrency)
+                XCTAssertEqual(result.totalAmount, 135.50, accuracy: 0.001)
+            }
+        }
+    }
+
+    @MainActor func testVisionReceiptUsesSettingsWhenRupeeIsReadAsEuro() async {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 900, height: 600)).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 900, height: 600))
+            for (index, line) in ["CORNER CAFE", "17 Oct 2026", "Grand Total €135.50"].enumerated() {
+                (line as NSString).draw(at: CGPoint(x: 40, y: 40 + index * 95), withAttributes: [
+                    .font: UIFont.systemFont(ofSize: 36), .foregroundColor: UIColor.black
+                ])
+            }
+        }
+        let result = await ReceiptScannerEngine.shared.scanImage(image, categories: [], accounts: [],
+            defaultCurrencySymbol: "₹", allowsIntelligence: false)
+        XCTAssertEqual(result.currencySymbol, "₹")
+        XCTAssertEqual(result.detectedCurrencySymbol, "€")
+        XCTAssertEqual(result.totalAmount, 135.50, accuracy: 0.001)
+    }
+
+    @MainActor func testReceiptWithoutCurrencyHasNoDetectedCurrencyHint() async {
+        let result = await ReceiptScannerEngine.shared.scanText("Corner Cafe\nGrand Total 135.50",
+            categories: [], accounts: [], defaultCurrencySymbol: "₹")
+        XCTAssertNil(result.detectedCurrencySymbol)
+        XCTAssertEqual(result.currencySymbol, "₹")
+    }
+
     @MainActor func testVisionScanKeepsTotalInsteadOfAccountNumber() async {
         let image = UIGraphicsImageRenderer(size: CGSize(width: 900, height: 600)).image { context in
             UIColor.white.setFill()

@@ -1,13 +1,16 @@
 import XCTest
 
 final class ReceiptReviewEditingUITests: XCTestCase {
-    @MainActor private func openReview(light: Bool = false, hasDate: Bool = true) -> XCUIApplication {
+    @MainActor private func openReview(light: Bool = false, hasDate: Bool = true, incoming: Bool = false, receiptCurrency: String = "Rs.") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "analytics"
         app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "seen"
         app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1"
         app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = light ? "light" : "dark"
-        var lines = ["Paytm", "Paid Successfully", "Rs. 750", "To", "Corner Cafe"]
+        var lines = ["Paytm", "Paid Successfully", "\(receiptCurrency) 750", "To", "Corner Cafe"]
+        if incoming {
+            lines = ["Paytm", "Payment received", "Rs. 750", "Received from", "Orion Zed"]
+        }
         if hasDate { lines.append("12 Oct 2026") }
         lines += ["UPI Ref No: 123456789012", "HDFC Bank XX2345"]
         app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_TEXT"] = lines.joined(separator: "\n")
@@ -18,6 +21,20 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         app.buttons["Paste image"].tap()
         XCTAssertTrue(app.buttons["receipt-review-note"].waitForExistence(timeout: 20))
         return app
+    }
+
+    @MainActor func testDifferentCurrencyNoticeKeepsSettingsCurrency() {
+        let app = openReview(receiptCurrency: "€")
+        let notice = app.alerts["Different currency detected"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertTrue(notice.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "use €", "Spendy uses ₹")).firstMatch.exists)
+        capture(app, "Different receipt currency native alert")
+        notice.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons["receipt-review-note"].isHittable)
+        XCTAssertFalse(notice.exists)
+        app.buttons["receipt-review-note"].tap()
+        app.buttons["Cancel note changes"].tap()
+        XCTAssertFalse(notice.exists, "The notice appears once per scan")
     }
 
     @MainActor private func select(_ app: XCUIApplication, prefix: String) {
@@ -69,7 +86,7 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Reviewed lunch receipt")
-        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reviewed lunch receipt, Expense")).firstMatch
+        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Reviewed lunch receipt,", ", Expense,")).firstMatch
         XCTAssertTrue(transaction.waitForExistence(timeout: 5))
         XCTAssertTrue(transaction.label.contains("Cash"))
         XCTAssertTrue(transaction.label.localizedCaseInsensitiveContains("today"))
@@ -78,6 +95,54 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Cash"].exists)
         XCTAssertTrue(app.staticTexts["Reviewed lunch receipt"].exists)
         capture(app, "Saved receipt keeps chosen category account and note")
+    }
+
+    @MainActor func testIncomeDetectionCanBeCorrectedToExpenseAndSaved() {
+        let app = openReview(incoming: true)
+        XCTAssertEqual(field(app, "category").value as? String, "Choose category")
+        field(app, "category").tap()
+        let types = app.segmentedControls["receipt-category-type"]
+        XCTAssertTrue(types.waitForExistence(timeout: 5))
+        XCTAssertTrue(types.buttons["Income"].isSelected)
+        let groceries = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Groceries"))
+        XCTAssertFalse(groceries.allElementsBoundByIndex.contains { $0.isHittable })
+        select(app, prefix: "Salary / Paycheck")
+        XCTAssertEqual(field(app, "category").value as? String, "Salary / Paycheck")
+        field(app, "category").tap()
+        types.buttons["Expense"].tap()
+        select(app, prefix: "Groceries")
+        XCTAssertEqual(field(app, "category").value as? String, "Groceries")
+        field(app, "category").tap()
+        XCTAssertTrue(types.buttons["Expense"].isSelected)
+        types.buttons["Income"].tap()
+        // Dismiss without choosing: the expense category must not survive the type change.
+        app.buttons["Close category picker"].tap()
+        XCTAssertEqual(field(app, "category").value as? String, "Choose category")
+        XCTAssertFalse(app.buttons["add-scanned-receipt"].isEnabled)
+        field(app, "category").tap()
+        types.buttons["Expense"].tap()
+        select(app, prefix: "Groceries")
+        field(app, "account").tap()
+        select(app, prefix: "Cash")
+        XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
+        capture(app, "Receipt income detection corrected to expense")
+        let note = app.buttons["receipt-review-note"].value as? String ?? ""
+        XCTAssertFalse(note.isEmpty)
+        app.buttons["add-scanned-receipt"].tap()
+        let seeAll = app.buttons["See all transactions"]
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 8))
+        let homeReady = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: seeAll)
+        wait(for: [homeReady], timeout: 8)
+        seeAll.tap()
+        let search = app.textFields["Search transactions"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText(note)
+        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(note),", ", Expense,")).firstMatch
+        XCTAssertTrue(transaction.waitForExistence(timeout: 5))
+        transaction.tap()
+        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Cash"].exists)
     }
 
     @MainActor func testNoteCancellationAndEditHandoffKeepDraft() {

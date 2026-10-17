@@ -10,6 +10,14 @@ import Foundation
 extension WidgetDataManager {
     @MainActor
     func publish(from store: ExpenseStore) {
+        guard store.loadError == nil else { return }
+        do {
+            try ReceiptShareStore.publish(ReceiptShareContext(currencySymbol: store.currencySymbol,
+                currencyCode: store.currencyCode, categories: store.categories, accounts: store.accounts,
+                balances: Dictionary(uniqueKeysWithValues: store.accounts.map { ($0.id, store.balance(for: $0.id)) })))
+        } catch {
+            store.sharedReceiptImportError = "Receipt actions are unavailable. \(error.localizedDescription)"
+        }
         updateSnapshot(from: store)
         NotificationManager.shared.refresh(from: store)
         saveCategories(store.categories.map { category in

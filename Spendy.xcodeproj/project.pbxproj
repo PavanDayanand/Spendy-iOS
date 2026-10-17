@@ -9,6 +9,41 @@
 /* Begin PBXBuildFile section */
 		E16000000000000000000001 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = E16000000000000000000002 /* RiveRuntime */; };
 		D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E18000000000000000000065 = { isa = PBXBuildFile; fileRef = E18000000000000000000064; };
+		E18000000000000000000067 = { isa = PBXBuildFile; fileRef = E18000000000000000000066; };
+		E18000000000000000000069 = { isa = PBXBuildFile; fileRef = E18000000000000000000068; };
+		E1800000000000000000006B = { isa = PBXBuildFile; fileRef = E1800000000000000000006A; };
+		E1800000000000000000006D = { isa = PBXBuildFile; fileRef = E1800000000000000000006C; };
+		E1800000000000000000006F = { isa = PBXBuildFile; fileRef = E1800000000000000000006E; };
+		E18000000000000000000071 = { isa = PBXBuildFile; fileRef = E18000000000000000000070; };
+		E18000000000000000000073 = { isa = PBXBuildFile; fileRef = E18000000000000000000072; };
+		E18000000000000000000075 = { isa = PBXBuildFile; fileRef = E18000000000000000000074; };
+		E18000000000000000000077 = { isa = PBXBuildFile; fileRef = E18000000000000000000076; };
+		E18000000000000000000079 = { isa = PBXBuildFile; fileRef = E18000000000000000000078; };
+		E1800000000000000000007B = { isa = PBXBuildFile; fileRef = E1800000000000000000007A; };
+		E1800000000000000000007D = { isa = PBXBuildFile; fileRef = E1800000000000000000007C; };
+		E1800000000000000000007F = { isa = PBXBuildFile; fileRef = E1800000000000000000007E; };
+		E18000000000000000000081 = { isa = PBXBuildFile; fileRef = E18000000000000000000080; };
+		E18000000000000000000083 = { isa = PBXBuildFile; fileRef = E18000000000000000000082; };
+		E18000000000000000000085 = { isa = PBXBuildFile; fileRef = E18000000000000000000084; };
+		E18000000000000000000087 = { isa = PBXBuildFile; fileRef = E18000000000000000000086; };
+		E18000000000000000000089 = { isa = PBXBuildFile; fileRef = E18000000000000000000088; };
+		E1800000000000000000008B = { isa = PBXBuildFile; fileRef = E1800000000000000000008A; };
+		E1800000000000000000008D = { isa = PBXBuildFile; fileRef = E1800000000000000000008C; };
+		E1800000000000000000008F = { isa = PBXBuildFile; fileRef = E1800000000000000000008E; };
+		E18000000000000000000091 = { isa = PBXBuildFile; fileRef = E18000000000000000000090; };
+		E18000000000000000000093 = { isa = PBXBuildFile; fileRef = E18000000000000000000092; };
+		E18000000000000000000095 = { isa = PBXBuildFile; fileRef = E18000000000000000000094; };
+		E18000000000000000000097 = { isa = PBXBuildFile; fileRef = E18000000000000000000096; };
+		E18000000000000000000099 = { isa = PBXBuildFile; fileRef = E18000000000000000000098; };
+		E1800000000000000000009B = { isa = PBXBuildFile; fileRef = E1800000000000000000009A; };
+		E1800000000000000000009D = { isa = PBXBuildFile; fileRef = E1800000000000000000009C; };
+		E1800000000000000000009F = { isa = PBXBuildFile; fileRef = E1800000000000000000009E; };
+		E180000000000000000000A1 = { isa = PBXBuildFile; fileRef = E180000000000000000000A0; };
+		E180000000000000000000A3 = { isa = PBXBuildFile; fileRef = E180000000000000000000A2; };
+		E18000000000000000000033 = { isa = PBXBuildFile; fileRef = E18000000000000000000032; };
+		E18000000000000000000002 = { isa = PBXBuildFile; fileRef = E18000000000000000000001; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, );}; };
+		E180000000000000000001F1 = {isa = PBXBuildFile; fileRef = E180000000000000000001F0; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,6 +68,7 @@
 			remoteGlobalIDString = 8D0E763D3035F7EA006C03D1;
 			remoteInfo = Spendy;
 		};
+		E18000000000000000000008 = { isa = PBXContainerItemProxy; containerPortal = 8D0E76363035F7EA006C03D1; proxyType = 1; remoteGlobalIDString = E18000000000000000000007; remoteInfo = SpendyAction; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -43,6 +79,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				D13000000000000000000001 /* SpendyWidgets.appex in Embed App Extensions */,
+				E18000000000000000000002,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -54,6 +91,41 @@
 		A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpendyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D12000000000000000000001 /* SpendyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = SpendyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D14000000000000000000001 /* SpendyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = SpendyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E18000000000000000000064 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpendyAction/ReceiptActionView.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000066 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpendyAction/ActionViewController.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000068 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptCategoryMatcher.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000006A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptIntelligenceFallback.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000006C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptOCRCurrencyRepair.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000006E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptFieldParser.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000070 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptAmountParser.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000072 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptScannerEngine.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000074 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptScanner/ReceiptImagePreprocessor.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000076 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Models/Category.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000078 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Models/Account.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000007A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Models/Transaction.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000007C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptSharing/ReceiptShareStore.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000007E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Services/ReceiptSharing/ReceiptActionAttachmentLoader.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000080 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/DesignSystem/SFIcons.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000082 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/DesignSystem/SpendyColors.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000084 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/DesignSystem/LiquidGlass.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000086 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/DesignSystem/HapticsManager.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000088 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Extensions/Double+Currency.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000008A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Core/Extensions/Date+Extensions.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000008C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Components/GlassCircleButton.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000008E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Components/SpendyIconBadge.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000090 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Components/ShinyText.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000092 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Components/SpendyPinnedHeaderLayout.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000094 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Components/CategoryDirectory.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000096 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/ReceiptReviewView.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000098 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/ReceiptReviewField.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000009A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/ReceiptNoteEditor.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000009C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/ReceiptAmountEditor.swift"; sourceTree = SOURCE_ROOT; };
+		E1800000000000000000009E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/CategoryPickerDrawer.swift"; sourceTree = SOURCE_ROOT; };
+		E180000000000000000000A0 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/ReceiptAccountPicker.swift"; sourceTree = SOURCE_ROOT; };
+		E180000000000000000000A2 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Spendy/Views/Transaction/CustomCalendarDrawer.swift"; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000032 = { isa = PBXFileReference; lastKnownFileType = text.xml; path = SpendyShared/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
+		E18000000000000000000001 = { isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = SpendyAction.appex; sourceTree = BUILT_PRODUCTS_DIR; includeInIndex = 0; };
+		E180000000000000000001F0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spendy/Core/DesignSystem/AppTokens.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -114,12 +186,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E18000000000000000000006 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		8D0E76353035F7EA006C03D1 = {
 			isa = PBXGroup;
 			children = (
+				E18000000000000000000003,
 				8D0E76403035F7EA006C03D1 /* Spendy */,
 				D14000000000000000000002 /* SpendyUITests */,
 				D12000000000000000000002 /* SpendyTests */,
@@ -136,10 +210,12 @@
 				D14000000000000000000001 /* SpendyUITests.xctest */,
 				D12000000000000000000001 /* SpendyTests.xctest */,
 				A10E763E3035F7EA006C03D1 /* SpendyWidgets.appex */,
+				E18000000000000000000001,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		E18000000000000000000003 = { isa = PBXGroup; name = "Spendy Receipt Action"; sourceTree = "<group>"; children = (E18000000000000000000064, E18000000000000000000066, E18000000000000000000068, E1800000000000000000006A, E1800000000000000000006C, E1800000000000000000006E, E18000000000000000000070, E18000000000000000000072, E18000000000000000000074, E18000000000000000000076, E18000000000000000000078, E1800000000000000000007A, E1800000000000000000007C, E1800000000000000000007E, E18000000000000000000080, E18000000000000000000082, E18000000000000000000084, E18000000000000000000086, E18000000000000000000088, E1800000000000000000008A, E1800000000000000000008C, E1800000000000000000008E, E18000000000000000000090, E18000000000000000000092, E18000000000000000000094, E18000000000000000000096, E18000000000000000000098, E1800000000000000000009A, E1800000000000000000009C, E1800000000000000000009E, E180000000000000000000A0, E180000000000000000000A2, E18000000000000000000032,); };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -156,6 +232,7 @@
 			);
 			dependencies = (
 				D13000000000000000000004 /* PBXTargetDependency */,
+				E18000000000000000000009,
 			);
 			fileSystemSynchronizedGroups = (
 				8D0E76403035F7EA006C03D1 /* Spendy */,
@@ -234,6 +311,7 @@
 			productReference = D14000000000000000000001 /* SpendyUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		E18000000000000000000007 = { isa = PBXNativeTarget; buildConfigurationList = E1800000000000000000000A; buildPhases = (E18000000000000000000004, E18000000000000000000006, E18000000000000000000005,); buildRules = (); dependencies = (); name = SpendyAction; productName = SpendyAction; productReference = E18000000000000000000001; productType = "com.apple.product-type.app-extension"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -273,6 +351,7 @@
 				D12000000000000000000006 /* SpendyTests */,
 				8D0E763D3035F7EA006C03D1 /* Spendy */,
 				A10E763D3035F7EA006C03D1 /* SpendyWidgets */,
+				E18000000000000000000007,
 			);
 		};
 /* End PBXProject section */
@@ -306,6 +385,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E18000000000000000000005 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (E18000000000000000000033,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -337,6 +417,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E18000000000000000000004 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (E180000000000000000001F1, E18000000000000000000065, E18000000000000000000067, E18000000000000000000069, E1800000000000000000006B, E1800000000000000000006D, E1800000000000000000006F, E18000000000000000000071, E18000000000000000000073, E18000000000000000000075, E18000000000000000000077, E18000000000000000000079, E1800000000000000000007B, E1800000000000000000007D, E1800000000000000000007F, E18000000000000000000081, E18000000000000000000083, E18000000000000000000085, E18000000000000000000087, E18000000000000000000089, E1800000000000000000008B, E1800000000000000000008D, E1800000000000000000008F, E18000000000000000000091, E18000000000000000000093, E18000000000000000000095, E18000000000000000000097, E18000000000000000000099, E1800000000000000000009B, E1800000000000000000009D, E1800000000000000000009F, E180000000000000000000A1, E180000000000000000000A3,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -355,6 +436,7 @@
 			target = 8D0E763D3035F7EA006C03D1 /* Spendy */;
 			targetProxy = D1400000000000000000000B /* PBXContainerItemProxy */;
 		};
+		E18000000000000000000009 = { isa = PBXTargetDependency; target = E18000000000000000000007; targetProxy = E18000000000000000000008; };
 /* End PBXTargetDependency section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -715,6 +797,8 @@
 			};
 			name = Release;
 		};
+		E1800000000000000000000B = { isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Configuration/SpendyAction.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = AQ256VD848; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = "Configuration/SpendyAction-Info.plist"; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks",); MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Action; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; ENABLE_DEBUG_DYLIB = NO;}; name = Debug; };
+		E1800000000000000000000C = { isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Configuration/SpendyAction.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = AQ256VD848; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = "Configuration/SpendyAction-Info.plist"; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks",); MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.Spendy.Action; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; ENABLE_DEBUG_DYLIB = NO;}; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -763,6 +847,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		E1800000000000000000000A = { isa = XCConfigurationList; buildConfigurations = (E1800000000000000000000B, E1800000000000000000000C,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 8D0E76363035F7EA006C03D1 /* Project object */;

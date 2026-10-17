@@ -6,6 +6,7 @@ struct ReceiptShareContext: Codable {
     var currencyCode: String
     var categories: [Category]
     var accounts: [Account]
+    var balances: [String: Double]? = nil
 }
 
 struct SharedReceiptEntry: Codable {
@@ -35,6 +36,16 @@ enum ReceiptShareError: LocalizedError {
 
 /// One atomic file per confirmed entry. Extensions never overwrite the app's ledger.
 enum ReceiptShareStore {
+    static func enqueueReviewedReceipt(_ result: ReceiptScanResult, sourceData: Data,
+                                      context: ReceiptShareContext, at root: URL? = nil) throws {
+        guard result.hasDetectedDate, result.currencySymbol == context.currencySymbol,
+              result.paymentStatus != .pending, result.paymentStatus != .failed else { throw ReceiptShareError.invalidEntry }
+        try enqueue(SharedReceiptEntry(sourceKey: sourceKey(data: sourceData, recognizedText: result.rawRecognizedText),
+            title: result.merchantName, amount: result.totalAmount, type: result.transactionType,
+            categoryId: result.suggestedCategoryId ?? "", accountId: result.suggestedAccountId ?? "",
+            date: result.date, currencySymbol: context.currencySymbol, currencyCode: context.currencyCode), at: root)
+    }
+
     static func directory() throws -> URL {
         guard let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.Spendy") else {
             throw ReceiptShareError.unavailable

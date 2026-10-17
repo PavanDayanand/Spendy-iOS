@@ -504,9 +504,8 @@ struct DashboardView: View {
                 let bottomInset = geometry.safeAreaInsets.bottom
                 
                 ZStack(alignment: .topLeading) {
-                    HomeMeshBackground(
-                        isAnimating: (selectedTab?.wrappedValue ?? .home) == .home && !isSubpageActive && !isSheetExpanded
-                    )
+                    SpendyColors.appBackground
+                        .ignoresSafeArea()
                     
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {

@@ -47,7 +47,7 @@ final class ReceiptPhotoRegressionTests: XCTestCase {
                 XCTAssertEqual(Calendar.current.component(.day, from: result.date), day, file)
                 XCTAssertEqual(Calendar.current.component(.month, from: result.date), month, file)
             }
-            if file == "us-ebt-deli.jpg" { XCTAssertEqual(result.currencySymbol, "$", file) }
+            XCTAssertEqual(result.currencySymbol, "₹", file)
             if file == "clothing-discount.jpg" {
                 XCTAssertTrue(result.merchantName.localizedCaseInsensitiveContains("Charms"), file)
                 XCTAssertNotEqual(result.receiptType, .paymentScreenshot, file)

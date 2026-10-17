@@ -46,6 +46,7 @@ struct ReceiptScanResult: Identifiable, Equatable {
     var transactionType: TransactionType = .expense
     var paymentStatus: ReceiptPaymentStatus = .unknown
     var hasDetectedDate: Bool = true
+    var detectedCurrencySymbol: String? = nil
     
     var formattedAmount: String {
         String(format: "%.2f", totalAmount)
@@ -190,7 +191,8 @@ final class ReceiptScannerEngine {
         let receiptType = detectReceiptType(from: recognizedLines, fullText: fullText)
         
         // 2. Extract Currency & Amount
-        var (totalAmount, detectedCurrency) = extractTotalAmount(from: recognizedLines, defaultCurrency: defaultCurrencySymbol)
+        let (extractedAmount, detectedCurrency) = extractTotalAmount(from: recognizedLines)
+        var totalAmount = extractedAmount
         if hasConflictingTotals { totalAmount = 0 }
         
         let paymentStatus = ReceiptPaymentStatus.detect(in: fullText)
@@ -208,7 +210,7 @@ final class ReceiptScannerEngine {
         let merchantName = extractMerchantName(from: recognizedLines, receiptType: receiptType)
         
         // 4. Extract Date
-        let detectedDate = extractDate(from: recognizedLines, dayFirst: detectedCurrency == "₹")
+        let detectedDate = extractDate(from: recognizedLines, dayFirst: (detectedCurrency ?? defaultCurrencySymbol) == "₹")
         let date = detectedDate ?? Date()
         
         // 5. Extract Line Items
@@ -235,7 +237,8 @@ final class ReceiptScannerEngine {
         return ReceiptScanResult(
             merchantName: merchantName.isEmpty || merchantName == "Merchant" ? "Scanned Receipt" : merchantName,
             totalAmount: totalAmount,
-            currencySymbol: detectedCurrency,
+            // Settings owns the ledger currency. OCR currency hints only help parse the receipt.
+            currencySymbol: defaultCurrencySymbol,
             date: date,
             suggestedCategoryId: suggestedCategoryID,
             suggestedAccountId: suggestedAccount?.id,
@@ -247,7 +250,8 @@ final class ReceiptScannerEngine {
             wasAssistedByAppleIntelligence: wasAssistedByAppleIntelligence,
             transactionType: transactionType,
             paymentStatus: paymentStatus,
-            hasDetectedDate: detectedDate != nil
+            hasDetectedDate: detectedDate != nil,
+            detectedCurrencySymbol: detectedCurrency
         )
     }
     
@@ -339,14 +343,14 @@ final class ReceiptScannerEngine {
         }, payment: receiptType == .paymentScreenshot)
     }
 
-    private func extractTotalAmount(from lines: [RecognizedLine], defaultCurrency: String) -> (Double, String) {
+    private func extractTotalAmount(from lines: [RecognizedLine]) -> (Double, String?) {
         let parsedLines = lines.map { ReceiptAmountParser.Line(text: $0.text, bounds: $0.boundingBox, confidence: $0.confidence) }
         let amount = ReceiptAmountParser.total(in: parsedLines)
         let evidence = ReceiptAmountParser.candidates(in: parsedLines)
             .filter { $0.amount == amount }.max(by: { $0.priority < $1.priority })?.evidence
         let currency = evidence.flatMap { detectCurrencySymbol(in: $0) }
             ?? parsedLines.compactMap { detectCurrencySymbol(in: $0.text) }.first
-            ?? (parsedLines.contains { $0.text.range(of: #"(?i)\b(gstin|cgst|sgst|fssai)\b"#, options: .regularExpression) != nil } ? "₹" : defaultCurrency)
+            ?? (parsedLines.contains { $0.text.range(of: #"(?i)\b(gstin|cgst|sgst|fssai)\b"#, options: .regularExpression) != nil } ? "₹" : nil)
         return (amount, currency)
     }
     
