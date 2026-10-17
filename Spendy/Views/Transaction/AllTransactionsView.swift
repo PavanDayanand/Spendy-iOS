@@ -60,7 +60,7 @@ struct AllTransactionsView: View {
         
         // 2. Category Filter
         if let selectedCategoryIDs {
-            txs = txs.filter { selectedCategoryIDs.contains($0.categoryId) }
+            txs = txs.filter { $0.type != .transfer && selectedCategoryIDs.contains($0.categoryId) }
         }
         
         // 3. Account Filter
@@ -72,9 +72,9 @@ struct AllTransactionsView: View {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             txs = txs.filter { tx in
-                let cat = store.category(for: tx.categoryId)
+                let cat = store.displayCategory(for: tx)
                 let acc = store.account(for: tx.accountId)
-                return tx.title.lowercased().contains(query) ||
+                return store.displayTitle(for: tx).lowercased().contains(query) ||
                        (tx.notes?.lowercased().contains(query) ?? false) ||
                        cat.label.lowercased().contains(query) ||
                        acc.label.lowercased().contains(query)
@@ -426,7 +426,7 @@ struct AllTransactionsView: View {
     
     // MARK: - 3. Individual Transaction Card (Matching Category Card Design)
     private func transactionCard(_ tx: Transaction) -> some View {
-        let cat = store.categories.first(where: { $0.id == tx.categoryId })
+        let cat: Category? = store.displayCategory(for: tx)
         let acc = store.accounts.first(where: { $0.id == tx.accountId })
         let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
         
@@ -450,7 +450,7 @@ struct AllTransactionsView: View {
                 
                 // Title and Account Pill Indicator
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
+                    Text(store.displayTitle(for: tx))
                         .font(AppTypography.rowTitle)
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
@@ -463,7 +463,7 @@ struct AllTransactionsView: View {
                                 monogramName: acc.label
                             )
                             
-                            Text(acc.label)
+                            Text(tx.type == .transfer ? store.transferAccountRoute(for: tx) : acc.label)
                                 .font(AppTypography.footnoteMedium)
                                 .foregroundStyle(SpendyColors.textSecondary)
                                 .lineLimit(1)
@@ -483,15 +483,9 @@ struct AllTransactionsView: View {
                         .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
                         .foregroundStyle(rowAmountColor(tx))
                     
-                    if tx.type == .transfer, let toId = tx.toAccountId, let toAcc = store.accounts.first(where: { $0.id == toId }) {
-                        Text("→ \(toAcc.label)")
-                            .font(AppTypography.captionMedium)
-                            .foregroundStyle(SpendyColors.primaryBlue)
-                    } else {
-                        Text(tx.date.formattedRelative)
-                            .font(AppTypography.captionMedium)
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
+                    Text(tx.date.formattedRelative)
+                        .font(AppTypography.captionMedium)
+                        .foregroundStyle(SpendyColors.textTertiary)
                 }
             }
             .padding(.horizontal, 16)
@@ -507,7 +501,7 @@ struct AllTransactionsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(tx.title.isEmpty ? (cat?.label ?? "Transaction") : tx.title), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
+        .accessibilityLabel("\(store.displayTitle(for: tx)), \(tx.type == .transfer ? store.displayCategory(for: tx).label : ""), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)

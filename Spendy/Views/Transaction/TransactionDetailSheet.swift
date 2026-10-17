@@ -32,7 +32,7 @@ struct TransactionDetailSheet: View {
     }
     
     private var category: Category? {
-        store.categories.first(where: { $0.id == transaction.categoryId })
+        store.displayCategory(for: transaction)
     }
     
     private var account: Account? {
@@ -65,7 +65,7 @@ struct TransactionDetailSheet: View {
     }
     
     private var heroTitle: String {
-        let title = transaction.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = store.displayTitle(for: transaction)
         if !title.isEmpty { return title }
         if let sub = subscription { return sub.name }
         if let cat = category { return cat.label }

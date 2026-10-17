@@ -405,7 +405,7 @@ struct DashboardView: View {
         var txs = store.filteredTransactions(for: selectedAccountId)
         
         if let catId = drawerFilterCategoryId {
-            txs = txs.filter { $0.categoryId == catId }
+            txs = txs.filter { $0.type != .transfer && $0.categoryId == catId }
         }
         
         if let accId = drawerFilterAccountId {
@@ -1167,7 +1167,7 @@ struct DashboardView: View {
     
     // MARK: - Transaction Row Item (Matches Exact Visual Design)
     private func transactionRow(_ tx: Transaction) -> some View {
-        let cat = store.category(for: tx.categoryId)
+        let cat = store.displayCategory(for: tx)
         let acc = store.account(for: tx.accountId)
         
         return Button(action: {
@@ -1186,17 +1186,19 @@ struct DashboardView: View {
                 
                 // Title & Subtitle
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(tx.title.isEmpty ? cat.label : tx.title)
+                    Text(store.displayTitle(for: tx))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
                     
                     HStack(spacing: 6) {
-                        Text(acc.label)
+                        Text(tx.type == .transfer ? store.transferAccountRoute(for: tx) : acc.label)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                             .font(.system(size: 13, weight: .regular))
                             .foregroundStyle(SpendyColors.textSecondary)
                         
-                        if let notes = tx.notes, !notes.isEmpty {
+                        if tx.type != .transfer, let notes = tx.notes, !notes.isEmpty {
                             Text("• \(notes)")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundStyle(SpendyColors.textTertiary)

@@ -1056,7 +1056,7 @@ struct AddTransactionView: View {
         HapticsManager.shared.trigger(.success)
         
         let txTitle = note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? (selectedCategory?.label ?? type.title)
+            ? (type == .transfer ? type.title : (selectedCategory?.label ?? type.title))
             : note.trimmingCharacters(in: .whitespacesAndNewlines)
             
         let toAmt = type == .transfer ? currentAmountValue : nil
@@ -1066,7 +1066,7 @@ struct AddTransactionView: View {
             updated.amount = currentAmountValue
             updated.toAmount = toAmt
             updated.type = type
-            updated.categoryId = selectedCategoryId
+            updated.categoryId = type == .transfer ? "" : selectedCategoryId
             updated.accountId = fromAccountId
             updated.toAccountId = type == .transfer ? toAccountId : nil
             updated.title = txTitle
@@ -1079,7 +1079,7 @@ struct AddTransactionView: View {
                 amount: currentAmountValue,
                 toAmount: toAmt,
                 type: type,
-                categoryId: selectedCategoryId,
+                categoryId: type == .transfer ? "" : selectedCategoryId,
                 accountId: fromAccountId,
                 toAccountId: type == .transfer ? toAccountId : nil,
                 date: date,

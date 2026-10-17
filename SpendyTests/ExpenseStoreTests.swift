@@ -10,6 +10,43 @@ final class ExpenseStoreTests: XCTestCase {
         return (ExpenseStore(storageURL: url, startsServices: false), url)
     }
 
+    @MainActor func testTransfersIgnoreStaleExpenseCategoryAndPreserveBalances() throws {
+        let (store, url) = try temporaryStore()
+        store.accounts = [
+            Account(id: "bank", label: "Main Bank", openingBalance: 1000, type: .bank),
+            Account(id: "savings", label: "Savings Bank", openingBalance: 500, type: .bank),
+            Account(id: "cash", label: "Cash", type: .cash)
+        ]
+        let legacy = Transaction(title: "Groceries", amount: 100, type: .transfer,
+            categoryId: "groceries", accountId: "bank", toAccountId: "savings")
+        XCTAssertEqual(store.displayTitle(for: legacy), "Transfer")
+        XCTAssertEqual(store.displayCategory(for: legacy).label, "Bank to bank")
+        XCTAssertEqual(store.displayCategory(for: legacy).sfSymbol, SFIcons.transfer)
+        XCTAssertEqual(store.transferAccountRoute(for: legacy), "Main Bank → Savings Bank")
+        store.addTransaction(legacy)
+        XCTAssertEqual(store.transactions[0].categoryId, "")
+        XCTAssertEqual(store.transactions[0].title, "Transfer")
+        XCTAssertEqual(store.totalBalance, 1500)
+        XCTAssertEqual(store.balance(for: "bank"), 900)
+        XCTAssertEqual(store.balance(for: "savings"), 600)
+        var edited = store.transactions[0]
+        edited.categoryId = "groceries"
+        edited.notes = "Move spare cash"
+        edited.title = "Move spare cash"
+        edited.toAccountId = "cash"
+        store.updateTransaction(edited)
+        XCTAssertEqual(store.transactions[0].categoryId, "")
+        XCTAssertEqual(store.displayTitle(for: store.transactions[0]), "Move spare cash")
+        XCTAssertEqual(store.displayCategory(for: store.transactions[0]).label, "Bank to cash")
+        store.flushPendingSave()
+        let reloaded = ExpenseStore(storageURL: url, startsServices: false)
+        XCTAssertEqual(reloaded.transactions[0].categoryId, "")
+        XCTAssertEqual(reloaded.totalBalance, 1500)
+        let expense = Transaction(title: "Groceries", amount: 10, categoryId: "groceries", accountId: "bank")
+        XCTAssertEqual(store.displayCategory(for: expense).label, "Groceries")
+        XCTAssertEqual(store.displayTitle(for: expense), "Groceries")
+    }
+
     @MainActor func testAngolanKwanzaUsesSymbolForNewAndSavedCurrency() throws {
         XCTAssertEqual(CurrencyInfo.symbol(for: "AOA"), "Kz")
         let (store, url) = try temporaryStore()

@@ -65,6 +65,15 @@ final class ExpenseStore {
             let fixture = ExpenseStore(storageURL: url, startsServices: false)
             fixture.hasCompletedOnboarding = true
             fixture.transactions = [Transaction(title: "Readiness expense", amount: 25, categoryId: "groceries", accountId: "cash")]
+            if mode == "transfer-regression" {
+                fixture.accounts = [
+                    Account(id: "bank", label: "Main Bank", openingBalance: 1000, type: .bank),
+                    Account(id: "savings", label: "Savings Bank", openingBalance: 500, type: .bank)
+                ]
+                // Reproduce the old persisted record, bypassing corrected save normalization.
+                fixture.transactions = [Transaction(title: "Groceries", amount: 50, type: .transfer,
+                    categoryId: "groceries", accountId: "bank", toAccountId: "savings")]
+            }
             if mode == "analytics" {
                 fixture.transactions = Array(fixture.categories.filter { $0.type == .expense }.prefix(10)).enumerated().map { index, category in
                     Transaction(title: "Analytics expense \(index)", amount: Double(60 - index * 5), categoryId: category.id, accountId: "cash")
@@ -885,7 +894,11 @@ final class ExpenseStore {
     
     func addTransaction(_ transaction: Transaction) {
         var transaction = transaction
-        if transaction.type == .transfer { transaction.toAmount = transaction.amount }
+        if transaction.type == .transfer {
+            transaction.toAmount = transaction.amount
+            transaction.title = displayTitle(for: transaction)
+            transaction.categoryId = ""
+        }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             transactions.insert(transaction, at: 0)
         }
@@ -894,7 +907,11 @@ final class ExpenseStore {
 
     func addTransactionFromIntent(_ transaction: Transaction) {
         var transaction = transaction
-        if transaction.type == .transfer { transaction.toAmount = transaction.amount }
+        if transaction.type == .transfer {
+            transaction.toAmount = transaction.amount
+            transaction.title = displayTitle(for: transaction)
+            transaction.categoryId = ""
+        }
         transactions.insert(transaction, at: 0)
         flushPendingSave()
     }
@@ -947,7 +964,11 @@ final class ExpenseStore {
     func updateTransaction(_ transaction: Transaction) {
         if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
             var transaction = transaction
-            if transaction.type == .transfer { transaction.toAmount = transaction.amount }
+            if transaction.type == .transfer {
+                transaction.toAmount = transaction.amount
+                transaction.title = displayTitle(for: transaction)
+                transaction.categoryId = ""
+            }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 transactions[index] = transaction
             }

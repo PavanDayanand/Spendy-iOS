@@ -12,7 +12,7 @@ struct TransactionRowView: View {
     @Environment(ExpenseStore.self) private var store
     
     var body: some View {
-        let category = store.category(for: transaction.categoryId)
+        let category = store.displayCategory(for: transaction)
         let account = store.account(for: transaction.accountId)
         let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == transaction.subscriptionId?.lowercased() })
         
@@ -44,7 +44,7 @@ struct TransactionRowView: View {
             }
         } titleContent: {
             VStack(alignment: .leading, spacing: 3) {
-                Text(transaction.title)
+                Text(store.displayTitle(for: transaction))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
@@ -56,7 +56,9 @@ struct TransactionRowView: View {
                         monogramName: account.label
                     )
                     
-                    Text(account.label)
+                    Text(transaction.type == .transfer ? store.transferAccountRoute(for: transaction) : account.label)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
@@ -67,16 +69,9 @@ struct TransactionRowView: View {
                     .spendyNumberFont(size: 16, weight: .bold, tracking: -0.4)
                     .foregroundStyle(amountColor)
                 
-                if let toId = transaction.toAccountId, transaction.type == .transfer {
-                    let toAccount = store.account(for: toId)
-                    Text("→ \(toAccount.label)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(SpendyColors.transferBlue)
-                } else {
-                    Text(transaction.date.formattedRelative)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
+                Text(transaction.date.formattedRelative)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
         }
     }
