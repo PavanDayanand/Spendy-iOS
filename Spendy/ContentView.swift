@@ -68,6 +68,16 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .top) {
+            if let error = store.sharedReceiptImportError {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Shared receipt needs attention").font(.headline)
+                    Text(error).font(.subheadline)
+                    Button("Retry") { store.ingestSharedReceipts() }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.regularMaterial)
+            }
             if store.persistenceError != nil {
                 HStack(spacing: 12) {
                     Label("Changes are not saved", systemImage: "exclamationmark.circle")

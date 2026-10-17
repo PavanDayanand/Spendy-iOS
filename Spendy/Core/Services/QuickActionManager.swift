@@ -17,6 +17,8 @@ final class QuickActionManager {
     // Observable UI Triggers
     var shouldPresentQuickAdd: Bool = false
     var shouldPresentReceiptScan: Bool = false
+    var receivedReceiptImages: [UIImage]?
+    var receiptFileImportError: String?
     var targetTab: AppTab? = nil
     var requestedAnalyticsWeekDate: Date? = nil
     var shouldOpenBudget: Bool = false
@@ -26,6 +28,7 @@ final class QuickActionManager {
     // Shortcut Item Types
     enum ShortcutType: String {
         case quickAdd = "com.spendy.quickadd"
+        case scanReceipt = "com.spendy.scan"
         case analytics = "com.spendy.analytics"
     }
     
@@ -49,7 +52,10 @@ final class QuickActionManager {
             userInfo: nil
         )
         
-        UIApplication.shared.shortcutItems = [quickAdd, analytics]
+        let camera = UIApplicationShortcutItem(type: ShortcutType.scanReceipt.rawValue,
+            localizedTitle: "Scan Receipt", localizedSubtitle: "Capture a receipt",
+            icon: UIApplicationShortcutIcon(systemImageName: "camera"), userInfo: nil)
+        UIApplication.shared.shortcutItems = [quickAdd, camera, analytics]
     }
     
     /// Handles shortcut items triggered from the Home Screen icon
@@ -59,6 +65,8 @@ final class QuickActionManager {
         switch type {
         case .quickAdd:
             triggerQuickAdd()
+        case .scanReceipt:
+            presentReceiptScan()
         case .analytics:
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 self.targetTab = .analytics
@@ -85,6 +93,11 @@ final class QuickActionManager {
     
     /// Handles deep link URLs (e.g. spendy://quick-add or spendy://analytics)
     func handleURL(_ url: URL) {
+        if url.isFileURL {
+            do { receivedReceiptImages = [try ReceiptFileImport.image(at: url)] }
+            catch { receiptFileImportError = error.localizedDescription }
+            return
+        }
         guard url.scheme?.lowercased() == "spendy" else { return }
         let host = url.host?.lowercased() ?? ""
         let path = url.path.lowercased()

@@ -27,6 +27,7 @@ struct MainTabView: View {
     @State private var showReceiptPhotos = false
     @State private var openReceiptPhotosOnDismiss = false
     @State private var selectedReceiptPhoto: PhotosPickerItem?
+    @State private var receiptPhotoLoadTask: Task<Void, Never>?
     @State private var pendingReceiptPhoto: UIImage?
     @State private var receiptImportError: String?
     @State private var receiptToEdit: ReceiptScanResult?
@@ -109,7 +110,11 @@ struct MainTabView: View {
             .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isDockVisible)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .fullScreenCover(isPresented: $showAddTransaction, onDismiss: { receiptToEdit = nil }) {
+        .fullScreenCover(isPresented: $showAddTransaction, onDismiss: {
+            receiptToEdit = nil
+            openReceivedReceipt()
+            openRequestedReceiptCamera()
+        }) {
             AddTransactionView(scannedReceipt: receiptToEdit)
         }
         .sheet(item: $receiptSheet, onDismiss: receiptSheetDismissed) { sheet in
@@ -148,6 +153,11 @@ struct MainTabView: View {
         .photosPicker(isPresented: $showReceiptPhotos, selection: $selectedReceiptPhoto,
             matching: .images, preferredItemEncoding: .compatible)
         .onChange(of: showReceiptPhotos) { _, presented in
+            if !presented, quickActionManager.receivedReceiptImages != nil {
+                pendingReceiptPhoto = nil
+                openReceivedReceipt()
+                return
+            }
             if !presented, let image = pendingReceiptPhoto {
                 pendingReceiptPhoto = nil
                 receiptSheet = .review([image])
@@ -155,7 +165,8 @@ struct MainTabView: View {
         }
         .onChange(of: selectedReceiptPhoto) { _, item in
             guard let item else { return }
-            Task {
+            receiptPhotoLoadTask?.cancel()
+            receiptPhotoLoadTask = Task {
                 do {
                     guard let data = try await item.loadTransferable(type: Data.self),
                           let image = UIImage(data: data) else {
@@ -163,10 +174,12 @@ struct MainTabView: View {
                         selectedReceiptPhoto = nil
                         return
                     }
+                    guard !Task.isCancelled else { return }
                     selectedReceiptPhoto = nil
                     if showReceiptPhotos { pendingReceiptPhoto = image }
                     else { receiptSheet = .review([image]) }
                 } catch {
+                    guard !Task.isCancelled else { return }
                     selectedReceiptPhoto = nil
                     receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
                 }
@@ -185,14 +198,17 @@ struct MainTabView: View {
             }
         }
         .onChange(of: quickActionManager.shouldPresentReceiptScan) { _, shouldPresent in
-            if shouldPresent {
-                showAddTransaction = true
-            }
+            if shouldPresent { openRequestedReceiptCamera() }
+        }
+        .onChange(of: quickActionManager.receivedReceiptImages) { _, _ in openReceivedReceipt() }
+        .onChange(of: quickActionManager.receiptFileImportError) { _, error in
+            guard let error else { return }
+            receiptImportError = error
+            quickActionManager.receiptFileImportError = nil
         }
         .onAppear {
-            if quickActionManager.shouldPresentReceiptScan {
-                showAddTransaction = true
-            }
+            openReceivedReceipt()
+            openRequestedReceiptCamera()
         }
         .onChange(of: quickActionManager.targetTab) { _, target in
             if let target {
@@ -201,6 +217,52 @@ struct MainTabView: View {
                 }
                 quickActionManager.targetTab = nil
             }
+        }
+    }
+
+    private func openRequestedReceiptCamera() {
+        guard quickActionManager.shouldPresentReceiptScan else { return }
+        if showAddTransaction {
+            showAddTransaction = false
+            return // Present from the cover's onDismiss, after the form is gone.
+        }
+        quickActionManager.shouldPresentReceiptScan = false
+        selectedTab = .home
+        if receiptSheet != nil {
+            pendingReceiptSheet = .camera
+            receiptSheet = nil
+        } else {
+            receiptSheet = .camera
+        }
+    }
+
+    private func openReceivedReceipt() {
+        if let error = quickActionManager.receiptFileImportError {
+            receiptImportError = error
+            quickActionManager.receiptFileImportError = nil
+        }
+        guard let images = quickActionManager.receivedReceiptImages else { return }
+        receiptPhotoLoadTask?.cancel()
+        pendingReceiptPhoto = nil
+        pendingReceiptEdit = nil
+        openReceiptMenuOnDismiss = false
+        openReceiptPhotosOnDismiss = false
+        if showReceiptPhotos {
+            selectedReceiptPhoto = nil
+            showReceiptPhotos = false
+            return // Finish dismissing the picker before presenting the received image.
+        }
+        if showAddTransaction {
+            showAddTransaction = false
+            return
+        }
+        quickActionManager.receivedReceiptImages = nil
+        selectedTab = .home
+        if receiptSheet != nil {
+            pendingReceiptSheet = .review(images)
+            receiptSheet = nil
+        } else {
+            receiptSheet = .review(images)
         }
     }
 

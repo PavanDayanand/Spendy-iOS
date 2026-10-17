@@ -21,7 +21,7 @@ struct ReceiptCameraCaptureView: View {
         ZStack {
             Color.black
             if camera.status == .ready {
-                ReceiptCameraPreview(session: camera.session)
+                ReceiptCameraPreview(session: camera.session, onFocus: camera.focus)
             } else {
                 cameraStatus
                     .padding(.horizontal, 28)
@@ -128,19 +128,30 @@ struct ReceiptCameraCaptureView: View {
 
 private struct ReceiptCameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    let onFocus: (CGPoint) -> Void
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
+        view.onFocus = onFocus
+        view.addGestureRecognizer(UITapGestureRecognizer(target: view, action: #selector(PreviewView.focus(_:))))
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.onFocus = onFocus
+    }
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        var onFocus: ((CGPoint) -> Void)?
+
+        @objc func focus(_ gesture: UITapGestureRecognizer) {
+            let point = previewLayer.captureDevicePointConverted(fromLayerPoint: gesture.location(in: self))
+            onFocus?(point)
+        }
     }
 }
 
@@ -159,10 +170,20 @@ private final class ReceiptCameraModel: NSObject, ObservableObject, AVCapturePho
     private let sessionQueue = DispatchQueue(label: "Spendy.ReceiptCamera")
     private var isConfigured = false
     private var isActive = false
+    private var captureDevice: AVCaptureDevice?
+
+    private static func preferredCamera() -> AVCaptureDevice? {
+        // Virtual wide/ultrawide devices can fall back to the close-focusing lens.
+        // A physical wide-angle input alone cannot perform that macro switch.
+        for type: AVCaptureDevice.DeviceType in [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera] {
+            if let device = AVCaptureDevice.default(type, for: .video, position: .back) { return device }
+        }
+        return nil
+    }
 
     func start() {
         isActive = true
-        guard AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) != nil else {
+        guard Self.preferredCamera() != nil else {
             status = .unavailable
             return
         }
@@ -185,7 +206,7 @@ private final class ReceiptCameraModel: NSObject, ObservableObject, AVCapturePho
     }
 
     private func configureAndStart() {
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+        guard let device = Self.preferredCamera(),
               let input = try? AVCaptureDeviceInput(device: device) else {
             status = .unavailable
             return
@@ -201,7 +222,24 @@ private final class ReceiptCameraModel: NSObject, ObservableObject, AVCapturePho
             }
             session.addInput(input)
             session.addOutput(photoOutput)
+            photoOutput.maxPhotoQualityPrioritization = .quality
             session.commitConfiguration()
+            do {
+                try device.lockForConfiguration()
+                // Start at the main camera's field of view, with automatic lens switching.
+                if let wideZoom = device.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue {
+                    device.videoZoomFactor = min(device.maxAvailableVideoZoomFactor, max(device.minAvailableVideoZoomFactor, wideZoom))
+                }
+                if device.primaryConstituentDeviceSwitchingBehavior != .unsupported {
+                    device.setPrimaryConstituentDeviceSwitchingBehavior(.auto, restrictedSwitchingBehaviorConditions: [])
+                }
+                Self.configureFocus(device, at: CGPoint(x: 0.5, y: 0.5))
+                device.unlockForConfiguration()
+            } catch {
+                status = .unavailable
+                return
+            }
+            captureDevice = device
             isConfigured = true
         }
 
@@ -218,7 +256,30 @@ private final class ReceiptCameraModel: NSObject, ObservableObject, AVCapturePho
     func capture() {
         guard status == .ready, !isCapturing else { return }
         isCapturing = true
-        photoOutput.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
+        let settings = AVCapturePhotoSettings()
+        settings.photoQualityPrioritization = .quality
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+
+    func focus(at point: CGPoint) {
+        guard let device = captureDevice, status == .ready else { return }
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                defer { device.unlockForConfiguration() }
+                Self.configureFocus(device, at: point)
+            } catch {
+                // Keep continuous autofocus and the working preview if a tap cannot be applied.
+            }
+        }
+    }
+
+    nonisolated private static func configureFocus(_ device: AVCaptureDevice, at point: CGPoint) {
+        if device.isFocusPointOfInterestSupported { device.focusPointOfInterest = point }
+        if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
+        if device.isAutoFocusRangeRestrictionSupported { device.autoFocusRangeRestriction = .near }
+        if device.isExposurePointOfInterestSupported { device.exposurePointOfInterest = point }
+        if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
     }
 
     func stop() {

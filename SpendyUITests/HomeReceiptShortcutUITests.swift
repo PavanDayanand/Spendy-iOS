@@ -21,6 +21,20 @@ final class HomeReceiptShortcutUITests: XCTestCase {
         XCTAssertEqual(app.buttons["receipt-review-note"].value as? String, "Corner Cafe")
     }
 
+    @MainActor func testScanShortcutOpensHomeCameraWithoutTransactionForm() {
+        let app = launch()
+        app.open(URL(string: "spendy://scan")!)
+        XCTAssertTrue(app.buttons["Close camera"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Add receipt"].exists)
+        app.buttons["Close camera"].tap()
+        app.buttons["Add Transaction"].tap()
+        XCTAssertTrue(app.buttons["Add receipt"].waitForExistence(timeout: 5))
+        app.open(URL(string: "spendy://scan")!)
+        XCTAssertTrue(app.buttons["Close camera"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Add receipt"].exists)
+        capture(app, "Scan shortcut uses Home camera directly")
+    }
+
     @MainActor func testDirectPreviewSavesChosenAccountFromHome() {
         let app = launch()
         capture(app, "Home receipt shortcut beside Add")

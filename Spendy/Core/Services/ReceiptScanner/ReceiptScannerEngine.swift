@@ -64,6 +64,7 @@ final class ReceiptScannerEngine {
         categories: [Category],
         accounts: [Account],
         defaultCurrencySymbol: String = "$",
+        allowsIntelligence: Bool = true,
         onIntelligenceStarted: (() -> Void)? = nil
     ) async -> ReceiptScanResult {
         await scanImages(
@@ -71,6 +72,7 @@ final class ReceiptScannerEngine {
             categories: categories,
             accounts: accounts,
             defaultCurrencySymbol: defaultCurrencySymbol,
+            allowsIntelligence: allowsIntelligence,
             onIntelligenceStarted: onIntelligenceStarted
         )
     }
@@ -81,6 +83,7 @@ final class ReceiptScannerEngine {
         categories: [Category],
         accounts: [Account],
         defaultCurrencySymbol: String = "$",
+        allowsIntelligence: Bool = true,
         onIntelligenceStarted: (() -> Void)? = nil
     ) async -> ReceiptScanResult {
         guard let firstImage = images.first else {
@@ -88,6 +91,7 @@ final class ReceiptScannerEngine {
         }
 
         var recognizedLines: [RecognizedLine] = []
+        var hasConflictingTotals = false
         for image in images {
             let cgImage = image.cgImage ?? image.ciImage.flatMap {
                 CIContext().createCGImage($0, from: $0.extent)
@@ -95,6 +99,42 @@ final class ReceiptScannerEngine {
             guard let cgImage else { continue }
             let orientation = CGImagePropertyOrientation(image.imageOrientation)
             var pageLines = await performVisionOCR(on: cgImage, orientation: orientation)
+            var workingImage = cgImage
+            var workingOrientation = orientation
+            let verticalLines = pageLines.filter { $0.text.count >= 5 && $0.boundingBox.height > $0.boundingBox.width * 1.2 }.count
+            if verticalLines > max(2, pageLines.count / 4) {
+                for turn in [CGImagePropertyOrientation.left, .right] {
+                    guard let rotated = await Task.detached(priority: .userInitiated, operation: {
+                        ReceiptImagePreprocessor.rotatedImage(cgImage, orientation: orientation, quarterTurn: turn)
+                    }).value else { continue }
+                    let retry = await performVisionOCR(on: rotated, orientation: .up)
+                    if retry.count >= pageLines.count / 2 && retry.contains(where: { $0.text.count >= 5 && $0.boundingBox.width > $0.boundingBox.height * 2 }) {
+                        pageLines = retry
+                        workingImage = rotated
+                        workingOrientation = .up
+                        break
+                    }
+                }
+            }
+            let originalText = pageLines.map(\.text).joined(separator: "\n")
+            let originalEvidence = amountEvidence(pageLines)
+            if !ReceiptAmountParser.isPaymentScreenshot(originalText),
+               originalEvidence.amount == 0 || originalEvidence.priority < 50 || extractMerchantName(from: pageLines, receiptType: .physicalReceipt) == "Merchant",
+               let prepared = await Task.detached(priority: .userInitiated, operation: { [workingImage, workingOrientation] in
+                   ReceiptImagePreprocessor.documentImage(workingImage, orientation: workingOrientation)
+               }).value {
+                let retry = await performVisionOCR(on: prepared, orientation: .up)
+                let retryEvidence = amountEvidence(retry)
+                if originalEvidence.amount > 0, retryEvidence.amount > 0,
+                   originalEvidence.priority == retryEvidence.priority, originalEvidence.priority >= 30,
+                   abs(originalEvidence.amount - retryEvidence.amount) > 0.01 {
+                    hasConflictingTotals = true
+                } else if retryEvidence.amount > 0 && (originalEvidence.amount == 0 || retryEvidence.priority > originalEvidence.priority)
+                            || (retryEvidence.amount == originalEvidence.amount && retry.count > pageLines.count) {
+                    // Keep one coordinate space; never mix cropped and original OCR geometry.
+                    pageLines = retry
+                }
+            }
             let indianPayment = pageLines.contains { $0.text.range(of: #"(?i)phonepe|paytm|google pay|gpay|\bupi\b|\binr\b"#, options: .regularExpression) != nil }
             if indianPayment {
                 // Vision can recognize the rupee glyph as the visually similar hryvnia glyph.
@@ -124,7 +164,26 @@ final class ReceiptScannerEngine {
         guard !recognizedLines.isEmpty else {
             return fallbackEmptyResult(currency: defaultCurrencySymbol, image: firstImage)
         }
-        
+        return await parsedResult(from: recognizedLines, originalImage: firstImage, categories: categories,
+            accounts: accounts, defaultCurrencySymbol: defaultCurrencySymbol, allowsIntelligence: allowsIntelligence,
+            hasConflictingTotals: hasConflictingTotals, onIntelligenceStarted: onIntelligenceStarted)
+    }
+
+    func scanText(_ text: String, categories: [Category], accounts: [Account],
+                  defaultCurrencySymbol: String) async -> ReceiptScanResult {
+        let lines = text.components(separatedBy: .newlines).map {
+            RecognizedLine(text: ReceiptOCRCurrencyRepair.repairIndianPaymentGlyph($0.trimmingCharacters(in: .whitespacesAndNewlines)),
+                           boundingBox: .zero, confidence: 1)
+        }.filter { !$0.text.isEmpty }
+        return await parsedResult(from: lines, originalImage: nil, categories: categories, accounts: accounts,
+            defaultCurrencySymbol: defaultCurrencySymbol, allowsIntelligence: false,
+            hasConflictingTotals: false, onIntelligenceStarted: nil)
+    }
+
+    private func parsedResult(from recognizedLines: [RecognizedLine], originalImage: UIImage?,
+                              categories: [Category], accounts: [Account], defaultCurrencySymbol: String,
+                              allowsIntelligence: Bool, hasConflictingTotals: Bool,
+                              onIntelligenceStarted: (() -> Void)?) async -> ReceiptScanResult {
         let fullText = recognizedLines.map { $0.text }.joined(separator: "\n")
         
         // 1. Detect Receipt Type
@@ -132,10 +191,11 @@ final class ReceiptScannerEngine {
         
         // 2. Extract Currency & Amount
         var (totalAmount, detectedCurrency) = extractTotalAmount(from: recognizedLines, defaultCurrency: defaultCurrencySymbol)
+        if hasConflictingTotals { totalAmount = 0 }
         
         let paymentStatus = ReceiptPaymentStatus.detect(in: fullText)
         var wasAssistedByAppleIntelligence = false
-        if totalAmount == 0, paymentStatus != .pending, paymentStatus != .failed,
+        if allowsIntelligence, totalAmount == 0, !hasConflictingTotals, paymentStatus != .pending, paymentStatus != .failed,
            !recognizedLines.contains(where: \.unresolvedCurrencyGlyph),
            let assistedAmount = await ReceiptIntelligenceFallback.amount(
                from: recognizedLines.map(\.text), onStarted: onIntelligenceStarted
@@ -158,7 +218,12 @@ final class ReceiptScannerEngine {
         let transactionType: TransactionType = receiptType == .paymentScreenshot && fullText.range(
             of: #"(?i)\b(received from|money received|payment received|(?m)^received$)\b"#,
             options: .regularExpression) != nil ? .income : .expense
-        let suggestedCategory = matchCategory(merchant: merchantName, categories: categories.filter { $0.type == transactionType })
+        let suggestedCategoryID = ReceiptCategoryMatcher.categoryID(
+            merchant: merchantName,
+            receiptText: receiptType == .paymentScreenshot ? "" : fullText,
+            categories: categories.filter { $0.type == transactionType && !$0.isHidden }
+                .map { .init(id: $0.id, label: $0.label) }
+        )
         let suggestedAccount = matchAccount(fullText: fullText, accounts: accounts)
         
         // Calculate Confidence score
@@ -168,17 +233,17 @@ final class ReceiptScannerEngine {
         if !lineItems.isEmpty { confidenceScore += 0.10 }
         
         return ReceiptScanResult(
-            merchantName: merchantName.isEmpty ? "Scanned Expense" : merchantName,
+            merchantName: merchantName.isEmpty || merchantName == "Merchant" ? "Scanned Receipt" : merchantName,
             totalAmount: totalAmount,
             currencySymbol: detectedCurrency,
             date: date,
-            suggestedCategoryId: suggestedCategory?.id,
+            suggestedCategoryId: suggestedCategoryID,
             suggestedAccountId: suggestedAccount?.id,
             confidence: min(1.0, confidenceScore),
             lineItems: lineItems,
             rawRecognizedText: fullText,
             receiptType: receiptType,
-            originalImage: firstImage,
+            originalImage: originalImage,
             wasAssistedByAppleIntelligence: wasAssistedByAppleIntelligence,
             transactionType: transactionType,
             paymentStatus: paymentStatus,
@@ -193,6 +258,12 @@ final class ReceiptScannerEngine {
         let confidence: Float
         var unresolvedCurrencyGlyph: Bool = false
     }
+
+    private func amountEvidence(_ lines: [RecognizedLine]) -> (amount: Double, priority: Int) {
+        let parsed = lines.map { ReceiptAmountParser.Line(text: $0.text, bounds: $0.boundingBox, confidence: $0.confidence) }
+        let amount = ReceiptAmountParser.total(in: parsed)
+        return (amount, ReceiptAmountParser.candidates(in: parsed).filter { $0.amount == amount }.map(\.priority).max() ?? 0)
+    }
     
     private func performVisionOCR(on cgImage: CGImage, orientation: CGImagePropertyOrientation) async -> [RecognizedLine] {
         await withCheckedContinuation { continuation in
@@ -204,14 +275,17 @@ final class ReceiptScannerEngine {
                 }
                 
                 // Sort lines top to bottom (Vision Y is 0 at bottom, 1 at top -> descending Y), then left to right (ascending X)
-                let sortedObservations = observations.sorted { obs1, obs2 in
-                    let y1 = obs1.boundingBox.midY
-                    let y2 = obs2.boundingBox.midY
-                    if abs(y1 - y2) > 0.015 {
-                        return y1 > y2 // Top first
+                // Group rows explicitly; a pairwise fuzzy comparator is not transitive.
+                var rows: [[VNRecognizedTextObservation]] = []
+                for observation in observations.sorted(by: { $0.boundingBox.midY > $1.boundingBox.midY }) {
+                    if let last = rows.last, let first = last.first,
+                       abs(first.boundingBox.midY - observation.boundingBox.midY) < min(first.boundingBox.height, observation.boundingBox.height) * 0.6 {
+                        rows[rows.count - 1].append(observation)
+                    } else {
+                        rows.append([observation])
                     }
-                    return obs1.boundingBox.minX < obs2.boundingBox.minX // Left first
                 }
+                let sortedObservations = rows.flatMap { $0.sorted { $0.boundingBox.minX < $1.boundingBox.minX } }
                 
                 var lines: [RecognizedLine] = []
                 for obs in sortedObservations {
@@ -233,7 +307,7 @@ final class ReceiptScannerEngine {
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
             request.automaticallyDetectsLanguage = true
-            request.customWords = ["PhonePe", "Paytm", "Google Pay", "UPI", "INR", "UTR", "Grand Total", "Debited", "Credited"]
+            request.customWords = ["PhonePe", "Paytm", "Google Pay", "UPI", "INR", "UTR", "Grand Total", "Payable Amt", "Net Amount", "Bill Total", "CGST", "SGST", "GSTIN", "FSSAI", "Debited", "Credited", "Idli", "Dosa", "Paneer", "Biryani", "Gourmet", "Hospitality", "Collections", "Pvt. Ltd."]
             
             let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
                 do {
@@ -249,9 +323,8 @@ final class ReceiptScannerEngine {
     
     private func detectReceiptType(from lines: [RecognizedLine], fullText: String) -> ReceiptType {
         let lower = fullText.lowercased()
-        if ReceiptAmountParser.isPaymentScreenshot(fullText) || lower.contains("payment completed") || lower.contains("apple pay") || lower.contains("venmo") ||
-           lower.contains("zelle") || lower.contains("transaction successful") || lower.contains("paid to") ||
-           lower.contains("gpay") || lower.contains("upi") || lower.contains("cash app") {
+        if ReceiptAmountParser.isPaymentScreenshot(fullText) ||
+           lower.range(of: #"\b(apple\s+pay|venmo|zelle|cash\s+app)\b"#, options: .regularExpression) != nil {
             return .paymentScreenshot
         }
         if lower.contains("invoice") || lower.contains("bill to") || lower.contains("due date") {
@@ -271,7 +344,9 @@ final class ReceiptScannerEngine {
         let amount = ReceiptAmountParser.total(in: parsedLines)
         let evidence = ReceiptAmountParser.candidates(in: parsedLines)
             .filter { $0.amount == amount }.max(by: { $0.priority < $1.priority })?.evidence
-        let currency = evidence.flatMap { detectCurrencySymbol(in: $0) } ?? defaultCurrency
+        let currency = evidence.flatMap { detectCurrencySymbol(in: $0) }
+            ?? parsedLines.compactMap { detectCurrencySymbol(in: $0.text) }.first
+            ?? (parsedLines.contains { $0.text.range(of: #"(?i)\b(gstin|cgst|sgst|fssai)\b"#, options: .regularExpression) != nil } ? "₹" : defaultCurrency)
         return (amount, currency)
     }
     
@@ -348,46 +423,16 @@ final class ReceiptScannerEngine {
         return items
     }
     
-    private func matchCategory(merchant: String, categories: [Category]) -> Category? {
-        let merchantText = merchant.lowercased()
-        
-        // Keyword rule mappings
-        let mapping: [(keywords: [String], categoryNames: [String])] = [
-            (["grocery", "supermarket", "whole foods", "trader joe", "kroger", "walmart", "costco", "aldi", "safeway", "market", "food store"], ["Groceries", "Food", "Supermarket"]),
-            (["starbucks", "cafe", "coffee", "restaurant", "burger", "pizza", "diner", "bakery", "bistro", "taco", "sushi", "grill", "bar", "kitchen", "chipotle", "mcdonald", "subway", "uber eats", "doordash"], ["Dining", "Food & Drink", "Restaurants", "Cafe", "Food"]),
-            (["uber", "lyft", "shell", "chevron", "bp", "exxon", "gas", "fuel", "parking", "transit", "metro", "airline", "flight", "taxi"], ["Transportation", "Travel", "Fuel", "Auto"]),
-            (["amazon", "target", "zara", "h&m", "nike", "apple store", "best buy", "clothing", "apparel", "boutique", "mall", "store"], ["Shopping", "Electronics", "General"]),
-            (["cvs", "walgreens", "pharmacy", "clinic", "hospital", "doctor", "dental", "medicine"], ["Healthcare", "Health", "Medical", "Personal"]),
-            (["cinema", "theatre", "steam", "playstation", "xbox", "netflix", "spotify", "hulu", "movie", "game"], ["Entertainment", "Subscriptions", "Leisure"]),
-            (["electric", "water", "internet", "verizon", "at&t", "t-mobile", "power", "utility", "bill"], ["Bills", "Utilities", "Housing"])
-        ]
-        
-        for rule in mapping {
-            for kw in rule.keywords {
-                if merchantText.contains(kw) {
-                    for catName in rule.categoryNames {
-                        if let matched = categories.first(where: { $0.label.localizedCaseInsensitiveContains(catName) }) {
-                            return matched
-                        }
-                    }
-                }
-            }
-        }
-        
-        // A receipt's address and item descriptions can suggest an unrelated category.
-        for cat in categories {
-            if merchantText.contains(cat.label.lowercased()) {
-                return cat
-            }
-        }
-        
-        return nil
-    }
-    
     private func matchAccount(fullText: String, accounts: [Account]) -> Account? {
         let lines = fullText.components(separatedBy: "\n")
         let sourceIndex = lines.firstIndex { $0.range(of: #"(?i)\b(debited from|paid from|paid by|from account|credited to)\b"#, options: .regularExpression) != nil }
-        let evidence = sourceIndex.map { lines[$0..<min($0 + 3, lines.count)].joined(separator: " ") } ?? fullText
+        let tenderLines = lines.filter { line in
+            guard line.range(of: #"(?i)\b(cash|visa|mastercard|credit\s+card|debit\s+card|payment\s*(mode|method)|tender|amazon\s+pay)\b"#, options: .regularExpression) != nil,
+                  line.range(of: #"(?i)\b(customer|cashier|balance|change)\b"#, options: .regularExpression) == nil else { return false }
+            return line.range(of: #"(?i)\bcash\s*(?:amount|amt)?\s*[:\-]?\s*[$₹]?\s*0(?:\.0+)?\s*$"#, options: .regularExpression) == nil
+        }
+        let evidence = sourceIndex.map { lines[$0..<min($0 + 3, lines.count)].joined(separator: " ") }
+            ?? tenderLines.joined(separator: " ")
         let lower = evidence.lowercased()
         let namedMatches = accounts.filter { account in
             let label = account.label.trimmingCharacters(in: .whitespacesAndNewlines)

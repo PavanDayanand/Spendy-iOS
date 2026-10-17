@@ -148,6 +148,7 @@ final class ExpenseStore {
     @ObservationIgnored private var saveRevision = 0
     var loadError: String?
     var persistenceError: String?
+    var sharedReceiptImportError: String?
 
     var hasRecoveryBackup: Bool {
         FileManager.default.fileExists(atPath: storageURL.appendingPathExtension("backup").path)
@@ -1518,6 +1519,13 @@ final class ExpenseStore {
     }
     
     func eraseAllData() {
+        if startsServices {
+            do { try ReceiptShareStore.clear() }
+            catch {
+                sharedReceiptImportError = "Shared receipts could not be cleared. Try erasing again. \(error.localizedDescription)"
+                return
+            }
+        }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             self.transactions = []
             self.subscriptions = []

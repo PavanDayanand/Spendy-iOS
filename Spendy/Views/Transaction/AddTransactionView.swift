@@ -394,19 +394,6 @@ struct AddTransactionView: View {
                     toAccountId = other.id
                 }
             }
-            openRequestedReceiptCamera()
-        }
-        .onChange(of: quickActionManager.shouldPresentReceiptScan) { _, requested in
-            if requested { openRequestedReceiptCamera() }
-        }
-    }
-
-    private func openRequestedReceiptCamera() {
-        guard quickActionManager.shouldPresentReceiptScan else { return }
-        quickActionManager.shouldPresentReceiptScan = false
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1))
-            showReceiptCamera = true
         }
     }
     

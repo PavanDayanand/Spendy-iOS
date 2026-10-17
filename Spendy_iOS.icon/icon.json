@@ -12,19 +12,14 @@
     {
       "layers" : [
         {
-          "glass" : true,
           "hidden" : true,
-          "image-name" : "Monochrome Interwoven S-Loop Emblem.png",
-          "name" : "Monochrome Interwoven S-Loop Emblem"
-        },
-        {
           "image-name" : "Group 14.png",
           "name" : "Group 14",
           "position" : {
             "scale" : 2.1,
             "translation-in-points" : [
-              0,
-              0
+              -13,
+              -9
             ]
           }
         }
@@ -39,7 +34,7 @@
       }
     },
     {
-      "hidden" : true,
+      "hidden" : false,
       "layers" : [
         {
           "glass" : true,

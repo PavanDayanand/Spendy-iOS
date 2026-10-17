@@ -17,7 +17,7 @@ enum ReceiptAmountParser {
     }
 
     static func isIdentifierLine(_ text: String) -> Bool {
-        matches(#"\b(account|acct|a/c|iban|ifsc|swift|routing|card|upi\s*(id|ref|reference|transaction)|utr|rrn|reference|ref|transaction\s*(id|no|number)|txn\s*(id|no|number)|invoice\s*(id|no|number)|order\s*(id|no|number)|phone|mobile|tel|gstin|tax\s*id|date|time)\b|[\w.+-]+@[\w.-]+|[x*•●]{2,}\s*\d"#, in: text)
+        matches(#"\b(account|acct|a/c|iban|ifsc|swift|routing|card|upi\s*(id|ref|reference|transaction)|utr|rrn|reference|ref|transaction\s*(id|no|number)|txn\s*(id|no|number)|invoice\s*(id|no|number)|bill\s*(no|number)|order\s*(id|no|number)|token|batch|auth|approval|fssai|phone|mobile|tel|gstin|tax\s*id|date|time)\b|[\w.+-]+@[\w.-]+|[x*•●]{2,}\s*\d"#, in: text)
     }
 
     static func isPaymentScreenshot(_ text: String) -> Bool {
@@ -31,6 +31,8 @@ enum ReceiptAmountParser {
     static func total(in lines: [Line]) -> Double {
         let candidates = candidates(in: lines)
         guard let priority = candidates.map(\.priority).max() else { return 0 }
+        // A lone item price on a cropped receipt is not a detected final total.
+        guard priority > 1 else { return 0 }
         let best = candidates.filter { $0.priority == priority }
         let amounts = Set(best.map(\.amount))
         if amounts.count == 1 { return amounts.first! }
@@ -59,7 +61,8 @@ enum ReceiptAmountParser {
         let paymentScreenshot = isPaymentScreenshot(lines.map(\.text).joined(separator: "\n"))
         var candidates: [Candidate] = []
         for (index, line) in lines.enumerated() {
-            let text = line.text
+            // OCR can separate a printed decimal point from its two fractional digits.
+            let text = line.text.replacingOccurrences(of: #"(?<=\d)\.\s+(?=\d{2}(?:\D|$))"#, with: ".", options: .regularExpression)
             guard line.confidence >= 0.3, !isIdentifierLine(text) else { continue }
             let priorLine = index > 0 ? lines[index - 1] : nil
             // A label in the same printed row may sort after its right-aligned value.
@@ -85,6 +88,8 @@ enum ReceiptAmountParser {
             for token in tokens {
                 let numberText = ns.substring(with: token.range(at: 1))
                 let explicitlyMonetary = hasCurrency(ns.substring(with: token.range))
+                // A misread "TOTAL" next to an eight-digit reference is not monetary evidence.
+                if numberText.count > 6 && !numberText.contains(".") && !numberText.contains(",") && !explicitlyMonetary { continue }
                 // "Total 3 items ₹900" means ₹900, not 3. Avoid quantities on total lines.
                 if hasPrefixedMoney && !explicitlyMonetary { continue }
                 if !hasPrefixedMoney && hasDecimals && !numberText.contains(".") { continue }
@@ -96,7 +101,7 @@ enum ReceiptAmountParser {
                       let amount = Double(numberText.replacingOccurrences(of: ",", with: "")),
                       amount.isFinite, amount > 0, amount <= 1_000_000_000 else { continue }
                 let context = !previousHasNumber && !isIdentifierLine(previous) ? previous + " · " + text : text
-                candidates.append(Candidate(amount: amount, priority: label > 0 ? label : monetary ? 5 : 1,
+                candidates.append(Candidate(amount: amount, priority: label > 0 ? label : (monetary || prominentPaymentNumber) ? 5 : 1,
                     evidence: String(context.prefix(200)), bounds: line.bounds))
             }
         }
@@ -108,8 +113,11 @@ enum ReceiptAmountParser {
     }
 
     private static func labelPriority(_ text: String) -> Int {
-        if matches(#"\b(total qty|total quantity|no of item|sub[ -]?total|tax|vat|change|cash tendered|discount|cashback|reward|coupon|offer|available balance|balance available|bank balance|wallet balance|closing balance|opening balance|credit limit|paid by|debited from|credited to|from account)\b"#, in: text) { return -1 }
-        if matches(#"\b(gross|grand total|total due|total amount|amount paid|amount due|final total|net amount|final payable|amount payable)\b"#, in: text) { return 30 }
+        // The final rounded/discounted payable takes precedence over a gross or bill subtotal.
+        if matches(#"\b(?:bill\s+)?total\s*\(?round(?:ed)?\b"#, in: text) { return 60 }
+        if matches(#"\b(grand\s*total|total due|total amount|amount paid|amount due|final total|net amount|net payable|final payable|amount payable|payable\s*(?:amt|amount)?)\b"#, in: text) { return 50 }
+        if matches(#"\b(total qty|total quantity|net qty|no of item|sub\s*[ -]?\s*total|tax|gst|cgst|sgst|vat|change|round\s*off|s\s*charge|service charge|cash tendered|discount|savings|cashback|reward|coupon|offer|available balance|avail\.?\s*bal\.?|balance available|bank balance|wallet balance|closing balance|opening balance|credit limit|paid by|debited from|credited to|from account)\b"#, in: text) { return -1 }
+        if matches(#"\b(bill\s*total|gross(?:\s*amount)?|amount)\b"#, in: text) { return 30 }
         if matches(#"\b(total|paid|payment amount|bal due|balance due|sent|received|debited|credited|payment successful|transaction successful|payment completed)\b"#, in: text) { return 20 }
         return 0
     }

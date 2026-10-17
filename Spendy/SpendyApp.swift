@@ -118,6 +118,7 @@ struct SpendyApp: App {
         SpendyLiveActivityManager.shared.endAllLiveActivities()
         guard store.systemIntegrationsEnabled else { return }
         store.ingestPendingWidgetTransactions()
+        store.ingestSharedReceipts()
         WidgetDataManager.shared.publish(from: store)
         SpendyShortcutsProvider.updateAppShortcutParameters()
         indexCategoriesForSiri()
