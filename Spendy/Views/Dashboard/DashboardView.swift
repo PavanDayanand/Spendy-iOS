@@ -115,7 +115,7 @@ struct HeroSpendBarChart: View {
                         HStack(spacing: 8) {
                             Rectangle().fill(gridColor).frame(height: 0.8)
                             Text(formatAxisNumber(level))
-                                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                .font(.system(size: 10, weight: .regular, design: .default))
                                 .monospacedDigit()
                                 .foregroundStyle(SpendyColors.textSecondary)
                                 .frame(width: 50, alignment: .leading)
@@ -542,7 +542,7 @@ struct DashboardView: View {
                     .presentationBackground(SpendyColors.settingsBackground)
                     .presentationDragIndicator(.hidden)
             }
-            .sheet(isPresented: $showEditBudgetSheet) {
+            .fullScreenCover(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
             }
             .sheet(isPresented: $showCurrencyConverter) {
@@ -833,7 +833,7 @@ struct DashboardView: View {
                 HStack(spacing: 12) {
                     Button { toggleActivityDrawer() } label: {
                         Text("Recent activity")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .default))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())

@@ -68,14 +68,14 @@ public enum AppRadius {
 
 // MARK: - Typography Tokens (Apple HIG Dynamic Type & Scalable System Tokens)
 public enum AppTypography {
-    /// Scalable 42pt Heavy — Main Balance / Hero Amount (Apple SF Monospace)
-    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .monospaced)
+    /// Scalable 42pt Heavy — Main Balance / Hero Amount (Apple SF Pro)
+    public static let heroBalance = Font.system(size: 42, weight: .heavy, design: .default)
     
-    /// Scalable 38pt Heavy — Large Metric / Sheet Hero Amount (Apple SF Monospace)
-    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .monospaced)
+    /// Scalable 38pt Heavy — Large Metric / Sheet Hero Amount (Apple SF Pro)
+    public static let heroLarge = Font.system(size: 38, weight: .heavy, design: .default)
     
-    /// Scalable 34pt Heavy — Section Totals & Sub-hero Amounts (Apple SF Monospace)
-    public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .monospaced)
+    /// Scalable 34pt Heavy — Section Totals & Sub-hero Amounts (Apple SF Pro)
+    public static let heroAmount = Font.system(size: 34, weight: .heavy, design: .default)
     
     /// Primary Screen Large Title (Scales with .largeTitle)
     public static let largeTitle = Font.system(.largeTitle, design: .default, weight: .heavy)
@@ -115,12 +115,12 @@ public enum AppTypography {
     /// Micro Badge Text (Scales with .caption2)
     public static let badgeMicro = Font.system(.caption2, design: .default, weight: .bold)
     
-    // Financial numbers with Apple SF Monospace font design (.monospaced)
-    public static let numberHero = Font.system(size: 38, weight: .heavy, design: .monospaced).monospacedDigit()
-    public static let numberLarge = Font.system(.title2, design: .monospaced, weight: .bold).monospacedDigit()
-    public static let numberMedium = Font.system(.headline, design: .monospaced, weight: .semibold).monospacedDigit()
-    public static let numberSmall = Font.system(.subheadline, design: .monospaced, weight: .medium).monospacedDigit()
-    public static let numberCaption = Font.system(.caption, design: .monospaced, weight: .bold).monospacedDigit()
+    // Financial numbers in Apple SF Pro with tabular digits
+    public static let numberHero = Font.system(size: 38, weight: .heavy, design: .default).monospacedDigit()
+    public static let numberLarge = Font.system(.title2, design: .default, weight: .bold).monospacedDigit()
+    public static let numberMedium = Font.system(.headline, design: .default, weight: .semibold).monospacedDigit()
+    public static let numberSmall = Font.system(.subheadline, design: .default, weight: .medium).monospacedDigit()
+    public static let numberCaption = Font.system(.caption, design: .default, weight: .bold).monospacedDigit()
 }
 
 // MARK: - Typography Helpers
@@ -130,20 +130,20 @@ public extension Font {
         Font.system(size: size, weight: weight, design: design)
     }
     
-    /// Financial number font helper with SF Monospace design and monospaced digits
+    /// Financial number font helper with SF Pro design and tabular digits
     static func spendyNumber(size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        Font.system(size: size, weight: weight, design: .monospaced).monospacedDigit()
+        Font.system(size: size, weight: weight, design: .default).monospacedDigit()
     }
 }
 
-// MARK: - Number Typography Modifier (Apple SF Monospace Design)
+// MARK: - Number Typography Modifier (Apple SF Pro Design)
 public struct SpendyNumberModifier: ViewModifier {
     var size: CGFloat
     var weight: Font.Weight
     var tracking: CGFloat?
     var design: Font.Design
     
-    public init(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .monospaced) {
+    public init(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .default) {
         self.size = size
         self.weight = weight
         self.tracking = tracking
@@ -165,8 +165,8 @@ public struct SpendyNumberModifier: ViewModifier {
 }
 
 public extension View {
-    /// Applies numeric font with monospaced digits and Apple SF Monospace design
-    func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .monospaced) -> some View {
+    /// Applies numeric font with tabular digits and Apple SF Pro design
+    func spendyNumberFont(size: CGFloat, weight: Font.Weight = .bold, tracking: CGFloat? = nil, design: Font.Design = .default) -> some View {
         modifier(SpendyNumberModifier(size: size, weight: weight, tracking: tracking, design: design))
     }
     

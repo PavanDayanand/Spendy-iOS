@@ -105,18 +105,18 @@ struct SpendySpeedLoggerSheet: View {
             VStack(spacing: 8) {
                 if speechManager.transcribedText.isEmpty {
                     Text("Start speaking...")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 22, weight: .bold, design: .default))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     Text("5 voice entries left")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium, design: .default))
                         .foregroundStyle(SpendyColors.textTertiary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(SpendyColors.separator.opacity(0.6)))
                 } else {
                     Text("“\(speechManager.transcribedText)”")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .default))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
@@ -166,7 +166,7 @@ struct SpendySpeedLoggerSheet: View {
                 Spacer()
                 
                 Text(formattedTimer(recordingDuration))
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(.system(size: 14, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
             }
             .padding(.horizontal, 14)
@@ -215,7 +215,7 @@ struct SpendySpeedLoggerSheet: View {
                 }
                 
                 Text("Review transactions")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textPrimary)
                     .padding(.leading, 6)
                 
@@ -231,7 +231,7 @@ struct SpendySpeedLoggerSheet: View {
                         }
                     } label: {
                         Text(allSelected ? "Unselect all" : "Select all")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 13, weight: .semibold, design: .default))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
@@ -251,13 +251,13 @@ struct SpendySpeedLoggerSheet: View {
             // Section Header ("Today" + "X items")
             HStack {
                 Text("Today")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Spacer()
                 
                 Text("\(drafts.count) items")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 13, weight: .medium, design: .default))
                     .foregroundStyle(SpendyColors.textTertiary)
             }
             .padding(.horizontal, 22)
@@ -272,7 +272,7 @@ struct SpendySpeedLoggerSheet: View {
                                 .font(.system(size: 38))
                                 .foregroundStyle(SpendyColors.textTertiary)
                             Text("No transactions recognized")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .font(.system(size: 16, weight: .bold, design: .default))
                                 .foregroundStyle(SpendyColors.textPrimary)
                             Text("Tap Start speaking and say amounts like “Groceries 20 thousand and Fuel 15 thousand”.")
                                 .font(.system(size: 13, weight: .medium))
@@ -306,7 +306,7 @@ struct SpendySpeedLoggerSheet: View {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 15, weight: .heavy))
                             Text(count > 1 ? "Save \(count) transactions" : (count == 1 ? "Save transaction" : "Select transactions to save"))
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .font(.system(size: 16, weight: .bold, design: .default))
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -374,7 +374,7 @@ struct SpendySpeedLoggerSheet: View {
                 // Title & Subtitle
                 VStack(alignment: .leading, spacing: 2) {
                     Text(draft.wrappedValue.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .default))
                         .foregroundStyle(SpendyColors.textPrimary)
                     
                     HStack(spacing: 4) {
@@ -384,7 +384,7 @@ struct SpendySpeedLoggerSheet: View {
                         }
                         Text(acc?.label ?? "Cash")
                     }
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .font(.system(size: 12.5, weight: .medium, design: .default))
                     .foregroundStyle(SpendyColors.textTertiary)
                     .lineLimit(1)
                 }
@@ -422,7 +422,7 @@ struct SpendySpeedLoggerSheet: View {
                     .scaleEffect(showSuccessAnimation ? 1.0 : 0.4)
                 
                 Text(selectedDrafts.count > 1 ? "\(selectedDrafts.count) Transactions Saved!" : "Transaction Saved!")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .font(.system(size: 18, weight: .heavy, design: .default))
                     .foregroundStyle(Color.white)
             }
             .padding(26)

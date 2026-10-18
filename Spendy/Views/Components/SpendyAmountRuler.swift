@@ -276,7 +276,7 @@ struct SpendyAmountRuler: View {
                        abs(x - lastLabelX) > 36 {
                         let resolved = context.resolve(
                             Text(label)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold, design: .default))
                                 .monospacedDigit()
                                 .foregroundColor(color.opacity(min(1, opacity + 0.18)))
                         )

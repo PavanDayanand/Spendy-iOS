@@ -75,7 +75,7 @@ struct BudgetView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .sheet(isPresented: $showEditBudgetSheet) {
+        .fullScreenCover(isPresented: $showEditBudgetSheet) {
             EditBudgetSheet(isEditing: isEditingExisting)
         }
         .alert("Delete Budget?", isPresented: $showDeleteConfirmation) {

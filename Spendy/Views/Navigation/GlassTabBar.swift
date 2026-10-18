@@ -120,7 +120,7 @@ struct GlassTabBar: View {
                             Image(systemName: "plus")
                                 .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
                             Text("Add")
-                                .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .rounded))
+                                .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .default))
                         }
                         .foregroundStyle(SpendyColors.elevatedControlForeground)
                         .padding(.horizontal, compact ? 16 : (isExpanded ? 24 : 18))

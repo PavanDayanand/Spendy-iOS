@@ -260,7 +260,7 @@ struct AccountsView: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                 
                 Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                    .font(.system(size: 32, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 32, weight: .heavy, design: .default))
                     .monospacedDigit()
                     .tracking(-1.0)
                     .foregroundStyle(store.totalBalance < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
@@ -468,7 +468,7 @@ struct AccountsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Text(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 16.5, weight: .bold, design: .default))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)

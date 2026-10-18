@@ -21,7 +21,7 @@ struct WidgetShowcaseView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Home Screen widgets")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .font(.system(size: 26, weight: .bold, design: .default))
                             .foregroundStyle(SpendyColors.textPrimary)
 
                         Text("A quick read on today, your budget, and the month. Choose the size that fits your Home Screen.")
@@ -86,7 +86,7 @@ struct WidgetShowcaseView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -111,7 +111,7 @@ struct WidgetShowcaseView: View {
     private func guideCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .default))
                 .foregroundStyle(SpendyColors.textPrimary)
             content()
         }
@@ -133,14 +133,14 @@ struct WidgetShowcaseView: View {
                     .fill(SpendyColors.chipBackground)
                     .frame(width: 26, height: 26)
                 Text(number)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textPrimary)
             }
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .default))
                     .foregroundStyle(SpendyColors.textPrimary)
                 Text(detail)
                     .font(.system(size: 13, weight: .regular))

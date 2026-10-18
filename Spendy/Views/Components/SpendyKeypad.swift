@@ -46,7 +46,7 @@ struct SpendyKeypad: View {
                         .foregroundStyle(SpendyColors.textPrimary)
                 } else {
                     Text(key)
-                        .font(.system(size: 24, weight: .medium, design: .rounded))
+                        .font(.system(size: 24, weight: .medium, design: .default))
                         .monospacedDigit()
                         .foregroundStyle(SpendyColors.textPrimary)
                 }

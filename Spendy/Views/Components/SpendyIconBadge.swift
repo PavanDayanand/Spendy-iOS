@@ -335,7 +335,7 @@ struct SpendyIconBadge: View {
             
             if let letter = SpendyMonogram.displayLetter(symbol: sfSymbol, name: monogramName) {
                 Text(letter)
-                    .font(.system(size: size.iconSize, weight: .bold, design: .rounded))
+                    .font(.system(size: size.iconSize, weight: .bold, design: .default))
                     .foregroundStyle(paint.glyph)
                     .contentTransition(.opacity)
             } else {

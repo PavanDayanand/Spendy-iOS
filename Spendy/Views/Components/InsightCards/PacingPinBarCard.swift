@@ -76,7 +76,7 @@ struct PacingPinBarCard: View {
                             
                             HStack(spacing: 2) {
                                 Text(deltaText)
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .font(.system(size: 10, weight: .bold, design: .default))
                                     .monospacedDigit()
                                     .foregroundStyle(Color.black)
                             }

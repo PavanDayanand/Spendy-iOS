@@ -107,7 +107,7 @@ public struct SpendyGradientText: View {
     
     public var body: some View {
         Text(text)
-            .font(.system(size: size, weight: weight, design: .monospaced))
+            .font(.system(size: size, weight: weight, design: .default))
             .monospacedDigit()
             .tracking(tracking)
             .lineLimit(1)

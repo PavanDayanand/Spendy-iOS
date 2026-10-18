@@ -196,60 +196,55 @@ struct AddTransactionView: View {
     }
     
     var body: some View {
-        return ZStack(alignment: .bottom) {
-            SpendyColors.appBackground
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
-                topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    .padding(.bottom, type == .transfer ? 10 : 16)
+        return SpendyAmountEntrySheet(bottomPadding: type == .transfer ? 8 : 14) {
+            // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
+            topHeaderBar
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, type == .transfer ? 10 : 16)
 
-                
-                // MARK: - 2. Subheader Row (Account Pill on Left) - Hidden in Transfer Mode
-                if type != .transfer {
-                    subHeaderRow
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
+
+            // MARK: - 2. Subheader Row (Account Pill on Left) - Hidden in Transfer Mode
+            if type != .transfer {
+                subHeaderRow
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                        removal: .opacity.combined(with: .scale(scale: 0.96))
+                    ))
+            }
+
+        } content: {
+            if isEditingNote {
+                inlineNoteEditorView
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                Spacer()
+            } else {
+                // MARK: - 3. Amount Display
+                if type == .transfer {
+                    transferCardsSection
+                        .padding(.bottom, 4)
                         .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.96)),
-                            removal: .opacity.combined(with: .scale(scale: 0.96))
+                            insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                            removal: .opacity.combined(with: .scale(scale: 0.98))
+                        ))
+                } else {
+                    standardAmountSection
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                            removal: .opacity.combined(with: .scale(scale: 0.98))
                         ))
                 }
-                
-                if isEditingNote {
-                    inlineNoteEditorView
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                    Spacer()
-                } else {
-                    // MARK: - 3. Amount Display
-                    if type == .transfer {
-                        transferCardsSection
-                            .padding(.bottom, 4)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                                removal: .opacity.combined(with: .scale(scale: 0.98))
-                            ))
-                    } else {
-                        standardAmountSection
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                                removal: .opacity.combined(with: .scale(scale: 0.98))
-                            ))
-                    }
-                    
-                    // MARK: - 5. Bottom Keypad & Actions (dock card)
-                    keypadAndActionsSection
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, type == .transfer ? 8 : 14)
-                        .ignoresSafeArea(.container, edges: .bottom)
-                }
+
             }
-            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
+        } dock: {
+            if !isEditingNote {
+                keypadAndActionsSection
+            }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: type)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Discard Changes", role: .destructive) {
@@ -536,7 +531,7 @@ struct AddTransactionView: View {
                         )
                     
                     Text(initialLetter)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .default))
                         .foregroundStyle(account != nil ? paint.glyph : SpendyColors.textPrimary)
                 }
                 .padding(.leading, 6)
@@ -553,14 +548,7 @@ struct AddTransactionView: View {
                 .padding(.trailing, 16)
             }
             .frame(height: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(SpendyColors.transactionControlSurface)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
         }
         .buttonStyle(.plain)
         
@@ -584,12 +572,12 @@ struct AddTransactionView: View {
             
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(store.currencySymbol)
-                    .font(.system(size: amountSymbolSize, weight: .bold, design: .rounded))
+                    .font(.system(size: amountSymbolSize, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .fixedSize()
                 
                 Text(amountString)
-                    .spendyNumberFont(size: amountHeroSize, weight: .heavy, tracking: -1.2)
+                    .spendyNumberFont(size: amountHeroSize, weight: .bold, tracking: -1.2)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
@@ -604,7 +592,7 @@ struct AddTransactionView: View {
             
             if let amountCaption {
                 Text(amountCaption)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 15, weight: .medium, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .textCase(.lowercase)
             }
@@ -617,7 +605,7 @@ struct AddTransactionView: View {
                     HapticsManager.shared.trigger(.light)
                 } label: {
                     Text(trimmedNote)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium, design: .default))
                         .foregroundStyle(SpendyColors.textSecondary)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
@@ -646,11 +634,11 @@ struct AddTransactionView: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(store.currencySymbol)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .default))
                         .foregroundStyle(SpendyColors.textSecondary)
 
                     Text(amountString)
-                        .font(.system(size: transferAmountSize, weight: .heavy, design: .rounded))
+                        .font(.system(size: transferAmountSize, weight: .bold, design: .default))
                         .monospacedDigit()
                         .foregroundStyle(SpendyColors.textPrimary)
                         .lineLimit(1)
@@ -717,7 +705,7 @@ struct AddTransactionView: View {
         } label: {
             HStack(spacing: 12) {
                 Text(String((account?.label.prefix(1) ?? "A")).uppercased())
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .bold, design: .default))
                     .foregroundStyle(paint.glyph)
                     .frame(width: 44, height: 44)
                     .background(paint.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -745,14 +733,7 @@ struct AddTransactionView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(SpendyColors.transactionControlSurface)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+            .nativeLiquidGlass(cornerRadius: 22, isInteractive: true)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -779,26 +760,21 @@ struct AddTransactionView: View {
                     .foregroundStyle(SpendyColors.textPrimary)
                     .padding(.horizontal, 16)
                     .frame(height: 44)
-                    .background {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(SpendyColors.transactionKeySurface)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(SpendyColors.separator, lineWidth: 0.8)
-                            }
-                    }
+                    .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
                 }
                 .buttonStyle(.plain)
                 
                 Spacer()
                 
                 ReceiptSourceMenuButton(
+                    usesGlassBackground: true,
                     needsIntroduction: !hasSeenReceiptScanIntroduction,
                     presentationRequest: receiptMenuPresentationRequest,
                     onIntroduction: { activeSheet = .receiptIntroduction },
                     onSelect: selectReceiptSource
                 )
                 .frame(width: 44, height: 44)
+                .nativeLiquidGlassCircle(isInteractive: true)
 
                 // Note Button
                 Button {
@@ -811,20 +787,13 @@ struct AddTransactionView: View {
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                         .frame(width: 44, height: 44)
-                        .background {
-                            Circle()
-                                .fill(SpendyColors.transactionKeySurface)
-                                .overlay {
-                                    Circle()
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
+                        .nativeLiquidGlassCircle(isInteractive: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(note.isEmpty ? "Add Note" : "Edit Note")
             }
             
-            SpendyGlassEffectContainer(spacing: 12) {
+            SpendyGlassEffectContainer(spacing: 4) {
                 if inputMode == .keypad {
                     SpendyKeypad(
                         amountString: $amountString,
@@ -875,14 +844,7 @@ struct AddTransactionView: View {
                                 .padding(.trailing, 16)
                         }
                         .frame(height: 44)
-                        .background {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(SpendyColors.transactionKeySurface)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                                }
-                        }
+                        .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
                     }
                     .buttonStyle(.plain)
                     
@@ -892,14 +854,12 @@ struct AddTransactionView: View {
                         saveTransaction()
                     }) {
                         Text("Save")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: 16, weight: .bold, design: .default))
                             .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                             .padding(.horizontal, 32)
                             .frame(height: 44)
-                            .background {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(currentAmountValue > 0 ? SpendyColors.elevatedControlFill : SpendyColors.transactionKeySurface)
-                            }
+                            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true,
+                                tint: currentAmountValue > 0 ? SpendyColors.elevatedControlFill : nil)
                     }
                     .buttonStyle(KeypadPressStyle())
                     .disabled(currentAmountValue <= 0)
@@ -922,20 +882,7 @@ struct AddTransactionView: View {
                 .padding(.top, 4)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, type == .transfer ? 14 : 22)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(SpendyColors.transactionTraySurface)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(
-                            SpendyColors.separator,
-                            lineWidth: 0.8
-                        )
-                }
-        }
+        .spendyAmountEntryDock(bottomPadding: type == .transfer ? 14 : 22)
     }
     
     // MARK: - 6. Inline Note Editor (Matching Image 2 with iOS Liquid Glass styling)
@@ -1202,7 +1149,7 @@ struct SpendySlideToTransfer: View {
                     Spacer()
                     
                     Text(displayText)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 16, weight: .medium, design: .default))
                         .foregroundStyle(
                             LinearGradient(
                                 stops: [

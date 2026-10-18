@@ -12,6 +12,8 @@ enum AccountType: String, Codable, CaseIterable, Identifiable {
     case bank = "Bank"
     case amazonPay = "Amazon Pay"
     case savings = "Savings"
+    case digitalWallet = "Digital wallet"
+    case other = "Other"
     
     var id: String { rawValue }
     
@@ -21,6 +23,8 @@ enum AccountType: String, Codable, CaseIterable, Identifiable {
         case .bank: return SFIcons.bankAccount
         case .amazonPay: return SFIcons.groceries
         case .savings: return SFIcons.savingsAccount
+        case .digitalWallet: return "wallet.bifold"
+        case .other: return "ellipsis.circle"
         }
     }
 }

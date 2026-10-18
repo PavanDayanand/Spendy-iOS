@@ -47,7 +47,7 @@ struct HomeSpendingSummary: View {
                     Spacer(minLength: 0)
                 }
                 Text(amountsHidden ? "••••••" : snapshot.total.formattedCurrency(symbol: currencySymbol, decimals: 2))
-                    .font(.system(size: amountSize, weight: .bold, design: .rounded))
+                    .font(.system(size: amountSize, weight: .bold, design: .default))
                     .monospacedDigit()
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)

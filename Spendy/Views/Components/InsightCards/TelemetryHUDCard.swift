@@ -39,7 +39,7 @@ struct TelemetryHUDCard: View {
                     Spacer(minLength: 4)
                     
                     Text("Velocity")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(size: 10, weight: .bold, design: .default))
                         .foregroundStyle(effectiveColor)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -76,7 +76,7 @@ struct TelemetryHUDCard: View {
                         .lineLimit(1)
                     
                     Text(unit)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(size: 12, weight: .bold, design: .default))
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
                 

@@ -268,7 +268,7 @@ struct ReceiptReviewView: View {
             Text(result.totalAmount > 0
                  ? result.totalAmount.formattedCurrency(symbol: result.currencySymbol)
                  : "Amount not found")
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(.system(size: 38, weight: .bold, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(result.totalAmount > 0 ? SpendyColors.textPrimary : SpendyColors.textSecondary)
 

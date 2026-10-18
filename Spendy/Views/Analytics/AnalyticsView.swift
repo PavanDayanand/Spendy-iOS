@@ -235,7 +235,7 @@ struct AnalyticsView: View {
                 }
             }
             .navigationDestination(isPresented: $showBudgetHub) { BudgetView() }
-            .sheet(isPresented: $showEditBudgetSheet) {
+            .fullScreenCover(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in

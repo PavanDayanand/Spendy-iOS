@@ -141,7 +141,7 @@ struct FloatingCurrencyConverterView: View {
             Text(convertedAmount.map {
                 "\(CurrencyInfo.symbol(for: toCurrency))\($0.formattedNumber(decimals: fractionDigits(for: toCurrency)))"
             } ?? "—")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 36, weight: .bold, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(SpendyColors.textPrimary)
                 .lineLimit(1)

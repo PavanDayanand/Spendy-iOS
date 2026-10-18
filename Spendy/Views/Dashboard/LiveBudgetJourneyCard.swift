@@ -129,13 +129,13 @@ struct LiveBudgetJourneyCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         // 1. Eyebrow: Period + Days Remaining in Accent Cyan / Pacing Tint
                         Text(eyebrowText)
-                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                            .font(.system(size: 12.5, weight: .semibold, design: .default))
                             .foregroundStyle(eyebrowColor)
                             .lineLimit(1)
                         
                         // 2. Headline: Pacing State Status (Editorial bold text)
                         Text(statusHeadline)
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .default))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
@@ -143,7 +143,7 @@ struct LiveBudgetJourneyCard: View {
                         // 3. Subtitle: Daily Allowance + Remaining Balance
                         HStack(spacing: 5) {
                             Text("\(allowanceFormatted)/day")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .default))
                                 .monospacedDigit()
                                 .foregroundStyle(SpendyColors.textSecondary)
                             
@@ -152,7 +152,7 @@ struct LiveBudgetJourneyCard: View {
                                 .foregroundStyle(SpendyColors.textTertiary)
                             
                             Text(remainingSubtitle)
-                                .font(.system(size: 12.5, weight: .medium, design: .monospaced))
+                                .font(.system(size: 12.5, weight: .medium, design: .default))
                                 .monospacedDigit()
                                 .foregroundStyle(SpendyColors.textSecondary)
                         }
@@ -269,7 +269,7 @@ private struct SegmentedBudgetGaugeMini: View {
             // Centered Metrics inside the arc
             VStack(spacing: 1.5) {
                 Text(percentageText)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .default))
                     .monospacedDigit()
                     .foregroundStyle(SpendyColors.textPrimary)
                     .contentTransition(.numericText())

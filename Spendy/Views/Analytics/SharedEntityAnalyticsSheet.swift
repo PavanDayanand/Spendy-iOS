@@ -1013,7 +1013,7 @@ struct SharedEntityAnalyticsSheet: View {
             Spacer()
             
             Text(value)
-                .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 16.5, weight: .bold, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(valueColor)
         }
@@ -1162,7 +1162,7 @@ struct SharedEntityAnalyticsSheet: View {
                 
                 // Right: Amount
                 Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 16.5, weight: .bold, design: .default))
                     .monospacedDigit()
                     .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
             }

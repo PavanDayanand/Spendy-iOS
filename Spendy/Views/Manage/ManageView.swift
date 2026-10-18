@@ -303,7 +303,7 @@ struct SubscriptionsView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
 
                     Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                        .font(.system(size: 32, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 32, weight: .heavy, design: .default))
                         .monospacedDigit()
                         .tracking(-1.0)
                         .foregroundStyle(SpendyColors.textPrimary)
@@ -493,7 +493,7 @@ struct SubscriptionsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 16.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 16.5, weight: .bold, design: .default))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -657,7 +657,7 @@ struct SubscriptionsView: View {
             Spacer()
 
             Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .font(.system(size: 16, weight: .bold, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(SpendyColors.textTertiary)
         }

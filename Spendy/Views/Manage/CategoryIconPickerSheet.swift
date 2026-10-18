@@ -372,7 +372,7 @@ struct CategoryIconPickerSheet: View {
                     .shadow(color: isSelected ? SpendyColors.primaryBlue.opacity(0.35) : Color.black.opacity(0.06), radius: 5, x: 0, y: 0)
                 
                 Text("Aa")
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .font(.system(size: 19, weight: .bold, design: .default))
                     .foregroundStyle(
                         isSelected
                             ? SpendyColors.inverseText

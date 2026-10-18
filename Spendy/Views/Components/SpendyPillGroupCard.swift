@@ -283,7 +283,7 @@ struct SpendyPillRow: View {
                 // Trailing Optional Value
                 if let trailingValue = item.trailingValue, !trailingValue.isEmpty {
                     Text(trailingValue)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .default))
                         .foregroundStyle(item.trailingValueColor ?? SpendyColors.textPrimary)
                         .monospacedDigit()
                         .lineLimit(1)

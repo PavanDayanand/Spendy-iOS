@@ -49,7 +49,7 @@ struct AnalyticsOverviewSection: View {
                         Spacer()
                         
                         Text(row.value)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold, design: .default))
                             .monospacedDigit()
                             .foregroundStyle(row.valueColor)
                     }

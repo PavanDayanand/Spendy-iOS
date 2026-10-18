@@ -204,7 +204,7 @@ struct TransactionDetailSheet: View {
             }
             
             Text(formattedAmountText)
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(.system(size: 38, weight: .bold, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(SpendyColors.textPrimary)
                 .contentTransition(.numericText())

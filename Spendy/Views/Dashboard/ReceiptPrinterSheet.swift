@@ -169,12 +169,12 @@ struct ReceiptPrinterSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 
                 Text("SPENDY EXPENSE REPORT")
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .font(.system(size: 14, weight: .black, design: .default))
                     .foregroundStyle(.black)
                     .tracking(1.0)
                 
                 Text(monthTitle.uppercased())
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold, design: .default))
                     .foregroundStyle(.black.opacity(0.6))
             }
             .padding(.top, 12)
@@ -195,7 +195,7 @@ struct ReceiptPrinterSheet: View {
             // Category Breakdown Table
             if categoryTotals.isEmpty {
                 Text("NO EXPENSES LOGGED")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold, design: .default))
                     .foregroundStyle(.black.opacity(0.40))
                     .padding(.vertical, 8)
             } else {
@@ -222,7 +222,7 @@ struct ReceiptPrinterSheet: View {
                 }
                 
                 Text("THANK YOU FOR USING SPENDY")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.system(size: 9, weight: .black, design: .default))
                     .tracking(1.5)
                     .foregroundStyle(.black.opacity(0.50))
             }
@@ -246,13 +246,13 @@ struct ReceiptPrinterSheet: View {
     private func receiptRow(label: String, value: String, isBold: Bool = false) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: isBold ? 13 : 11, weight: isBold ? .black : .semibold, design: .monospaced))
+                .font(.system(size: isBold ? 13 : 11, weight: isBold ? .black : .semibold, design: .default))
                 .foregroundStyle(.black.opacity(isBold ? 1.0 : 0.70))
             
             Spacer()
             
             Text(value)
-                .font(.system(size: isBold ? 13 : 11, weight: isBold ? .black : .bold, design: .monospaced))
+                .font(.system(size: isBold ? 13 : 11, weight: isBold ? .black : .bold, design: .default))
                 .foregroundStyle(.black)
         }
     }

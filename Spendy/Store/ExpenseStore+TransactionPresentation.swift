@@ -38,7 +38,8 @@ extension ExpenseStore {
         case .cash: "Cash"
         case .bank: "Bank"
         case .savings: "Savings"
-        case .amazonPay: "Wallet"
+        case .amazonPay, .digitalWallet: "Wallet"
+        case .other: "Account"
         }
     }
 }

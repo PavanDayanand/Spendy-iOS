@@ -66,7 +66,7 @@ struct SharedInsightCard<MiddleContent: View>: View {
                     if let tagText = tagText, !tagText.isEmpty {
                         let effectiveTagColor = SpendyColors.isMonoMode ? SpendyColors.textPrimary : (tagColor ?? color)
                         Text(tagText)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .font(.system(size: 10, weight: .bold, design: .default))
                             .foregroundStyle(effectiveTagColor)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)

@@ -76,25 +76,16 @@ struct EditBudgetSheet: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                headerBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 16)
-                
-                amountHero
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                dockCard
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 0)
-                    .ignoresSafeArea(.container, edges: .bottom)
-            }
+        SpendyAmountEntrySheet {
+            headerBar
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 16)
+        } content: {
+            amountHero
+        } dock: {
+            dockCard
         }
-        .presentationDetents([.fraction(0.85), .large])
-        .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
@@ -105,16 +96,9 @@ struct EditBudgetSheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .onChange(of: selectedPeriod) { oldValue, newValue in
-            if newValue == .weekly {
-                selectedStartDay = 2 // Default to Monday
-            } else {
-                selectedStartDay = 1 // Default to 1st of month
-            }
-        }
         .onAppear {
             if isEditing && store.budget.isActive {
-                amountString = String(format: "%.0f", store.budget.amount)
+                amountString = String(format: store.budget.amount.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", store.budget.amount)
                 selectedPeriod = store.budget.period
                 selectedStartDay = store.budget.startDay
             } else {
@@ -164,12 +148,12 @@ struct EditBudgetSheet: View {
             
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(store.currencySymbol)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .font(.system(size: 38, weight: .bold, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .fixedSize()
                 
                 Text(amountString)
-                    .spendyNumberFont(size: 72, weight: .heavy, tracking: -1.2)
+                    .spendyNumberFont(size: 72, weight: .bold, tracking: -1.2)
                     .foregroundStyle(SpendyColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
@@ -182,7 +166,7 @@ struct EditBudgetSheet: View {
             
             if currentAmountValue > 0 {
                 Text(selectedPeriod == .weekly ? "weekly limit" : "monthly limit")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 15, weight: .medium, design: .default))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .textCase(.lowercase)
             }
@@ -194,7 +178,7 @@ struct EditBudgetSheet: View {
     private var dockCard: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                SpendyBudgetPeriodToggle(selection: $selectedPeriod)
+                SpendyBudgetPeriodToggle(selection: periodSelection)
                 
                 Spacer(minLength: 0)
                 
@@ -212,14 +196,12 @@ struct EditBudgetSheet: View {
                 
                 Button(action: handleSave) {
                     Text("Save")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(currentAmountValue > 0 ? Color.black : SpendyColors.textTertiary)
+                        .font(.system(size: 16, weight: .bold, design: .default))
+                        .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                         .padding(.horizontal, 32)
                         .frame(height: 44)
-                        .background {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(currentAmountValue > 0 ? Color.white : SpendyColors.cardBackgroundSecondary)
-                        }
+                        .nativeLiquidGlass(cornerRadius: 14, isInteractive: true,
+                            tint: currentAmountValue > 0 ? SpendyColors.elevatedControlFill : nil)
                 }
                 .buttonStyle(KeypadPressStyle())
                 .disabled(currentAmountValue <= 0)
@@ -227,29 +209,17 @@ struct EditBudgetSheet: View {
             }
             .padding(.top, 8)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, 22)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color(hex: "#141416").opacity(0.88))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.04)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.8
-                        )
-                }
-        }
+        .spendyAmountEntryDock()
     }
-    
+
+    private var periodSelection: Binding<BudgetPeriod> {
+        Binding(get: { selectedPeriod }, set: { period in
+            guard period != selectedPeriod else { return }
+            selectedPeriod = period
+            selectedStartDay = period == .weekly ? 2 : 1
+        })
+    }
+
     private var startDayMenu: some View {
         Menu {
             if selectedPeriod == .weekly {
@@ -292,20 +262,13 @@ struct EditBudgetSheet: View {
             .foregroundStyle(SpendyColors.textPrimary)
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(hex: "#1C1C1E"))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 0.8)
-                    }
-            }
+            .nativeLiquidGlass(cornerRadius: 14, isInteractive: true)
         }
         .accessibilityLabel("Starts \(startDayLabel)")
     }
     
     private func handleSave() {
-        guard let amt = Double(amountString), amt > 0 else { return }
+        guard let amt = Double(amountString), amt.isFinite, amt > 0 else { return }
         HapticsManager.shared.trigger(.success)
         store.setBudget(
             amount: amt,

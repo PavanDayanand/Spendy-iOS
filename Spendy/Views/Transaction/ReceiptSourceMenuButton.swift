@@ -6,6 +6,7 @@ struct ReceiptSourceMenuButton: UIViewRepresentable {
     enum Source { case paste, photos, camera }
 
     var usesDockStyle: Bool = false
+    var usesGlassBackground: Bool = false
     var needsIntroduction: Bool
     var presentationRequest: Int
     var onIntroduction: () -> Void
@@ -31,8 +32,8 @@ struct ReceiptSourceMenuButton: UIViewRepresentable {
     func updateUIView(_ button: UIButton, context: Context) {
         context.coordinator.parent = self
         button.tintColor = UIColor(SpendyColors.textPrimary)
-        button.backgroundColor = usesDockStyle ? .clear : UIColor(SpendyColors.transactionKeySurface)
-        button.layer.borderWidth = usesDockStyle ? 0 : 0.8
+        button.backgroundColor = usesDockStyle || usesGlassBackground ? .clear : UIColor(SpendyColors.transactionKeySurface)
+        button.layer.borderWidth = usesDockStyle || usesGlassBackground ? 0 : 0.8
         button.layer.borderColor = UIColor(SpendyColors.separator).resolvedColor(with: button.traitCollection).cgColor
         button.menu = needsIntroduction ? nil : UIMenu(children: [
             action("Paste image", symbol: "doc.on.clipboard", source: .paste),
