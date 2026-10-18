@@ -5,7 +5,7 @@
 //  Modal Drawer Sheet for Adding & Editing Financial Accounts
 //  Features:
 //  - Clean capsule rows (Account Name, Type, Tappable Balance)
-//  - Dedicated Bottom Sheet Numeric Keypad Drawer for Balance Entry with live commas & currency icon
+//  - Inline balance entry with the native decimal keyboard
 //  - Apple HIG compliant 44pt+ touch targets and haptic feedback
 //
 
@@ -14,6 +14,7 @@ import SwiftUI
 struct AddAccountSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var accountToEdit: Account? = nil
@@ -25,7 +26,8 @@ struct AddAccountSheet: View {
     @State private var selectedType: AccountType = .bank
     
     @State private var showIconPickerSheet: Bool = false
-    @State private var showBalanceKeypadSheet: Bool = false
+    @FocusState private var isBalanceFocused: Bool
+    @State private var balanceDraft = ""
     @State private var showDeleteConfirm: Bool = false
     @State private var showDiscardConfirm: Bool = false
     
@@ -48,10 +50,6 @@ struct AddAccountSheet: View {
                    selectedSymbol != SFIcons.bankAccount ||
                    selectedType != .bank
         }
-    }
-    
-    private var formattedBalanceDisplay: String {
-        openingBalanceString.formattedNumberStringWithCommas()
     }
     
     init(accountToEdit: Account? = nil) {
@@ -158,26 +156,26 @@ struct AddAccountSheet: View {
                             
                             SpendyCreateFormDivider()
                             
-                            Button {
-                                HapticsManager.shared.trigger(.selection)
-                                showBalanceKeypadSheet = true
-                            } label: {
-                                SpendyCreateFormRow {
-                                    Text("Balance")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundStyle(SpendyColors.textPrimary)
-                                } trailing: {
-                                    HStack(spacing: 6) {
-                                        Text("\(store.currencySymbol)\(formattedBalanceDisplay)")
-                                            .font(.system(size: 16, weight: .semibold).monospacedDigit())
-                                            .foregroundStyle(SpendyColors.textPrimary)
-                                        Image(systemName: SFIcons.chevronRight)
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(SpendyColors.textTertiary)
-                                    }
+                            SpendyCreateFormRow {
+                                Text("Balance")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textPrimary)
+                            } trailing: {
+                                HStack(spacing: 4) {
+                                    Text(store.currencySymbol)
+                                    TextField("0", text: $balanceDraft)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .focused($isBalanceFocused)
+                                        .accessibilityLabel("Balance")
+                                        .accessibilityIdentifier("account-balance-input")
+                                        .fixedSize(horizontal: true, vertical: false)
                                 }
+                                .font(.system(size: 16, weight: .semibold).monospacedDigit())
+                                .foregroundStyle(SpendyColors.textPrimary)
                             }
-                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            .onTapGesture { isBalanceFocused = true }
                         }
                         
                     }
@@ -207,11 +205,22 @@ struct AddAccountSheet: View {
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)
         }
-        .sheet(isPresented: $showBalanceKeypadSheet) {
-            AccountBalanceInputSheet(
-                amountString: $openingBalanceString,
-                currencySymbol: store.currencySymbol
-            )
+        .onAppear { formatBalanceDraft() }
+        .onChange(of: isBalanceFocused) { _, focused in
+            if focused {
+                balanceDraft = openingBalanceString == "0" ? "" : openingBalanceString
+                    .replacingOccurrences(of: ".", with: locale.decimalSeparator ?? ".")
+            } else {
+                formatBalanceDraft()
+            }
+        }
+        .onChange(of: balanceDraft) { oldValue, newValue in
+            guard isBalanceFocused else { return }
+            guard let normalized = AccountBalanceEntry.normalized(newValue, locale: locale) else {
+                balanceDraft = oldValue
+                return
+            }
+            openingBalanceString = normalized.isEmpty ? "0" : normalized
         }
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
@@ -256,10 +265,17 @@ struct AddAccountSheet: View {
         }
     }
     
+    private func formatBalanceDraft() {
+        balanceDraft = (Double(openingBalanceString) ?? 0).formatted(
+            .number.precision(.fractionLength(0...2)).locale(locale)
+        )
+    }
+
     private func saveAccount() {
         let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBalance = openingBalanceString.replacingOccurrences(of: ",", with: "")
         let parsedBalance = Double(cleanBalance) ?? 0.0
+        guard parsedBalance.isFinite else { return }
         
         if isEditing, let acc = accountToEdit {
             var updated = acc
@@ -289,100 +305,4 @@ struct AddAccountSheet: View {
         dismiss()
     }
     
-}
-
-// MARK: - Dedicated Account Balance Numeric Keypad Sheet Drawer
-struct AccountBalanceInputSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var amountString: String
-    var currencySymbol: String
-    
-    @Namespace private var balanceNamespace
-    
-    private var displayAmount: String {
-        amountString.formattedNumberStringWithCommas()
-    }
-    
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                // Shared 44pt Liquid Glass Header Bar (Exact match to Currency & Icon pickers)
-                SpendyGlassEffectContainer(spacing: 0) {
-                    ZStack {
-                        Text("Account Balance")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                            .padding(.horizontal, 60)
-                        
-                        HStack {
-                            GlassCircleButton(
-                                icon: "xmark",
-                                size: 44,
-                                iconSize: 14,
-                                foregroundColor: SpendyColors.textPrimary,
-                                haptic: .selection,
-                                accessibilityLabel: "Close",
-                                morphID: "closeBalanceSheetButton",
-                                namespace: balanceNamespace
-                            ) {
-                                dismiss()
-                            }
-                            
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
-                
-                // Hero Display: Currency Symbol & Large Dynamic Amount with Commas
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(currencySymbol)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    Text(displayAmount)
-                        .font(.system(size: 40, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.55)
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 10)
-                
-                // Tactile 3x4 Keypad with Currency Converter Match Keys
-                SpendyKeypad(
-                    amountString: $amountString,
-                    maxDigits: 10,
-                    maxDecimals: 2,
-                    buttonBackgroundColor: SpendyColors.separator
-                )
-                .padding(.horizontal, 20)
-                .padding(.bottom, 14)
-                
-                // Done Button (Apple Primary Blue with crisp contrast)
-                Button(action: {
-                    HapticsManager.shared.trigger(.success)
-                    dismiss()
-                }) {
-                    Text("Done")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(SpendyColors.primaryBlue, in: Capsule())
-                        .shadow(color: SpendyColors.primaryBlue.opacity(0.25), radius: 8, y: 3)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-            }
-        }
-        .presentationDetents([.height(470)])
-        .presentationDragIndicator(.visible)
-    }
 }
