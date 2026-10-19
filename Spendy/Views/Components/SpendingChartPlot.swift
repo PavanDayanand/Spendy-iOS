@@ -77,6 +77,16 @@ struct SpendingChartPlot: View {
         // available through selection and the accessible chart descriptor.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityChartDescriptor(SpendingChartAccessibility(buckets: buckets, currencySymbol: currencySymbol, transactionType: transactionType))
+        .chartOverlay { proxy in
+            if selectedID != nil {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedID = nil
+                        HapticsManager.shared.trigger(.selection)
+                    }
+            }
+        }
         .frame(height: height)
         .accessibilityIdentifier("spending-chart")
         .onChange(of: selectedID) { old, new in
