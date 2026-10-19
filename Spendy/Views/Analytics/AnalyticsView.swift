@@ -58,32 +58,62 @@ struct AnalyticsBreakdownItem: Identifiable {
     let percentage: Double
 }
 
-private struct SpendingDay: Identifiable {
+private struct RecordedDay: Identifiable {
     let date: Date
-    let amount: Double?
+    /// Nil means outside the recorded history or an unfinished day with no entry.
+    let hasExpense: Bool?
     var id: Date { date }
+}
+
+private struct ComparisonInterval: Identifiable {
+    let index: Int
+    let label: String
+    let current: Double
+    let previous: Double
+    var id: Int { index }
+    var difference: Double { current - previous }
+}
+
+private enum AnalyticsTonalColors {
+    static let outer = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 15.0 / 255.0, alpha: 1)
+            : .white
+    })
+
+    static let inset = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 25.0 / 255.0, alpha: 1)
+            : UIColor(red: 245.0 / 255.0, green: 246.0 / 255.0, blue: 248.0 / 255.0, alpha: 1)
+    })
+
+    static let outline = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? .clear
+            : UIColor(white: 0, alpha: 0.10)
+    })
 }
 
 private struct AnalyticsPanelStyle: ViewModifier {
     var verticalPadding: CGFloat = 20
+    var horizontalPadding: CGFloat = 20
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 20)
+            .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
+                    .fill(AnalyticsTonalColors.outer)
                     .overlay {
                         RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
+                            .strokeBorder(AnalyticsTonalColors.outline, lineWidth: 0.5)
                     }
             }
     }
 }
 
 struct AnalyticsView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     var selectedTab: Binding<AppTab>? = nil
@@ -96,6 +126,7 @@ struct AnalyticsView: View {
     var initialDate: Date? = nil
     @State private var appliedInitialScope = false
     @State private var selectedSpendingBucketID: String?
+    @State private var selectedComparisonInterval: String?
     @State private var showsDirectInsights = false
     @State private var showsSpendingBreakdown = false
     @State private var pendingSpendingInsight: InsightDestination?
@@ -127,7 +158,6 @@ struct AnalyticsView: View {
     @State private var selectedIncomeLabel: String? = nil
     @State private var selectedCategorySectorId: String? = nil
     @State private var selectedIncomeSectorId: String? = nil
-    @State private var selectedNoSpendDate: Date? = nil
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var isBreakdownExpanded = false
     @State private var selectedAccountForSheet: Account? = nil
@@ -167,9 +197,7 @@ struct AnalyticsView: View {
             
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                    if sharedNavigationHeader != nil && (topControlsNamespace != nil || onDismiss != nil) {
-                        Color.clear.frame(height: 48).accessibilityHidden(true)
-                    } else {
+                    if sharedNavigationHeader == nil || (topControlsNamespace == nil && onDismiss == nil) {
                         headerBar
                             .padding(.horizontal, 20)
                             .padding(.top, topControlsNamespace != nil ? 4 : 10)
@@ -177,9 +205,11 @@ struct AnalyticsView: View {
 
                     Section {
                         VStack(spacing: 16) {
-                            spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 12))
+                            spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
                             spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
-                            if !isIncome { noSpendDaysSection }
+                            analyticsKPIGrid
+                            periodComparisonCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
+                            if !isIncome { recordedDaysSection }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
@@ -193,6 +223,13 @@ struct AnalyticsView: View {
                 }
                 .padding(.bottom, 140)
             }
+            .safeAreaBar(edge: .top, spacing: 0) {
+                if sharedNavigationHeader != nil && (topControlsNamespace != nil || onDismiss != nil) {
+                    // The persistent header remains in its parent overlay during navigation.
+                    Color.clear.frame(height: 66).accessibilityHidden(true)
+                }
+            }
+            .scrollEdgeEffectStyle(.soft, for: .top)
         }
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $showAddTransaction) {
@@ -352,30 +389,35 @@ struct AnalyticsView: View {
         let snapshot = spendingSnapshot
         let selected = snapshot.buckets.first { $0.id == selectedSpendingBucketID }
         return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(selected.map { spendingPeriodLabel(snapshot, selected: $0) } ?? (isIncome ? "Income" : "Spending"))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                Spacer(minLength: 4)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(selected.map { spendingPeriodLabel(snapshot, selected: $0) } ?? (isIncome ? "Income" : "Spending"))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Spacer(minLength: 4)
+                }
+                Text((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .font(.largeTitle.bold().monospacedDigit())
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .accessibilityIdentifier("analytics-spending-total")
+                    .accessibilityValue((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                if !snapshot.transactions.isEmpty {
+                    SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
+                                      selectedID: $selectedSpendingBucketID, height: 140, transactionType: snapshot.transactionType)
+                        .padding(.top, 8)
+                } else {
+                    SpendyPlainEmptyState(
+                        title: isIncome ? "No income yet" : "No spending yet",
+                        message: isIncome ? "Income for this period will appear here." : "Spending for this period will appear here.",
+                        compact: true
+                    )
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AnalyticsTonalColors.inset, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
 
-            }
-            Text((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.largeTitle.bold().monospacedDigit())
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1).minimumScaleFactor(0.5)
-                .accessibilityIdentifier("analytics-spending-total")
-                .accessibilityValue((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-            if !snapshot.transactions.isEmpty {
-                SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
-                                  selectedID: $selectedSpendingBucketID, height: 140, transactionType: snapshot.transactionType)
-                    .padding(.top, 8)
-            } else {
-                SpendyPlainEmptyState(
-                    title: isIncome ? "No income yet" : "No spending yet",
-                    message: isIncome ? "Income for this period will appear here." : "Spending for this period will appear here.",
-                    compact: true
-                )
-            }
             if store.insightsEnabled && !isIncome && !snapshot.transactions.isEmpty {
                 Button { showsDirectInsights = true } label: {
                     HStack(spacing: 10) {
@@ -398,6 +440,7 @@ struct AnalyticsView: View {
                 .accessibilityValue(analyticsInsights.first?.headline ?? "Explore your recorded spending")
                 .accessibilityIdentifier("open-spendy-insights")
                 .padding(.top, 4)
+                .padding(.horizontal, 10)
             }
 
         }
@@ -417,135 +460,345 @@ struct AnalyticsView: View {
         return "\(start) – \(end)" + (snapshot.isInProgress ? " · To date" : "")
     }
 
-    private var noSpendDaysSection: some View {
-        let days = monthSpendingDays
-        let cells = calendarCells(for: days)
-        let tracked = days.compactMap(\.amount)
-        let noSpendCount = tracked.filter { $0 == 0 }.count
-        let bestRun = longestNoSpendRun(in: days)
-        let selectedDay = days.first { day in
-            selectedNoSpendDate.map { calendar.isDate(day.date, inSameDayAs: $0) } ?? false
+    private var analyticsKPIGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+            analyticsKPI(
+                title: averageMetricTitle,
+                icon: "calendar.day.timeline.left",
+                value: averageMetricValue.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
+                detail: averageComparisonDetail,
+                identifier: "analytics-average-kpi"
+            )
+            analyticsKPI(
+                title: "Transactions",
+                icon: "arrow.left.arrow.right",
+                value: "\(spendingSnapshot.transactions.count)",
+                detail: transactionFrequencyDetail,
+                identifier: "analytics-transactions-kpi"
+            )
+            analyticsKPI(
+                title: isIncome ? "Largest income" : "Largest spend",
+                icon: isIncome ? "arrow.down.left" : "arrow.up.right",
+                value: largestTransaction?.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0) ?? "—",
+                detail: largestTransaction?.title ?? "No records yet",
+                identifier: "analytics-largest-kpi"
+            )
+            analyticsKPI(
+                title: groupingMode == .categories ? "Top category" : "Top account",
+                icon: groupingMode == .categories ? "square.grid.2x2" : "building.columns",
+                value: leadingBreakdownItem.map { "\($0.percentage.formatted(.number.precision(.fractionLength(0))))%" } ?? "—",
+                detail: leadingBreakdownItem?.label ?? "No records yet",
+                identifier: "analytics-leading-kpi"
+            )
         }
+    }
 
-        return VStack(alignment: .leading, spacing: 18) {
+    private func analyticsKPI(
+        title: String,
+        icon: String,
+        value: String,
+        detail: String,
+        identifier: String
+    ) -> some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SpendyColors.textTertiary)
+                        .accessibilityHidden(true)
+                }
+                Spacer(minLength: 0)
+                Text(value)
+                    .spendyNumberFont(size: 29, weight: .semibold, tracking: -0.7)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.52)
+            }
+            .padding(13)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background(AnalyticsTonalColors.inset, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            HStack(spacing: 0) {
+                Text(detail)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 37, alignment: .leading)
+        }
+        .padding(5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .aspectRatio(1, contentMode: .fit)
+        .background(AnalyticsTonalColors.outer, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(AnalyticsTonalColors.outline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue("\(value), \(detail)")
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var periodComparisonCard: some View {
+        let snapshot = spendingSnapshot
+        let intervals = comparisonIntervals
+        let highlighted = intervals.first(where: { $0.label == selectedComparisonInterval })
+            ?? intervals.max(by: { abs($0.difference) < abs($1.difference) })
+        let maximum = max(intervals.map { max($0.current, $0.previous) }.max() ?? 0, 1)
+        let activeIntervals = intervals.filter { $0.current > 0 || $0.previous > 0 }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isIncome ? "Income compared" : "Spending compared")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                if snapshot.hasBaselineRecords && !snapshot.isFuture {
+                    Text(comparisonHeadline)
+                        .font(.title3.bold())
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    Text(comparisonDifferenceText)
+                        .font(.caption)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if snapshot.isFuture {
+                SpendyPlainEmptyState(
+                    title: "This period hasn't started",
+                    message: "The comparison will appear when you have activity in this period.",
+                    compact: true
+                )
+            } else if snapshot.hasBaselineRecords {
+                VStack(alignment: .leading, spacing: 12) {
+                    if activeIntervals.count > 1 {
+                        HStack(spacing: 16) {
+                            comparisonKey(comparisonPeriodLabel(snapshot.start, period: snapshot.period), opacity: 1)
+                            comparisonKey(comparisonPeriodLabel(snapshot.baselineStart, period: snapshot.period), opacity: 0.35)
+                        }
+
+                        Chart(intervals) { interval in
+                            BarMark(
+                                x: .value("Interval", interval.label),
+                                y: .value("This period", interval.current)
+                            )
+                            .position(by: .value("Period", "This"))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4))
+                            .accessibilityLabel("\(interval.label), this \(snapshot.period.rawValue)")
+                            .accessibilityValue(interval.current.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+
+                            BarMark(
+                                x: .value("Interval", interval.label),
+                                y: .value("Last period", interval.previous)
+                            )
+                            .position(by: .value("Period", "Last"))
+                            .foregroundStyle(SpendyColors.textPrimary.opacity(0.35))
+                            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4))
+                            .accessibilityLabel("\(interval.label), last \(snapshot.period.rawValue)")
+                            .accessibilityValue(interval.previous.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                        }
+                        .chartLegend(.hidden)
+                        .chartXSelection(value: $selectedComparisonInterval)
+                        .chartYScale(domain: 0...(maximum * 1.15))
+                        .chartXAxis {
+                            AxisMarks { _ in
+                                AxisValueLabel()
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(SpendyColors.textTertiary)
+                            }
+                        }
+                        .chartYAxis {
+                            AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 4]))
+                                    .foregroundStyle(SpendyColors.separator)
+                                AxisValueLabel {
+                                    if let amount = value.as(Double.self) {
+                                        Text(formatAxisAmount(amount))
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(height: 140)
+                    } else if let highlighted {
+                        Text("Activity in \(comparisonIntervalName(highlighted))")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(SpendyColors.textSecondary)
+                        HStack(spacing: 12) {
+                            comparisonAmount(snapshot.start, snapshot.period, amount: highlighted.current)
+                            comparisonAmount(snapshot.baselineStart, snapshot.period, amount: highlighted.previous)
+                        }
+                    }
+
+                    if activeIntervals.count > 1, let highlighted {
+                        Rectangle()
+                            .fill(SpendyColors.separator)
+                            .frame(height: 0.5)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(comparisonIntervalCaption(highlighted))
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                            Spacer(minLength: 4)
+                            Text(comparisonIntervalChange(highlighted))
+                                .font(.caption.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(SpendyColors.textPrimary)
+                        }
+                    }
+                }
+            } else {
+                SpendyPlainEmptyState(
+                    title: "No previous period yet",
+                    message: "Once you have records in two periods, you'll see how they compare.",
+                    compact: true
+                )
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AnalyticsTonalColors.inset, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("analytics-period-comparison")
+    }
+
+    private func comparisonKey(_ label: String, opacity: Double) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SpendyColors.textPrimary.opacity(opacity))
+                .frame(width: 11, height: 11)
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+        }
+    }
+
+    private func comparisonAmount(_ start: Date, _ period: SpendingChartPeriod, amount: Double) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(comparisonPeriodLabel(start, period: period))
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+            Text(amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .font(.title3.weight(.semibold).monospacedDigit())
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var recordedDaysSection: some View {
+        let days = streakHeatmapDays
+        let weeks = stride(from: 0, to: days.count, by: 6).map { start in
+            Array(days[start..<min(start + 6, days.count)])
+        }
+        let tracked = days.compactMap(\.hasExpense)
+        let recordedCount = tracked.filter { $0 }.count
+        let bestRun = longestRecordedRun(in: days)
+
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("No-spend streak")
+                    Text("Recorded activity")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(SpendyColors.textSecondary)
-                    Text(selectedDate.formatted(.dateTime.month(.wide).year()))
-                        .font(.system(size: 20, weight: .bold))
+                    Text("Date streak")
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(SpendyColors.textPrimary)
                 }
                 Spacer()
+                if !tracked.isEmpty {
+                    HStack(spacing: 14) {
+                        compactStreakMetric(value: bestRun, label: "best")
+                        compactStreakMetric(value: recordedCount, label: "days")
+                    }
+                }
             }
 
             if tracked.isEmpty {
                 SpendyPlainEmptyState(
-                    title: "No days to track yet",
-                    message: "Your no-spend streak will appear here.",
+                    title: "No activity to track yet",
+                    message: "Your recorded spending days will appear here.",
                     compact: true
                 )
             } else {
-                HStack(alignment: .firstTextBaseline, spacing: 20) {
-                    streakMetric(title: "Best run", value: "\(bestRun)", unit: bestRun == 1 ? "day" : "days")
-                    streakMetric(title: "No-spend days", value: "\(noSpendCount)", unit: "of \(tracked.count)")
-                    Spacer()
-                }
-            }
-
-                HStack(spacing: 0) {
-                    ForEach(["M", "T", "W", "T", "F", "S", "S"].indices, id: \.self) { index in
-                        Text(["M", "T", "W", "T", "F", "S", "S"][index])
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 8) {
-                    ForEach(cells.indices, id: \.self) { index in
-                        if let day = cells[index] {
-                            Button {
-                                selectedNoSpendDate = day.date
-                                HapticsManager.shared.trigger(.selection)
-                            } label: {
-                                calendarDayMark(day, isSelected: selectedDay?.id == day.id)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted)), \(day.amount.map { $0 == 0 ? "no recorded spending" : "spent \($0.formattedCurrency(symbol: store.currencySymbol, decimals: 0))" } ?? (day.date >= calendar.startOfDay(for: Date()) ? "not completed" : "before tracking"))")
-                        } else {
-                            Color.clear.frame(height: 44)
+                HStack(alignment: .top, spacing: 7) {
+                    VStack(spacing: 4) {
+                        let weekdayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                        ForEach(weekdayLabels.indices, id: \.self) { index in
+                            Text(weekdayLabels[index])
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(SpendyColors.textTertiary)
+                                .frame(width: 60, height: 12, alignment: .leading)
                         }
                     }
-                }
-
-                if let selectedDay {
-                    HStack {
-                        Text(selectedDay.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                        Spacer()
-                        Text(selectedDay.amount.map { $0 == 0 ? "No recorded spending" : $0.formattedCurrency(symbol: store.currencySymbol, decimals: 0) } ?? (selectedDay.date >= calendar.startOfDay(for: Date()) ? "Not completed" : "Before tracking"))
-                            .foregroundStyle(SpendyColors.textPrimary)
+                    HStack(spacing: 3) {
+                        ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                            VStack(spacing: 4) {
+                                ForEach(week) { day in
+                                    streakHeatmapMark(day)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
                     }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                } else {
-                    Text("Tap a date to inspect recorded spending.")
-                        .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Filled date · no recorded spending", systemImage: "square.fill")
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Filled date · no recorded spending")
-                    .accessibilityIdentifier("streak-legend-no-spending")
-                Label("Outlined date · spending recorded", systemImage: "square")
-                Label("Plain date · incomplete or before tracking", systemImage: "calendar")
-            }
-            .font(.caption).foregroundStyle(SpendyColors.textSecondary)
-            Text("Completed days since your first expense. Missing entries do not prove a no-spend day.")
-                .font(.caption).foregroundStyle(SpendyColors.textTertiary)
-        }
-        .accessibilityIdentifier("no-spend-calendar")
-        .modifier(AnalyticsPanelStyle())
-    }
 
-    private func streakMetric(title: String, value: String, unit: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 12))
+                Text(streakDateRange(days))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(SpendyColors.textTertiary)
+
+                HStack(spacing: 16) {
+                    Label("Recorded expense", systemImage: "square.fill")
+                        .accessibilityIdentifier("streak-legend-recorded")
+                    Label("No entry", systemImage: "square")
+                }
+                .font(.caption)
                 .foregroundStyle(SpendyColors.textSecondary)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .spendyNumberFont(size: 27, weight: .bold, tracking: -0.5)
-                    .foregroundStyle(SpendyColors.textPrimary)
-                Text(unit)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
             }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Recorded expense date streak, Monday through Saturday")
+        .accessibilityValue("Best run \(bestRun) \(bestRun == 1 ? "day" : "days"). \(recordedCount) recorded \(recordedCount == 1 ? "day" : "days") out of \(tracked.count) tracked days.")
+        .accessibilityIdentifier("expense-date-streak")
+        .modifier(AnalyticsPanelStyle(verticalPadding: 12))
+    }
+
+    private func compactStreakMetric(value: Int, label: String) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text("\(value)")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(SpendyColors.textPrimary)
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(SpendyColors.textTertiary)
         }
     }
 
-    private func calendarDayMark(_ day: SpendingDay, isSelected: Bool) -> some View {
-        let isNoSpend = day.amount == 0
-        return Text(day.date.formatted(.dateTime.day()))
-            .font(.caption.weight(day.amount == nil ? .regular : .semibold)).monospacedDigit()
-            .foregroundStyle(isNoSpend ? SpendyColors.appBackground : (day.amount == nil ? SpendyColors.textTertiary : SpendyColors.textPrimary))
-            .frame(maxWidth: .infinity).frame(height: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(isNoSpend ? SpendyColors.textPrimary : Color.clear)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(day.amount != nil && !isNoSpend ? SpendyColors.textSecondary : Color.clear, lineWidth: 1)
-                    }
-                    .padding(4)
-            }
+    private func streakHeatmapMark(_ day: RecordedDay) -> some View {
+        let isRecorded = day.hasExpense == true
+        return RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(isRecorded ? SpendyColors.textPrimary : (day.hasExpense == nil ? SpendyColors.separator.opacity(0.55) : SpendyColors.cardBackground))
             .overlay {
-                RoundedRectangle(cornerRadius: 11)
-                    .stroke(isSelected ? SpendyColors.textPrimary : Color.clear, lineWidth: 2)
-                    .padding(1)
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .stroke(day.hasExpense == false ? SpendyColors.textTertiary : Color.clear, lineWidth: 0.8)
             }
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity)
+            .frame(height: 12)
     }
 
     private var spendingMixSection: some View {
@@ -559,7 +812,6 @@ struct AnalyticsView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
-
             }
 
             if items.isEmpty {
@@ -607,8 +859,6 @@ struct AnalyticsView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("expand-spending-breakdown")
             }
-
-
         }
     }
 
@@ -1732,40 +1982,52 @@ struct AnalyticsView: View {
         }
     }
 
-    /// A month calendar; days before the first expense and today/future days remain untracked.
-    private var monthSpendingDays: [SpendingDay] {
-        let start = selectedDate.startOfMonth
-        let count = calendar.range(of: .day, in: .month, for: start)?.count ?? 30
-        let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
-        let expenses = store.filteredTransactions(for: selectedAccountId).filter { $0.type == .expense }
-        let firstTrackedDay = expenses.map(\.date).min().map { calendar.startOfDay(for: $0) }
-        let today = calendar.startOfDay(for: Date())
-        let amounts = Dictionary(grouping: expenses.filter { $0.date >= start && $0.date < end }) {
-            calendar.startOfDay(for: $0.date)
-        }.mapValues { transactions in
-            transactions.reduce(0.0) { $0 + $1.amount }
+    /// Sixteen Monday–Saturday weeks, based on transaction dates rather than inferred no-spend days.
+    private var streakHeatmapDays: [RecordedDay] {
+        var mondayCalendar = calendar
+        mondayCalendar.firstWeekday = 2
+        let periodEnd = currentPeriodBounds.end
+        let anchor = min(referenceDate, periodEnd)
+        let weekStart = mondayCalendar.dateInterval(of: .weekOfYear, for: anchor)?.start
+            ?? mondayCalendar.startOfDay(for: anchor)
+        let start = mondayCalendar.date(byAdding: .weekOfYear, value: -15, to: weekStart) ?? weekStart
+        let end = mondayCalendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
+        let expenses = store.filteredTransactions(for: selectedAccountId).filter {
+            $0.type == .expense && $0.date <= referenceDate
         }
+        let firstTrackedDay = expenses.map(\.date).min().map { mondayCalendar.startOfDay(for: $0) }
+        let today = mondayCalendar.startOfDay(for: referenceDate)
+        let recordedDates = Set(expenses.filter { $0.date >= start && $0.date < end }.map {
+            mondayCalendar.startOfDay(for: $0.date)
+        })
 
-        return (0..<count).compactMap { offset in
-            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
-            let isTracked = firstTrackedDay.map { date >= $0 && date < today } ?? false
-            return SpendingDay(date: date, amount: isTracked ? (amounts[date] ?? 0) : nil)
+        return (0..<16).flatMap { weekOffset -> [RecordedDay] in
+            guard let monday = mondayCalendar.date(byAdding: .weekOfYear, value: weekOffset, to: start) else { return [] }
+            return (0..<6).compactMap { dayOffset in
+                guard let date = mondayCalendar.date(byAdding: .day, value: dayOffset, to: monday) else { return nil }
+                let hasExpense: Bool?
+                if recordedDates.contains(date) {
+                    hasExpense = true
+                } else if firstTrackedDay.map({ date >= $0 }) == true && date < today {
+                    hasExpense = false
+                } else {
+                    hasExpense = nil
+                }
+                return RecordedDay(date: date, hasExpense: hasExpense)
+            }
         }
     }
 
-    private func calendarCells(for days: [SpendingDay]) -> [SpendingDay?] {
-        guard let first = days.first else { return [] }
-        let leading = (calendar.component(.weekday, from: first.date) + 5) % 7
-        let filled: [SpendingDay?] = Array(repeating: nil, count: leading) + days.map(Optional.some)
-        let trailing = (7 - filled.count % 7) % 7
-        return filled + Array(repeating: nil, count: trailing)
+    private func streakDateRange(_ days: [RecordedDay]) -> String {
+        guard let first = days.first?.date, let last = days.last?.date else { return "" }
+        return "\(first.formatted(.dateTime.month(.abbreviated).day())) – \(last.formatted(.dateTime.month(.abbreviated).day().year()))"
     }
 
-    private func longestNoSpendRun(in days: [SpendingDay]) -> Int {
+    private func longestRecordedRun(in days: [RecordedDay]) -> Int {
         var current = 0
         var longest = 0
         for day in days {
-            current = day.amount == 0 ? current + 1 : 0
+            current = day.hasExpense == true ? current + 1 : 0
             longest = max(longest, current)
         }
         return longest
@@ -1777,6 +2039,147 @@ struct AnalyticsView: View {
 
     private var totalIncome: Double {
         filteredTransactions.filter { $0.type == .income }.reduce(0.0) { $0 + $1.amount }
+    }
+
+    private var previousPeriodSnapshot: SpendingChartSnapshot {
+        SpendingChartSnapshot(
+            transactions: store.transactions,
+            accountID: selectedAccountId,
+            period: spendingSnapshot.period,
+            anchor: spendingSnapshot.baselineStart,
+            referenceDate: spendingSnapshot.baselineCutoff,
+            transactionType: transactionType
+        )
+    }
+
+    private var comparisonIntervals: [ComparisonInterval] {
+        let previousBuckets = previousPeriodSnapshot.buckets
+        return spendingSnapshot.buckets.enumerated().map { index, bucket in
+            ComparisonInterval(
+                index: index,
+                label: bucket.label,
+                current: bucket.amount,
+                previous: index < previousBuckets.count ? previousBuckets[index].amount : 0
+            )
+        }
+    }
+
+    private func comparisonIntervalCaption(_ interval: ComparisonInterval) -> String {
+        let name = comparisonIntervalName(interval)
+        return selectedComparisonInterval == nil ? "Biggest change · \(name)" : name
+    }
+
+    private func comparisonIntervalName(_ interval: ComparisonInterval) -> String {
+        let prefix: String
+        switch spendingSnapshot.period {
+        case .day: prefix = "\(interval.label)"
+        case .week: prefix = "\(interval.label)"
+        case .month: prefix = "Days \(interval.label)"
+        case .year: prefix = "\(interval.label)"
+        }
+        return prefix
+    }
+
+    private func comparisonIntervalChange(_ interval: ComparisonInterval) -> String {
+        let amount = abs(interval.difference).formattedCurrency(symbol: store.currencySymbol, decimals: 0)
+        if abs(interval.difference) < 0.005 { return isIncome ? "Same income" : "Same spending" }
+        return "\(amount) \(interval.difference < 0 ? "less" : "more")"
+    }
+
+    private func comparisonPeriodLabel(_ start: Date, period: SpendingChartPeriod) -> String {
+        switch period {
+        case .day:
+            start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+        case .week:
+            "Week of \(start.formatted(.dateTime.month(.abbreviated).day()))"
+        case .month:
+            start.formatted(.dateTime.month(.abbreviated).year())
+        case .year:
+            start.formatted(.dateTime.year())
+        }
+    }
+
+    private var averageMetricTitle: String {
+        switch granularity {
+        case .day: isIncome ? "Income / hour" : "Spend / hour"
+        case .week, .month: isIncome ? "Daily income" : "Daily average"
+        case .year: isIncome ? "Monthly income" : "Monthly average"
+        }
+    }
+
+    private var averageMetricDivisor: Int {
+        let snapshot = spendingSnapshot
+        guard !snapshot.isFuture else { return 1 }
+        switch granularity {
+        case .day:
+            let end = min(referenceDate, snapshot.end)
+            return max(1, calendar.dateComponents([.hour], from: snapshot.start, to: end).hour ?? 1)
+        case .week, .month:
+            let end = min(referenceDate, snapshot.end.addingTimeInterval(-1))
+            return max(1, (calendar.dateComponents([.day], from: snapshot.start, to: end).day ?? 0) + 1)
+        case .year:
+            let end = min(referenceDate, snapshot.end.addingTimeInterval(-1))
+            return max(1, (calendar.dateComponents([.month], from: snapshot.start, to: end).month ?? 0) + 1)
+        }
+    }
+
+    private var averageMetricValue: Double {
+        spendingSnapshot.total / Double(averageMetricDivisor)
+    }
+
+    private var averageComparisonDetail: String {
+        guard spendingSnapshot.hasBaselineRecords else { return "Needs a previous period" }
+        let previousAverage = previousPeriodSnapshot.total / Double(averageMetricDivisor)
+        guard previousAverage > 0 else { return averageMetricValue > 0 ? "New activity this period" : "Same as previous" }
+        let percentage = abs((averageMetricValue - previousAverage) / previousAverage) * 100
+        if percentage < 0.5 { return "About the same as previous" }
+        return "\(percentage.formatted(.number.precision(.fractionLength(0))))% \(averageMetricValue > previousAverage ? "above" : "below") previous"
+    }
+
+    private var activeDayCount: Int {
+        Set(spendingSnapshot.transactions.map { calendar.startOfDay(for: $0.date) }).count
+    }
+
+    private var transactionFrequencyDetail: String {
+        activeDayCount == 1 ? "on 1 active day" : "across \(activeDayCount) active days"
+    }
+
+    private var largestTransaction: Transaction? {
+        spendingSnapshot.transactions.max { lhs, rhs in
+            lhs.amount == rhs.amount ? lhs.date < rhs.date : lhs.amount < rhs.amount
+        }
+    }
+
+    private var leadingBreakdownItem: AnalyticsBreakdownItem? {
+        selectedBreakdownItems.first
+    }
+
+    private var comparisonHeadline: String {
+        let snapshot = spendingSnapshot
+        guard snapshot.hasBaselineRecords else { return "No comparison yet" }
+        guard snapshot.baselineTotal > 0 else {
+            return snapshot.total == 0 ? "Same as previous" : "New activity this period"
+        }
+        let percentage = abs((snapshot.total - snapshot.baselineTotal) / snapshot.baselineTotal) * 100
+        if percentage < 0.5 { return "About the same" }
+        return "\(percentage.formatted(.number.precision(.fractionLength(0))))% \(snapshot.total > snapshot.baselineTotal ? "more" : "less")"
+    }
+
+    private var comparisonDifferenceText: String {
+        let snapshot = spendingSnapshot
+        let difference = snapshot.total - snapshot.baselineTotal
+        let previousPeriod: String
+        switch snapshot.period {
+        case .day:
+            previousPeriod = snapshot.isInProgress ? "the same time yesterday" : "the previous day"
+        case .week, .month, .year:
+            previousPeriod = snapshot.isInProgress
+                ? "the same point last \(snapshot.period.rawValue)"
+                : "the previous \(snapshot.period.rawValue)"
+        }
+        if abs(difference) < 0.005 { return "Same amount as \(previousPeriod)" }
+        let amount = abs(difference).formattedCurrency(symbol: store.currencySymbol, decimals: 0)
+        return "\(amount) \(difference < 0 ? "less" : "more") than \(previousPeriod)"
     }
     
     private var savingsRatePercentage: Double {
@@ -2016,7 +2419,6 @@ struct AnalyticsView: View {
         selectedIncomeLabel = nil
         selectedCategorySectorId = nil
         selectedIncomeSectorId = nil
-        selectedNoSpendDate = nil
     }
 }
 
