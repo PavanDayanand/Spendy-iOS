@@ -52,6 +52,7 @@ enum AppTab: String, CaseIterable, Identifiable {
 
 struct GlassTabBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(ExpenseStore.self) private var store
     @Binding var selectedTab: AppTab
     var isExpanded: Bool = true
     var composeNamespace: Namespace.ID? = nil
@@ -122,15 +123,16 @@ struct GlassTabBar: View {
                             Text("Add")
                                 .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .default))
                         }
-                        .foregroundStyle(SpendyColors.elevatedControlForeground)
+                        .foregroundStyle(store.accentPreset.foreground)
                         .padding(.horizontal, compact ? 16 : (isExpanded ? 24 : 18))
                         .frame(height: pillHeight)
                         .contentShape(Capsule())
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
-                    .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
+                    .modifier(HeroSpendLiquidGlassModifier(tint: store.accentPreset.fill))
                     .spendyNavigationSource(AppTransitionIDs.quickAddButton, in: composeNamespace)
                     .accessibilityLabel("Add Transaction")
+                    .accessibilityValue(store.accentPreset.title)
                     .accessibilityAddTraits(.isButton)
                 }
             }
@@ -218,7 +220,7 @@ private struct CircleLiquidGlassModifier: ViewModifier {
 
 // MARK: - Hero Spend Liquid Glass Modifier
 
-private struct HeroSpendLiquidGlassModifier: ViewModifier {
+struct HeroSpendLiquidGlassModifier: ViewModifier {
     var tint: Color
 
     func body(content: Content) -> some View {

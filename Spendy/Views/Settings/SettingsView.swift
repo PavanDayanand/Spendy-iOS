@@ -15,6 +15,7 @@ enum SettingsDestination: Hashable {
     case privacyPolicy
     case insightCardsGallery
     case widgets
+    case appAccent
     case insights
     case notifications
 }
@@ -81,6 +82,11 @@ struct SettingsView: View {
 
                         settingsGroup(title: "Display") {
                             appearanceRow
+                            groupDivider
+                            NavigationLink(value: SettingsDestination.appAccent) {
+                                linkRow(icon: SFIcons.designTools, title: "App accent", value: store.accentPreset.title)
+                            }
+                            .accessibilityIdentifier("settings-app-accent")
                             groupDivider
                             NavigationLink(value: SettingsDestination.widgets) {
                                 linkRow(icon: "square.grid.2x2", title: "Home Screen widgets", value: nil)
@@ -213,6 +219,8 @@ struct SettingsView: View {
                     PrivacyPolicyView()
                 case .insightCardsGallery:
                     InsightCardsGalleryView()
+                case .appAccent:
+                    AppAccentSettingsView()
                 case .widgets:
                     WidgetShowcaseView()
                 case .insights:

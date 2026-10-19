@@ -11,7 +11,7 @@ struct ReceiptAccountPicker: View {
     
     var body: some View {
         ZStack {
-            SpendyPinnedHeaderLayout {
+            SpendyPinnedHeaderLayout(usesSoftScrollEdge: true) {
 
                 // Clean Custom Header
                 HStack {

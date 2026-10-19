@@ -289,6 +289,10 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
+    var accentPreset: SpendyAccentPreset = .white {
+        didSet { scheduleSave() }
+    }
+
     var isMonoIconMode: Bool = true {
         didSet {
             SpendyColors.isMonoMode = isMonoIconMode
@@ -472,6 +476,7 @@ final class ExpenseStore {
         var budgetAlertsEnabled: Bool?
         var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
+        var appAccent: String?
         var isMonoIconMode: Bool?
         var topGradientColorHex: String?
         var isGradientBackgroundEnabled: Bool?
@@ -520,6 +525,7 @@ final class ExpenseStore {
                 self.budgetAlertsEnabled = payload.budgetAlertsEnabled ?? false
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = payload.appearanceMode ?? .dark
+                self.accentPreset = payload.appAccent.flatMap(SpendyAccentPreset.init(rawValue:)) ?? .white
                 self.isMonoIconMode = true
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
@@ -642,6 +648,7 @@ final class ExpenseStore {
             budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
+            appAccent: accentPreset.rawValue,
             isMonoIconMode: isMonoIconMode,
             topGradientColorHex: topGradientColorHex,
             isGradientBackgroundEnabled: isGradientBackgroundEnabled,
@@ -715,6 +722,7 @@ final class ExpenseStore {
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
         self.appearanceMode = .dark
+        self.accentPreset = .white
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
         self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
@@ -1524,6 +1532,7 @@ final class ExpenseStore {
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = true
         self.appearanceMode = SpendyDefaultData.appearanceMode
+        self.accentPreset = .white
         self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
         self.topGradientHue = SpendyDefaultData.topGradientHue
         self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
@@ -1575,6 +1584,7 @@ final class ExpenseStore {
             budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
+            appAccent: accentPreset.rawValue,
             isMonoIconMode: isMonoIconMode,
             topGradientColorHex: topGradientColorHex,
             isGradientBackgroundEnabled: isGradientBackgroundEnabled,
@@ -1671,6 +1681,7 @@ final class ExpenseStore {
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
                 self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
                 self.appearanceMode = payload.appearanceMode ?? self.appearanceMode
+                self.accentPreset = payload.appAccent.flatMap(SpendyAccentPreset.init(rawValue:)) ?? .white
                 self.isMonoIconMode = true
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex

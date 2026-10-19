@@ -198,7 +198,7 @@ struct SpendySpeedLoggerSheet: View {
     
     // MARK: - 2. Review Transactions View (Screenshot 2)
     private var reviewView: some View {
-        SpendyPinnedHeaderLayout {
+        SpendyPinnedHeaderLayout(usesSoftScrollEdge: true) {
 
             // Header Bar (Screenshot 2)
             HStack {

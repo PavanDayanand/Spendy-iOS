@@ -26,7 +26,7 @@ struct CategoryPickerDrawer: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyPinnedHeaderLayout {
+            SpendyPinnedHeaderLayout(usesSoftScrollEdge: true) {
                 VStack(spacing: 0) {
                     // Custom Header
                     HStack {

@@ -240,11 +240,15 @@ struct AllTransactionsView: View {
                         }
                     }
                     .scrollBounceBehavior(.basedOnSize)
-                    .safeAreaPadding(.top, pinnedHeaderHeight)
+                    .safeAreaBar(edge: .top, spacing: 0) {
+                        // Keep the live filters in their existing overlay, while registering
+                        // its measured height for the system's scroll-edge treatment.
+                        Color.clear.frame(height: pinnedHeaderHeight).accessibilityHidden(true)
+                    }
+                    .scrollEdgeEffectStyle(.soft, for: .top)
                     .accessibilityIdentifier("allTransactionsViewport")
 
-                    pinnedHeader
-                        .zIndex(1)
+                    pinnedHeader.zIndex(1)
 
                 }
             

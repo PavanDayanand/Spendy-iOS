@@ -173,10 +173,10 @@ struct SpendingBreakdownSheet: View {
                 .padding(20)
             }
             .accessibilityIdentifier("breakdown-scroll")
-            .safeAreaPadding(.top, 58)
-            headerBar
-                .padding(.bottom, 8)
-                .zIndex(1)
+            .safeAreaBar(edge: .top, spacing: 0) {
+                headerBar.padding(.bottom, 8)
+            }
+            .scrollEdgeEffectStyle(.soft, for: .top)
         }
         .background(SpendyColors.appBackground.ignoresSafeArea())
         .foregroundStyle(SpendyColors.textPrimary)

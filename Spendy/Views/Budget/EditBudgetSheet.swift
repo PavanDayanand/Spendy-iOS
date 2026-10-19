@@ -197,15 +197,16 @@ struct EditBudgetSheet: View {
                 Button(action: handleSave) {
                     Text("Save")
                         .font(.system(size: 16, weight: .bold, design: .default))
-                        .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
+                        .foregroundStyle(currentAmountValue > 0 ? store.accentPreset.foreground : SpendyColors.textTertiary)
                         .padding(.horizontal, 32)
                         .frame(height: 44)
                         .nativeLiquidGlass(cornerRadius: 14, isInteractive: true,
-                            tint: currentAmountValue > 0 ? SpendyColors.elevatedControlFill : nil)
+                            tint: currentAmountValue > 0 ? store.accentPreset.fill : nil)
                 }
                 .buttonStyle(KeypadPressStyle())
                 .disabled(currentAmountValue <= 0)
                 .accessibilityLabel("Save")
+                    .accessibilityValue(store.accentPreset.title)
             }
             .padding(.top, 8)
         }

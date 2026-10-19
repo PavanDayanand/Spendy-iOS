@@ -424,7 +424,7 @@ struct SharedEntityAnalyticsSheet: View {
                 )
             }
             
-            SpendyPinnedHeaderLayout(isEnabled: isHomeOrigin) {
+            SpendyPinnedHeaderLayout(isEnabled: isHomeOrigin, usesSoftScrollEdge: !isSettingsPage) {
 
                 if isHomeOrigin {
                     if sharedNavigationHeader != nil {

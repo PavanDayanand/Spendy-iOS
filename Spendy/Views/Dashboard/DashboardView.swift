@@ -510,16 +510,21 @@ struct DashboardView: View {
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 10) {
-                            homeHeaderPlaceholder
-                                .padding(.top, topInset + 4)
                             accountDropdownSelector
                             heroSpendBarSection
                                 .padding(.top, 2)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 12)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 + topInset + 58 }
                     }
+                    .safeAreaBar(edge: .top, spacing: 0) {
+                        homeHeaderPlaceholder
+                            .padding(.horizontal, 20)
+                            .padding(.top, topInset + 4)
+                            .padding(.bottom, 10)
+                    }
+                    .scrollEdgeEffectStyle(.soft, for: .top)
                     .scrollBounceBehavior(.basedOnSize)
                     .scrollDisabled(homeSummaryHeight <= restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8)
                     .frame(height: max(0, restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8), alignment: .top)
