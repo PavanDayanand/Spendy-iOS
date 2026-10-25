@@ -4,37 +4,12 @@ import SwiftUI
 struct SpendyInsightSymbol: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @State private var resetsDrawing = false
-
-    private var shouldAnimate: Bool { !reduceMotion && scenePhase == .active }
-
+    @State private var appearance = 0
     var body: some View {
-        Group {
-            if shouldAnimate {
-                Image(systemName: SpendyInsightBrandMark.symbol)
-                    .symbolEffect(.drawOn.byLayer, options: .speed(0.8), isActive: resetsDrawing)
-            } else {
-                Image(systemName: SpendyInsightBrandMark.symbol)
-            }
-        }
-        .task(id: shouldAnimate) {
-            guard shouldAnimate else { return }
-            defer { resetsDrawing = false }
-            do {
-                while !Task.isCancelled {
-                    // DrawOn hides while active; deactivating it draws the symbol back on.
-                    resetsDrawing = true
-                    try await Task.sleep(for: .milliseconds(120))
-                    resetsDrawing = false
-                    try await Task.sleep(for: .seconds(3))
-                }
-            } catch is CancellationError {
-                // Leaving the screen or backgrounding the app stops the loop.
-            } catch {
-                resetsDrawing = false
-            }
-        }
-        .accessibilityHidden(true)
+        Image(systemName: SpendyInsightBrandMark.symbol)
+            .symbolEffect(.pulse, value: appearance)
+            .onAppear { if !reduceMotion && scenePhase == .active { appearance += 1 } }
+            .accessibilityHidden(true)
     }
 }
 

@@ -178,7 +178,6 @@ struct AnalyticsView: View {
                             spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
                             spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
                             periodComparisonCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
-                            if !isIncome { recordedDaysSection }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
