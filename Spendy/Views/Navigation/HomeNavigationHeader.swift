@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeNavigationHeader: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var detailHeader: AnalyticsNavigationHeaderState? = nil
     let isShowingTransactions: Bool
     @Binding var filtersExpanded: Bool
     @Binding var hideBalance: Bool
@@ -21,6 +22,24 @@ struct HomeNavigationHeader: View {
 
     var body: some View {
         SpendyGlassEffectContainer(spacing: 12) {
+            if let detailHeader {
+                AnalyticsNavigationControls(state: detailHeader, namespace: namespace)
+            } else {
+                homeControls
+            }
+        }
+        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader != nil)
+        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader?.title)
+        .transaction(value: isShowingTransactions) { transaction in
+            // Navigation can suppress implicit animations; the persistent header
+            // has its own transaction so its glass can reshape during a push/pop.
+            transaction.disablesAnimations = reduceMotion
+            transaction.animation = reduceMotion ? nil : AppMotion.fluidSpring
+        }
+        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: filtersExpanded)
+    }
+
+    private var homeControls: some View {
             HStack(spacing: 12) {
                 if isShowingTransactions {
                     GlassCircleButton(icon: "chevron.left", size: 44, iconSize: 15,
@@ -40,29 +59,11 @@ struct HomeNavigationHeader: View {
                         .minimumScaleFactor(0.8)
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        filtersExpanded.toggle()
-                    } label: {
-                        Image(systemName: filtersExpanded ? "xmark" : "line.3.horizontal.decrease")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(GlassCirclePressStyle())
-                    .nativeLiquidGlassCircle(isInteractive: true)
-                    .glassMorphID("topControl_right", in: namespace)
-                    .accessibilityLabel(filtersExpanded ? "Hide transaction filters" : "Show transaction filters")
-                    .accessibilityValue(filtersExpanded ? "Expanded" : "Collapsed")
-                    .accessibilityIdentifier("home-transactions-filters")
-                } else {
-                    homeActions
                 }
+                homeActions
             }
             .frame(height: 44)
             .foregroundStyle(SpendyColors.textPrimary)
-            .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isShowingTransactions)
-            .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: filtersExpanded)
-        }
     }
 
     private var profileButton: some View {
@@ -114,6 +115,37 @@ struct HomeNavigationHeader: View {
     }
 
     private var homeActions: some View {
+        ZStack(alignment: .trailing) {
+            homeActionButtons
+                .opacity(isShowingTransactions ? 0 : 1)
+                .allowsHitTesting(!isShowingTransactions)
+                .accessibilityHidden(isShowingTransactions)
+            transactionFilterButton
+                .opacity(isShowingTransactions ? 1 : 0)
+                .allowsHitTesting(isShowingTransactions)
+                .accessibilityHidden(!isShowingTransactions)
+        }
+        .frame(width: isShowingTransactions ? 44 : 89, height: 44, alignment: .trailing)
+        .nativeLiquidGlassCapsule(isInteractive: true)
+        .glassMorphID("topControl_right", in: namespace)
+    }
+
+    private var transactionFilterButton: some View {
+        Button {
+            HapticsManager.shared.trigger(.selection)
+            filtersExpanded.toggle()
+        } label: {
+            Image(systemName: filtersExpanded ? "xmark" : "line.3.horizontal.decrease")
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(GlassCirclePressStyle())
+        .accessibilityLabel(filtersExpanded ? "Hide transaction filters" : "Show transaction filters")
+        .accessibilityValue(filtersExpanded ? "Expanded" : "Collapsed")
+        .accessibilityIdentifier("home-transactions-filters")
+    }
+
+    private var homeActionButtons: some View {
         HStack(spacing: 0) {
             Button {
                 HapticsManager.shared.trigger(.selection)
@@ -147,7 +179,5 @@ struct HomeNavigationHeader: View {
             .accessibilityLabel("More actions")
             .accessibilityHint("Budget, currency converter, and amount visibility")
         }
-        .nativeLiquidGlassCapsule(isInteractive: true)
-        .glassMorphID("topControl_right", in: namespace)
     }
 }

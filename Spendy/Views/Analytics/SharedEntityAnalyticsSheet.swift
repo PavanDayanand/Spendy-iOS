@@ -155,9 +155,8 @@ struct SharedEntityAnalyticsSheet: View {
         return selectedPeriod.rawValue
     }
     
-    private var isHomeOrigin: Bool {
-        sharedNavigationHeader != nil ||
-            (topControlsNamespace != nil && periodControlMorphID == "accountDropdownCapsule")
+    private var usesCustomHeader: Bool {
+        sharedNavigationHeader != nil || topControlsNamespace != nil
     }
     
     private var sharedMorphNamespace: Namespace.ID {
@@ -424,9 +423,9 @@ struct SharedEntityAnalyticsSheet: View {
                 )
             }
             
-            SpendyPinnedHeaderLayout(isEnabled: isHomeOrigin, usesSoftScrollEdge: !isSettingsPage) {
+            SpendyPinnedHeaderLayout(isEnabled: usesCustomHeader, usesSoftScrollEdge: !isSettingsPage) {
 
-                if isHomeOrigin {
+                if usesCustomHeader {
                     if sharedNavigationHeader != nil {
                         Color.clear.frame(height: 50).accessibilityHidden(true)
                     } else {
@@ -438,7 +437,7 @@ struct SharedEntityAnalyticsSheet: View {
                     VStack(alignment: .leading, spacing: 20) {
                         heroIdentityAndAmount
                             .padding(.horizontal, 20)
-                            .padding(.top, isHomeOrigin ? 8 : 12)
+                            .padding(.top, usesCustomHeader ? 8 : 12)
                         
                         chartSection
                             .padding(.horizontal, 16)
@@ -468,11 +467,11 @@ struct SharedEntityAnalyticsSheet: View {
             }
         }
         .presentationBackground(sheetBackgroundColor)
-        .navigationTitle(isHomeOrigin ? "" : entity.label)
+        .navigationTitle(usesCustomHeader ? "" : entity.label)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(isHomeOrigin ? .hidden : .visible, for: .navigationBar)
+        .toolbar(usesCustomHeader ? .hidden : .visible, for: .navigationBar)
         .toolbar {
-            if !isHomeOrigin {
+            if !usesCustomHeader {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         HapticsManager.shared.trigger(.light)

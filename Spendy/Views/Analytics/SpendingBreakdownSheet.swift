@@ -8,6 +8,7 @@ struct SpendingBreakdownSheet: View {
     let accountLabel: String
     let accountID: String
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @AppStorage("spendingBreakdownShowsChart") private var showsChart = true
@@ -45,6 +46,31 @@ struct SpendingBreakdownSheet: View {
                 colorHex: item.colorHex, txCount: transactions.count, amount: amount,
                 percentage: current.total > 0 ? amount / current.total * 100 : 0)
         }
+    }
+
+    private func configureNavigationHeader() {
+        guard selectedCategory == nil, selectedAccount == nil else { return }
+        let chart = $showsChart
+        let filter = $showsFilter
+        let selection = $selectedIDs
+        let dismissAction = dismiss
+        var items = [
+            AnalyticsNavigationHeaderMenuItem(id: "breakdown-chart-toggle", title: "Show chart",
+                systemImage: "chart.bar", isSelected: showsChart) {
+                withAnimation(.easeInOut(duration: 0.2)) { chart.wrappedValue.toggle() }
+            },
+            AnalyticsNavigationHeaderMenuItem(id: "breakdown-filter",
+                title: selectedIDs.map { "Filter · \($0.count) selected" } ?? "Filter",
+                systemImage: "line.3.horizontal.decrease") { filter.wrappedValue = true }
+        ]
+        if selectedIDs != nil {
+            items.append(AnalyticsNavigationHeaderMenuItem(id: "breakdown-reset-filters",
+                title: "Reset filters", systemImage: "arrow.counterclockwise") { selection.wrappedValue = nil })
+        }
+        sharedNavigationHeader?.show(title: title, onBack: { dismissAction() },
+            menuItems: items, menuLabel: isIncome ? "Income options" : "Spending options",
+            menuIdentifier: "breakdown-menu",
+            menuValue: selectedIDs.map { "\($0.count) selected" } ?? "All selected")
     }
 
     private var headerBar: some View {
@@ -174,7 +200,11 @@ struct SpendingBreakdownSheet: View {
             }
             .accessibilityIdentifier("breakdown-scroll")
             .safeAreaBar(edge: .top, spacing: 0) {
-                headerBar.padding(.bottom, 8)
+                if sharedNavigationHeader != nil {
+                    Color.clear.frame(height: 58).accessibilityHidden(true)
+                } else {
+                    headerBar.padding(.bottom, 8)
+                }
             }
             .scrollEdgeEffectStyle(.soft, for: .top)
         }
@@ -182,14 +212,25 @@ struct SpendingBreakdownSheet: View {
         .foregroundStyle(SpendyColors.textPrimary)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .navigationDestination(item: $selectedCategory) { CategoryAnalyticsSheet(category: $0, spendingScope: spendingScope, topControlsNamespace: controlsNamespace, periodControlMorphID: "accountDropdownCapsule") }
-        .navigationDestination(item: $selectedAccount) { AccountAnalyticsSheet(account: $0, spendingScope: spendingScope, topControlsNamespace: controlsNamespace, periodControlMorphID: "accountDropdownCapsule") }
+        .navigationDestination(item: $selectedCategory) { category in
+            CategoryAnalyticsSheet(category: category, spendingScope: spendingScope,
+                topControlsNamespace: controlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+        }
+        .navigationDestination(item: $selectedAccount) { account in
+            AccountAnalyticsSheet(account: account, spendingScope: spendingScope,
+                topControlsNamespace: controlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+        }
+        .onAppear { configureNavigationHeader() }
+        .onChange(of: selectedCategory?.id) { _, _ in configureNavigationHeader() }
+        .onChange(of: selectedAccount?.id) { _, _ in configureNavigationHeader() }
+        .onChange(of: showsChart) { _, _ in configureNavigationHeader() }
         .sheet(isPresented: $showsFilter) {
             SpendingBreakdownFilter(items: items, byCategory: byCategory, selectedIDs: $selectedIDs)
         }
         .onChange(of: selectedIDs) { _, selection in
             selectedBucket = nil
             if selection == Set(items.map(\.id)) { selectedIDs = nil }
+            configureNavigationHeader()
         }
         .tint(SpendyColors.textPrimary)
     }

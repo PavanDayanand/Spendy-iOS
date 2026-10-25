@@ -219,7 +219,8 @@ struct AnalyticsView: View {
             .navigationDestination(isPresented: $showsSpendingBreakdown) {
                 SpendingBreakdownSheet(snapshot: spendingSnapshot, items: selectedBreakdownItems,
                     byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
-                    topControlsNamespace: analyticsControlsNamespace)
+                    topControlsNamespace: analyticsControlsNamespace,
+                    sharedNavigationHeader: sharedNavigationHeader)
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
@@ -274,7 +275,7 @@ struct AnalyticsView: View {
             }
             .onChange(of: quickActions.requestedAnalyticsWeekDate) { _, _ in openRequestedWeek() }
             .onChange(of: isSubpageActive) { _, active in
-                if showsSpendingBreakdown || showSubscriptionSheet || showBudgetHub {
+                if showSubscriptionSheet || showBudgetHub {
                     sharedNavigationHeader?.isVisible = false
                 } else if !active {
                     configureNavigationHeader()

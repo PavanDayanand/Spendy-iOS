@@ -324,6 +324,7 @@ struct DashboardView: View {
     @State private var inspectingTransaction: Transaction? = nil
     @State private var editingTransaction: Transaction? = nil
     @State private var selectedCategoryForSheet: Category? = nil
+    @State private var categorySpendingScope: SpendingScope? = nil
     @State private var selectedAccountForSheet: Account? = nil
     
     @State private var analyticsNavigationHeader = AnalyticsNavigationHeaderState()
@@ -600,7 +601,9 @@ struct DashboardView: View {
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
+                    spendingScope: categorySpendingScope,
                     topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader,
                     backButtonMorphID: "topControl_left",
                     periodControlMorphID: "accountDropdownCapsule"
                 )
@@ -609,6 +612,7 @@ struct DashboardView: View {
                 AccountAnalyticsSheet(
                     account: account,
                     topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader,
                     backButtonMorphID: "topControl_left",
                     periodControlMorphID: "accountDropdownCapsule"
                 )
@@ -656,23 +660,17 @@ struct DashboardView: View {
             }
         }
         .overlay(alignment: .top) {
-            ZStack(alignment: .top) {
-                if isSharedHeaderVisible {
-                    sharedNavigationHeader
-                        .transition(.identity)
-                }
-                if showAnalyticsView && analyticsNavigationHeader.isVisible {
-                    AnalyticsNavigationHeader(state: analyticsNavigationHeader)
-                        .transition(.identity)
-                }
+            if isSharedHeaderVisible || isDetailHeaderVisible {
+                sharedNavigationHeader
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .animation(nil, value: isSharedHeaderVisible)
-            .animation(nil, value: analyticsNavigationHeader.isVisible)
         }
         .onChange(of: showAnalyticsView) { _, showing in
             if !showing { analyticsNavigationHeader.isVisible = false }
+        }
+        .onChange(of: selectedCategoryForSheet?.id) { _, id in
+            if id == nil { categorySpendingScope = nil }
         }
         .onChange(of: showAllTransactions) { _, _ in
             transactionFiltersExpanded = false
@@ -701,9 +699,15 @@ struct DashboardView: View {
             && (showAllTransactions || !isSheetExpanded)
     }
 
-    // This header belongs to the stack, so it survives the pilot push/pop.
+    private var isDetailHeaderVisible: Bool {
+        analyticsNavigationHeader.isVisible &&
+            (showAnalyticsView || selectedCategoryForSheet != nil || selectedAccountForSheet != nil)
+    }
+
+    // The same container survives Home, Transactions, and Analytics navigation.
     private var sharedNavigationHeader: some View {
         HomeNavigationHeader(
+            detailHeader: isDetailHeaderVisible ? analyticsNavigationHeader : nil,
             isShowingTransactions: showAllTransactions,
             filtersExpanded: $transactionFiltersExpanded,
             hideBalance: $hideBalance,
@@ -802,7 +806,14 @@ struct DashboardView: View {
             tipGroup: homeTipGroup,
             onInsight: { destination, date in
                 switch destination {
-                case .category(let id): selectedCategoryForSheet = store.categories.first { $0.id == id }
+                case .category(let id):
+                    let snapshot = SpendingChartSnapshot(transactions: store.transactions,
+                        accountID: selectedAccountId, period: .month, anchor: date, referenceDate: Date())
+                    categorySpendingScope = SpendingScope(start: snapshot.start, end: snapshot.end,
+                        referenceDate: snapshot.referenceDate,
+                        accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId],
+                        transactionType: .expense)
+                    selectedCategoryForSheet = store.categories.first { $0.id == id }
                 case .budget: showBudgetHub = true
                 case .subscriptions: initialSubscriptionIdForHub = nil; showSubscriptionsHub = true
                 case .subscriptionDetail(let id): initialSubscriptionIdForHub = id; showSubscriptionsHub = true
