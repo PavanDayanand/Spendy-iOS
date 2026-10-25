@@ -5,6 +5,8 @@ struct AnalyticsNavigationControls: View {
     let state: AnalyticsNavigationHeaderState
     let namespace: Namespace.ID
 
+    var showsTrailingAction = true
+
     var body: some View {
         HStack(spacing: 12) {
             GlassCircleButton(icon: "chevron.left", size: 44, iconSize: 15,
@@ -34,26 +36,10 @@ struct AnalyticsNavigationControls: View {
 
             Spacer(minLength: 0)
 
-            if !state.menuItems.isEmpty {
-                Menu {
-                    ForEach(state.menuItems) { item in
-                        Button(action: item.action) {
-                            Label(item.title, systemImage: item.isSelected ? "checkmark" : item.systemImage)
-                        }
-                        .accessibilityIdentifier(item.id)
-                    }
-                } label: {
-                    GlassCircleIcon(icon: "ellipsis", size: 44, iconSize: 15,
-                        morphID: "topControl_right", namespace: namespace)
-                }
-                .accessibilityLabel(state.menuLabel)
-                .accessibilityIdentifier(state.menuIdentifier)
-                .accessibilityValue(state.menuValue)
-            } else if let edit = state.onEdit {
-                GlassCircleButton(icon: "pencil", size: 44, iconSize: 15,
-                    accessibilityLabel: "Edit \(state.title)",
-                    morphID: "topControl_right", namespace: namespace, action: edit)
-                    .accessibilityIdentifier("analytics-stack-edit")
+            if showsTrailingAction && state.hasActions {
+                AnalyticsNavigationActions(state: state)
+                    .nativeLiquidGlassCapsule(isInteractive: true)
+                    .glassMorphID("topControl_right", in: namespace)
             } else {
                 Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
             }

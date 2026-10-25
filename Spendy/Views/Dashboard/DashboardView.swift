@@ -579,17 +579,20 @@ struct DashboardView: View {
                 )
             }
             .navigationDestination(isPresented: $showBudgetHub) {
-                BudgetView(topControlsNamespace: topControlsNamespace)
+                BudgetView(topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader)
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView(
                     isPushed: true,
                     initialSelectedSubscriptionId: initialSubscriptionIdForHub,
-                    topControlsNamespace: topControlsNamespace
+                    topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader
                 )
             }
             .navigationDestination(isPresented: $showAccounts) {
-                AccountsView(topControlsNamespace: topControlsNamespace)
+                AccountsView(topControlsNamespace: topControlsNamespace,
+                    sharedNavigationHeader: analyticsNavigationHeader)
             }
             .navigationDestination(isPresented: $showAllTransactions) {
                 AllTransactionsView(
@@ -701,7 +704,8 @@ struct DashboardView: View {
 
     private var isDetailHeaderVisible: Bool {
         analyticsNavigationHeader.isVisible &&
-            (showAnalyticsView || selectedCategoryForSheet != nil || selectedAccountForSheet != nil)
+            (showAnalyticsView || showAccounts || showBudgetHub || showSubscriptionsHub ||
+                selectedCategoryForSheet != nil || selectedAccountForSheet != nil)
     }
 
     // The same container survives Home, Transactions, and Analytics navigation.
@@ -724,7 +728,11 @@ struct DashboardView: View {
                 showAnalyticsView = true
                 HomeAnalyticsTip().invalidate(reason: .actionPerformed)
             },
-            onBudget: { showBudgetHub = true },
+            onBudget: {
+                let selection = $showBudgetHub
+                analyticsNavigationHeader.show(title: "Budget", onBack: { selection.wrappedValue = false })
+                showBudgetHub = true
+            },
             onConverter: { showCurrencyConverter = true }
         )
     }
@@ -766,10 +774,13 @@ struct DashboardView: View {
                     
                     Button(action: {
                         HapticsManager.shared.trigger(.selection)
+                        let selection = $showAccounts
+                        analyticsNavigationHeader.show(title: "Accounts", onBack: { selection.wrappedValue = false })
                         showAccounts = true
                     }) {
                         Label("Manage Accounts...", systemImage: "creditcard")
                     }
+                    .accessibilityIdentifier("home-manage-accounts")
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: selectedAccountSymbol)

@@ -226,7 +226,8 @@ struct AnalyticsView: View {
                 datePickerSheet
             }
             .navigationDestination(isPresented: $showSubscriptionSheet) {
-                SubscriptionsView(isPushed: true, initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
+                SubscriptionsView(isPushed: true, initialSelectedSubscriptionId: selectedSubscriptionIdForDetail,
+                    topControlsNamespace: analyticsControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
@@ -240,7 +241,9 @@ struct AnalyticsView: View {
                     inspectingTransaction = nil
                 }
             }
-            .navigationDestination(isPresented: $showBudgetHub) { BudgetView() }
+            .navigationDestination(isPresented: $showBudgetHub) {
+                BudgetView(topControlsNamespace: analyticsControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+            }
             .fullScreenCover(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
             }
@@ -275,9 +278,7 @@ struct AnalyticsView: View {
             }
             .onChange(of: quickActions.requestedAnalyticsWeekDate) { _, _ in openRequestedWeek() }
             .onChange(of: isSubpageActive) { _, active in
-                if showSubscriptionSheet || showBudgetHub {
-                    sharedNavigationHeader?.isVisible = false
-                } else if !active {
+                if !active {
                     configureNavigationHeader()
                 }
                 withAnimation(AppMotion.fluidSpring) {

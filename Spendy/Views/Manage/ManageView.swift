@@ -20,6 +20,7 @@ struct SubscriptionsView: View {
     var initialSelectedSubscriptionId: String? = nil
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
 
     @State private var showAddSubscription: Bool = false
     @State private var pendingSubscriptionEdit: Subscription? = nil
@@ -143,6 +144,8 @@ struct SubscriptionsView: View {
                                 .frame(height: 44)
                                 .padding(.top, 8)
                                 .accessibilityAddTraits(.isHeader)
+                                .opacity(sharedNavigationHeader == nil ? 1 : 0)
+                                .accessibilityHidden(sharedNavigationHeader != nil)
                         }
 
                         summaryCard
@@ -161,8 +164,9 @@ struct SubscriptionsView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 if isPushed {
-                    topHeaderBar
-                        .padding(.bottom, 6)
+                    if sharedNavigationHeader == nil {
+                        topHeaderBar.padding(.bottom, 6)
+                    }
                 } else {
                     tabHeaderBar(showsControls: true)
                 }
@@ -190,6 +194,7 @@ struct SubscriptionsView: View {
             }
         }
         .onAppear {
+            configureNavigationHeader()
             selectInitialSubscriptionIfNeeded()
         }
         .task(id: initialSelectedSubscriptionId) {
@@ -236,6 +241,18 @@ struct SubscriptionsView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)
+    }
+
+    private func configureNavigationHeader() {
+        guard isPushed else { return }
+        let backAction = onDismiss
+        let dismissAction = dismiss
+        let addSubscription = $showAddSubscription
+        sharedNavigationHeader?.show(title: "Subscriptions", onBack: {
+            if let backAction { backAction() } else { dismissAction() }
+        }, primaryAction: StackHeaderAction(id: "subscriptions-add", title: "Add Subscription", symbol: "plus") {
+            addSubscription.wrappedValue = true
+        })
     }
 
     // MARK: - Top Header Bar (When Pushed from Home with Liquid Glass Morph)

@@ -23,6 +23,7 @@ struct AccountsView: View {
     var isSettingsPage: Bool = false
     var onDismiss: (() -> Void)? = nil
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
@@ -109,7 +110,9 @@ struct AccountsView: View {
             
             VStack(spacing: 0) {
 
-                if topControlsNamespace != nil {
+                if sharedNavigationHeader != nil {
+                    Color.clear.frame(height: 50).accessibilityHidden(true)
+                } else if topControlsNamespace != nil {
                     topHeaderBar
                 }
                 ScrollView(showsIndicators: false) {
@@ -132,10 +135,10 @@ struct AccountsView: View {
         }
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
+        .toolbar(sharedNavigationHeader != nil || topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            if topControlsNamespace == nil {
+            if sharedNavigationHeader == nil && topControlsNamespace == nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         HapticsManager.shared.trigger(.selection)
@@ -158,8 +161,24 @@ struct AccountsView: View {
             AddAccountSheet(accountToEdit: acc)
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
-            AccountAnalyticsSheet(account: acc, isSettingsPage: isSettingsPage)
+            AccountAnalyticsSheet(account: acc, isSettingsPage: isSettingsPage,
+                topControlsNamespace: topControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
         }
+        .onAppear { configureNavigationHeader() }
+        .onChange(of: selectedAccountForAnalytics?.id) { _, _ in configureNavigationHeader() }
+    }
+
+    private func configureNavigationHeader() {
+        // A returning parent must not overwrite a child's header during a cancelled pop.
+        guard selectedAccountForAnalytics == nil else { return }
+        let backAction = onDismiss
+        let dismissAction = dismiss
+        let addAccount = $showAddAccount
+        sharedNavigationHeader?.show(title: "Accounts", onBack: {
+            if let backAction { backAction() } else { dismissAction() }
+        }, primaryAction: StackHeaderAction(id: "accounts-add", title: "Add Account", symbol: "plus") {
+            addAccount.wrappedValue = true
+        })
     }
     
     // MARK: - Header (pushed from Home)
@@ -495,5 +514,6 @@ struct AccountsView: View {
             }
         }
         .accessibilityLabel("\(account.label), \(account.type.rawValue), \(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+        .accessibilityIdentifier("account-row-\(account.id)")
     }
 }

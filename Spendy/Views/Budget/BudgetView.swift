@@ -12,14 +12,16 @@ struct BudgetView: View {
     @Environment(\.dismiss) private var dismiss
     
     var topControlsNamespace: Namespace.ID? = nil
+    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     var onDismiss: (() -> Void)? = nil
     
     @State private var showEditBudgetSheet: Bool = false
-    @State private var isEditingExisting: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var selectedCategoryForSheet: Category? = nil
     @State private var isCalculatorExpanded: Bool = false
     
+    private var hasActiveBudget: Bool { store.budget.isActive && store.budget.amount > 0 }
+
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
         let end = store.budgetCycleEnd()
@@ -44,6 +46,8 @@ struct BudgetView: View {
                             .frame(height: 44)
                             .padding(.top, 8)
                             .accessibilityAddTraits(.isHeader)
+                            .opacity(sharedNavigationHeader == nil ? 1 : 0)
+                            .accessibilityHidden(sharedNavigationHeader != nil)
                         // Title Subtitle Range Chip
                         HStack {
                             Text(cycleDateRangeString)
@@ -57,7 +61,7 @@ struct BudgetView: View {
                         }
                         .padding(.top, 4)
                         
-                        if !store.budget.isActive || store.budget.amount <= 0 {
+                        if !hasActiveBudget {
                             // Empty State View
                             emptyStateView
                         } else {
@@ -68,15 +72,16 @@ struct BudgetView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 36)
                 }
-                topHeaderBar
-                    .padding(.bottom, 6)
+                if sharedNavigationHeader == nil {
+                    topHeaderBar.padding(.bottom, 6)
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showEditBudgetSheet) {
-            EditBudgetSheet(isEditing: isEditingExisting)
+            EditBudgetSheet(isEditing: hasActiveBudget)
         }
         .alert("Delete Budget?", isPresented: $showDeleteConfirmation) {
             Button("Delete Budget", role: .destructive) {
@@ -90,8 +95,30 @@ struct BudgetView: View {
             Text("This will remove your current budget limit.")
         }
         .navigationDestination(item: $selectedCategoryForSheet) { category in
-            CategoryAnalyticsSheet(category: category)
+            CategoryAnalyticsSheet(category: category, topControlsNamespace: topControlsNamespace,
+                sharedNavigationHeader: sharedNavigationHeader)
         }
+        .onAppear { configureNavigationHeader() }
+        .onChange(of: selectedCategoryForSheet?.id) { _, _ in configureNavigationHeader() }
+        .onChange(of: store.budget.isActive) { _, _ in configureNavigationHeader() }
+    }
+
+    private func configureNavigationHeader() {
+        guard selectedCategoryForSheet == nil else { return }
+        let backAction = onDismiss
+        let dismissAction = dismiss
+        let editor = $showEditBudgetSheet
+        let deletion = $showDeleteConfirmation
+        let items: [AnalyticsNavigationHeaderMenuItem] = hasActiveBudget ? [
+            AnalyticsNavigationHeaderMenuItem(id: "budget-edit", title: "Edit Budget", systemImage: "pencil") {
+                editor.wrappedValue = true
+            },
+            AnalyticsNavigationHeaderMenuItem(id: "budget-delete", title: "Delete Budget",
+                systemImage: "trash", role: .destructive) { deletion.wrappedValue = true }
+        ] : []
+        sharedNavigationHeader?.show(title: "Budget", onBack: {
+            if let backAction { backAction() } else { dismissAction() }
+        }, menuItems: items, menuLabel: "Budget Options", menuIdentifier: "budget-options")
     }
     
     // MARK: - Top Header Bar
@@ -126,7 +153,7 @@ struct BudgetView: View {
 
             Spacer()
 
-            if store.budget.isActive {
+            if hasActiveBudget {
                 actionButtons
             } else {
                 Color.clear.frame(width: 44, height: 44)
@@ -141,7 +168,6 @@ struct BudgetView: View {
     private var actionButtons: some View {
         Menu {
             Button {
-                isEditingExisting = true
                 showEditBudgetSheet = true
             } label: {
                 Label("Edit Budget", systemImage: "pencil")
@@ -174,7 +200,6 @@ struct BudgetView: View {
             message: "Set a limit to track your spending.",
             actionTitle: "Set budget"
         ) {
-            isEditingExisting = false
             showEditBudgetSheet = true
         }
         .padding(.horizontal, 20)

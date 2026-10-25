@@ -22,12 +22,23 @@ struct HomeNavigationHeader: View {
 
     var body: some View {
         SpendyGlassEffectContainer(spacing: 12) {
-            if let detailHeader {
-                AnalyticsNavigationControls(state: detailHeader, namespace: namespace)
-            } else {
-                homeControls
+            ZStack(alignment: .trailing) {
+                if let detailHeader {
+                    AnalyticsNavigationControls(state: detailHeader, namespace: namespace,
+                        showsTrailingAction: false)
+                } else {
+                    homeControls
+                }
+                if hasVisibleActions {
+                    homeActions
+                }
             }
         }
+        .transaction(value: detailHeader != nil) { transaction in
+            transaction.disablesAnimations = reduceMotion
+            transaction.animation = reduceMotion ? nil : AppMotion.fluidSpring
+        }
+        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader?.hasActions)
         .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader != nil)
         .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader?.title)
         .transaction(value: isShowingTransactions) { transaction in
@@ -60,7 +71,9 @@ struct HomeNavigationHeader: View {
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
                 }
-                homeActions
+                Color.clear
+                    .frame(width: isShowingTransactions ? 44 : 89, height: 44)
+                    .accessibilityHidden(true)
             }
             .frame(height: 44)
             .foregroundStyle(SpendyColors.textPrimary)
@@ -114,20 +127,30 @@ struct HomeNavigationHeader: View {
         .accessibilityHidden(true)
     }
 
+    private var showsHomeActions: Bool { detailHeader == nil && !isShowingTransactions }
+    private var showsTransactionFilters: Bool { detailHeader == nil && isShowingTransactions }
+    private var hasVisibleActions: Bool { detailHeader?.hasActions ?? true }
+
     private var homeActions: some View {
         ZStack(alignment: .trailing) {
             homeActionButtons
-                .opacity(isShowingTransactions ? 0 : 1)
-                .allowsHitTesting(!isShowingTransactions)
-                .accessibilityHidden(isShowingTransactions)
+                .opacity(showsHomeActions ? 1 : 0)
+                .allowsHitTesting(showsHomeActions)
+                .accessibilityHidden(!showsHomeActions)
             transactionFilterButton
-                .opacity(isShowingTransactions ? 1 : 0)
-                .allowsHitTesting(isShowingTransactions)
-                .accessibilityHidden(!isShowingTransactions)
+                .opacity(showsTransactionFilters ? 1 : 0)
+                .allowsHitTesting(showsTransactionFilters)
+                .accessibilityHidden(!showsTransactionFilters)
+            if let detailHeader {
+                AnalyticsNavigationActions(state: detailHeader)
+            }
         }
-        .frame(width: isShowingTransactions ? 44 : 89, height: 44, alignment: .trailing)
+        .frame(width: showsHomeActions ? 89 : 44, height: 44, alignment: .trailing)
+        .foregroundStyle(SpendyColors.textPrimary)
         .nativeLiquidGlassCapsule(isInteractive: true)
         .glassMorphID("topControl_right", in: namespace)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home-shared-action-surface")
     }
 
     private var transactionFilterButton: some View {
