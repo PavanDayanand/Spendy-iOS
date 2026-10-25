@@ -11,9 +11,12 @@ struct SpendingChartPlot: View {
     var height: CGFloat = 150
     var transactionType: TransactionType = .expense
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption2) private var plotScale = 1.0
 
     private var axisIDs: [String] {
-        let step = max(1, Int(ceil(Double(buckets.count) / 6)))
+        let maximumLabels = dynamicTypeSize >= .xxxLarge ? 4.0 : 6.0
+        let step = max(1, Int(ceil(Double(buckets.count) / maximumLabels)))
         return buckets.enumerated().filter { $0.offset % step == 0 || $0.offset == buckets.count - 1 }.map(\.element.id)
     }
 
@@ -51,7 +54,8 @@ struct SpendingChartPlot: View {
             AxisMarks(values: axisIDs) { value in
                 AxisValueLabel {
                     if let id = value.as(String.self), let bucket = buckets.first(where: { $0.id == id }) {
-                        Text(bucket.label)
+                        Text(bucket.isInProgress ? "\(bucket.label)\nTo date" : bucket.label)
+                            .multilineTextAlignment(.center)
                             .font(.caption2)
                             .foregroundStyle(SpendyColors.textSecondary)
                     }
@@ -87,7 +91,7 @@ struct SpendingChartPlot: View {
                     }
             }
         }
-        .frame(height: height)
+        .frame(height: height * min(plotScale, 1.5))
         .accessibilityIdentifier("spending-chart")
         .onChange(of: selectedID) { old, new in
             if old != new, new != nil { HapticsManager.shared.trigger(.selection) }
@@ -143,7 +147,10 @@ struct SpendingChartInfoSheet: View {
                 }
                 if !insightsOnly {
                 Section("Reading the charts") {
-                    Text("Bars and points show recorded expense totals. Taller bars or higher points mean more spending. Hold a chart to preview a period, then slide to explore. Release to return to the full total.")
+                    Text("Home shows the last six months of recorded spending. Each bar is one month; taller bars mean more spending.")
+                    Text("‘To date’ marks the unfinished period. Its total grows as you record expenses.")
+                    Text("Hold a chart, then slide to preview a period. Release to return to the full total.")
+                    Text("Open Analytics to change the time period and explore category or account breakdowns.")
                     Text("Category rows show recorded expense counts and totals for the selected account and period.")
                 }
                 Section("Recorded spending") {

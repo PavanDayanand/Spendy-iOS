@@ -91,6 +91,8 @@ private struct AnalyticsPanelStyle: ViewModifier {
 struct AnalyticsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption2) private var comparisonChartHeight = 140.0
     var selectedTab: Binding<AppTab>? = nil
     var topControlsNamespace: Namespace.ID? = nil
     var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
@@ -171,10 +173,11 @@ struct AnalyticsView: View {
                             spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
                             spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
                             periodComparisonCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
+                            AnalyticsBudgetSummary { showBudgetHub = true }
+                                .modifier(AnalyticsPanelStyle(verticalPadding: 16))
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
-                        .padding(.bottom, 30)
                     } header: {
                         compactHeader
                             .padding(.horizontal, 20)
@@ -182,7 +185,7 @@ struct AnalyticsView: View {
                             .padding(.bottom, 12)
                     }
                 }
-                .padding(.bottom, 140)
+                .padding(.bottom, 24)
             }
             .safeAreaBar(edge: .top, spacing: 0) {
                 if sharedNavigationHeader != nil && (topControlsNamespace != nil || onDismiss != nil) {
@@ -190,6 +193,7 @@ struct AnalyticsView: View {
                     Color.clear.frame(height: 66).accessibilityHidden(true)
                 }
             }
+            .accessibilityIdentifier("analytics-scroll")
             .scrollEdgeEffectStyle(.soft, for: .top)
         }
             .toolbarVisibility(.hidden, for: .navigationBar)
@@ -513,7 +517,9 @@ struct AnalyticsView: View {
             } else if snapshot.hasBaselineRecords {
                 VStack(alignment: .leading, spacing: 12) {
                     if activeIntervals.count > 1 {
-                        HStack(spacing: 16) {
+                        (dynamicTypeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(spacing: 16))) {
                             comparisonKey(comparisonPeriodLabel(snapshot.start, period: snapshot.period), opacity: 1)
                             comparisonKey(comparisonPeriodLabel(snapshot.baselineStart, period: snapshot.period), opacity: 0.35)
                         }
@@ -545,8 +551,8 @@ struct AnalyticsView: View {
                         .chartXAxis {
                             AxisMarks { _ in
                                 AxisValueLabel()
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textTertiary)
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(SpendyColors.textSecondary)
                             }
                         }
                         .chartYAxis {
@@ -556,13 +562,14 @@ struct AnalyticsView: View {
                                 AxisValueLabel {
                                     if let amount = value.as(Double.self) {
                                         Text(formatAxisAmount(amount))
-                                            .font(.system(size: 10))
-                                            .foregroundStyle(SpendyColors.textTertiary)
+                                            .font(.caption2)
+                                            .foregroundStyle(SpendyColors.textSecondary)
                                     }
                                 }
                             }
                         }
-                        .frame(height: 140)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                        .frame(height: min(comparisonChartHeight, 210))
                     } else if let highlighted {
                         Text("Activity in \(comparisonIntervalName(highlighted))")
                             .font(.caption.weight(.medium))

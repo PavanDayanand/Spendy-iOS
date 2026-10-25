@@ -12,6 +12,7 @@ struct HomeSpendingSummary: View {
     let tipGroup: TipGroup
     var onInsight: ((InsightDestination, Date) -> Void)? = nil
     var onExplore: (Date) -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @State private var showsInsights = false
@@ -30,20 +31,21 @@ struct HomeSpendingSummary: View {
             let snapshot = SpendingChartSnapshot(transactions: transactions, accountID: accountID,
                 anchor: selected?.start ?? referenceDate, referenceDate: referenceDate)
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Label(selected == nil || snapshot.isInProgress ? "Spent this month" : "Spent in \(snapshot.start.formatted(.dateTime.month(.wide).year()))",
-                          systemImage: "chart.bar.xaxis")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
+                HStack {
                     Button { showsInfo = true } label: {
-                        Image(systemName: "info.circle")
-                            .font(.subheadline)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Label(selected == nil || snapshot.isInProgress ? "Spent this month" : "Spent in \(snapshot.start.formatted(.dateTime.month(.wide).year()))",
+                                  systemImage: "chart.bar.xaxis")
+                            Image(systemName: "info.circle")
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .frame(minHeight: 44, alignment: .bottomLeading)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(SpendyColors.textSecondary)
                     .accessibilityLabel("About spending")
+                    .accessibilityHint("Learn how to read the spending charts and comparisons")
                     Spacer(minLength: 0)
                 }
                 Text(amountsHidden ? "••••••" : snapshot.total.formattedCurrency(symbol: currencySymbol, decimals: 2))
@@ -79,7 +81,7 @@ struct HomeSpendingSummary: View {
                     }
                     HStack {
                         Text(selected.map { "\($0.transactionCount) transactions\($0.isInProgress ? " · To date" : "")" }
-                             ?? "Last 6 months · \(context.date.formatted(.dateTime.month(.abbreviated))) to date")
+                             ?? "Last 6 months")
                             .font(.caption2)
                             .foregroundStyle(SpendyColors.textSecondary)
                         Spacer()
@@ -106,13 +108,24 @@ struct HomeSpendingSummary: View {
                         HStack(spacing: 6) {
                             if insightsEnabled, let leading = snapshot.leadingCategory,
                                let category = categories.first(where: { $0.id == leading.id }) {
-                                SpendyInsightSymbol()
-                                ShinyHeadlineText(headline: "\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending", emphasis: [], font: .caption, emphasisFont: .caption.bold())
+                                if dynamicTypeSize.isAccessibilitySize {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(category.label).font(.caption.weight(.semibold))
+                                        Text("\(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending")
+                                            .font(.caption)
+                                    }
+                                    .fixedSize(horizontal: false, vertical: true)
+                                } else {
+                                    SpendyInsightSymbol()
+                                    ShinyHeadlineText(headline: "\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending", emphasis: [], font: .caption, emphasisFont: .caption.bold())
+                                }
                             } else {
                                 Text(insightsEnabled ? "View spending insights" : "View analytics")
                             }
                             Spacer(minLength: 2)
-                            Image(systemName: "chevron.right").font(.caption2)
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                Image(systemName: "chevron.right").font(.caption2)
+                            }
                         }
                         .font(.caption)
                         .foregroundStyle(SpendyColors.textSecondary)
