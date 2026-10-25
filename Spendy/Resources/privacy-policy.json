@@ -1,6 +1,6 @@
 {
   "title": "Privacy Policy",
-  "updated": "15 October 2026",
+  "updated": "25 October 2026",
   "developer": "Pavan Labs",
   "contactEmail": "hello.pavanlabs@gmail.com",
   "privacyPolicyURL": null,
@@ -27,11 +27,10 @@
     },
     {
       "id": "voice",
-      "title": "Voice logging and Apple services",
+      "title": "Siri and Apple services",
       "scope": "app",
       "paragraphs": [
-        "Voice logging requests microphone and speech-recognition permission. Spendy requests on-device recognition when the device and language support it. Otherwise, Apple’s speech-recognition service may process audio on Apple’s servers under Apple’s privacy terms.",
-        "Spendy does not maintain its own server-side archive of your voice recordings. The recognised words are used to prepare a transaction for you to review. Siri and Shortcuts also operate under your Apple settings and Apple’s privacy terms."
+        "Siri and Shortcuts operate under your Apple settings and Apple’s privacy terms."
       ],
       "links": [
         {
@@ -62,7 +61,7 @@
       "paragraphs": [
         "Spendy shares selected account, budget and transaction information with its own widgets and App Intents through local storage shared with those extensions. Widget content may be visible on your Home Screen or other system surfaces where you choose to place it.",
         "If you enable notifications, the app uses Apple’s notification system for local reminders and budget alerts. Notification content can appear on your Lock Screen according to your settings.",
-        "Camera, photo selection, microphone, speech recognition, Siri and notification features are optional. You can decline the relevant permission and continue using manual transaction entry. You can change permissions and notification visibility in your device’s Settings."
+        "Camera, photo selection, Siri and notification features are optional. You can decline the relevant permission and continue using manual transaction entry. You can change permissions and notification visibility in your device’s Settings."
       ]
     },
     {

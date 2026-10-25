@@ -337,7 +337,6 @@ struct DashboardView: View {
     @State private var showAllTransactions: Bool = false
     @State private var transactionFiltersExpanded = false
     @State private var showEditBudgetSheet: Bool = false
-    @State private var showHomeConfigSheet: Bool = false
     @State private var analyticsInitialDate: Date? = nil
     
     // MARK: - Interactive Split Dashboard Drawer State
@@ -468,10 +467,6 @@ struct DashboardView: View {
         }
     }
     
-    private var displayedBalance: Double {
-        store.filteredBalance(for: selectedAccountId)
-    }
-    
     private var selectedAccountLabel: String {
         if selectedAccountId == "all" { return "All Accounts" }
         return store.accounts.first(where: { $0.id == selectedAccountId })?.label ?? "Account"
@@ -480,20 +475,6 @@ struct DashboardView: View {
     private var selectedAccountSymbol: String {
         if selectedAccountId == "all" { return "wallet.pass.fill" }
         return store.accounts.first(where: { $0.id == selectedAccountId })?.sfSymbol ?? "creditcard.fill"
-    }
-    
-    // Ambient Header Glow Color (Account accent if selected, else Profile accent)
-    private var ambientHeaderColor: Color {
-        if selectedAccountId != "all", let acc = store.accounts.first(where: { $0.id == selectedAccountId }) {
-            return acc.color
-        }
-        if let hex = store.profileColorHex, !hex.isEmpty {
-            return Color(hex: hex)
-        }
-        if !store.topGradientColorHex.isEmpty {
-            return Color(hex: store.topGradientColorHex)
-        }
-        return Color(hex: "#007AFF")
     }
     
     // MARK: - Body
@@ -553,9 +534,6 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showCurrencyConverter) {
                 FloatingCurrencyConverterView(isPresented: $showCurrencyConverter)
-            }
-            .sheet(isPresented: $showHomeConfigSheet) {
-                HomeConfigurationSheet()
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)

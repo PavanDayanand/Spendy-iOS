@@ -593,9 +593,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Configuration/Spendy-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Spendy;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Spendy uses your microphone for quick hands-free expense logging.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Spendy uses your photo library so you can choose a profile or category photo.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Spendy uses on-device speech recognition to parse and log your expenses instantly.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -632,9 +630,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Configuration/Spendy-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Spendy;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Spendy uses your microphone for quick hands-free expense logging.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Spendy uses your photo library so you can choose a profile or category photo.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Spendy uses on-device speech recognition to parse and log your expenses instantly.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

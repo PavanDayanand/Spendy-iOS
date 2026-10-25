@@ -40,13 +40,6 @@ struct AnalyticsBreakdownItem: Identifiable {
     let percentage: Double
 }
 
-private struct RecordedDay: Identifiable {
-    let date: Date
-    /// Nil means outside the recorded history or an unfinished day with no entry.
-    let hasExpense: Bool?
-    var id: Date { date }
-}
-
 private struct ComparisonInterval: Identifiable {
     let index: Int
     let label: String
@@ -635,118 +628,6 @@ struct AnalyticsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var recordedDaysSection: some View {
-        let days = streakHeatmapDays
-        let weeks = stride(from: 0, to: days.count, by: 7).map { start in
-            Array(days[start..<min(start + 7, days.count)])
-        }
-        let tracked = days.compactMap(\.hasExpense)
-        let recordedCount = tracked.filter { $0 }.count
-        let bestRun = longestRecordedRun(in: days)
-        let currentRun = currentRecordedRun(in: days)
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Recorded activity")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Text("Day streak")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-                Spacer()
-                if !tracked.isEmpty {
-                    HStack(spacing: 12) {
-                        compactStreakMetric(value: currentRun, label: "streak", icon: "flame.fill")
-                        compactStreakMetric(value: bestRun, label: "best", icon: "trophy.fill")
-                        compactStreakMetric(value: recordedCount, label: "days", icon: "calendar")
-                    }
-                }
-            }
-
-            if tracked.isEmpty {
-                SpendyPlainEmptyState(
-                    title: "No activity to track yet",
-                    message: "Your recorded spending days will appear here.",
-                    compact: true
-                )
-            } else {
-                HStack(alignment: .top, spacing: 7) {
-                    VStack(spacing: 4) {
-                        let weekdayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                        ForEach(weekdayLabels.indices, id: \.self) { index in
-                            Text(weekdayLabels[index])
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                                .frame(width: 60, height: 12, alignment: .leading)
-                        }
-                    }
-                    HStack(spacing: 3) {
-                        ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                            VStack(spacing: 4) {
-                                ForEach(week) { day in
-                                    streakHeatmapMark(day)
-                                        .accessibilityHidden(true)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Text(streakDateRange(days))
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(SpendyColors.textTertiary)
-
-                HStack(spacing: 16) {
-                    Label("Recorded expense", systemImage: "square.fill")
-                        .accessibilityIdentifier("streak-legend-recorded")
-                    Label("No entry", systemImage: "square")
-                }
-                .font(.caption)
-                .foregroundStyle(SpendyColors.textSecondary)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Recorded expense date streak, Monday through Sunday")
-        .accessibilityValue("Current streak \(currentRun) \(currentRun == 1 ? "day" : "days"). Best run \(bestRun) \(bestRun == 1 ? "day" : "days"). \(recordedCount) recorded \(recordedCount == 1 ? "day" : "days") out of \(tracked.count) tracked days.")
-        .accessibilityIdentifier("expense-date-streak")
-        .modifier(AnalyticsPanelStyle(verticalPadding: 12))
-    }
-
-    private func compactStreakMetric(value: Int, label: String, icon: String? = nil) -> some View {
-        VStack(alignment: .trailing, spacing: 1) {
-            HStack(spacing: 3) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(icon == "flame.fill" ? SpendyColors.warningOrange : SpendyColors.textSecondary)
-                }
-                Text("\(value)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            Text(label)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-        }
-    }
-
-    private func streakHeatmapMark(_ day: RecordedDay) -> some View {
-        let isRecorded = day.hasExpense == true
-        return RoundedRectangle(cornerRadius: 3)
-            .fill(isRecorded ? SpendyColors.textPrimary : (day.hasExpense == nil ? SpendyColors.separator.opacity(0.35) : SpendyColors.cardBackground))
-            .overlay {
-                RoundedRectangle(cornerRadius: 3)
-                    .stroke(day.hasExpense == false ? SpendyColors.textTertiary.opacity(0.7) : Color.clear, lineWidth: 0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 12)
-    }
-
     private var spendingMixSection: some View {
         let allItems = selectedBreakdownItems
         let items = Array(allItems.prefix(3))
@@ -1064,74 +945,6 @@ struct AnalyticsView: View {
         }
     }
 
-    /// Sixteen Monday–Sunday weeks (7 days), based on transaction dates rather than inferred no-spend days.
-    private var streakHeatmapDays: [RecordedDay] {
-        var mondayCalendar = calendar
-        mondayCalendar.firstWeekday = 2
-        let periodEnd = currentPeriodBounds.end
-        let anchor = min(referenceDate, periodEnd)
-        let weekStart = mondayCalendar.dateInterval(of: .weekOfYear, for: anchor)?.start
-            ?? mondayCalendar.startOfDay(for: anchor)
-        let start = mondayCalendar.date(byAdding: .weekOfYear, value: -15, to: weekStart) ?? weekStart
-        let end = mondayCalendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
-        let expenses = store.filteredTransactions(for: selectedAccountId).filter {
-            $0.type == .expense && $0.date <= referenceDate
-        }
-        let firstTrackedDay = expenses.map(\.date).min().map { mondayCalendar.startOfDay(for: $0) }
-        let today = mondayCalendar.startOfDay(for: referenceDate)
-        let recordedDates = Set(expenses.filter { $0.date >= start && $0.date < end }.map {
-            mondayCalendar.startOfDay(for: $0.date)
-        })
-
-        return (0..<16).flatMap { weekOffset -> [RecordedDay] in
-            guard let monday = mondayCalendar.date(byAdding: .weekOfYear, value: weekOffset, to: start) else { return [] }
-            return (0..<7).compactMap { dayOffset in
-                guard let date = mondayCalendar.date(byAdding: .day, value: dayOffset, to: monday) else { return nil }
-                let hasExpense: Bool?
-                if recordedDates.contains(date) {
-                    hasExpense = true
-                } else if firstTrackedDay.map({ date >= $0 }) == true && date < today {
-                    hasExpense = false
-                } else {
-                    hasExpense = nil
-                }
-                return RecordedDay(date: date, hasExpense: hasExpense)
-            }
-        }
-    }
-
-    private func streakDateRange(_ days: [RecordedDay]) -> String {
-        guard let first = days.first?.date, let last = days.last?.date else { return "" }
-        return "\(first.formatted(.dateTime.month(.abbreviated).day())) – \(last.formatted(.dateTime.month(.abbreviated).day().year()))"
-    }
-
-    private func longestRecordedRun(in days: [RecordedDay]) -> Int {
-        var current = 0
-        var longest = 0
-        for day in days {
-            current = day.hasExpense == true ? current + 1 : 0
-            longest = max(longest, current)
-        }
-        return longest
-    }
-
-    private func currentRecordedRun(in days: [RecordedDay]) -> Int {
-        var streak = 0
-        let today = calendar.startOfDay(for: referenceDate)
-        let pastDays = days.filter { calendar.startOfDay(for: $0.date) <= today }
-        for day in pastDays.reversed() {
-            if day.hasExpense == true {
-                streak += 1
-            } else {
-                if calendar.isDate(day.date, inSameDayAs: today) && streak == 0 {
-                    continue
-                }
-                break
-            }
-        }
-        return streak
-    }
-    
     private var totalSpending: Double {
         spendingSnapshot.total
     }

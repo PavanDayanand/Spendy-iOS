@@ -13,7 +13,6 @@ enum SettingsDestination: Hashable {
     case categories
     case dataBackup
     case privacyPolicy
-    case insightCardsGallery
     case widgets
     case appAccent
     case insights
@@ -217,8 +216,6 @@ struct SettingsView: View {
                     DataManagementView()
                 case .privacyPolicy:
                     PrivacyPolicyView()
-                case .insightCardsGallery:
-                    InsightCardsGalleryView()
                 case .appAccent:
                     AppAccentSettingsView()
                 case .widgets:
