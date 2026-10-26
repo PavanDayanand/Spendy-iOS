@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import PhotosUI
 
 struct MainTabView: View {
     @Environment(ExpenseStore.self) private var store
@@ -25,9 +24,8 @@ struct MainTabView: View {
     @State private var openReceiptMenuOnDismiss = false
     @State private var receiptMenuRequest = 0
     @State private var showReceiptPhotos = false
+    @State private var receiptPhotosArePresented = false
     @State private var openReceiptPhotosOnDismiss = false
-    @State private var selectedReceiptPhoto: PhotosPickerItem?
-    @State private var receiptPhotoLoadTask: Task<Void, Never>?
     @State private var pendingReceiptPhoto: UIImage?
     @State private var receiptImportError: String?
     @State private var receiptToEdit: ReceiptScanResult?
@@ -157,40 +155,18 @@ struct MainTabView: View {
                     onAddResult: addReceiptTransaction)
             }
         }
-        .photosPicker(isPresented: $showReceiptPhotos, selection: $selectedReceiptPhoto,
-            matching: .images, preferredItemEncoding: .compatible)
-        .onChange(of: showReceiptPhotos) { _, presented in
-            if !presented, quickActionManager.receivedReceiptImages != nil {
+        .sheet(isPresented: $showReceiptPhotos, onDismiss: {
+            receiptPhotosArePresented = false
+            if quickActionManager.receivedReceiptImages != nil {
                 pendingReceiptPhoto = nil
                 openReceivedReceipt()
-                return
-            }
-            if !presented, let image = pendingReceiptPhoto {
+            } else if let image = pendingReceiptPhoto {
                 pendingReceiptPhoto = nil
                 receiptSheet = .review([image])
             }
-        }
-        .onChange(of: selectedReceiptPhoto) { _, item in
-            guard let item else { return }
-            receiptPhotoLoadTask?.cancel()
-            receiptPhotoLoadTask = Task {
-                do {
-                    guard let data = try await item.loadTransferable(type: Data.self),
-                          let image = UIImage(data: data) else {
-                        receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
-                        selectedReceiptPhoto = nil
-                        return
-                    }
-                    guard !Task.isCancelled else { return }
-                    selectedReceiptPhoto = nil
-                    if showReceiptPhotos { pendingReceiptPhoto = image }
-                    else { receiptSheet = .review([image]) }
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    selectedReceiptPhoto = nil
-                    receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
-                }
-            }
+        }) {
+            ReceiptPhotoPickerSheet { image in pendingReceiptPhoto = image }
+                .onAppear { receiptPhotosArePresented = true }
         }
         .alert("Receipt image", isPresented: Binding(
             get: { receiptImportError != nil },
@@ -249,13 +225,11 @@ struct MainTabView: View {
             quickActionManager.receiptFileImportError = nil
         }
         guard let images = quickActionManager.receivedReceiptImages else { return }
-        receiptPhotoLoadTask?.cancel()
         pendingReceiptPhoto = nil
         pendingReceiptEdit = nil
         openReceiptMenuOnDismiss = false
         openReceiptPhotosOnDismiss = false
-        if showReceiptPhotos {
-            selectedReceiptPhoto = nil
+        if showReceiptPhotos || receiptPhotosArePresented {
             showReceiptPhotos = false
             return // Finish dismissing the picker before presenting the received image.
         }

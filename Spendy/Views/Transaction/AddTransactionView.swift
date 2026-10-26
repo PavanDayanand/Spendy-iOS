@@ -7,7 +7,6 @@
 //  Clean 3-Column Numeric Keypad (No Math Operators), and Non-Duplicated Liquid Glass Sheets.
 //
 
-import PhotosUI
 import SwiftUI
 
 // MARK: - Active Sheet Enum for Single-Sheet Presentation
@@ -29,10 +28,6 @@ enum TransactionActiveSheet: Identifiable {
         case .scanner: return "scanner"
         }
     }
-}
-
-private enum ReceiptImageError: Error {
-    case invalidImage
 }
 
 struct AddTransactionView: View {
@@ -72,7 +67,6 @@ struct AddTransactionView: View {
     @State private var showReceiptCamera = false
     @State private var showReceiptPhotos = false
     @State private var openPhotosAfterCamera = false
-    @State private var selectedReceiptPhoto: PhotosPickerItem?
     @State private var pendingReceiptPhoto: UIImage?
     @State private var receiptImages: [UIImage] = []
     @State private var receiptImportError: String?
@@ -330,37 +324,15 @@ struct AddTransactionView: View {
             .presentationBackground(.clear)
             .preferredColorScheme(.dark)
         }
-        .photosPicker(
-            isPresented: $showReceiptPhotos,
-            selection: $selectedReceiptPhoto,
-            matching: .images,
-            preferredItemEncoding: .compatible
-        )
-        .onChange(of: showReceiptPhotos) { _, isPresented in
-            if !isPresented, let image = pendingReceiptPhoto {
+        .sheet(isPresented: $showReceiptPhotos, onDismiss: {
+            if let image = pendingReceiptPhoto {
                 pendingReceiptPhoto = nil
                 activeSheet = .scanner([image])
             }
-        }
-        .onChange(of: selectedReceiptPhoto) { _, item in
-            guard let item else { return }
-            Task {
-                do {
-                    guard let data = try await item.loadTransferable(type: Data.self),
-                          let image = UIImage(data: data) else {
-                        throw ReceiptImageError.invalidImage
-                    }
-                    selectedReceiptPhoto = nil
-                    receiptImages = [image]
-                    if showReceiptPhotos {
-                        pendingReceiptPhoto = image
-                    } else {
-                        activeSheet = .scanner([image])
-                    }
-                } catch {
-                    selectedReceiptPhoto = nil
-                    receiptImportError = "That photo could not be opened. Choose another receipt or screenshot."
-                }
+        }) {
+            ReceiptPhotoPickerSheet { image in
+                receiptImages = [image]
+                pendingReceiptPhoto = image
             }
         }
         .alert("Receipt image", isPresented: Binding(
