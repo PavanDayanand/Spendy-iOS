@@ -65,6 +65,11 @@ final class ExpenseStore {
             let fixture = ExpenseStore(storageURL: url, startsServices: false)
             fixture.hasCompletedOnboarding = true
             fixture.transactions = [Transaction(title: "Readiness expense", amount: 25, categoryId: "groceries", accountId: "cash")]
+            if mode == "empty-states" {
+                fixture.transactions = []
+                fixture.subscriptions = []
+                fixture.budget = Budget(amount: 0, isActive: false)
+            }
             if mode == "transfer-regression" {
                 fixture.accounts = [
                     Account(id: "bank", label: "Main Bank", openingBalance: 1000, type: .bank),

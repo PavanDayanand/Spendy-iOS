@@ -1248,16 +1248,19 @@ struct DashboardView: View {
     // MARK: - Empty State View
     private var emptyRecentActivityView: some View {
         SpendyPlainEmptyState(
-            title: hasActiveFilters ? "No matching transactions" : "No transactions yet",
+            title: hasActiveFilters ? "No matching transactions" : "Your spending starts here",
             message: hasActiveFilters
                 ? "Try clearing your filters to see more transactions."
-                : "Add your first transaction to see it here.",
-            actionTitle: hasActiveFilters ? "Reset Filters" : nil
+                : "Add a transaction to see where your money goes.",
+            icon: hasActiveFilters ? "line.3.horizontal.decrease" : "receipt",
+            actionTitle: hasActiveFilters ? "Reset Filters" : "Add transaction"
         ) {
             if hasActiveFilters {
                 withAnimation(AppMotion.snappySpring) {
                     clearDrawerFilters()
                 }
+            } else {
+                showAddTransaction = true
             }
         }
     }

@@ -197,7 +197,8 @@ struct BudgetView: View {
     private var emptyStateView: some View {
         SpendyPlainEmptyState(
             title: "No budget yet",
-            message: "Set a limit to track your spending.",
+            message: "Choose a spending limit and see what’s left as you go.",
+            icon: "gauge.with.dots.needle.33percent",
             actionTitle: "Set budget"
         ) {
             showEditBudgetSheet = true

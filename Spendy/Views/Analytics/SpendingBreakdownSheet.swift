@@ -163,6 +163,7 @@ struct SpendingBreakdownSheet: View {
                             title: items.isEmpty ? (isIncome ? "No income yet" : "No spending yet") : "No selections",
                             message: items.isEmpty ? "Recorded transactions will appear here."
                                 : byCategory ? "Choose categories to see transactions." : "Choose accounts to see transactions.",
+                            icon: byCategory ? "square.grid.2x2" : "creditcard",
                             actionTitle: items.isEmpty ? nil : "Select all",
                             action: { selectedIDs = nil }
                         )

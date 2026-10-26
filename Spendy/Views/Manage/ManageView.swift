@@ -600,8 +600,12 @@ struct SubscriptionsView: View {
     private var emptyState: some View {
         SpendyPlainEmptyState(
             title: "No subscriptions yet",
-            message: "Tap the plus button at the top to add a recurring payment."
-        )
+            message: "Keep your recurring payments and upcoming renewals together.",
+            icon: "arrow.trianglehead.2.clockwise.rotate.90",
+            actionTitle: "Add subscription"
+        ) {
+            showAddSubscription = true
+        }
     }
 
     // MARK: - Past & Cancelled Section

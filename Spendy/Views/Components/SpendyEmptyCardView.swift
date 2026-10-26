@@ -56,77 +56,13 @@ struct SpendyEmptyCardView: View {
     }
     
     private var cardBody: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // 1. Left-Aligned Editorial Text
-            Text(message)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // 2. Full-Width Liquid Glass Pill Button
-            if let actionTitle = actionTitle, let action = action {
-                Button(action: {
-                    HapticsManager.shared.trigger(.selection)
-                    action()
-                }) {
-                    Text(actionTitle)
-                        .font(.system(size: 15.5, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .nativeLiquidGlassCapsule(isInteractive: true)
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(EmptyCardPressStyle())
-            }
-        }
+        SpendyPlainEmptyState(
+            title: title ?? "Nothing here yet",
+            message: message,
+            icon: icon ?? "tray",
+            actionTitle: actionTitle,
+            action: action
+        )
         .padding(16)
-    }
-}
-
-/// Text-only empty state for primary app screens.
-struct SpendyPlainEmptyState: View {
-    let title: String
-    let message: String
-    var actionTitle: String? = nil
-    var compact = false
-    var action: (() -> Void)? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 4 : 10) {
-            Text(title)
-                .font(.system(size: compact ? 15 : 19, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-
-            Text(message)
-                .font(.system(size: compact ? 13 : 15))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let actionTitle, let action {
-                Button(actionTitle) {
-                    HapticsManager.shared.trigger(.selection)
-                    action()
-                }
-                .font(.system(size: compact ? 13 : 15, weight: .semibold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .padding(.top, compact ? 4 : 8)
-                .buttonStyle(.plain)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, compact ? 8 : 24)
-    }
-}
-
-// MARK: - Interactive Button Press Style
-private struct EmptyCardPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.75), value: configuration.isPressed)
     }
 }
