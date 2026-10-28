@@ -80,6 +80,41 @@ final class NavigationPolishUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Analytics and statistics"].isHittable)
     }
 
+    @MainActor func testActivityHeaderDragsInBothDirectionsWithoutReplacingRows() {
+        let app = launch()
+        let expand = app.buttons["Expand recent activity"]
+        let compactY = expand.frame.midY
+        let row = app.buttons.matching(NSPredicate(format:
+            "identifier BEGINSWITH %@", "home-activity-transaction-")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let rowID = row.identifier
+        let rows = app.buttons.matching(NSPredicate(format:
+            "identifier BEGINSWITH %@", "home-activity-transaction-"))
+        XCTAssertEqual(rows.count, 3, "Collapsed activity contains only the three latest transactions")
+        for _ in 0..<2 {
+            let start = expand.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.05,
+                        thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.12)),
+                        withVelocity: .slow, thenHoldForDuration: 0)
+            let collapse = app.buttons["Collapse recent activity"]
+            XCTAssertTrue(collapse.waitForExistence(timeout: 5))
+            XCTAssertLessThan(collapse.frame.midY, compactY - 100)
+            XCTAssertTrue(app.buttons[rowID].exists)
+            XCTAssertTrue(app.scrollViews["transactionFilters"].exists)
+            capture(app, "Activity expanded with the same transaction rows")
+            collapse.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.05,
+                       thenDragTo: app.coordinate(withNormalizedOffset: .zero)
+                           .withOffset(CGVector(dx: app.frame.width * 0.4, dy: compactY)),
+                       withVelocity: .slow, thenHoldForDuration: 0)
+            XCTAssertTrue(expand.waitForExistence(timeout: 5))
+            XCTAssertEqual(expand.frame.midY, compactY, accuracy: 3)
+            XCTAssertEqual(rows.count, 3, "Collapsing restores the three-transaction limit")
+            XCTAssertTrue(app.buttons[rowID].exists)
+            capture(app, "Activity compact after header drag")
+        }
+    }
+
     @MainActor func testBudgetImmediatelyDropsHomeControls() {
         let app = launch()
         app.buttons["More actions"].tap()

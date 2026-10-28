@@ -341,7 +341,6 @@ struct DashboardView: View {
     
     // MARK: - Interactive Split Dashboard Drawer State
     @State private var internalSheetExpanded: Bool = false
-    @State private var sheetDragOffsetY: CGFloat = 0
     
     private var isSubpageActive: Bool {
         showBudgetHub ||
@@ -818,139 +817,130 @@ struct DashboardView: View {
 
     // MARK: - 4. Interactive Bottom Transactions Drawer
     private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
-        let restingOffset = restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset)
-        let expandedOffset = max(topInset + 10, 56)
-        let currentOffset = currentDrawerOffset(totalHeight: totalHeight, topInset: topInset, bottomInset: bottomInset)
-        let drawerAvailableHeight = max(100, totalHeight - currentOffset)
-        
-        let pinnedHeader = VStack(spacing: 0) {
-            // A stable header keeps its identity and spacing throughout a drag.
-            VStack(spacing: 0) {
-                Capsule()
-                    .fill(SpendyColors.textTertiary)
-                    .frame(width: 32, height: 4)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 24)
-                    .contentShape(Rectangle())
-                    .onTapGesture { toggleActivityDrawer() }
-                    .accessibilityHidden(true)
+        let transactions = displayedTransactions
+        let recentIDs = Set(transactions.prefix(3).map(\.id))
+        let groups = drawerGroupedTransactions.compactMap { title, net, transactions -> (String, Double, [Transaction])? in
+            let visible = isSheetExpanded ? transactions : transactions.filter { recentIDs.contains($0.id) }
+            return visible.isEmpty ? nil : (title, net, visible)
+        }
+        return HomeActivityDrawer(
+            totalHeight: totalHeight, topInset: topInset, bottomInset: bottomInset,
+            isExpanded: Binding(get: { isSheetExpanded }, set: { setExpandedState($0) })
+        ) { expansion, drag in
+            let pinnedHeader = VStack(spacing: 0) {
+                // A stable header keeps its identity and spacing throughout a drag.
+                VStack(spacing: 0) {
+                    Capsule()
+                        .fill(SpendyColors.textTertiary)
+                        .frame(width: 32, height: 4)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 24)
+                        .contentShape(Rectangle())
+                        .onTapGesture { toggleActivityDrawer() }
+                        .accessibilityHidden(true)
 
-                HStack(spacing: 12) {
-                    Button { toggleActivityDrawer() } label: {
-                        Text("Recent activity")
-                            .font(.system(size: 24, weight: .bold, design: .default))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
-                    .accessibilityValue("\(displayedTransactions.count) transactions")
+                    HStack(spacing: 12) {
+                        Button { toggleActivityDrawer() } label: {
+                            Text("Recent activity")
+                                .font(.system(size: 24, weight: .bold, design: .default))
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
+                        .accessibilityValue("\(transactions.count) transactions")
 
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        showAllTransactions = true
-                    } label: {
-                        Text("See all")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            showAllTransactions = true
+                        } label: {
+                            Text("See all")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(SpendyColors.textSecondary)
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("See all transactions")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("See all transactions")
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 4)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 4)
-            }
-            .contentShape(Rectangle())
-            .highPriorityGesture(sheetDragGesture(restingOffset: restingOffset, expandedOffset: expandedOffset))
+                .contentShape(Rectangle())
+                .highPriorityGesture(drag)
 
-            // Keep the horizontal filters outside the drawer's vertical drag gesture.
-            if isSheetExpanded {
+                // Keep the horizontal filters outside the drawer's vertical drag gesture.
                 drawerFilterBar
                     .padding(.bottom, 12)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+                    .frame(height: 56 * expansion, alignment: .top)
+                    .clipped()
+                    .opacity(expansion)
+                    .allowsHitTesting(isSheetExpanded)
+                    .accessibilityHidden(!isSheetExpanded)
             
-        }
+            }
 
-        return ZStack(alignment: .top) {
-            // Activity scrolls behind the pinned controls and floating dock.
-            ScrollView(showsIndicators: isSheetExpanded) {
-                if displayedTransactions.isEmpty {
-                    emptyRecentActivityView
-                        .padding(.horizontal, 20)
-                        .padding(.top, 18)
-                } else if !isSheetExpanded {
-                    LazyVStack(spacing: 0) {
-                        ForEach(displayedTransactions.prefix(3)) { tx in
-                            transactionRow(tx)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(drawerGroupedTransactions, id: \.0) { groupTitle, groupNet, txs in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text(groupTitle.uppercased())
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(SpendyColors.textTertiary)
-                                        .tracking(1.2)
+            return ZStack(alignment: .top) {
+                // Activity scrolls behind the pinned controls and floating dock.
+                ScrollView(showsIndicators: isSheetExpanded) {
+                    if transactions.isEmpty {
+                        emptyRecentActivityView
+                            .padding(.horizontal, 20)
+                            .padding(.top, 18)
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(groups, id: \.0) { groupTitle, groupNet, txs in
+                                VStack(alignment: .leading, spacing: 4 * expansion) {
+                                    HStack(alignment: .firstTextBaseline) {
+                                        Text(groupTitle.uppercased())
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundStyle(SpendyColors.textTertiary)
+                                            .tracking(1.2)
                                     
-                                    Spacer()
+                                        Spacer()
                                     
-                                    Text(formattedGroupNetTotal(groupNet))
-                                        .spendyNumberFont(size: 13, weight: .semibold, tracking: -0.2)
-                                        .foregroundStyle(SpendyColors.textSecondary)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.top, 12)
-                                .padding(.bottom, 4)
-                                
-                                ForEach(Array(txs.enumerated()), id: \.element.id) { index, tx in
-                                    transactionRow(tx)
+                                        Text(formattedGroupNetTotal(groupNet))
+                                            .spendyNumberFont(size: 13, weight: .semibold, tracking: -0.2)
+                                            .foregroundStyle(SpendyColors.textSecondary)
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, 4)
+                                    .frame(height: 30 * expansion, alignment: .bottom)
+                                    .clipped()
+                                    .opacity(expansion)
+                                    .accessibilityHidden(!isSheetExpanded)
+
+                                    ForEach(Array(txs.enumerated()), id: \.element.id) { index, tx in
+                                        transactionRow(tx)
                                     
-                                    if index < txs.count - 1 {
-                                        Rectangle()
-                                            .fill(SpendyColors.separator.opacity(0.6))
-                                            .frame(height: 0.5)
-                                            .padding(.leading, 64)
-                                            .padding(.trailing, 16)
+                                        if index < txs.count - 1 {
+                                            Rectangle()
+                                                .fill(SpendyColors.separator.opacity(0.6))
+                                                .frame(height: 0.5 * expansion)
+                                                .opacity(expansion)
+                                                .padding(.leading, 64)
+                                                .padding(.trailing, 16)
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding(.horizontal, 4)
                     }
-                    .padding(.horizontal, 4)
                 }
-            }
-            .safeAreaPadding(.top, isSheetExpanded ? 128 : 72)
-            .safeAreaPadding(.bottom, isSheetExpanded ? bottomInset + 78 : 0)
-            .scrollDisabled(!isSheetExpanded)
-            .frame(maxHeight: .infinity, alignment: .top)
-            .accessibilityIdentifier("homeActivityViewport")
+                .safeAreaPadding(.top, 72 + 56 * expansion)
+                .safeAreaPadding(.bottom, bottomInset + 78)
+                .scrollDisabled(!isSheetExpanded)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .accessibilityIdentifier("homeActivityViewport")
 
-            pinnedHeader
+                pinnedHeader
+            }
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: drawerAvailableHeight)
-        .background {
-            // Smooth Stable Rounded Surface with dynamic top/bottom corner radii
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(SpendyColors.recentActivityBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)
-                }
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 20, x: 0, y: -4)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .padding(.horizontal, isSheetExpanded ? 0 : 8)
-        .offset(y: currentOffset)
     }
-    
+
     // MARK: - Drawer Horizontal Filter Bar
     private var drawerFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -1093,82 +1083,17 @@ struct DashboardView: View {
     
     private func toggleActivityDrawer() {
         HapticsManager.shared.trigger(.selection)
-        withAnimation(AppMotion.fluidSpring) {
+        withAnimation(reduceMotion ? nil : AppMotion.fluidSpring) {
             setExpandedState(!isSheetExpanded)
         }
     }
 
-    private func sheetDragGesture(restingOffset: CGFloat, expandedOffset: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 10, coordinateSpace: .global)
-            .onChanged { value in
-                // Only track vertical movement to prevent hijacking horizontal chart scrubbing
-                if abs(value.translation.width) > abs(value.translation.height) && abs(value.translation.height) < 8 {
-                    return
-                }
-                sheetDragOffsetY = value.translation.height
-            }
-            .onEnded { value in
-                let translation = value.translation.height
-                let velocity = value.velocity.height
-                
-                // Tap detection if dragged less than 5pt
-                if abs(translation) < 5 {
-                    HapticsManager.shared.trigger(.selection)
-                    withAnimation(AppMotion.fluidSpring) {
-                        setExpandedState(!isSheetExpanded)
-                        sheetDragOffsetY = 0
-                    }
-                    return
-                }
-                
-                let startBase = isSheetExpanded ? expandedOffset : restingOffset
-                let currentPos = startBase + translation
-                let midpoint = (restingOffset + expandedOffset) / 2
-                
-                let targetExpanded: Bool
-                if velocity < -350 {
-                    targetExpanded = true
-                } else if velocity > 350 {
-                    targetExpanded = false
-                } else {
-                    targetExpanded = currentPos < midpoint
-                }
-                
-                HapticsManager.shared.trigger(.selection)
-                withAnimation(AppMotion.fluidSpring) {
-                    setExpandedState(targetExpanded)
-                    sheetDragOffsetY = 0
-                }
-            }
-    }
-    
     private func restingDrawerOffset(totalHeight: CGFloat, bottomInset: CGFloat) -> CGFloat {
         // Header + three 60-point rows + a small gap + the existing dock and safe area.
         let compactHeight: CGFloat = 72 + 3 * 60 + 42 + 56 + bottomInset
         return max(totalHeight * 0.55, totalHeight - compactHeight)
     }
 
-    private func currentDrawerOffset(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> CGFloat {
-        let restingOffset = restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset)
-        let expandedOffset = max(topInset + 10, 56)
-        let baseOffset = isSheetExpanded ? expandedOffset : restingOffset
-        let rawOffset = baseOffset + sheetDragOffsetY
-        
-        if rawOffset < expandedOffset {
-            let overshoot = expandedOffset - rawOffset
-            return expandedOffset - resistedDrawerOvershoot(overshoot)
-        } else if rawOffset > restingOffset {
-            let overshoot = rawOffset - restingOffset
-            return restingOffset + resistedDrawerOvershoot(overshoot)
-        }
-        return rawOffset
-    }
-
-    private func resistedDrawerOvershoot(_ distance: CGFloat) -> CGFloat {
-        let resistanceLength: CGFloat = 96
-        return distance * resistanceLength / (distance + resistanceLength)
-    }
-    
     // MARK: - Transaction Row Item (Matches Exact Visual Design)
     private func transactionRow(_ tx: Transaction) -> some View {
         let cat = store.displayCategory(for: tx)
@@ -1232,6 +1157,7 @@ struct DashboardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("home-activity-transaction-\(tx.id)")
     }
     
     private func rowAmountColor(_ tx: Transaction) -> Color {

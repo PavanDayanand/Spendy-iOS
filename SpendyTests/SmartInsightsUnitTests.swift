@@ -248,8 +248,8 @@ enum SmartInsightsUnitTests {
             destination: .subscriptionDetail(id: "sub_1")
         )
         let overduePayload = InsightMessageBuilder.buildMessage(for: overdue, currencySymbol: "₹")
-        XCTAssertTrue(overduePayload.headline == "Apple Music is past due.")
-        XCTAssertTrue(overduePayload.supportingText == "₹59 was due 1 day ago.")
+        XCTAssertTrue(overduePayload.headline == "Apple Music’s renewal is unrecorded.")
+        XCTAssertTrue(overduePayload.supportingText == "Expected ₹59 · due 1 day ago. Check whether it was paid.")
         XCTAssertTrue(!overduePayload.supportingText!.contains("1 days"))
         
         let lessFood = InsightCandidate(

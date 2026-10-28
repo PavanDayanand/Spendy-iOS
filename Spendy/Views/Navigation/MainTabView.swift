@@ -24,7 +24,6 @@ struct MainTabView: View {
     @State private var openReceiptMenuOnDismiss = false
     @State private var receiptMenuRequest = 0
     @State private var showReceiptPhotos = false
-    @State private var receiptPhotosArePresented = false
     @State private var openReceiptPhotosOnDismiss = false
     @State private var pendingReceiptPhoto: UIImage?
     @State private var receiptImportError: String?
@@ -155,8 +154,9 @@ struct MainTabView: View {
                     onAddResult: addReceiptTransaction)
             }
         }
-        .sheet(isPresented: $showReceiptPhotos, onDismiss: {
-            receiptPhotosArePresented = false
+        .background(ReceiptPhotoPickerPresenter(isPresented: $showReceiptPhotos, onSelect: { image in
+            pendingReceiptPhoto = image
+        }, onDismiss: {
             if quickActionManager.receivedReceiptImages != nil {
                 pendingReceiptPhoto = nil
                 openReceivedReceipt()
@@ -164,10 +164,7 @@ struct MainTabView: View {
                 pendingReceiptPhoto = nil
                 receiptSheet = .review([image])
             }
-        }) {
-            ReceiptPhotoPickerSheet { image in pendingReceiptPhoto = image }
-                .onAppear { receiptPhotosArePresented = true }
-        }
+        }))
         .alert("Receipt image", isPresented: Binding(
             get: { receiptImportError != nil },
             set: { if !$0 { receiptImportError = nil } }
@@ -229,7 +226,7 @@ struct MainTabView: View {
         pendingReceiptEdit = nil
         openReceiptMenuOnDismiss = false
         openReceiptPhotosOnDismiss = false
-        if showReceiptPhotos || receiptPhotosArePresented {
+        if showReceiptPhotos {
             showReceiptPhotos = false
             return // Finish dismissing the picker before presenting the received image.
         }

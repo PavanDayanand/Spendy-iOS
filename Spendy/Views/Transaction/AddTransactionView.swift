@@ -324,17 +324,15 @@ struct AddTransactionView: View {
             .presentationBackground(.clear)
             .preferredColorScheme(.dark)
         }
-        .sheet(isPresented: $showReceiptPhotos, onDismiss: {
+        .background(ReceiptPhotoPickerPresenter(isPresented: $showReceiptPhotos, onSelect: { image in
+            receiptImages = [image]
+            pendingReceiptPhoto = image
+        }, onDismiss: {
             if let image = pendingReceiptPhoto {
                 pendingReceiptPhoto = nil
                 activeSheet = .scanner([image])
             }
-        }) {
-            ReceiptPhotoPickerSheet { image in
-                receiptImages = [image]
-                pendingReceiptPhoto = image
-            }
-        }
+        }))
         .alert("Receipt image", isPresented: Binding(
             get: { receiptImportError != nil },
             set: { if !$0 { receiptImportError = nil } }

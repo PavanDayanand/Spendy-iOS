@@ -30,7 +30,7 @@ final class SpendingChartUITests: XCTestCase {
         button(app, "Income").tap()
         XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("5,000"))
         XCTAssertTrue(app.staticTexts["Category income"].exists)
-        XCTAssertFalse(app.buttons.matching(identifier: "open-spendy-insights").allElementsBoundByIndex.contains { $0.isHittable })
+        XCTAssertTrue(app.buttons.matching(identifier: "open-spendy-insights").allElementsBoundByIndex.contains { $0.isHittable })
         capture(app, "Analytics income selected")
         button(app, "expand-spending-breakdown").tap()
         XCTAssertTrue(app.staticTexts["Income by Category"].waitForExistence(timeout: 5))
@@ -112,13 +112,23 @@ final class SpendingChartUITests: XCTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.85)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.3)))
         XCTAssertTrue(app.staticTexts["Category spending"].exists)
         capture(app, "Category spending chart")
+        XCTAssertTrue(app.otherElements["analytics-period-comparison"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Spending compared"].exists)
+        XCTAssertTrue(app.staticTexts["20% less"].exists)
+        XCTAssertTrue(app.staticTexts["Activity in Days 1–7"].exists)
+        XCTAssertTrue(app.staticTexts["Oct 2026"].exists)
+        XCTAssertTrue(app.staticTexts["Sep 2026"].exists)
         for _ in 0..<4 {
-            if app.staticTexts["Outlined date · spending recorded"].isHittable { break }
+            if app.staticTexts["Recorded expense"].isHittable { break }
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.85)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.3)))
         }
-        XCTAssertTrue(app.staticTexts["Outlined date · spending recorded"].exists)
-        XCTAssertTrue(app.staticTexts["Outlined date · spending recorded"].exists)
-        capture(app, "Redesigned streak calendar")
+        XCTAssertTrue(app.staticTexts["Recorded expense"].exists)
+        XCTAssertTrue(app.staticTexts["Saturday"].exists)
+        XCTAssertTrue(app.staticTexts["Sunday"].exists)
+        let streak = app.otherElements["expense-date-streak"].firstMatch
+        XCTAssertTrue(streak.exists)
+        XCTAssertTrue((streak.value as? String)?.contains("recorded") == true)
+        capture(app, "Monday to Sunday recorded-day streak")
     }
     @MainActor func testHomeBarChartInfoAndPrivacy() {
         let app = launch()
