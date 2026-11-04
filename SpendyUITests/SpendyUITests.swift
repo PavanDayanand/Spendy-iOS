@@ -357,7 +357,7 @@ final class SpendyUITests: XCTestCase {
         }
         XCTAssertTrue(widgets.waitForExistence(timeout: 5))
         widgets.tap()
-        XCTAssertTrue(app.staticTexts["Home Screen widgets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Widgets that feel like Spendy"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.links["Add"].exists)
         XCTAssertTrue(app.links["Scan"].exists)
         XCTAssertTrue(app.links["Trends"].exists)
@@ -367,11 +367,15 @@ final class SpendyUITests: XCTestCase {
             shot.lifetime = .keepAlways
             add(shot)
         }
-        capture("small and budget")
-        app.swipeUp()
-        capture("week and categories")
-        app.swipeUp()
-        capture("monthly")
+        capture("small")
+
+        let familyPicker = app.segmentedControls["widget-family-picker"]
+        XCTAssertTrue(familyPicker.waitForExistence(timeout: 5))
+        familyPicker.buttons["Medium"].tap()
+        capture("medium")
+
+        familyPicker.buttons["Large"].tap()
+        capture("large")
     }
 
     @MainActor func testRemainingCategoriesOpenAndReturnToAnalytics() {
