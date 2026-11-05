@@ -19,7 +19,7 @@ struct SpendyTodayWidget: Widget {
         }
         .configurationDisplayName("Today")
         .description("Today’s spending at a glance. Edit to choose a budget or category view.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }
@@ -33,7 +33,7 @@ struct SpendyBudgetWidget: Widget {
         }
         .configurationDisplayName("Budget Room")
         .description("What remains in your current budget cycle.")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }

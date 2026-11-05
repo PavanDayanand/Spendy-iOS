@@ -6,6 +6,7 @@
 import AppIntents
 import CoreSpotlight
 import SwiftUI
+import WidgetKit
 import TipKit
 import UserNotifications
 
@@ -116,6 +117,15 @@ struct SpendyApp: App {
     @MainActor
     private func activateSpendySystemIntegrations() {
         SpendyLiveActivityManager.shared.endAllLiveActivities()
+        #if DEBUG
+        // Explicit capture runs publish the isolated synthetic ledger to real widgets.
+        if ProcessInfo.processInfo.environment["SPENDY_CAPTURE_SYSTEM_WIDGET_DATA"] == "1" {
+            WidgetDataManager.shared.publish(from: store)
+            WidgetCenter.shared.reloadAllTimelines()
+            SpendyShortcutsProvider.updateAppShortcutParameters()
+            return
+        }
+        #endif
         guard store.systemIntegrationsEnabled else { return }
         store.ingestPendingWidgetTransactions()
         store.ingestSharedReceipts()

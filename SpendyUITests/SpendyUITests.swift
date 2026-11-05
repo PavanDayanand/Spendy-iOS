@@ -348,7 +348,7 @@ final class SpendyUITests: XCTestCase {
     @MainActor func testMinimalWidgetsLight() { verifyMinimalWidgets(light: true) }
 
     @MainActor private func verifyMinimalWidgets(light: Bool) {
-        let app = launch("analytics", light: light)
+        let app = launch("widgets", light: light)
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
         let widgets = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "widgets")).firstMatch
         for _ in 0..<6 {
@@ -376,6 +376,8 @@ final class SpendyUITests: XCTestCase {
 
         familyPicker.buttons["Large"].tap()
         capture("large")
+        familyPicker.buttons["XL"].tap()
+        capture("extra large")
     }
 
     @MainActor func testRemainingCategoriesOpenAndReturnToAnalytics() {

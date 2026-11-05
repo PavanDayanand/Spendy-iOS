@@ -11,6 +11,7 @@ struct WidgetPreviewGallery: View {
         case small = "Small"
         case medium = "Medium"
         case large = "Large"
+        case extraLarge = "XL"
 
         var id: Self { self }
     }
@@ -38,6 +39,10 @@ struct WidgetPreviewGallery: View {
                     mediumWidgets
                 case .large:
                     largeWidgets
+                case .extraLarge:
+                    WidgetPreviewCard(title: "Monthly brief · iPad", family: .systemExtraLarge) {
+                        SpendyLargeOverviewWidgetView(snapshot: snapshot, previewFamily: .systemExtraLarge)
+                    }
                 }
             }
             .id(selectedFamily)
@@ -60,14 +65,13 @@ struct WidgetPreviewGallery: View {
                 SpendySmallWidgetView(snapshot: snapshot)
             }
 
-            WidgetPreviewCard(title: "Budget", family: .systemSmall, tint: Color(hex: "#FF9500")) {
+            WidgetPreviewCard(title: "Budget", family: .systemSmall) {
                 SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
             }
 
             WidgetPreviewCard(
                 title: snapshot.topCategoryName == "None" ? "Category" : snapshot.topCategoryName,
-                family: .systemSmall,
-                tint: Color(hex: snapshot.topCategoryColorHex)
+                family: .systemSmall
             ) {
                 SpendyCategoryFocusView(snapshot: snapshot, category: nil, previewFamily: .systemSmall)
             }
@@ -81,10 +85,14 @@ struct WidgetPreviewGallery: View {
     private var mediumWidgets: some View {
         VStack(spacing: 16) {
             WidgetPreviewCard(title: "Spending pulse", family: .systemMedium) {
-                SpendyMediumWeekWidgetView(snapshot: snapshot)
+                SpendyWeekWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
             }
 
-            WidgetPreviewCard(title: "Where it went", family: .systemMedium, tint: Color(hex: snapshot.topCategoryColorHex)) {
+            WidgetPreviewCard(title: "Budget", family: .systemMedium) {
+                SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
+            }
+
+            WidgetPreviewCard(title: "Where it went", family: .systemMedium) {
                 SpendyMediumCategoriesWidgetView(snapshot: snapshot)
             }
 
@@ -95,8 +103,16 @@ struct WidgetPreviewGallery: View {
     }
 
     private var largeWidgets: some View {
-        WidgetPreviewCard(title: "Monthly brief", family: .systemLarge, tint: Color(hex: snapshot.topCategoryColorHex)) {
-            SpendyLargeOverviewWidgetView(snapshot: snapshot)
+        VStack(spacing: 16) {
+            WidgetPreviewCard(title: "Monthly brief", family: .systemLarge) {
+                SpendyLargeOverviewWidgetView(snapshot: snapshot, previewFamily: .systemLarge)
+            }
+            WidgetPreviewCard(title: "Budget", family: .systemLarge) {
+                SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemLarge)
+            }
+            WidgetPreviewCard(title: "Where it went", family: .systemLarge) {
+                SpendyMediumCategoriesWidgetView(previewFamily: .systemLarge, snapshot: snapshot)
+            }
         }
     }
 }
@@ -104,15 +120,14 @@ struct WidgetPreviewGallery: View {
 private struct WidgetPreviewCard<Content: View>: View {
     let title: String
     let family: WidgetFamily
-    var tint: Color? = nil
     @ViewBuilder let content: Content
 
-    private var aspectRatio: CGFloat {
+    private var designSize: CGSize {
         switch family {
-        case .systemMedium:
-            2.13
-        default:
-            1
+        case .systemMedium: CGSize(width: 338, height: 158)
+        case .systemLarge: CGSize(width: 338, height: 354)
+        case .systemExtraLarge: CGSize(width: 715.5, height: 342)
+        default: CGSize(width: 158, height: 158)
         }
     }
 
@@ -123,13 +138,16 @@ private struct WidgetPreviewCard<Content: View>: View {
                 .foregroundStyle(SpendyColors.textSecondary)
                 .lineLimit(1)
 
-            content
-                .environment(\.spendyWidgetGlassPreview, true)
-                .aspectRatio(aspectRatio, contentMode: .fit)
-                .clipShape(.rect(cornerRadius: 24))
-                .contentShape(.rect(cornerRadius: 24))
-                .nativeLiquidGlass(cornerRadius: 24, isInteractive: true, tint: tint?.opacity(0.18))
-                .accessibilityElement(children: .contain)
+            GeometryReader { geometry in
+                content
+                    .environment(\.spendyWidgetGlassPreview, true)
+                    .frame(width: designSize.width, height: designSize.height)
+                    .background(SpendyWidgetPalette.canvas)
+                    .clipShape(.rect(cornerRadius: 24))
+                    .scaleEffect(geometry.size.width / designSize.width, anchor: .topLeading)
+            }
+            .aspectRatio(designSize.width / designSize.height, contentMode: .fit)
+            .accessibilityElement(children: .contain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

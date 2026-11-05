@@ -42,25 +42,21 @@ struct WidgetCategoryBadge: View {
     var name: String = ""
     var size: CGFloat = 44
 
-    private var categoryColor: Color {
-        SpendyHexColor.color(from: colorHex.isEmpty ? "#6E6E73" : colorHex)
-    }
-
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.29)
-                .fill(categoryColor)
+                .fill(SpendyWidgetPalette.text.opacity(0.09))
                 .widgetAccentable()
 
             if symbol == "Aa" {
                 Text(String(name.prefix(1)).uppercased())
                     .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyWidgetPalette.text)
             } else {
                 Image(systemName: symbol.isEmpty ? "tag" : symbol)
                     .font(.system(size: size * 0.43, weight: .semibold))
                     .symbolRenderingMode(.monochrome)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyWidgetPalette.text)
             }
         }
         .frame(width: size, height: size)
@@ -78,6 +74,7 @@ struct SpendyWidgetAmount: View {
         Text(SpendyWidgetFormat.amount(amount, symbol: symbol, decimals: amount == 0 || abs(amount) >= 100 ? 0 : 2))
             .font(.system(size: size, weight: .bold, design: .rounded))
             .monospacedDigit()
+        .contentTransition(.numericText())
         .foregroundStyle(color)
         .tracking(-1.1)
         .lineLimit(1)
@@ -90,9 +87,9 @@ struct SpendyWidgetAddButton: View {
         Button(intent: QuickAddExpenseIntent()) {
             Image(systemName: "plus")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(SpendyWidgetPalette.inverse)
+                .foregroundStyle(SpendyWidgetPalette.text)
                 .frame(width: 28, height: 28)
-                .background(Circle().fill(SpendyWidgetPalette.text))
+                .background(Circle().fill(SpendyWidgetPalette.text.opacity(0.10)))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Quick add")
@@ -119,7 +116,7 @@ struct SpendyWeekBars: View {
                         .frame(height: height, alignment: .bottom)
                         .widgetAccentable(highlighted)
                     Text(day.dayLabel)
-                        .font(.system(size: 9, weight: day.isToday || highlighted ? .bold : .medium))
+                        .font(.system(size: 11, weight: day.isToday || highlighted ? .bold : .medium))
                         .foregroundStyle(day.isToday || highlighted ? SpendyWidgetPalette.text : SpendyWidgetPalette.secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -154,48 +151,16 @@ struct SpendyMiniRing: View {
     }
 }
 
-private extension View {
-    func spendyWidgetChrome(
-        transparent: Bool = false,
-        accent: Color? = nil
-    ) -> some View {
+extension View {
+    // Only the container owns the canvas. WidgetKit removes it in Clear,
+    // tinted and StandBy appearances; an ordinary background becomes a block.
+    func spendyWidgetChrome(transparent: Bool = false) -> some View {
         self
             .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background {
-                if transparent {
-                    Color.clear
-                } else {
-                    WidgetCanvasBackground(accent: accent)
-                }
-            }
             .containerBackground(for: .widget) {
-                SpendyWidgetPalette.canvas
+                if !transparent { SpendyWidgetPalette.canvas }
             }
-    }
-}
-
-private struct WidgetCanvasBackground: View {
-    let accent: Color?
-
-    var body: some View {
-        ZStack {
-            SpendyWidgetPalette.canvas
-
-            if let accent {
-                Circle()
-                    .fill(accent.opacity(0.13))
-                    .frame(width: 150, height: 150)
-                    .blur(radius: 28)
-                    .offset(x: 72, y: -70)
-
-                Circle()
-                    .fill(SpendyWidgetPalette.text.opacity(0.055))
-                    .frame(width: 120, height: 120)
-                    .blur(radius: 24)
-                    .offset(x: -82, y: 78)
-            }
-        }
     }
 }
 
@@ -222,7 +187,7 @@ private struct WidgetActionLink: View {
                     .font(.system(size: 23, weight: .medium))
                     .widgetAccentable()
                 Text(title)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .lineLimit(1)
             }
             .foregroundStyle(SpendyWidgetPalette.text)
@@ -298,7 +263,7 @@ private struct WidgetComparisonLine: View {
             let difference = snapshot.monthTotal - prior
             HStack(spacing: 4) {
                 Image(systemName: difference > 0 ? "arrow.up.right" : difference < 0 ? "arrow.down.right" : "equal")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                 Text(difference == 0
                      ? "Same as last month"
                      : "\(SpendyWidgetFormat.compactAmount(abs(difference), symbol: snapshot.currencySymbol)) \(difference > 0 ? "more" : "less") vs last month")
@@ -350,58 +315,26 @@ struct SpendySmallWidgetView: View {
 struct SpendyBudgetArc: View {
     let progress: Double?
     var radius: CGFloat = 58
-    var segments: Int = 19
+    var showsPercentage = true
 
     var body: some View {
-        let normalizedProgress = min(1, max(0, progress ?? 0))
-        let filled = Int(round(normalizedProgress * Double(segments)))
         ZStack {
-            ForEach(0..<segments, id: \.self) { index in
-                let angleDegrees = 210.0 - Double(index) * (240.0 / Double(max(1, segments - 1)))
-                let angleRadians = angleDegrees * .pi / 180.0
-                let x = radius * cos(angleRadians)
-                let y = -radius * sin(angleRadians)
-                let isFilled = index < filled
-                Capsule()
-                    .fill(isFilled ? segmentColor(index) : SpendyWidgetPalette.fill)
-                    .frame(width: max(4.5, radius * 0.085), height: max(13, radius * 0.30))
-                    .rotationEffect(.degrees(90.0 - angleDegrees))
-                    .offset(x: x, y: y + radius * 0.22)
-            }
-
+            Circle().trim(from: 0.125, to: 0.875)
+                .stroke(SpendyWidgetPalette.text.opacity(0.12), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            Circle().trim(from: 0.125, to: 0.125 + 0.75 * min(1, max(0, progress ?? 0)))
+                .stroke(SpendyWidgetPalette.text, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .widgetAccentable()
+            if showsPercentage {
             Text(progress.map { $0.formatted(.percent.precision(.fractionLength(0))) } ?? "—")
-                .font(.system(size: radius * 0.40, weight: .bold, design: .rounded))
+                .font(.system(size: radius * 0.40, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(SpendyWidgetPalette.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-                .offset(y: radius * 0.18)
+                .rotationEffect(.degrees(-90))
+            }
         }
-        .frame(width: radius * 2 + 16, height: radius * 1.15 + 8)
+        .rotationEffect(.degrees(90))
+        .frame(width: radius * 2, height: radius * 2)
         .accessibilityLabel(progress.map { "Budget used, \($0.formatted(.percent.precision(.fractionLength(0))))" } ?? "No active budget")
-    }
-
-    private func segmentColor(_ index: Int) -> Color {
-        let fraction = Double(index) / Double(max(1, segments - 1))
-        if fraction < 0.5 {
-            return mix(SpendyHexColor.color(from: "#FFA07A"), SpendyHexColor.color(from: "#FF9500"), fraction * 2)
-        }
-        return mix(SpendyHexColor.color(from: "#FF9500"), SpendyHexColor.color(from: "#FF3B30"), (fraction - 0.5) * 2)
-    }
-
-    private func mix(_ a: Color, _ b: Color, _ t: Double) -> Color {
-        let u1 = UIColor(a)
-        let u2 = UIColor(b)
-        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
-        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
-        u1.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
-        u2.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
-        let t = CGFloat(min(1, max(0, t)))
-        return Color(
-            red: Double(r1 + (r2 - r1) * t),
-            green: Double(g1 + (g2 - g1) * t),
-            blue: Double(b1 + (b2 - b1) * t)
-        )
     }
 }
 
@@ -412,33 +345,68 @@ struct SpendyBudgetWidgetView: View {
     var previewFamily: WidgetFamily? = nil
 
     private var resolvedFamily: WidgetFamily { previewFamily ?? family }
-
-    private var ringRadius: CGFloat {
-        switch resolvedFamily {
-        case .systemLarge: 96
-        case .systemMedium: 66
-        default: 55
-        }
-    }
+    private var isSmall: Bool { resolvedFamily == .systemSmall }
+    private var isMedium: Bool { resolvedFamily == .systemMedium }
+    private var amount: Double { snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            WidgetSectionLabel(text: "Budget")
-
-            SpendyBudgetArc(
-                progress: snapshot.budgetTotal > 0 ? snapshot.budgetProgress : nil,
-                radius: ringRadius
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                WidgetSectionLabel(text: "Budget")
+                Spacer(minLength: 4)
+                Image(systemName: "circle.dotted")
+                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                    .accessibilityHidden(true)
+            }
+            if snapshot.budgetTotal > 0 {
+                if isSmall {
+                    Spacer(minLength: 0)
+                    ZStack {
+                        SpendyBudgetArc(progress: snapshot.budgetProgress, radius: 46, showsPercentage: false)
+                        VStack(spacing: 2) {
+                            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: 24)
+                            WidgetSectionLabel(text: snapshot.budgetOverage > 0 ? "over budget" : "left to spend")
+                        }
+                        .padding(.horizontal, 10)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 78)
+                    Spacer(minLength: 0)
+                    WidgetSectionLabel(text: "\(snapshot.daysLeft) days left")
+                        .frame(maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 20) {
+                        SpendyBudgetArc(progress: snapshot.budgetProgress, radius: isMedium ? 49 : 80)
+                        VStack(alignment: .leading, spacing: 6) {
+                            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: isMedium ? 32 : 42)
+                            WidgetSectionLabel(text: snapshot.budgetOverage > 0 ? "over budget" : "left to spend")
+                            if isMedium { WidgetSectionLabel(text: "\(snapshot.daysLeft) days left") }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: .infinity)
+                    if !isMedium {
+                        WidgetBudgetRail(progress: snapshot.budgetProgress)
+                        HStack {
+                            WidgetSectionLabel(text: "\(snapshot.daysLeft) days left")
+                            Spacer()
+                            WidgetSectionLabel(text: snapshot.pacingCaption)
+                        }
+                    }
+                }
+            } else {
+                Spacer(minLength: 0)
+                Image(systemName: "circle.dashed").font(.system(size: 32)).foregroundStyle(SpendyWidgetPalette.secondary)
+                Text("Set a budget").font(.headline).foregroundStyle(SpendyWidgetPalette.text)
+                WidgetSectionLabel(text: "Tap to get started")
+                Spacer(minLength: 0)
+            }
         }
-        .spendyWidgetChrome(
-            transparent: glassPreview,
-            accent: glassPreview ? nil : SpendyHexColor.color(from: "#FF9500")
-        )
+        .spendyWidgetChrome(transparent: glassPreview)
         .widgetURL(URL(string: "spendy://budget"))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(snapshot.budgetTotal > 0
-            ? "Budget \(snapshot.budgetOverage > 0 ? "over by \(SpendyWidgetFormat.amount(snapshot.budgetOverage, symbol: snapshot.currencySymbol))" : "room \(SpendyWidgetFormat.amount(snapshot.remainingBudget, symbol: snapshot.currencySymbol))"), \(snapshot.daysLeft) days left"
+            ? "Budget \(snapshot.budgetOverage > 0 ? "over by" : "remaining") \(SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)), \(snapshot.daysLeft) days left"
             : "Set a budget in Spendy")
     }
 }
@@ -451,54 +419,39 @@ struct SpendyCategoryFocusView: View {
     var previewFamily: WidgetFamily? = nil
 
     private var resolvedFamily: WidgetFamily { previewFamily ?? family }
-
     private var match: WidgetCategorySpend? {
         snapshot.categorySpending.first(where: { $0.id == category?.id })
             ?? (category == nil ? snapshot.topCategories.first : nil)
     }
 
     var body: some View {
-        let name = category?.name ?? match?.name ?? "Category"
-        let symbol = category?.sfSymbol ?? match?.sfSymbol ?? "tag"
-        let colorHex = category?.colorHex ?? match?.colorHex ?? "#6E6E73"
+        let name = match?.name ?? category?.name ?? "Category"
+        let symbol = match?.sfSymbol ?? category?.sfSymbol ?? "tag"
         let amount = match?.amount ?? 0
         let share = snapshot.monthTotal > 0 ? amount / snapshot.monthTotal : 0
-
-        VStack(alignment: .leading, spacing: 0) {
-            WidgetCategoryBadge(
-                symbol: symbol,
-                colorHex: colorHex,
-                name: name,
-                size: resolvedFamily == .systemSmall ? 52 : 58
-            )
-
-            Spacer(minLength: 10)
-
-            Text(name)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyWidgetPalette.secondary)
-                .lineLimit(1)
-
-            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: resolvedFamily == .systemSmall ? 30 : 38)
-                .padding(.top, 2)
-            Text("spent this month")
-                .font(.system(size: 11))
-                .foregroundStyle(SpendyWidgetPalette.secondary)
-
-            Spacer(minLength: 8)
-
-            Text(share.formatted(.percent.precision(.fractionLength(0))))
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(SpendyWidgetPalette.text)
+        let expanded = resolvedFamily == .systemLarge || resolvedFamily == .systemExtraLarge
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                WidgetCategoryBadge(symbol: symbol, colorHex: "", name: name, size: 30)
+                Text(name).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyWidgetPalette.text).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            SpendyWidgetAmount(amount: amount, symbol: snapshot.currencySymbol, size: expanded ? 44 : 30)
+            WidgetSectionLabel(text: "This month")
+            Spacer(minLength: 0)
+            WidgetBudgetRail(progress: share)
+            WidgetSectionLabel(text: "\(share.formatted(.percent.precision(.fractionLength(0)))) of spending")
+            if expanded {
+                Divider().padding(.vertical, 12)
+                WidgetSectionLabel(text: "All spending this month")
+                SpendyWidgetAmount(amount: snapshot.monthTotal, symbol: snapshot.currencySymbol, size: 24)
+            }
         }
-        .spendyWidgetChrome(
-            transparent: glassPreview,
-            accent: glassPreview ? nil : SpendyHexColor.color(from: colorHex)
-        )
-        .widgetURL(category.flatMap { URL(string: "spendy://category/\($0.id)") } ?? URL(string: "spendy://analytics"))
+        .spendyWidgetChrome(transparent: glassPreview)
+        .widgetURL((match?.id ?? category?.id).flatMap { URL(string: "spendy://category/\($0)") } ?? URL(string: "spendy://analytics"))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name), \(SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)) this month, \(Int((share * 100).rounded())) percent of spending")
+        .accessibilityLabel("\(name), \(SpendyWidgetFormat.amount(amount, symbol: snapshot.currencySymbol)) this month, \(share.formatted(.percent.precision(.fractionLength(0)))) of spending")
     }
 }
 
@@ -512,19 +465,13 @@ struct SpendyConfiguredWidgetView: View {
         case .budget:
             SpendyBudgetWidgetView(snapshot: snapshot)
         case .week:
-            if family == .systemSmall {
-                SpendySmallWidgetView(snapshot: snapshot)
-            } else if family == .systemLarge {
-                SpendyLargeOverviewWidgetView(snapshot: snapshot)
-            } else {
-                SpendyMediumWeekWidgetView(snapshot: snapshot)
-            }
+            SpendyWeekWidgetView(snapshot: snapshot)
         case .category:
             SpendyCategoryFocusView(snapshot: snapshot, category: configuration.category)
         default:
             if family == .systemMedium {
                 SpendyMediumWeekWidgetView(snapshot: snapshot)
-            } else if family == .systemLarge {
+            } else if family == .systemLarge || family == .systemExtraLarge {
                 SpendyLargeOverviewWidgetView(snapshot: snapshot)
             } else {
                 SpendySmallWidgetView(snapshot: snapshot)
@@ -630,6 +577,8 @@ struct SpendyMediumActivityWidgetView: View {
 // Three categories, each with one identity and one amount.
 
 struct SpendyMediumCategoriesWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    var previewFamily: WidgetFamily? = nil
     @Environment(\.spendyWidgetGlassPreview) private var glassPreview
     let snapshot: SpendyWidgetSnapshot
 
@@ -639,7 +588,7 @@ struct SpendyMediumCategoriesWidgetView: View {
                 WidgetSectionLabel(text: "Where it went")
                 Spacer(minLength: 8)
                 Text("This month")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(SpendyWidgetPalette.secondary)
             }
             Spacer(minLength: 9)
@@ -650,50 +599,49 @@ struct SpendyMediumCategoriesWidgetView: View {
                     .foregroundStyle(SpendyWidgetPalette.secondary)
                 Spacer(minLength: 0)
             } else {
-                HStack(alignment: .top, spacing: 12) {
-                    ForEach(snapshot.topCategories.prefix(3)) { category in
-                        VStack(spacing: 6) {
-                            WidgetCategoryBadge(
-                                symbol: category.sfSymbol,
-                                colorHex: category.colorHex,
-                                name: category.name,
-                                size: 36
-                            )
+                if (previewFamily ?? family) == .systemLarge || (previewFamily ?? family) == .systemExtraLarge {
+                    SpendyCategoryRanking(snapshot: snapshot)
+                } else {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(snapshot.topCategories.prefix(3)) { category in
+                            VStack(spacing: 6) {
+                                WidgetCategoryBadge(
+                                    symbol: category.sfSymbol,
+                                    colorHex: category.colorHex,
+                                    name: category.name,
+                                    size: 36
+                                )
 
-                            Text(category.name)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(SpendyWidgetPalette.secondary)
-                                .lineLimit(1)
+                                Text(category.name)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(SpendyWidgetPalette.secondary)
+                                    .lineLimit(1)
 
-                            Text(SpendyWidgetFormat.compactAmount(category.amount, symbol: snapshot.currencySymbol))
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(SpendyWidgetPalette.text)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                Text(SpendyWidgetFormat.compactAmount(category.amount, symbol: snapshot.currencySymbol))
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(SpendyWidgetPalette.text)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(category.name), \(SpendyWidgetFormat.amount(category.amount, symbol: snapshot.currencySymbol))")
                         }
-                        .frame(maxWidth: .infinity)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(category.name), \(SpendyWidgetFormat.amount(category.amount, symbol: snapshot.currencySymbol))")
                     }
                 }
                 Spacer(minLength: 0)
             }
         }
-        .spendyWidgetChrome(
-            transparent: glassPreview,
-            accent: glassPreview ? nil : snapshot.topCategories.first.map { SpendyHexColor.color(from: $0.colorHex) }
-        )
+        .spendyWidgetChrome(transparent: glassPreview)
         .widgetURL(URL(string: "spendy://analytics"))
     }
 }
 
 // MARK: - Large · Monthly brief
 
-struct SpendyLargeOverviewWidgetView: View {
-    @Environment(\.spendyWidgetGlassPreview) private var glassPreview
+struct SpendyMonthlyBriefColumn: View {
     let snapshot: SpendyWidgetSnapshot
-
     private var weekTotal: Double { snapshot.weeklySpending.reduce(0) { $0 + $1.amount } }
 
     var body: some View {
@@ -752,7 +700,11 @@ struct SpendyLargeOverviewWidgetView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     WidgetSectionLabel(text: "Budget room")
                     if snapshot.budgetTotal > 0 {
-                        SpendyBudgetArc(progress: snapshot.budgetProgress, radius: 34, segments: 13)
+                        Text(SpendyWidgetFormat.compactAmount(snapshot.budgetOverage > 0 ? snapshot.budgetOverage : snapshot.remainingBudget, symbol: snapshot.currencySymbol))
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundStyle(SpendyWidgetPalette.text)
+                            .lineLimit(1).minimumScaleFactor(0.65)
+                        WidgetSectionLabel(text: snapshot.budgetOverage > 0 ? "over budget" : "left to spend")
                     } else {
                         Text("Not set")
                             .font(.system(size: 12))
@@ -763,11 +715,6 @@ struct SpendyLargeOverviewWidgetView: View {
             }
             Spacer(minLength: 0)
         }
-        .spendyWidgetChrome(
-            transparent: glassPreview,
-            accent: glassPreview ? nil : snapshot.topCategories.first.map { SpendyHexColor.color(from: $0.colorHex) }
-        )
-        .widgetURL(URL(string: "spendy://analytics"))
     }
 }
 
@@ -778,7 +725,7 @@ struct SpendyAccessoryCircularView: View {
 
     var body: some View {
         VStack(spacing: 3) {
-            Text("Today").font(.system(size: 10, weight: .medium))
+            Text("Today").font(.system(size: 11, weight: .medium))
             Text(SpendyWidgetFormat.compactAmount(snapshot.todayTotal, symbol: snapshot.currencySymbol))
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .minimumScaleFactor(0.5)

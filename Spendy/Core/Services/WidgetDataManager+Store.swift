@@ -18,7 +18,6 @@ extension WidgetDataManager {
         } catch {
             store.sharedReceiptImportError = "Receipt actions are unavailable. \(error.localizedDescription)"
         }
-        updateSnapshot(from: store)
         NotificationManager.shared.refresh(from: store)
         saveCategories(store.categories.map { category in
             WidgetCategoryRecord(
@@ -40,7 +39,8 @@ extension WidgetDataManager {
                 order: account.order
             )
         })
-        
+        // Publish last so a requested timeline sees the matching entity records.
+        updateSnapshot(from: store)
     }
 
     @MainActor

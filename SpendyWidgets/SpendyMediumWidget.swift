@@ -11,11 +11,11 @@ struct SpendyWeekWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
-            SpendyMediumWeekWidgetView(snapshot: entry.snapshot)
+            SpendyWeekWidgetView(snapshot: entry.snapshot)
         }
         .configurationDisplayName("Spending Pulse")
-        .description("Today’s spending and the last seven days.")
-        .supportedFamilies([.systemMedium])
+        .description("See your spending over the last seven days.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }
@@ -56,8 +56,8 @@ struct SpendyCategoriesWidget: Widget {
             SpendyMediumCategoriesWidgetView(snapshot: entry.snapshot)
         }
         .configurationDisplayName("Where It Went")
-        .description("The categories driving this month’s spending.")
-        .supportedFamilies([.systemMedium])
+        .description("See where your money went this month.")
+        .supportedFamilies([.systemMedium, .systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }
@@ -71,7 +71,7 @@ struct SpendyOverviewWidget: Widget {
         }
         .configurationDisplayName("Monthly Brief")
         .description("A monthly comparison, seven-day trend, top category, and budget room.")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }

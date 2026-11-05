@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import WidgetKit
 
 nonisolated enum SpendyAppGroup {
     static let identifier = "group.com.Spendy"
@@ -471,19 +472,25 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
     private let decoder: JSONDecoder
     private let containerURL: URL?
 
-    private init() {
-        defaults = UserDefaults(suiteName: SpendyAppGroup.identifier) ?? .standard
+    private let reloadTimelines: @Sendable () -> Void
+
+    init(
+        defaults: UserDefaults = UserDefaults(suiteName: SpendyAppGroup.identifier) ?? .standard,
+        containerURL: URL? = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SpendyAppGroup.identifier),
+        reloadTimelines: @escaping @Sendable () -> Void = { WidgetCenter.shared.reloadAllTimelines() }
+    ) {
+        self.defaults = defaults
+        self.containerURL = containerURL
+        self.reloadTimelines = reloadTimelines
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: SpendyAppGroup.identifier
-        )
     }
 
     func saveSnapshot(_ snapshot: SpendyWidgetSnapshot) {
         persist(snapshot, key: SpendyAppGroup.snapshotKey, filename: "widget_snapshot.json")
+        reloadTimelines()
     }
 
     func loadSnapshot(asOf date: Date = Date()) -> SpendyWidgetSnapshot {

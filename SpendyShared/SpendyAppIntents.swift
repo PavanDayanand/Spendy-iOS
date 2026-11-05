@@ -595,8 +595,10 @@ struct SpendyHomeWidgetIntent: WidgetConfigurationIntent {
     }
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Show \(\.$focus)") {
-            \.$category
+        When(\.$focus, .equalTo, .category) {
+            Summary("Show \(\.$focus): \(\.$category)")
+        } otherwise: {
+            Summary("Show \(\.$focus)")
         }
     }
 }

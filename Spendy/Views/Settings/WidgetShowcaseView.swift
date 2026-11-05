@@ -24,7 +24,7 @@ struct WidgetShowcaseView: View {
                             .font(.title2.bold())
                             .foregroundStyle(SpendyColors.textPrimary)
 
-                        Text("Choose a size to preview the real Home Screen proportions. Your categories keep the same icon and identity you picked in Spendy.")
+                        Text("Your spending, at a glance. Choose a size, then add your favourite to the Home Screen.")
                             .font(.subheadline)
                             .foregroundStyle(SpendyColors.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)

@@ -84,6 +84,16 @@ final class ExpenseStore {
                     Transaction(title: "Analytics expense \(index)", amount: Double(60 - index * 5), categoryId: category.id, accountId: "cash")
                 }
             }
+            if mode == "widgets" {
+                fixture.budget = Budget(amount: 1200, isActive: true)
+                let amounts = [45.0, 180, 25, 90, 65, 120, 40]
+                let categories = ["groceries", "coffee", "restaurants"]
+                fixture.transactions = amounts.enumerated().map { index, amount in
+                    Transaction(title: "Widget expense", amount: amount,
+                        categoryId: categories[index % categories.count], accountId: "cash",
+                        date: Calendar.current.date(byAdding: .day, value: index - 6, to: Date())!)
+                }
+            }
             if mode == "charts" {
                 let calendar = Calendar.current
                 let now = Date()
@@ -133,6 +143,41 @@ final class ExpenseStore {
                         date: Calendar.current.date(byAdding: .month, value: -1, to: tx.date)!)
                 }
                 fixture.budget = Budget(amount: 100, isActive: true)
+            }
+            // Isolated, synthetic ledger used only for website screenshot capture.
+            if mode == "website-screenshots" {
+                fixture.userName = ""
+                fixture.profileImageData = nil
+                fixture.accounts = [Account(id: "cash", label: "Cash", openingBalance: 4000, type: .cash),
+                                    Account(id: "bank", label: "Everyday", openingBalance: 100000, type: .bank)]
+                fixture.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
+                fixture.currencyCode = "INR"
+                fixture.currencySymbol = "₹"
+                fixture.subscriptions = [
+                    Subscription(name: "Music", amount: 119, nextBillingDate: Date().addingTimeInterval(86400 * 3)),
+                    Subscription(name: "Cloud storage", amount: 75, nextBillingDate: Date().addingTimeInterval(86400 * 6)),
+                    Subscription(name: "Film club", amount: 299, nextBillingDate: Date().addingTimeInterval(86400 * 12))
+                ]
+                fixture.budget = Budget(amount: 12000, isActive: true)
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let purchases: [(String, Double, String)] = [
+                    ("Morning coffee", 180, "coffee"), ("Weekly groceries", 1240, "groceries"),
+                    ("Lunch with friends", 640, "restaurants"), ("Metro pass", 500, "public_transport"),
+                    ("Fresh fruit", 320, "groceries"), ("Coffee and a book", 260, "coffee"),
+                    ("Dinner out", 850, "restaurants"), ("Weekend groceries", 1680, "groceries")
+                ]
+                fixture.transactions = (0..<6).flatMap { month in
+                    purchases.enumerated().map { index, purchase in
+                        let monthStart = calendar.dateInterval(of: .month, for: today)!.start
+                        let previousMonth = calendar.date(byAdding: .month, value: -month, to: monthStart)!
+                        let date = month == 0 ? Date().addingTimeInterval(-Double(index * 15 * 60))
+                            : calendar.date(byAdding: .day, value: 2 + index * 3, to: previousMonth)!
+                        return Transaction(title: purchase.0, amount: purchase.1 * (1 + Double(month) * 0.08),
+                            categoryId: purchase.2, accountId: "bank",
+                            date: date)
+                    }
+                }
             }
             if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_APPEARANCE"] == "light" {
                 fixture.appearanceMode = .light
