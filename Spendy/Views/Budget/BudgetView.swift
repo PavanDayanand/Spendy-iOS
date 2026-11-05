@@ -48,19 +48,6 @@ struct BudgetView: View {
                             .accessibilityAddTraits(.isHeader)
                             .opacity(sharedNavigationHeader == nil ? 1 : 0)
                             .accessibilityHidden(sharedNavigationHeader != nil)
-                        // Title Subtitle Range Chip
-                        HStack {
-                            Text(cycleDateRangeString)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 5)
-                                .background(SpendyColors.separator, in: Capsule())
-                            
-                            Spacer()
-                        }
-                        .padding(.top, 4)
-                        
                         if !hasActiveBudget {
                             // Empty State View
                             emptyStateView
@@ -218,6 +205,18 @@ struct BudgetView: View {
     }
     
 
+    private var budgetPacingContext: String {
+        let pace: String
+        switch store.budgetPacingState {
+        case .onTrack: pace = "On track"
+        case .overPace(let difference): pace = "\(difference)% above pace"
+        case .underPace(let difference): pace = "\(difference)% below pace"
+        case .exceeded: pace = "Budget exceeded"
+        }
+        let days = store.budgetDaysLeft
+        return "\(pace) · \(days) \(days == 1 ? "day" : "days") remaining"
+    }
+
     private var activeBudgetContent: some View {
         VStack(spacing: 20) {
             // Main Analytics-Style Circular Ring Budget Card
@@ -228,22 +227,26 @@ struct BudgetView: View {
                 spent: spent,
                 target: target,
                 currencySymbol: store.currencySymbol,
-                daysLeft: store.budgetDaysLeft,
                 periodTitle: store.budget.period == .weekly ? "Weekly" : "Monthly",
-                dateRangeString: cycleDateRangeString,
-                pacingInsightMessage: nil,
-                pacingState: store.budgetPacingState
+                dateRangeString: cycleDateRangeString
             )
             
-            // Show the insight rail only when it has something useful to say.
             let usefulInsights = budgetInsightMoments.filter { !$0.isInsufficientData }
-            if !usefulInsights.isEmpty {
-                SpendyInsightSummary(moments: usefulInsights) { destination in
-                    if case .category(let id) = destination {
-                        selectedCategoryForSheet = store.categories.first { $0.id == id }
+            VStack(alignment: .leading, spacing: 8) {
+                if !usefulInsights.isEmpty {
+                    SpendyInsightSummary(moments: usefulInsights) { destination in
+                        if case .category(let id) = destination {
+                            selectedCategoryForSheet = store.categories.first { $0.id == id }
+                        }
                     }
                 }
+                Text(budgetPacingContext)
+                    .font(.footnote)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("budget-insight-context")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             budgetSummaryRows(target: target, spent: spent)
 

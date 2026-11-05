@@ -698,7 +698,7 @@ struct AnalyticsView: View {
 
     private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
         HStack(spacing: 10) {
-            SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
+            SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.isMonoMode ? SpendyColors.textPrimary.opacity(1 - Double(index) * 0.12) : Color(hex: item.colorHex),
                 size: .small, style: .circle, monogramName: item.label)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
@@ -708,16 +708,21 @@ struct AnalyticsView: View {
                     .font(.caption).foregroundStyle(SpendyColors.textSecondary)
             }
             Spacer(minLength: 4)
-            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.subheadline.weight(.semibold)).monospacedDigit()
-                .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1).minimumScaleFactor(0.75)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                    .font(.subheadline.weight(.semibold)).monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+                Text("\(item.percentage.formatted(.number.precision(.fractionLength(0))))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+            .lineLimit(1).minimumScaleFactor(0.75)
         }
         .padding(.vertical, 8)
         .frame(minHeight: 48)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
+        .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2)), \(item.percentage.formatted(.number.precision(.fractionLength(1)))) percent")
     }
 
     // MARK: - Header Bar
