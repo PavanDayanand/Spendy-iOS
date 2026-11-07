@@ -124,6 +124,14 @@ final class SpendingChartUITests: XCTestCase {
         button(app, "breakdown-groceries").tap()
         XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.label.contains("750"))
+        let activity = button(app, "Recent Activity")
+        for _ in 0..<3 {
+            if activity.isHittable { break }
+            app.swipeUp()
+        }
+        activity.tap()
+        XCTAssertTrue(app.staticTexts["Chart groceries"].firstMatch.waitForExistence(timeout: 5))
+        capture(app, "Category analytics grouped transactions")
         button(app, "Back").tap()
         XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("750"))
         capture(app, "Filtered category spending")

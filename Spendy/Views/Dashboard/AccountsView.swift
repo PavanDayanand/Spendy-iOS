@@ -452,19 +452,10 @@ struct AccountsView: View {
                     showAddAccount = true
                 }
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(sortedAccounts.enumerated()), id: \.element.id) { index, account in
-                        accountRow(account)
-                        if index < sortedAccounts.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 74)
-                                .padding(.trailing, 16)
-                        }
-                    }
+                SpendyGroupedList(items: sortedAccounts,
+                    background: isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground) { account in
+                    accountRow(account)
                 }
-                .background { groupedCardBackground }
             }
         }
     }
@@ -476,7 +467,7 @@ struct AccountsView: View {
             HapticsManager.shared.trigger(.selection)
             selectedAccountForAnalytics = account
         } label: {
-            HStack(alignment: .center, spacing: 14) {
+            SpendyListRow {
                 SpendyIconBadge(
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                     color: account.color,
@@ -485,6 +476,7 @@ struct AccountsView: View {
                     monogramName: account.label
                 )
                 
+            } content: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(account.label)
                         .font(AppTypography.rowTitle)
@@ -496,19 +488,15 @@ struct AccountsView: View {
                         .foregroundStyle(SpendyColors.textSecondary)
                         .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
+            } value: {
                 Text(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 16.5, weight: .bold, design: .default))
+                    .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                     .layoutPriority(1)
                     .foregroundStyle(bal < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .contextMenu {

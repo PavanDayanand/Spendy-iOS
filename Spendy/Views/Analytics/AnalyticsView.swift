@@ -664,28 +664,24 @@ struct AnalyticsView: View {
                     compact: true
                 )
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
-                        Button {
-                            HapticsManager.shared.trigger(.selection)
-                            if groupingMode == .categories {
-                                selectedCategoryForSheet = store.categories.first { $0.id == item.id }
-                            } else {
-                                selectedAccountForSheet = store.accounts.first { $0.id == item.id }
-                            }
-                        } label: {
-                            breakdownLegendRow(item, index: index)
+                SpendyGroupedList(items: visibleItems, isEnclosed: false) { item in
+                    Button {
+                        HapticsManager.shared.trigger(.selection)
+                        if groupingMode == .categories {
+                            selectedCategoryForSheet = store.categories.first { $0.id == item.id }
+                        } else {
+                            selectedAccountForSheet = store.accounts.first { $0.id == item.id }
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
-                        .accessibilityIdentifier("breakdown-\(item.id)")
-                        .spendyNavigationSource(
-                            groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
-                            in: analyticsTransitions)
-                        if index < visibleItems.count - 1 {
-                            Divider().overlay(SpendyColors.separator)
-                        }
+                    } label: {
+                        SpendingBreakdownRow(item: item, isIncome: isIncome, currencySymbol: store.currencySymbol,
+                            tint: SpendingMixChart.tint(for: item, index: visibleItems.firstIndex { $0.id == item.id } ?? 0))
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                    .accessibilityIdentifier("breakdown-\(item.id)")
+                    .spendyNavigationSource(
+                        groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
+                        in: analyticsTransitions)
                 }
             }
             if !allItems.isEmpty {
@@ -703,35 +699,6 @@ struct AnalyticsView: View {
                 .accessibilityIdentifier("expand-spending-breakdown")
             }
         }
-    }
-
-    private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
-        HStack(spacing: 10) {
-            SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.isMonoMode ? SpendyColors.textPrimary.opacity(1 - Double(index) * 0.12) : Color(hex: item.colorHex),
-                size: .small, style: .circle, monogramName: item.label)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.label).font(.subheadline.weight(.medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                Text("\(item.txCount) \(isIncome ? (item.txCount == 1 ? "income transaction" : "income transactions") : (item.txCount == 1 ? "expense" : "expenses"))")
-                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
-            }
-            Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.subheadline.weight(.semibold)).monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-                Text("\(item.percentage.formatted(.number.precision(.fractionLength(0))))%")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            .lineLimit(1).minimumScaleFactor(0.75)
-        }
-        .padding(.vertical, 8)
-        .frame(minHeight: 48)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2)), \(item.percentage.formatted(.number.precision(.fractionLength(1)))) percent")
     }
 
     // MARK: - Header Bar

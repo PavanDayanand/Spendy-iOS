@@ -913,7 +913,7 @@ struct DashboardView: View {
                                                 .fill(SpendyColors.separator.opacity(0.6))
                                                 .frame(height: 0.5 * expansion)
                                                 .opacity(expansion)
-                                                .padding(.leading, 64)
+                                                .padding(.leading, 72)
                                                 .padding(.trailing, 16)
                                         }
                                     }
@@ -1020,81 +1020,16 @@ struct DashboardView: View {
 
     // MARK: - Transaction Row Item (Matches Exact Visual Design)
     private func transactionRow(_ tx: Transaction) -> some View {
-        let cat = store.displayCategory(for: tx)
-        let acc = store.account(for: tx.accountId)
-        
-        return Button(action: {
+        Button {
             HapticsManager.shared.trigger(.light)
             inspectingTransaction = tx
-        }) {
-            HStack(spacing: 12) {
-                // Category Icon Badge matching exact reference design
-                SpendyIconBadge(
-                    sfSymbol: cat.sfSymbol,
-                    color: cat.color,
-                    size: .medium,
-                    style: .circle,
-                    monogramName: cat.label
-                )
-                
-                // Title & Subtitle
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.displayTitle(for: tx))
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    HStack(spacing: 6) {
-                        Text(tx.type == .transfer ? store.transferAccountRoute(for: tx) : acc.label)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        
-                        if tx.type != .transfer, let notes = tx.notes, !notes.isEmpty {
-                            Text("• \(notes)")
-                                .font(.system(size: 13, weight: .regular))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                                .lineLimit(1)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Amount Value
-                if hideBalance {
-                    Text("••••")
-                        .accessibilityLabel("Amount hidden")
-                        .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                } else {
-                    let formatted = tx.amount.formattedCurrency(symbol: store.currencySymbol)
-                    Text(tx.type == .income ? "+\(formatted)" : formatted)
-                        .spendyNumberFont(size: 16, weight: .semibold, tracking: -0.2)
-                        .foregroundStyle(rowAmountColor(tx))
-                        .accessibilityLabel("\(tx.type.title) amount, \(formatted)")
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
+        } label: {
+            TransactionRowView(transaction: tx, amountsHidden: hideBalance)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home-activity-transaction-\(tx.id)")
     }
-    
-    private func rowAmountColor(_ tx: Transaction) -> Color {
-        switch tx.type {
-        case .expense:
-            return SpendyColors.textPrimary
-        case .income:
-            return SpendyColors.incomeGreen
-        case .transfer:
-            return SpendyColors.textSecondary
-        }
-    }
-    
+
     // MARK: - Empty State View
     private var emptyRecentActivityView: some View {
         SpendyPlainEmptyState(

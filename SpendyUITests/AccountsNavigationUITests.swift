@@ -57,7 +57,7 @@ final class AccountsNavigationUITests: XCTestCase {
         button("All Accounts", in: app).tap()
         button("home-manage-accounts", in: app).tap()
         expectHeader("Accounts", in: app)
-        XCTAssertTrue(button("accounts-add", in: app).isHittable)
+        expectAction("accounts-add", in: app)
         let backFrame = button("analytics-stack-back", in: app).frame
         capture(app, "Manage Accounts shared header")
 
@@ -65,7 +65,7 @@ final class AccountsNavigationUITests: XCTestCase {
         for attempt in 0..<2 {
             button("account-row-cash", in: app).tap()
             expectHeader("Cash", in: app)
-            XCTAssertTrue(button("analytics-stack-edit", in: app).isHittable)
+            expectAction("analytics-stack-edit", in: app)
             XCTAssertFalse(button("accounts-add", in: app).exists)
             let total = app.staticTexts["entity-spending-total"].firstMatch
             XCTAssertTrue(total.exists)
@@ -87,11 +87,11 @@ final class AccountsNavigationUITests: XCTestCase {
                            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.14, dy: 0.5)),
                            withVelocity: .slow, thenHoldForDuration: 0.6)
                 expectHeader("Cash", in: app)
-                XCTAssertTrue(button("analytics-stack-edit", in: app).isHittable)
+                expectAction("analytics-stack-edit", in: app)
             }
             button("analytics-stack-back", in: app).tap()
             expectHeader("Accounts", in: app)
-            XCTAssertTrue(button("accounts-add", in: app).isHittable)
+            expectAction("accounts-add", in: app)
             XCTAssertFalse(button("analytics-stack-edit", in: app).exists)
         }
 
@@ -129,6 +129,13 @@ final class AccountsNavigationUITests: XCTestCase {
                 .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - back.frame.midY) < 20 }
             XCTAssertEqual(visibleBacks.count, 1)
         }
+    }
+
+    @MainActor private func expectAction(_ id: String, in app: XCUIApplication) {
+        let ready = expectation(for: NSPredicate { _, _ in
+            MainActor.assumeIsolated { self.button(id, in: app).isHittable }
+        }, evaluatedWith: app)
+        wait(for: [ready], timeout: 5)
     }
 
     @MainActor private func button(_ id: String, in app: XCUIApplication) -> XCUIElement {

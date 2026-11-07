@@ -169,41 +169,16 @@ struct SpendingBreakdownSheet: View {
                             action: { selectedIDs = nil }
                         )
                     }
-                    VStack(spacing: 12) {
-                        ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
-                            Button {
-                                if byCategory { selectedCategory = store.categories.first { $0.id == item.id } }
-                                else { selectedAccount = store.accounts.first { $0.id == item.id } }
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Circle().fill(SpendingMixChart.tint(for: item, index: index))
-                                        .frame(width: 8, height: 8)
-                                        .accessibilityHidden(true)
-                                    SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
-                                        size: .medium, style: .circle, monogramName: item.label)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(item.label).font(AppTypography.rowTitle)
-                                        Text("\(item.txCount) \(isIncome ? "income transactions" : (item.txCount == 1 ? "expense" : "expenses"))")
-                                            .font(AppTypography.footnoteMedium).foregroundStyle(SpendyColors.textSecondary)
-                                    }
-                                    Spacer(minLength: 4)
-                                    VStack(alignment: .trailing, spacing: 4) {
-                                        Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                                            .font(.headline.monospacedDigit())
-                                        Text("\(item.percentage.formatted(.number.precision(.fractionLength(1))))%")
-                                            .font(.caption.monospacedDigit())
-                                            .foregroundStyle(SpendyColors.textSecondary)
-                                    }
-                                    .lineLimit(1).minimumScaleFactor(0.7)
-                                }
-                                .padding(.horizontal, 16).padding(.vertical, 14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8) }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("breakdown-\(item.id)")
+                    SpendyGroupedList(items: visibleItems) { item in
+                        Button {
+                            if byCategory { selectedCategory = store.categories.first { $0.id == item.id } }
+                            else { selectedAccount = store.accounts.first { $0.id == item.id } }
+                        } label: {
+                            SpendingBreakdownRow(item: item, isIncome: isIncome, currencySymbol: store.currencySymbol,
+                                tint: SpendingMixChart.tint(for: item, index: visibleItems.firstIndex { $0.id == item.id } ?? 0))
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("breakdown-\(item.id)")
                     }
                 }
                 .padding(20)

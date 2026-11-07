@@ -1059,115 +1059,22 @@ struct SharedEntityAnalyticsSheet: View {
                         }
                 }
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(filteredTransactions.enumerated()), id: \.element.id) { index, tx in
-                        analyticsTransactionRow(tx)
-                        
-                        if index < filteredTransactions.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 58)
-                                .padding(.trailing, 16)
-                        }
-                    }
-                }
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(cardFillColor)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(cardBorderColor, lineWidth: 0.8)
-                        }
+                SpendyGroupedList(items: filteredTransactions, background: cardFillColor) { tx in
+                    analyticsTransactionRow(tx)
                 }
             }
         }
     }
     
     private func analyticsTransactionRow(_ tx: Transaction) -> some View {
-        let cat = store.categories.first(where: { $0.id == tx.categoryId })
-        let acc = store.accounts.first(where: { $0.id == tx.accountId })
-        let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
-        
-        let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? entity.sfSymbol)
-        let iconColor = subscription?.color ?? (cat?.color ?? entity.color)
-        let iconName = subscription?.name ?? cat?.label ?? entity.monogramName
-        
-        return Button(action: {
+        Button {
             HapticsManager.shared.trigger(.selection)
             inspectingTransaction = tx
-        }) {
-            HStack(spacing: 14) {
-                // Category / Subscription / Account Icon Badge
-                SpendyIconBadge(
-                    sfSymbol: iconSymbol,
-                    color: iconColor,
-                    size: .medium,
-                    style: .circle,
-                    monogramName: iconName
-                )
-                
-                // Middle: Title + Subtitle
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(tx.title.isEmpty ? (cat?.label ?? "Expense") : tx.title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    switch entity {
-                    case .category:
-                        if let acc = acc {
-                            HStack(spacing: 5) {
-                                SpendyMiniColorChip(
-                                    sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
-                                    color: acc.color,
-                                    monogramName: acc.label
-                                )
-                                
-                                Text("\(acc.label) • \(tx.date.formattedRelative)")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineLimit(1)
-                            }
-                        } else {
-                            Text(tx.date.formattedRelative)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        }
-                    case .account:
-                        if let cat = cat {
-                            HStack(spacing: 5) {
-                                SpendyMiniColorChip(
-                                    sfSymbol: cat.sfSymbol,
-                                    color: cat.color,
-                                    isCircle: true,
-                                    monogramName: cat.label
-                                )
-                                
-                                Text("\(cat.label) • \(tx.date.formattedRelative)")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .lineLimit(1)
-                            }
-                        } else {
-                            Text(tx.date.formattedRelative)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(SpendyColors.textSecondary)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Right: Amount
-                Text("\(tx.type == .income ? "+" : "-")\(tx.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
-                    .font(.system(size: 16.5, weight: .bold, design: .default))
-                    .monospacedDigit()
-                    .foregroundStyle(tx.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+        } label: {
+            TransactionRowView(transaction: tx, showsCategory: {
+                if case .account = entity { return true }
+                return false
+            }())
         }
         .buttonStyle(.plain)
     }

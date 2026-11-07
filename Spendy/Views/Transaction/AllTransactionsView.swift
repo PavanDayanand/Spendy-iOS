@@ -225,11 +225,9 @@ struct AllTransactionsView: View {
                                             .padding(.horizontal, 4)
                                         
                                             // Individual Transaction Cards (Matching Category Card Design)
-                                            VStack(spacing: 12) {
-                                                ForEach(txs) { tx in
-                                                    transactionCard(tx)
-                                                        .accessibilityIdentifier("spending-transaction-\(tx.id)")
-                                                }
+                                            SpendyGroupedList(items: txs) { tx in
+                                                transactionCard(tx)
+                                                    .accessibilityIdentifier("spending-transaction-\(tx.id)")
                                             }
                                         }
                                     }
@@ -385,82 +383,13 @@ struct AllTransactionsView: View {
     
     // MARK: - 3. Individual Transaction Card (Matching Category Card Design)
     private func transactionCard(_ tx: Transaction) -> some View {
-        let cat: Category? = store.displayCategory(for: tx)
-        let acc = store.accounts.first(where: { $0.id == tx.accountId })
-        let subscription = store.subscriptions.first(where: { $0.id.uuidString.lowercased() == tx.subscriptionId?.lowercased() })
-        
-        let iconSymbol = subscription?.sfSymbol ?? (cat?.sfSymbol ?? "cart.fill")
-        let iconColor = subscription?.color ?? (cat?.color ?? Color(hex: "#FF5924"))
-        let iconName = subscription?.name ?? cat?.label ?? tx.title
-        
-        return Button(action: {
+        Button {
             HapticsManager.shared.trigger(.selection)
             inspectingTransaction = tx
-        }) {
-            HStack(spacing: 14) {
-                // Category / Subscription Icon Avatar Badge
-                SpendyIconBadge(
-                    sfSymbol: iconSymbol,
-                    color: iconColor,
-                    size: .medium,
-                    style: .circle,
-                    monogramName: iconName
-                )
-                
-                // Title and Account Pill Indicator
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.displayTitle(for: tx))
-                        .font(AppTypography.rowTitle)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    
-                    if let acc = acc {
-                        HStack(spacing: 5) {
-                            SpendyMiniColorChip(
-                                sfSymbol: acc.sfSymbol.isEmpty ? acc.type.defaultSymbol : acc.sfSymbol,
-                                color: acc.color,
-                                monogramName: acc.label
-                            )
-                            
-                            Text(tx.type == .transfer ? store.transferAccountRoute(for: tx) : acc.label)
-                                .font(AppTypography.footnoteMedium)
-                                .foregroundStyle(SpendyColors.textSecondary)
-                                .lineLimit(1)
-                        }
-                    } else {
-                        Text(tx.date.formattedRelative)
-                            .font(AppTypography.footnoteMedium)
-                            .foregroundStyle(SpendyColors.textSecondary)
-                    }
-                }
-                
-                Spacer()
-                
-                // Formatted Amount and Relative Date
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(formattedRowAmountWithSign(tx))
-                        .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
-                        .foregroundStyle(rowAmountColor(tx))
-                    
-                    Text(tx.date.formattedRelative)
-                        .font(AppTypography.captionMedium)
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
-            }
+        } label: {
+            TransactionRowView(transaction: tx)
         }
         .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(store.displayTitle(for: tx)), \(tx.type == .transfer ? store.displayCategory(for: tx).label : ""), \(tx.type == .income ? "Income" : (tx.type == .transfer ? "Transfer" : "Expense")), \(tx.amount.formattedCurrency(symbol: store.currencySymbol)), \(acc?.label ?? ""), \(tx.date.formattedRelative)")
         .contextMenu {
             Button {
                 HapticsManager.shared.trigger(.light)
@@ -505,24 +434,6 @@ struct AllTransactionsView: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
-    }
-    
-    private func rowAmountColor(_ tx: Transaction) -> Color {
-        switch tx.type {
-        case .expense: return SpendyColors.textPrimary
-        case .income: return SpendyColors.incomeGreen
-        case .transfer: return SpendyColors.primaryBlue
-        }
-    }
-    
-    private func formattedRowAmountWithSign(_ tx: Transaction) -> String {
-        let sym = store.currencySymbol
-        let amtStr = tx.amount.formattedCurrency(symbol: sym)
-        switch tx.type {
-        case .expense: return amtStr
-        case .income: return "+\(amtStr)"
-        case .transfer: return amtStr
         }
     }
     
