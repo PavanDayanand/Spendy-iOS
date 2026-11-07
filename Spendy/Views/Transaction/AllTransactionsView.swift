@@ -333,88 +333,49 @@ struct AllTransactionsView: View {
                 // Shared searchable, multi-select category picker.
                 Button { showsCategoryFilter = true } label: {
                     let isCatSelected = selectedCategoryIDs != nil || spendingScope?.categoryIDs != nil
-                    HStack(spacing: 6) {
-                        Image(systemName: "circle.grid.2x2")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(categoryButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.elevatedControlFill : nil)
+                    SpendyFilterControl(title: categoryButtonLabel, systemImage: "circle.grid.2x2",
+                        isSelected: isCatSelected,
+                        selectedSymbol: (selectedCategoryIDs ?? spendingScope?.categoryIDs)?.first.map { store.category(for: $0).sfSymbol },
+                        selectionCount: (selectedCategoryIDs ?? spendingScope?.categoryIDs)?.count ?? 0,
+                        size: .small)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("transactions-filter-category")
                 
                 // Match the category control with the existing account picker drawer.
                 Button { showsAccountFilter = true } label: {
-                    let isAccSelected = selectedAccountId != nil
-                    HStack(spacing: 6) {
-                        Image(systemName: isAccSelected ? (store.account(for: selectedAccountId ?? "").sfSymbol.isEmpty ? "building.columns" : store.account(for: selectedAccountId ?? "").sfSymbol) : "building.columns")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(accountButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.elevatedControlFill : nil)
+                    let isAccSelected = selectedAccountId != nil || spendingScope?.accountIDs != nil
+                        || (scopeAccountID != nil && scopeAccountID != "all")
+                    SpendyFilterControl(title: accountButtonLabel, systemImage: "building.columns",
+                        isSelected: isAccSelected,
+                        selectedSymbol: selectedAccountId.map { store.account(for: $0).sfSymbol }
+                            ?? spendingScope?.accountIDs?.first.map { store.account(for: $0).sfSymbol }
+                            ?? scopeAccountID.map { store.account(for: $0).sfSymbol },
+                        selectionCount: selectedAccountId != nil ? 1 : spendingScope?.accountIDs?.count ?? 1,
+                        size: .small)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("transactions-filter-account")
                 
                 // 3. [Type] Liquid Glass Menu (Expenses, Income, Transfers)
                 Menu {
-                    Button("All Types") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedTransactionType = nil
+                    Picker("Transaction Type", selection: $selectedTransactionType) {
+                        Text("All Types").tag(nil as TransactionType?)
+                        Label("Expenses", systemImage: TransactionType.expense.sfSymbol).tag(Optional(TransactionType.expense))
+                        if scopeStart == nil && spendingScope == nil {
+                            Label("Income", systemImage: TransactionType.income.sfSymbol).tag(Optional(TransactionType.income))
+                            Label("Transfers", systemImage: TransactionType.transfer.sfSymbol).tag(Optional(TransactionType.transfer))
                         }
-                    }
-                    Button("Expenses") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedTransactionType = .expense
-                        }
-                    }
-                    if scopeStart == nil && spendingScope == nil {
-                    Button("Income") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedTransactionType = .income
-                        }
-                    }
-                    Button("Transfers") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedTransactionType = .transfer
-                        }
-                    }
                     }
                 } label: {
-                    let isTypeSelected = selectedTransactionType != nil
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(typeButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.elevatedControlFill : nil)
+                    let isTypeSelected = selectedTransactionType != nil || spendingScope != nil || scopeStart != nil
+                    SpendyFilterControl(title: typeButtonLabel, systemImage: "arrow.up.arrow.down",
+                        isSelected: isTypeSelected,
+                        selectedSymbol: selectedTransactionType?.sfSymbol ?? "arrow.up.right",
+                        size: .small)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("transactions-filter-type")
             }
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 16)

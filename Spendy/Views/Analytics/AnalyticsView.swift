@@ -860,6 +860,7 @@ struct AnalyticsView: View {
                             Label("Expenses", systemImage: "arrow.up.right").tag(TransactionType.expense)
                             Label("Income", systemImage: "arrow.down.left").tag(TransactionType.income)
                         }
+                        .menuActionDismissBehavior(.disabled)
                     }
                     Section("Filter by Account") {
                         Picker("Account", selection: $selectedAccountId) {
@@ -870,10 +871,14 @@ struct AnalyticsView: View {
                                     .tag(acc.id)
                             }
                         }
+                        .menuActionDismissBehavior(.disabled)
                     }
                     
-                    if selectedAccountId != "all" {
-                        Button("Reset account filter") { selectedAccountId = "all" }
+                    if isFiltered {
+                        Button("Remove Filters", systemImage: "minus.circle") {
+                            selectedAccountId = "all"
+                            transactionType = .expense
+                        }
                     }
                     Section("Group Breakdown") {
                         Picker("Grouping", selection: $groupingMode) {
@@ -886,27 +891,9 @@ struct AnalyticsView: View {
                     
 
                 } label: {
-                    GlassCircleIcon(
-                        icon: "line.3.horizontal.decrease",
-                        size: 44,
-                        iconSize: 18,
-                        iconWeight: .semibold,
-                        tintColor: nil,
-                        foregroundColor: SpendyColors.textPrimary,
-                        morphID: "settingsMenu",
-                        namespace: analyticsControlsNamespace
-                    )
-                }
-                .overlay(alignment: .topTrailing) {
-                    if isFiltered {
-                        Text("\(filterCount)")
-                            .font(.caption2.bold().monospacedDigit())
-                            .foregroundStyle(SpendyColors.inverseText)
-                            .padding(4)
-                            .background(SpendyColors.textPrimary, in: Circle())
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
+                    SpendyFilterControl(systemImage: "line.3.horizontal.decrease", isSelected: isFiltered,
+                        selectedSymbol: isIncome ? "arrow.down.left" : store.account(for: selectedAccountId).sfSymbol,
+                        selectionCount: filterCount)
                 }
                 .accessibilityLabel("Analytics filters")
                 .accessibilityValue("\(isIncome ? "Income" : "Expenses"), \(selectedAccountLabel)")

@@ -1,6 +1,44 @@
 import XCTest
 
 final class AccountsNavigationUITests: XCTestCase {
+    @MainActor func testAccountInsightsKeepTheirLayoutAcrossPages() {
+        verifyInsightPages(largeText: false)
+    }
+
+    @MainActor func testAccountInsightsFitLargeText() {
+        verifyInsightPages(largeText: true)
+    }
+
+    @MainActor private func verifyInsightPages(largeText: Bool) {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "accounts-insights"
+        app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = "light"
+        if largeText {
+            app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 15))
+        button("All Accounts", in: app).tap()
+        button("home-manage-accounts", in: app).tap()
+        expectHeader("Accounts", in: app)
+        let pager = app.scrollViews["accounts-insight-pager"].firstMatch
+        XCTAssertTrue(pager.waitForExistence(timeout: 5))
+        let height = pager.frame.height
+        XCTAssertGreaterThan(height, 40)
+        capture(app, largeText ? "Account insight first page large text" : "Account insight first page")
+        pager.swipeLeft()
+        XCTAssertTrue(app.staticTexts["You're behind this month"].isHittable)
+        XCTAssertEqual(pager.frame.height, height, accuracy: 2)
+        capture(app, largeText ? "Account insight second page large text" : "Account insight second page")
+        pager.swipeLeft()
+        let third = button("accounts-insight-largest_bank", in: app)
+        XCTAssertTrue(third.isHittable)
+        XCTAssertEqual(pager.frame.height, height, accuracy: 2)
+        capture(app, largeText ? "Account insight third page large text" : "Account insight third page")
+        third.tap()
+        expectHeader("Main Bank", in: app)
+    }
+
     @MainActor func testManageAccountsHeaderAndReturnDark() {
         verifyManageAccounts(light: false)
     }

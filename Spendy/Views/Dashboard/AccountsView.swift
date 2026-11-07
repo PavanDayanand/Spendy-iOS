@@ -28,7 +28,7 @@ struct AccountsView: View {
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
-    @State private var insightPage: Int = 0
+    @State private var insightPage: String?
     
     private var sortedAccounts: [Account] {
         store.accounts.sorted { $0.order < $1.order }
@@ -312,7 +312,7 @@ struct AccountsView: View {
     
     private var insightCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SpendyInsightBrandMark(style: .kicker)
+            SpendyInsightBrandMark(style: .kicker, showsPersonalization: false)
             insightPager
         }
         .padding(.horizontal, 16)
@@ -348,24 +348,30 @@ struct AccountsView: View {
             if cardInsights.count == 1, let only = cardInsights.first {
                 insightRow(only)
             } else {
-                TabView(selection: $insightPage) {
-                    ForEach(Array(cardInsights.enumerated()), id: \.element.id) { index, item in
-                        insightRow(item)
-                            .tag(index)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(cardInsights) { item in
+                            insightRow(item)
+                                .containerRelativeFrame(.horizontal)
+                                .clipped()
+                                .id(item.id)
+                        }
                     }
+                    .scrollTargetLayout()
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(height: 58)
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $insightPage)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("accounts-insight-pager")
                 .onChange(of: insightPage) { _, _ in
                     HapticsManager.shared.trigger(.selection)
                 }
                 
                 HStack(spacing: 5) {
-                    ForEach(0..<cardInsights.count, id: \.self) { index in
+                    ForEach(cardInsights) { item in
                         Capsule()
-                            .fill(index == insightPage ? SpendyColors.textPrimary : SpendyColors.textTertiary.opacity(0.35))
-                            .frame(width: index == insightPage ? 12 : 5, height: 5)
+                            .fill(item.id == (insightPage ?? cardInsights.first?.id) ? SpendyColors.textPrimary : SpendyColors.textTertiary.opacity(0.35))
+                            .frame(width: item.id == (insightPage ?? cardInsights.first?.id) ? 12 : 5, height: 5)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -373,56 +379,62 @@ struct AccountsView: View {
             }
         }
         .onChange(of: cardInsights.map(\.id)) { _, _ in
-            insightPage = 0
+            insightPage = cardInsights.first?.id
         }
         .accessibilityHint(cardInsights.count > 1 ? "Swipe left or right for more insights" : "")
     }
     
     private func insightRow(_ item: AccountInsight) -> some View {
-        Button {
-            HapticsManager.shared.trigger(.selection)
+        Group {
             if let account = item.account {
-                selectedAccountForAnalytics = account
+                Button {
+                    HapticsManager.shared.trigger(.selection)
+                    selectedAccountForAnalytics = account
+                } label: {
+                    insightContent(item)
+                }
+                .buttonStyle(.plain)
+            } else {
+                insightContent(item)
             }
-        } label: {
-            HStack(alignment: .top, spacing: 10) {
-                if let account = item.account {
-                    Image(systemName: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .frame(width: 22, height: 22)
-                        .padding(.top, 1)
-                        .symbolRenderingMode(.monochrome)
-                }
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    ShinyHeadlineText(
-                        headline: item.headline,
-                        emphasis: item.account.map { [.highlight($0.label)] } ?? [.highlight("ahead"), .highlight("behind")],
-                        font: .system(size: 15, weight: .semibold),
-                        emphasisFont: .system(size: 15, weight: .bold)
-                    )
-                    .lineLimit(2)
-                    
-                    InsightSupportingText(text: item.supporting, emphasis: [])
-                        .lineLimit(1)
-                }
-                
-                Spacer(minLength: 8)
-                
-                if item.account != nil {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .padding(.top, 4)
-                }
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(item.account == nil)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(item.account == nil ? [] : .isButton)
+        .accessibilityIdentifier("accounts-insight-\(item.id)")
+    }
+
+    private func insightContent(_ item: AccountInsight) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: item.account.map { $0.sfSymbol.isEmpty ? $0.type.defaultSymbol : $0.sfSymbol } ?? "arrow.left.arrow.right")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .frame(width: 22, height: 22)
+                .padding(.top, 1)
+                .symbolRenderingMode(.monochrome)
+
+            VStack(alignment: .leading, spacing: 3) {
+                ShinyHeadlineText(
+                    headline: item.headline,
+                    emphasis: item.account.map { [.highlight($0.label)] } ?? [.highlight("ahead"), .highlight("behind")],
+                    font: .subheadline.weight(.semibold),
+                    emphasisFont: .subheadline.bold()
+                )
+                .fixedSize(horizontal: false, vertical: true)
+
+                InsightSupportingText(text: item.supporting, emphasis: [])
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(SpendyColors.textTertiary)
+                .padding(.top, 4)
+                .opacity(item.account == nil ? 0 : 1)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+        .contentShape(Rectangle())
     }
     
     // MARK: - Grouped list

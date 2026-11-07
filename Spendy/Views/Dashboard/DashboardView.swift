@@ -763,25 +763,8 @@ struct DashboardView: View {
                     }
                     .accessibilityIdentifier("home-manage-accounts")
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: selectedAccountSymbol)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(SpendyColors.primaryBlue)
-                        
-                        Text(selectedAccountLabel)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .lineLimit(1)
-                        
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9.5, weight: .bold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .frame(minHeight: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true)
-                    .glassMorphID("accountDropdownCapsule", in: topControlsNamespace)
+                    SpendyFilterControl(title: selectedAccountLabel, systemImage: selectedAccountSymbol,
+                        isSelected: selectedAccountId != "all")
                 }
                 .buttonStyle(.plain)
                 
@@ -957,117 +940,48 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 // 1. [Categories] Menu
                 Menu {
-                    Button("All Categories") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterCategoryId = nil
-                        }
-                    }
-                    Divider()
-                    ForEach(store.categories) { cat in
-                        Button(cat.label) {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                drawerFilterCategoryId = cat.id
-                            }
+                    Picker("Category", selection: $drawerFilterCategoryId) {
+                        Label("All Categories", systemImage: "square.grid.2x2").tag(nil as String?)
+                        ForEach(store.categories) { category in
+                            Label(category.label, systemImage: category.sfSymbol).tag(Optional(category.id))
                         }
                     }
                 } label: {
                     let isCatSelected = drawerFilterCategoryId != nil
-                    HStack(spacing: 8) {
-                        Image(systemName: isCatSelected ? (store.category(for: drawerFilterCategoryId ?? "").sfSymbol) : "circle.grid.2x2")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(drawerCategoryButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isCatSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isCatSelected ? SpendyColors.elevatedControlFill : nil)
+                    SpendyFilterControl(title: drawerCategoryButtonLabel, systemImage: "circle.grid.2x2",
+                        isSelected: isCatSelected,
+                        selectedSymbol: drawerFilterCategoryId.map { store.category(for: $0).sfSymbol })
                 }
                 .buttonStyle(.plain)
                 
                 // 2. [Accounts] Menu
                 Menu {
-                    Button("All Accounts") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterAccountId = nil
-                        }
-                    }
-                    Divider()
-                    ForEach(store.accounts) { acc in
-                        Button(acc.label) {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                drawerFilterAccountId = acc.id
-                            }
+                    Picker("Account", selection: $drawerFilterAccountId) {
+                        Label("All Accounts", systemImage: "wallet.pass").tag(nil as String?)
+                        ForEach(store.accounts) { account in
+                            Label(account.label, systemImage: account.sfSymbol).tag(Optional(account.id))
                         }
                     }
                 } label: {
                     let isAccSelected = drawerFilterAccountId != nil
-                    HStack(spacing: 8) {
-                        Image(systemName: isAccSelected ? (store.account(for: drawerFilterAccountId ?? "").sfSymbol.isEmpty ? "building.columns" : store.account(for: drawerFilterAccountId ?? "").sfSymbol) : "building.columns")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(drawerAccountButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isAccSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isAccSelected ? SpendyColors.elevatedControlFill : nil)
+                    SpendyFilterControl(title: drawerAccountButtonLabel, systemImage: "building.columns",
+                        isSelected: isAccSelected,
+                        selectedSymbol: drawerFilterAccountId.map { store.account(for: $0).sfSymbol })
                 }
                 .buttonStyle(.plain)
                 
                 // 3. [Type] Menu (Expenses, Income, Transfers)
                 Menu {
-                    Button("All Types") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterType = nil
-                        }
-                    }
-                    Button("Expenses") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterType = .expense
-                        }
-                    }
-                    Button("Income") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterType = .income
-                        }
-                    }
-                    Button("Transfers") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            drawerFilterType = .transfer
+                    Picker("Transaction Type", selection: $drawerFilterType) {
+                        Text("All Types").tag(nil as TransactionType?)
+                        ForEach(TransactionType.allCases) { type in
+                            Label(type.title, systemImage: type.sfSymbol).tag(Optional(type))
                         }
                     }
                 } label: {
                     let isTypeSelected = drawerFilterType != nil
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(drawerTypeButtonLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
-                    }
-                    .foregroundStyle(isTypeSelected ? SpendyColors.elevatedControlForeground : SpendyColors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .frame(height: 44)
-                    .nativeLiquidGlassCapsule(isInteractive: true, tint: isTypeSelected ? SpendyColors.elevatedControlFill : nil)
+                    SpendyFilterControl(title: drawerTypeButtonLabel, systemImage: "arrow.up.arrow.down",
+                        isSelected: isTypeSelected, selectedSymbol: drawerFilterType?.sfSymbol)
                 }
                 .buttonStyle(.plain)
 

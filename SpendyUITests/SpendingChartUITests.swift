@@ -37,10 +37,16 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("1,200"))
         button(app, "analytics-filters").tap()
         button(app, "Income").tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.7)).tap()
         XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("5,000"))
         XCTAssertTrue(app.staticTexts["Category income"].exists)
         XCTAssertTrue(app.buttons.matching(identifier: "open-spendy-insights").allElementsBoundByIndex.contains { $0.isHittable })
         capture(app, "Analytics income selected")
+        button(app, "analytics-filters").tap()
+        button(app, "Cash").tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.7)).tap()
+        XCTAssertTrue((button(app, "analytics-filters").value as? String)?.contains("Cash") == true)
+        capture(app, "Analytics multiple filters selected")
         button(app, "expand-spending-breakdown").tap()
         XCTAssertTrue(app.staticTexts["Income by Category"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("5,000"))
@@ -50,7 +56,7 @@ final class SpendingChartUITests: XCTestCase {
         button(app, "Back").tap()
         button(app, "Back").tap()
         button(app, "analytics-filters").tap()
-        button(app, "Expenses").tap()
+        button(app, "Remove Filters").tap()
         XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("1,200"))
         XCTAssertTrue(app.staticTexts["Category spending"].exists)
     }
@@ -198,6 +204,9 @@ final class SpendingChartUITests: XCTestCase {
         let allViewport = app.scrollViews["allTransactionsViewport"].firstMatch
         allViewport.swipeUp()
         capture(app, "All transactions translucent pinned header after scrolling")
+        if !button(app, "Categories").exists {
+            button(app, "Show transaction filters").tap()
+        }
         button(app, "Categories").tap()
         XCTAssertTrue(app.navigationBars["Categories"].waitForExistence(timeout: 5))
     }
@@ -213,6 +222,45 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Chart groceries"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["No matching transactions"].exists)
         capture(app, "Transaction search recovered")
+    }
+
+    @MainActor func testSharedFilterSelectionLight() {
+        checkSharedFilterSelection(light: true)
+    }
+
+    @MainActor func testSharedFilterSelectionDark() {
+        checkSharedFilterSelection(light: false)
+    }
+
+    @MainActor private func checkSharedFilterSelection(light: Bool) {
+        let app = launch(light: light)
+        button(app, "See all transactions").tap()
+        XCTAssertTrue(app.staticTexts["All Transactions"].firstMatch.waitForExistence(timeout: 5))
+        let category = button(app, "transactions-filter-category")
+        if !category.exists {
+            button(app, "Show transaction filters").tap()
+        }
+        XCTAssertEqual(category.value as? String, "Any")
+        category.tap()
+        button(app, "Clear all").tap()
+        button(app, "filter-category-groceries").tap()
+        button(app, "Done").tap()
+        XCTAssertEqual(category.value as? String, "Selected")
+        XCTAssertTrue(app.staticTexts["Chart groceries"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Chart dining"].exists)
+        capture(app, light ? "Selected category filter light" : "Selected category filter dark")
+        category.tap()
+        button(app, "breakdown-select-all").tap()
+        button(app, "Done").tap()
+        XCTAssertEqual(category.value as? String, "Any")
+        button(app, "transactions-filter-account").tap()
+        XCTAssertTrue(app.buttons["account-filter-all"].waitForExistence(timeout: 5))
+        button(app, "Cash").tap()
+        XCTAssertEqual(button(app, "transactions-filter-account").value as? String, "Selected")
+        capture(app, light ? "Selected account filter light" : "Selected account filter dark")
+        button(app, "transactions-filter-account").tap()
+        button(app, "account-filter-all").tap()
+        XCTAssertEqual(button(app, "transactions-filter-account").value as? String, "Any")
     }
     @MainActor func testAnalyticsRecordedTotalsAndDrillThrough() {
         let app = launch()
