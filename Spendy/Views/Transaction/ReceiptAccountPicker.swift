@@ -8,6 +8,7 @@ struct ReceiptAccountPicker: View {
     var accounts: [Account]
     var balances: [String: Double]?
     var currencySymbol: String
+    var showsAllAccounts = false
     
     var body: some View {
         ZStack {
@@ -43,6 +44,35 @@ struct ReceiptAccountPicker: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         VStack(spacing: 0) {
+                            if showsAllAccounts {
+                                Button {
+                                    selectedAccountId = "all"
+                                    HapticsManager.shared.trigger(.selection)
+                                    dismiss()
+                                } label: {
+                                    HStack(spacing: 14) {
+                                        SpendyIconBadge(sfSymbol: "wallet.pass.fill", color: SpendyColors.textPrimary,
+                                            size: .medium, monogramName: "All accounts")
+                                        Text("All accounts")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundStyle(SpendyColors.textPrimary)
+                                        Spacer()
+                                        if selectedAccountId == "all" {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 15, weight: .bold))
+                                                .foregroundStyle(SpendyColors.textPrimary)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("account-filter-all")
+                                Divider()
+                                    .background(SpendyColors.separator)
+                                    .padding(.leading, 68)
+                            }
                             ForEach(accounts) { acc in
                                 let isSelected = selectedAccountId == acc.id
                                 let liveBalance = balances?[acc.id]

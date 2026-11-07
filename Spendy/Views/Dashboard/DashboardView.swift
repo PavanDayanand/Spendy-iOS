@@ -316,6 +316,7 @@ struct DashboardView: View {
     @State private var settingsInitialDestination: SettingsDestination? = nil
     @State private var showAnalyticsView: Bool = false
     @State private var showCurrencyConverter: Bool = false
+    @State private var showsSpendingMonthPicker = false
     @State private var showBudgetHub: Bool = false
     @State private var showSubscriptionsHub: Bool = false
     @State private var initialSubscriptionIdForHub: String? = nil
@@ -338,6 +339,7 @@ struct DashboardView: View {
     @State private var transactionFiltersExpanded = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var analyticsInitialDate: Date? = nil
+    @State private var analyticsInitialPeriodFilter: SpendingPeriodFilter?
     
     // MARK: - Interactive Split Dashboard Drawer State
     @State private var internalSheetExpanded: Bool = false
@@ -491,7 +493,6 @@ struct DashboardView: View {
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 10) {
-                            accountDropdownSelector
                             heroSpendBarSection
                                 .padding(.top, 2)
                         }
@@ -552,7 +553,8 @@ struct DashboardView: View {
                     topControlsNamespace: topControlsNamespace,
                     sharedNavigationHeader: analyticsNavigationHeader,
                     initialAccountID: selectedAccountId,
-                    initialDate: analyticsInitialDate
+                    initialDate: analyticsInitialDate,
+                    initialPeriodFilter: analyticsInitialPeriodFilter
                 )
             }
             .navigationDestination(isPresented: $showBudgetHub) {
@@ -702,6 +704,7 @@ struct DashboardView: View {
                 let selection = $showAnalyticsView
                 analyticsNavigationHeader.show(title: "Analytics", onBack: { selection.wrappedValue = false })
                 analyticsInitialDate = nil
+                analyticsInitialPeriodFilter = nil
                 showAnalyticsView = true
                 HomeAnalyticsTip().invalidate(reason: .actionPerformed)
             },
@@ -710,7 +713,8 @@ struct DashboardView: View {
                 analyticsNavigationHeader.show(title: "Budget", onBack: { selection.wrappedValue = false })
                 showBudgetHub = true
             },
-            onConverter: { showCurrencyConverter = true }
+            onConverter: { showCurrencyConverter = true },
+            onSelectSpendingMonth: { showsSpendingMonthPicker = true }
         )
     }
 
@@ -765,7 +769,7 @@ struct DashboardView: View {
                             .foregroundStyle(SpendyColors.primaryBlue)
                         
                         Text(selectedAccountLabel)
-                            .font(.system(size: 13.5, weight: .bold, design: .default))
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(SpendyColors.textPrimary)
                             .lineLimit(1)
                         
@@ -773,14 +777,14 @@ struct DashboardView: View {
                             .font(.system(size: 9.5, weight: .bold))
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
-                    .padding(.horizontal, 12)
-                    .frame(height: 38)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 44)
                     .nativeLiquidGlassCapsule(isInteractive: true)
                     .glassMorphID("accountDropdownCapsule", in: topControlsNamespace)
                 }
                 .buttonStyle(.plain)
                 
-                Spacer()
             }
         }
     }
@@ -792,11 +796,13 @@ struct DashboardView: View {
             currencySymbol: store.currencySymbol, amountsHidden: hideBalance,
             insightsEnabled: store.insightsEnabled,
             tipGroup: homeTipGroup,
-            onInsight: { destination, date in
+            accountSelector: accountDropdownSelector,
+            showsPeriodFilter: $showsSpendingMonthPicker,
+            onInsight: { destination, date, periodFilter in
                 switch destination {
                 case .category(let id):
-                    let snapshot = SpendingChartSnapshot(transactions: store.transactions,
-                        accountID: selectedAccountId, period: .month, anchor: date, referenceDate: Date())
+                    let snapshot = periodFilter?.snapshot(transactions: store.transactions, accountID: selectedAccountId, referenceDate: Date())
+                        ?? SpendingChartSnapshot(transactions: store.transactions, accountID: selectedAccountId, anchor: date, referenceDate: Date())
                     categorySpendingScope = SpendingScope(start: snapshot.start, end: snapshot.end,
                         referenceDate: snapshot.referenceDate,
                         accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId],
@@ -806,10 +812,14 @@ struct DashboardView: View {
                 case .subscriptions: initialSubscriptionIdForHub = nil; showSubscriptionsHub = true
                 case .subscriptionDetail(let id): initialSubscriptionIdForHub = id; showSubscriptionsHub = true
                 case .transaction(let id): inspectingTransaction = store.transactions.first { $0.id == id }
-                case .analytics: analyticsInitialDate = date; showAnalyticsView = true
+                case .analytics:
+                    analyticsInitialDate = date
+                    analyticsInitialPeriodFilter = periodFilter
+                    showAnalyticsView = true
                 }
-            }) { date in
+            }) { date, periodFilter in
                 analyticsInitialDate = date
+                analyticsInitialPeriodFilter = periodFilter
                 showAnalyticsView = true
             }
             .environment(\.spendyTipsAllowed, tipsAllowed && !isSubpageActive && !showSettings)

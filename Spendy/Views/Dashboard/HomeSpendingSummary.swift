@@ -1,7 +1,7 @@
 import SwiftUI
 import TipKit
 
-struct HomeSpendingSummary: View {
+struct HomeSpendingSummary<AccountSelector: View>: View {
     let transactions: [Transaction]
     let categories: [Category]
     let accountID: String
@@ -10,8 +10,10 @@ struct HomeSpendingSummary: View {
     let amountsHidden: Bool
     let insightsEnabled: Bool
     let tipGroup: TipGroup
-    var onInsight: ((InsightDestination, Date) -> Void)? = nil
-    var onExplore: (Date) -> Void
+    let accountSelector: AccountSelector
+    @Binding var showsPeriodFilter: Bool
+    var onInsight: ((InsightDestination, Date, SpendingPeriodFilter?) -> Void)? = nil
+    var onExplore: (Date, SpendingPeriodFilter?) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
@@ -20,6 +22,7 @@ struct HomeSpendingSummary: View {
     @State private var insightDate = Date()
     @State private var selectedID: String?
     @State private var showsInfo = false
+    @State private var periodFilter: SpendingPeriodFilter?
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 40.0
 
     var body: some View {
@@ -27,27 +30,24 @@ struct HomeSpendingSummary: View {
             let referenceDate = max(context.date, Date())
             let history = SpendingChartSnapshot.monthlyHistory(transactions: transactions,
                 accountID: accountID, referenceDate: referenceDate)
-            let selected = history.first { $0.id == selectedID }
-            let snapshot = SpendingChartSnapshot(transactions: transactions, accountID: accountID,
+            let selected = periodFilter == nil ? history.first { $0.id == selectedID } : nil
+            let snapshot = periodFilter?.snapshot(transactions: transactions, accountID: accountID, referenceDate: referenceDate) ?? SpendingChartSnapshot(transactions: transactions, accountID: accountID,
                 anchor: selected?.start ?? referenceDate, referenceDate: referenceDate)
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Button { showsInfo = true } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Label(selected == nil || snapshot.isInProgress ? "Spent this month" : "Spent in \(snapshot.start.formatted(.dateTime.month(.wide).year()))",
-                                  systemImage: "chart.bar.xaxis")
-                            Image(systemName: "info.circle")
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .frame(minHeight: 44, alignment: .bottomLeading)
-                        .contentShape(Rectangle())
+                accountSelector.padding(.bottom, 6)
+                Button { showsInfo = true } label: {
+                    HStack(spacing: 6) {
+                        Label("Spending", systemImage: "chart.bar.xaxis")
+                        Image(systemName: "info.circle")
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .accessibilityLabel("About spending")
-                    .accessibilityHint("Learn how to read the spending charts and comparisons")
-                    Spacer(minLength: 0)
+                    .font(.subheadline.weight(.medium))
+                    .frame(minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(SpendyColors.textSecondary)
+                .accessibilityLabel("About spending")
+                .accessibilityHint("Learn how to read the spending charts and comparisons")
                 Text(amountsHidden ? "••••••" : snapshot.total.formattedCurrency(symbol: currencySymbol, decimals: 2))
                     .font(.system(size: amountSize, weight: .bold, design: .default))
                     .monospacedDigit()
@@ -64,13 +64,14 @@ struct HomeSpendingSummary: View {
                         .frame(maxWidth: .infinity, minHeight: 150)
                         .accessibilityIdentifier("hidden-spending-chart")
                 } else {
-                    Text(snapshot.comparisonText(currencySymbol: currencySymbol))
+                    Text(periodFilter == nil ? snapshot.comparisonText(currencySymbol: currencySymbol) : snapshot.rangeLabel)
                         .font(.caption)
                         .foregroundStyle(SpendyColors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("home-spending-comparison")
-                    if history.contains(where: { $0.transactionCount > 0 }) {
-                        SpendingChartPlot(buckets: history, currencySymbol: currencySymbol,
+                    let chartBuckets = periodFilter == nil ? history : snapshot.buckets
+                    if chartBuckets.contains(where: { $0.transactionCount > 0 }) {
+                        SpendingChartPlot(buckets: chartBuckets, currencySymbol: currencySymbol,
                                           selectedID: $selectedID, height: 110)
                             .padding(.top, 4)
                     } else {
@@ -81,7 +82,7 @@ struct HomeSpendingSummary: View {
                     }
                     HStack {
                         Text(selected.map { "\($0.transactionCount) transactions\($0.isInProgress ? " · To date" : "")" }
-                             ?? "Last 6 months")
+                             ?? (periodFilter == nil ? "Last 6 months" : "\(snapshot.transactions.count) transactions"))
                             .font(.caption2)
                             .foregroundStyle(SpendyColors.textSecondary)
                         Spacer()
@@ -103,11 +104,14 @@ struct HomeSpendingSummary: View {
                         if insightsEnabled {
                             insightDate = snapshot.start
                             showsInsights = true
-                        } else { onExplore(snapshot.start) }
+                        } else { onExplore(snapshot.start, periodFilter) }
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                             if insightsEnabled, let leading = snapshot.leadingCategory,
                                let category = categories.first(where: { $0.id == leading.id }) {
+                                SpendyInsightSymbol()
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(SpendyColors.textPrimary)
                                 if dynamicTypeSize.isAccessibilitySize {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(category.label).font(.caption.weight(.semibold))
@@ -116,7 +120,6 @@ struct HomeSpendingSummary: View {
                                     }
                                     .fixedSize(horizontal: false, vertical: true)
                                 } else {
-                                    SpendyInsightSymbol()
                                     ShinyHeadlineText(headline: "\(category.label) · \(leading.share.formatted(.percent.precision(.fractionLength(0)))) of spending", emphasis: [], font: .caption, emphasisFont: .caption.bold())
                                 }
                             } else {
@@ -141,7 +144,7 @@ struct HomeSpendingSummary: View {
                     Button {
                         insightDate = snapshot.start
                         if insightsEnabled { showsInsights = true }
-                        else { onExplore(snapshot.start) }
+                        else { onExplore(snapshot.start, periodFilter) }
                     } label: {
                         HStack(spacing: 6) {
                             if insightsEnabled { SpendyInsightSymbol() }
@@ -161,8 +164,8 @@ struct HomeSpendingSummary: View {
             .sheet(isPresented: $showsInsights, onDismiss: {
                 if let destination = pendingInsight {
                     pendingInsight = nil
-                    if destination == .analytics { onExplore(insightDate) }
-                    else { onInsight?(destination, insightDate) }
+                    if destination == .analytics { onExplore(insightDate, periodFilter) }
+                    else { onInsight?(destination, insightDate, periodFilter) }
                 }
             }) {
                 SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
@@ -176,18 +179,25 @@ struct HomeSpendingSummary: View {
                         showsInsights = false
                     })
             }
+            .sheet(isPresented: $showsPeriodFilter) {
+                SpendingPeriodFilterSheet(month: snapshot.start, referenceDate: referenceDate) { filter in
+                    periodFilter = Calendar.current.isDate(filter.month, equalTo: referenceDate, toGranularity: .month)
+                        ? nil : filter
+                }
+            }
             .sheet(isPresented: $showsInfo) {
                 SpendingChartInfoSheet(snapshot: snapshot, accountLabel: accountLabel,
                                        currencySymbol: currencySymbol, amountsHidden: amountsHidden)
             }
         }
+        .onChange(of: periodFilter) { _, _ in selectedID = nil }
         .onChange(of: accountID) { _, _ in selectedID = nil }
         .onChange(of: amountsHidden) { _, _ in selectedID = nil }
     }
 
     private func insights(for snapshot: SpendingChartSnapshot) -> [InsightMoment] {
         let context = AnalyticsInsightContext(scope: accountID == "all" ? .global : .account(id: accountID),
-            period: .month, startDate: snapshot.start,
+            period: snapshot.period.insightPeriod, startDate: snapshot.start,
             endDate: snapshot.end.addingTimeInterval(-0.000001),
             baselineStartDate: snapshot.baselineStart,
             baselineEndDate: snapshot.baselineEnd.addingTimeInterval(-0.000001),

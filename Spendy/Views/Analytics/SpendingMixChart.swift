@@ -28,22 +28,28 @@ struct SpendingMixChart: View {
         }
     }
 
+    static func tint(for item: AnalyticsBreakdownItem, index: Int) -> Color {
+        SpendyColors.isMonoMode
+            ? SpendyColors.textPrimary.opacity(1 - Double(min(index, 7)) * 0.09)
+            : Color(hex: item.colorHex)
+    }
+
     var body: some View {
         VStack(spacing: 12) {
-            Chart(slices) { item in
+            Chart(Array(slices.enumerated()), id: \.element.id) { index, item in
                 SectorMark(
                     angle: .value("Amount", item.amount),
                     innerRadius: .ratio(0.20),
                     angularInset: slices.count > 1 ? 3 : 0
                 )
                 .cornerRadius(10)
-                .foregroundStyle(Color(hex: item.colorHex))
+                .foregroundStyle(Self.tint(for: item, index: index))
                 .opacity(selectedItem == nil || selectedItem?.id == item.id ? 1 : 0.35)
                 .annotation(position: .overlay) {
                     if item.percentage >= 5 {
                         Image(systemName: item.sfSymbol)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(SpendyColors.isMonoMode ? SpendyColors.inverseText : .white)
                             .shadow(color: .black.opacity(0.25), radius: 2)
                             .accessibilityHidden(true)
                     }
@@ -76,6 +82,6 @@ struct SpendingMixChart: View {
             }
         }
         .padding(.vertical, 8)
-        .onChange(of: items.map(\.id)) { _, _ in selectedAngle = nil }
+        .onChange(of: items.map { "\($0.id):\($0.amount)" }) { _, _ in selectedAngle = nil }
     }
 }

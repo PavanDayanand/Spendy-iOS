@@ -21,6 +21,15 @@ final class SpendingChartUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+    @MainActor private func selectPreviousMonth(_ app: XCUIApplication) {
+        let previousMonth = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
+        let monthWheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(monthWheel.waitForExistence(timeout: 5))
+        if Calendar.current.component(.month, from: Date()) == 1 {
+            app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: String(Calendar.current.component(.year, from: previousMonth)))
+        }
+        monthWheel.adjust(toPickerWheelValue: previousMonth.formatted(.dateTime.month(.wide)))
+    }
     @MainActor func testAnalyticsIncomeFilter() {
         let app = launch(light: true)
         app.buttons["Analytics and statistics"].tap()
@@ -44,6 +53,21 @@ final class SpendingChartUITests: XCTestCase {
         button(app, "Expenses").tap()
         XCTAssertTrue(app.staticTexts["analytics-spending-total"].firstMatch.label.contains("1,200"))
         XCTAssertTrue(app.staticTexts["Category spending"].exists)
+    }
+
+    @MainActor func testHomePeriodFilterChangesTheSpendingTotal() {
+        let app = launch(light: true)
+        let total = app.staticTexts["home-spending-total"].firstMatch
+        XCTAssertTrue(total.waitForExistence(timeout: 10))
+        XCTAssertTrue(total.label.contains("1,200"))
+        app.buttons["More actions"].tap()
+        button(app, "Select Spending Month").tap()
+        XCTAssertTrue(app.navigationBars["Select Month"].waitForExistence(timeout: 5))
+        selectPreviousMonth(app)
+        capture(app, "Home month picker")
+        button(app, "Apply").tap()
+        XCTAssertTrue(total.label.contains("1,500"))
+        capture(app, "Home last month filter")
     }
 
     @MainActor func testViewAllSpendingBreakdown() {
@@ -75,7 +99,10 @@ final class SpendingChartUITests: XCTestCase {
         XCTAssertTrue(spendingChart.exists)
         button(app, "breakdown-menu").tap()
         button(app, "breakdown-filter").tap()
-        XCTAssertTrue(app.navigationBars["Categories"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Filters"].waitForExistence(timeout: 5))
+        button(app, "breakdown-month-filter").tap()
+        selectPreviousMonth(app)
+        button(app, "breakdown-month-filter").tap()
         button(app, "Clear all").tap()
         let search = app.textFields["Search categories"]
         search.tap()
@@ -85,14 +112,14 @@ final class SpendingChartUITests: XCTestCase {
         button(app, "filter-category-groceries").tap()
         XCTAssertEqual(button(app, "filter-category-groceries").value as? String, "Selected")
         button(app, "Done").tap()
-        XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("600"))
+        XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("750"))
         XCTAssertEqual(button(app, "breakdown-menu").value as? String, "1 selected")
         XCTAssertFalse(app.buttons.matching(identifier: "breakdown-food").allElementsBoundByIndex.contains { $0.isHittable })
         button(app, "breakdown-groceries").tap()
         XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.label.contains("600"))
+        XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.label.contains("750"))
         button(app, "Back").tap()
-        XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("600"))
+        XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("750"))
         capture(app, "Filtered category spending")
         button(app, "breakdown-menu").tap()
         XCTAssertTrue(button(app, "breakdown-filter").label.contains("1 selected"))

@@ -147,7 +147,7 @@ struct SpendingChartInfoSheet: View {
                 }
                 if !insightsOnly {
                 Section("Reading the charts") {
-                    Text("Home shows the last six months of recorded spending. Each bar is one month; taller bars mean more spending.")
+                    Text("Home starts with six months of recorded spending. Use the calendar to see a specific month. Taller bars mean more spending.")
                     Text("‘To date’ marks the unfinished period. Its total grows as you record expenses.")
                     Text("Hold a chart, then slide to preview a period. Release to return to the full total.")
                     Text("Open Analytics to change the time period and explore category or account breakdowns.")
@@ -158,7 +158,7 @@ struct SpendingChartInfoSheet: View {
                     Text("The chart reflects what you’ve recorded in Spendy. A day without an entry may not mean you spent nothing.")
                 }
                 Section("Period") {
-                    Text(snapshot.start.formatted(.dateTime.day().month(.wide).year()) + " – " + snapshot.recordedEnd.formatted(.dateTime.day().month(.wide).year()))
+                    Text(snapshot.rangeLabel)
                     if !amountsHidden {
                         LabeledContent("Recorded total", value: snapshot.total.formattedCurrency(symbol: currencySymbol, decimals: 2))
                     }

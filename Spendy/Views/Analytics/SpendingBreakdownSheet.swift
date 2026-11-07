@@ -3,7 +3,6 @@ import SwiftUI
 /// Full spending breakdown, presented like the app's transaction browser.
 struct SpendingBreakdownSheet: View {
     let snapshot: SpendingChartSnapshot
-    let items: [AnalyticsBreakdownItem]
     let byCategory: Bool
     let accountLabel: String
     let accountID: String
@@ -13,6 +12,7 @@ struct SpendingBreakdownSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("spendingBreakdownShowsChart") private var showsChart = true
     @State private var showsFilter = false
+    @State private var periodFilter: SpendingPeriodFilter?
     @State private var selectedIDs: Set<String>?
     @Namespace private var internalControlsNamespace
     private var controlsNamespace: Namespace.ID { topControlsNamespace ?? internalControlsNamespace }
@@ -22,29 +22,46 @@ struct SpendingBreakdownSheet: View {
     private var title: String { (isIncome ? "Income" : "Spending") + (byCategory ? " by Category" : " by Account") }
 
     private var spendingScope: SpendingScope {
-        SpendingScope(start: snapshot.start, end: snapshot.end, referenceDate: snapshot.referenceDate,
+        let current = filteredSnapshot
+        return SpendingScope(start: current.start, end: current.end, referenceDate: current.referenceDate,
             accountIDs: accountID != "all" ? (byCategory ? [accountID] : selectedIDs.map { $0.intersection([accountID]) } ?? [accountID]) : (byCategory ? nil : selectedIDs),
             categoryIDs: byCategory ? selectedIDs : nil, transactionType: snapshot.transactionType)
     }
 
     private var filteredSnapshot: SpendingChartSnapshot {
-        let transactions = store.transactions.filter { transaction in
-            guard let selectedIDs else { return true }
-            return selectedIDs.contains(byCategory ? transaction.categoryId : transaction.accountId)
-        }
-        return SpendingChartSnapshot(transactions: transactions, accountID: accountID,
-            period: snapshot.period, anchor: snapshot.start, referenceDate: snapshot.referenceDate, transactionType: snapshot.transactionType)
+        makeSnapshot(store.transactions.filter { transaction in
+            selectedIDs?.contains(byCategory ? transaction.categoryId : transaction.accountId) ?? true
+        })
     }
 
-    private var visibleItems: [AnalyticsBreakdownItem] {
-        let current = filteredSnapshot
-        return items.filter { selectedIDs?.contains($0.id) ?? true }.map { item in
-            let transactions = current.transactions.filter { (byCategory ? $0.categoryId : $0.accountId) == item.id }
-            let amount = transactions.reduce(0) { $0 + $1.amount }
-            return AnalyticsBreakdownItem(id: item.id, label: item.label, sfSymbol: item.sfSymbol,
-                colorHex: item.colorHex, txCount: transactions.count, amount: amount,
-                percentage: current.total > 0 ? amount / current.total * 100 : 0)
+    private func makeSnapshot(_ transactions: [Transaction]) -> SpendingChartSnapshot {
+        if let periodFilter {
+            return periodFilter.snapshot(transactions: transactions, accountID: accountID,
+                referenceDate: snapshot.referenceDate, transactionType: snapshot.transactionType)
         }
+        return SpendingChartSnapshot(transactions: transactions, accountID: accountID,
+            period: snapshot.period, anchor: snapshot.start, referenceDate: snapshot.referenceDate,
+            transactionType: snapshot.transactionType)
+    }
+
+    private var filterItems: [AnalyticsBreakdownItem] {
+        let current = makeSnapshot(store.transactions)
+        return breakdownItems(for: current)
+    }
+
+    private func breakdownItems(for current: SpendingChartSnapshot) -> [AnalyticsBreakdownItem] {
+        Dictionary(grouping: current.transactions, by: { byCategory ? $0.categoryId : $0.accountId })
+            .map { id, transactions in
+                let category = byCategory ? store.category(for: id) : nil
+                let account = byCategory ? nil : store.account(for: id)
+                let amount = transactions.reduce(0) { $0 + $1.amount }
+                return AnalyticsBreakdownItem(id: id, label: category?.label ?? account?.label ?? id,
+                    sfSymbol: category?.sfSymbol ?? account?.sfSymbol ?? "tag",
+                    colorHex: category?.colorHex ?? account?.colorHex ?? "#808080",
+                    txCount: transactions.count, amount: amount,
+                    percentage: current.total > 0 ? amount / current.total * 100 : 0)
+            }
+            .sorted { $0.amount == $1.amount ? $0.id < $1.id : $0.amount > $1.amount }
     }
 
     private func configureNavigationHeader() {
@@ -52,6 +69,7 @@ struct SpendingBreakdownSheet: View {
         let chart = $showsChart
         let filter = $showsFilter
         let selection = $selectedIDs
+        let period = $periodFilter
         let dismissAction = dismiss
         var items = [
             AnalyticsNavigationHeaderMenuItem(id: "breakdown-chart-toggle", title: "Show chart",
@@ -59,12 +77,12 @@ struct SpendingBreakdownSheet: View {
                 withAnimation(.easeInOut(duration: 0.2)) { chart.wrappedValue.toggle() }
             },
             AnalyticsNavigationHeaderMenuItem(id: "breakdown-filter",
-                title: selectedIDs.map { "Filter · \($0.count) selected" } ?? "Filter",
+                title: selectedIDs.map { "Filter · \($0.count) selected" } ?? periodFilter.map { "Filter · \($0.title)" } ?? "Filter",
                 systemImage: "line.3.horizontal.decrease") { filter.wrappedValue = true }
         ]
-        if selectedIDs != nil {
+        if selectedIDs != nil || periodFilter != nil {
             items.append(AnalyticsNavigationHeaderMenuItem(id: "breakdown-reset-filters",
-                title: "Reset filters", systemImage: "arrow.counterclockwise") { selection.wrappedValue = nil })
+                title: "Reset filters", systemImage: "arrow.counterclockwise") { selection.wrappedValue = nil; period.wrappedValue = nil })
         }
         sharedNavigationHeader?.show(title: title, onBack: { dismissAction() },
             menuItems: items, menuLabel: isIncome ? "Income options" : "Spending options",
@@ -90,11 +108,11 @@ struct SpendingBreakdownSheet: View {
                 .accessibilityValue(showsChart ? "On" : "Off")
                 .accessibilityIdentifier("breakdown-chart-toggle")
                 Button { showsFilter = true } label: {
-                    Label(selectedIDs.map { "Filter · \($0.count) selected" } ?? "Filter", systemImage: "line.3.horizontal.decrease")
+                    Label(selectedIDs.map { "Filter · \($0.count) selected" } ?? periodFilter.map { "Filter · \($0.title)" } ?? "Filter", systemImage: "line.3.horizontal.decrease")
                 }
                 .accessibilityIdentifier("breakdown-filter")
-                if selectedIDs != nil {
-                    Button("Reset filters") { selectedIDs = nil }
+                if selectedIDs != nil || periodFilter != nil {
+                    Button("Reset filters") { selectedIDs = nil; periodFilter = nil }
                         .accessibilityIdentifier("breakdown-reset-filters")
                 }
             } label: {
@@ -125,6 +143,7 @@ struct SpendingBreakdownSheet: View {
 
     var body: some View {
         let snapshot = filteredSnapshot
+        let visibleItems = breakdownItems(for: snapshot)
         ZStack(alignment: .top) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -132,9 +151,7 @@ struct SpendingBreakdownSheet: View {
                         Text(snapshot.total.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
                             .font(.largeTitle.bold()).monospacedDigit()
                             .accessibilityIdentifier("breakdown-total")
-                        Text(accountLabel + " · "
-                            + snapshot.start.formatted(.dateTime.month(.abbreviated).day()) + " – "
-                            + snapshot.recordedEnd.formatted(.dateTime.month(.abbreviated).day().year()))
+                        Text(accountLabel + " · " + snapshot.rangeLabel)
                             .font(.caption)
                             .foregroundStyle(SpendyColors.textSecondary)
                         if showsChart && visibleItems.contains(where: { $0.amount > 0 }) {
@@ -144,22 +161,22 @@ struct SpendingBreakdownSheet: View {
                     }
                     if visibleItems.isEmpty {
                         SpendyPlainEmptyState(
-                            title: items.isEmpty ? (isIncome ? "No income yet" : "No spending yet") : "No selections",
-                            message: items.isEmpty ? "Recorded transactions will appear here."
+                            title: selectedIDs != [] ? (isIncome ? "No income yet" : "No spending yet") : "No selections",
+                            message: selectedIDs != [] ? "No recorded transactions match the current filters."
                                 : byCategory ? "Choose categories to see transactions." : "Choose accounts to see transactions.",
                             icon: byCategory ? "square.grid.2x2" : "creditcard",
-                            actionTitle: items.isEmpty ? nil : "Select all",
+                            actionTitle: selectedIDs != [] ? nil : "Select all",
                             action: { selectedIDs = nil }
                         )
                     }
                     VStack(spacing: 12) {
-                        ForEach(visibleItems) { item in
+                        ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
                             Button {
                                 if byCategory { selectedCategory = store.categories.first { $0.id == item.id } }
                                 else { selectedAccount = store.accounts.first { $0.id == item.id } }
                             } label: {
                                 HStack(spacing: 12) {
-                                    Circle().fill(Color(hex: item.colorHex))
+                                    Circle().fill(SpendingMixChart.tint(for: item, index: index))
                                         .frame(width: 8, height: 8)
                                         .accessibilityHidden(true)
                                     SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
@@ -218,12 +235,12 @@ struct SpendingBreakdownSheet: View {
         .onChange(of: selectedAccount?.id) { _, _ in configureNavigationHeader() }
         .onChange(of: showsChart) { _, _ in configureNavigationHeader() }
         .sheet(isPresented: $showsFilter) {
-            SpendingBreakdownFilter(items: items, byCategory: byCategory, selectedIDs: $selectedIDs)
+            SpendingBreakdownFilter(items: filterItems, byCategory: byCategory, selectedIDs: $selectedIDs,
+                periodFilter: $periodFilter, initialMonth: snapshot.start,
+                referenceDate: snapshot.referenceDate)
         }
-        .onChange(of: selectedIDs) { _, selection in
-            if selection == Set(items.map(\.id)) { selectedIDs = nil }
-            configureNavigationHeader()
-        }
+        .onChange(of: selectedIDs) { _, _ in configureNavigationHeader() }
+        .onChange(of: periodFilter) { _, _ in configureNavigationHeader() }
         .tint(SpendyColors.textPrimary)
     }
 }
@@ -232,6 +249,9 @@ struct SpendingBreakdownFilter: View {
     let items: [AnalyticsBreakdownItem]
     let byCategory: Bool
     @Binding var selectedIDs: Set<String>?
+    var periodFilter: Binding<SpendingPeriodFilter?>? = nil
+    var initialMonth: Date? = nil
+    var referenceDate: Date? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
     @FocusState private var searchFocused: Bool
@@ -243,6 +263,18 @@ struct SpendingBreakdownFilter: View {
     var body: some View {
         NavigationStack {
             List {
+                if let periodFilter, let initialMonth, let referenceDate {
+                    DisclosureGroup {
+                        SpendingMonthPicker(month: Binding(
+                            get: { periodFilter.wrappedValue?.month ?? initialMonth },
+                            set: { periodFilter.wrappedValue = SpendingPeriodFilter(month: $0) }
+                        ), latestDate: referenceDate)
+                        .frame(height: 156)
+                    } label: {
+                        Label(periodFilter.wrappedValue?.title ?? "Select month", systemImage: "calendar")
+                    }
+                    .accessibilityIdentifier("breakdown-month-filter")
+                }
                 Section {
                     Button("Select all") { selectedIDs = nil }
                         .accessibilityIdentifier("breakdown-select-all")
@@ -271,7 +303,7 @@ struct SpendingBreakdownFilter: View {
                     if matches.isEmpty { Text("No matches").foregroundStyle(.secondary) }
                 }
             }
-            .navigationTitle(byCategory ? "Categories" : "Accounts")
+            .navigationTitle(periodFilter == nil ? (byCategory ? "Categories" : "Accounts") : "Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .safeAreaInset(edge: .bottom) {

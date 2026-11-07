@@ -101,6 +101,9 @@ struct AnalyticsView: View {
     
     var initialAccountID: String = "all"
     var initialDate: Date? = nil
+    var initialPeriodFilter: SpendingPeriodFilter? = nil
+    @State private var periodFilter: SpendingPeriodFilter?
+    @State private var showsPeriodFilter = false
     @State private var appliedInitialScope = false
     @State private var selectedSpendingBucketID: String?
     @State private var selectedComparisonInterval: String?
@@ -110,7 +113,8 @@ struct AnalyticsView: View {
     @State private var referenceDate = Date()
 
     private var spendingSnapshot: SpendingChartSnapshot {
-        SpendingChartSnapshot(transactions: store.transactions, accountID: selectedAccountId,
+        periodFilter?.snapshot(transactions: store.transactions, accountID: selectedAccountId, referenceDate: referenceDate, transactionType: transactionType)
+        ?? SpendingChartSnapshot(transactions: store.transactions, accountID: selectedAccountId,
             period: SpendingChartPeriod(rawValue: granularity.rawValue.lowercased()) ?? .month,
             anchor: selectedDate, referenceDate: referenceDate, transactionType: transactionType)
     }
@@ -214,10 +218,15 @@ struct AnalyticsView: View {
                     })
             }
             .navigationDestination(isPresented: $showsSpendingBreakdown) {
-                SpendingBreakdownSheet(snapshot: spendingSnapshot, items: selectedBreakdownItems,
+                SpendingBreakdownSheet(snapshot: spendingSnapshot,
                     byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
                     topControlsNamespace: analyticsControlsNamespace,
                     sharedNavigationHeader: sharedNavigationHeader)
+            }
+            .sheet(isPresented: $showsPeriodFilter) {
+                SpendingPeriodFilterSheet(month: spendingSnapshot.start, referenceDate: referenceDate) {
+                    periodFilter = $0
+                }
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
@@ -268,6 +277,7 @@ struct AnalyticsView: View {
                 if !appliedInitialScope {
                     selectedAccountId = initialAccountID
                     if let initialDate { selectedDate = initialDate }
+                    periodFilter = initialPeriodFilter
                     appliedInitialScope = true
                 }
                 openRequestedWeek()
@@ -283,6 +293,7 @@ struct AnalyticsView: View {
                 }
             }
             .onChange(of: store.transactions) { _, _ in referenceDate = Date() }
+            .onChange(of: periodFilter) { _, _ in resetSelections() }
             .onChange(of: selectedDate) { _, _ in resetSelections() }
             .onChange(of: granularity) { _, _ in resetSelections() }
             .onChange(of: transactionType) { _, _ in resetSelections() }
@@ -304,21 +315,19 @@ struct AnalyticsView: View {
 
     private func openRequestedWeek() {
         guard topControlsNamespace == nil, let date = quickActions.requestedAnalyticsWeekDate else { return }
+        periodFilter = nil
         granularity = .week
         selectedDate = date
         quickActions.requestedAnalyticsWeekDate = nil
     }
 
     private var analyticsInsights: [InsightMoment] {
+        let snapshot = spendingSnapshot
         guard store.insightsEnabled else { return [] }
-        let bounds = currentPeriodBounds
-        let unit: Calendar.Component = granularity == .day ? .day : granularity == .week ? .weekOfYear : granularity == .month ? .month : .year
-        let previousDate = Calendar.current.date(byAdding: unit, value: -1, to: selectedDate) ?? selectedDate
-        let previous = periodBounds(for: previousDate)
-        let period: InsightPeriod = granularity == .week ? .week : granularity == .month ? .month : granularity == .year ? .year : .custom
         let context = AnalyticsInsightContext(scope: selectedAccountId == "all" ? .global : .account(id: selectedAccountId),
-            period: period, startDate: bounds.start, endDate: bounds.end,
-            baselineStartDate: previous.start, baselineEndDate: previous.end,
+            period: snapshot.period.insightPeriod,
+            startDate: snapshot.start, endDate: snapshot.end.addingTimeInterval(-0.000001),
+            baselineStartDate: snapshot.baselineStart, baselineEndDate: snapshot.baselineEnd.addingTimeInterval(-0.000001),
             referenceDate: referenceDate)
         let facts = InsightFactsExtractor.extractFacts(transactions: store.transactions, budget: store.budget,
             categories: store.categories, subscriptions: store.subscriptions, context: context)
@@ -775,11 +784,15 @@ struct AnalyticsView: View {
             HStack(spacing: 0) {
                 // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
                 Menu {
-                    Picker("Timeframe", selection: $granularity) {
+                    Picker("Timeframe", selection: Binding(get: { granularity }, set: {
+                        periodFilter = nil
+                        granularity = $0
+                    })) {
                         ForEach(TimeGranularity.allCases) { item in
                             Text(item.rawValue).tag(item)
                         }
                     }
+                    Button("Select month…") { showsPeriodFilter = true }
                 } label: {
                     GlassCircleIcon(
                         icon: "calendar",
@@ -805,10 +818,12 @@ struct AnalyticsView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(periodFilter != nil)
                     
                     Button(action: {
                         HapticsManager.shared.trigger(.light)
-                        showMonthPicker = true
+                        if periodFilter != nil { showsPeriodFilter = true }
+                        else { showMonthPicker = true }
                     }) {
                         Text(formattedPillTitle)
                             .font(.system(size: 15, weight: .heavy))
@@ -827,6 +842,7 @@ struct AnalyticsView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(periodFilter != nil)
                 }
                 .padding(.horizontal, 6)
                 .frame(height: 44)
@@ -938,18 +954,6 @@ struct AnalyticsView: View {
     
     // MARK: - Computed Properties & Period Math
     
-    private var currentPeriodBounds: (start: Date, end: Date) {
-        periodBounds(for: selectedDate)
-    }
-
-    private func periodBounds(for date: Date) -> (start: Date, end: Date) {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        let period = SpendingChartPeriod(rawValue: granularity.rawValue.lowercased()) ?? .month
-        let interval = calendar.dateInterval(of: period.component, for: date)!
-        return (interval.start, Date(timeIntervalSinceReferenceDate: interval.end.timeIntervalSinceReferenceDate.nextDown))
-    }
-
     private var filteredTransactions: [Transaction] {
         let snapshot = spendingSnapshot
         return store.filteredTransactions(for: selectedAccountId).filter {
@@ -1132,6 +1136,7 @@ struct AnalyticsView: View {
     }
     
     private var formattedPillTitle: String {
+        if let periodFilter { return periodFilter.title }
         switch granularity {
         case .day, .week:
             return SpendyDateFormatterCache.dayMonth.string(from: selectedDate)

@@ -72,6 +72,11 @@ struct SpendingChartSnapshot {
     var isFuture: Bool { start > referenceDate }
     var recordedEnd: Date { max(start, min(referenceDate, Date(timeIntervalSinceReferenceDate: end.timeIntervalSinceReferenceDate.nextDown))) }
 
+    var rangeLabel: String {
+        let style = Date.FormatStyle.dateTime.month(.abbreviated).day().year()
+        return "\(start.formatted(style)) – \(recordedEnd.formatted(style))"
+    }
+
     var leadingCategory: (id: String, amount: Double, share: Double)? {
         guard total > 0 else { return nil }
         var totals: [String: Double] = [:]

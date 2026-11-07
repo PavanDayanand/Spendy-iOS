@@ -14,6 +14,7 @@ struct HomeNavigationHeader: View {
     let onAnalytics: () -> Void
     let onBudget: () -> Void
     let onConverter: () -> Void
+    let onSelectSpendingMonth: () -> Void
 
     private var profileName: String {
         let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -187,6 +188,7 @@ struct HomeNavigationHeader: View {
 
             Menu {
                 Button("Budget", systemImage: "target", action: onBudget)
+                Button("Select Spending Month", systemImage: "calendar", action: onSelectSpendingMonth)
                 Button("Currency Converter", systemImage: "arrow.left.arrow.right", action: onConverter)
                 Divider()
                 Button(hideBalance ? "Show Amounts" : "Hide Amounts",

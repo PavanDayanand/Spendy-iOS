@@ -32,6 +32,7 @@ struct AllTransactionsView: View {
     @State private var searchQuery: String = ""
     @State private var selectedCategoryIDs: Set<String>? = nil
     @State private var showsCategoryFilter = false
+    @State private var showsAccountFilter = false
     @State private var selectedAccountId: String? = nil
     @State private var selectedTransactionType: TransactionType? = nil
     @FocusState private var isSearchFocused: Bool
@@ -276,6 +277,15 @@ struct AllTransactionsView: View {
         .sheet(isPresented: $showsCategoryFilter) {
             SpendingBreakdownFilter(items: categoryFilterItems, byCategory: true, selectedIDs: $selectedCategoryIDs)
         }
+        .sheet(isPresented: $showsAccountFilter) {
+            ReceiptAccountPicker(selectedAccountId: Binding(
+                get: { selectedAccountId ?? "all" },
+                set: { selectedAccountId = $0 == "all" ? nil : $0 }
+            ), title: "Accounts",
+                accounts: store.accounts.filter { spendingScope?.accountIDs?.contains($0.id)
+                    ?? (scopeAccountID == nil || scopeAccountID == "all" || scopeAccountID == $0.id) },
+                currencySymbol: store.currencySymbol, showsAllAccounts: true)
+        }
         .sheet(item: $inspectingTransaction, onDismiss: {
             editingTransaction = pendingTransactionEdit
             pendingTransactionEdit = nil
@@ -340,24 +350,8 @@ struct AllTransactionsView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // 2. [Accounts] Liquid Glass Menu
-                Menu {
-                    Button(spendingScope?.accountIDs != nil || (scopeAccountID != nil && scopeAccountID != "all") ? "All scoped accounts" : "All Accounts") {
-                        HapticsManager.shared.trigger(.selection)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedAccountId = nil
-                        }
-                    }
-                    Divider()
-                    ForEach(store.accounts.filter { spendingScope?.accountIDs?.contains($0.id) ?? (scopeAccountID == nil || scopeAccountID == "all" || scopeAccountID == $0.id) }) { acc in
-                        Button(acc.label) {
-                            HapticsManager.shared.trigger(.selection)
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                selectedAccountId = acc.id
-                            }
-                        }
-                    }
-                } label: {
+                // Match the category control with the existing account picker drawer.
+                Button { showsAccountFilter = true } label: {
                     let isAccSelected = selectedAccountId != nil
                     HStack(spacing: 6) {
                         Image(systemName: isAccSelected ? (store.account(for: selectedAccountId ?? "").sfSymbol.isEmpty ? "building.columns" : store.account(for: selectedAccountId ?? "").sfSymbol) : "building.columns")
