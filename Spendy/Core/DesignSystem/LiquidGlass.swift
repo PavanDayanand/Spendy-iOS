@@ -301,13 +301,14 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
     var selectedForegroundColor: Color? = nil
     var expandsToFillWidth: Bool = true
     var useLiquidGlass: Bool = true
+    var showsSelection: Bool = true
     
     @Namespace private var segmentNamespace
     
     var body: some View {
         HStack(spacing: 4) {
             ForEach(items) { item in
-                let isSelected = selection == item
+                let isSelected = showsSelection && selection == item
                 
                 Button(action: {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
@@ -347,6 +348,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
         .padding(4)

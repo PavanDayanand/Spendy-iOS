@@ -22,11 +22,6 @@ struct AppAccentSettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    Toggle("Haptics", isOn: Binding(
-                        get: { store.hapticsEnabled },
-                        set: { store.hapticsEnabled = $0 }
-                    ))
-                    .tint(SpendyColors.controlAccent)
                 }
                 .padding(16)
                 .background(SpendyColors.settingsCardBackground, in: .rect(cornerRadius: 22))

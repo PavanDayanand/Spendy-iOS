@@ -80,6 +80,20 @@ struct SettingsView: View {
                             NavigationLink(value: SettingsDestination.notifications) {
                                 linkRow(icon: "bell", title: "Notifications", value: nil)
                             }.buttonStyle(.plain)
+                            groupDivider
+                            Toggle(isOn: Binding(
+                                get: { store.hapticsEnabled },
+                                set: { store.hapticsEnabled = $0 }
+                            )) {
+                                HStack(spacing: 14) {
+                                    rowIcon("waveform")
+                                    Text("Haptic feedback").font(.body.weight(.medium))
+                                }
+                            }
+                            .tint(SpendyColors.controlAccent)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .frame(minHeight: 52)
                         }
 
                         settingsGroup(title: "Data & exports") {
@@ -180,7 +194,7 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(store.userName.isEmpty ? "Your name" : store.userName)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.headline)
                         .foregroundStyle(SpendyColors.textPrimary)
                     Text("Name, photo, currency")
                         .font(AppTypography.footnoteMedium)
@@ -332,7 +346,7 @@ struct SettingsView: View {
     private func settingsGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(SpendyColors.textSecondary)
                 .padding(.horizontal, 4)
             VStack(spacing: 0) {
@@ -366,43 +380,35 @@ struct SettingsView: View {
     }
 
     private func linkRow(icon: String, title: String, value: String?) -> some View {
-        HStack(spacing: 14) {
-            rowIcon(icon)
-            Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-            Spacer()
-            if let value {
-                Text(value)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
-        }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 52)
-        .contentShape(Rectangle())
+        settingsNavigationRow(icon: icon, title: title, value: value, disclosure: "chevron.right")
     }
 
     private func externalRow(icon: String, title: String, value: String? = nil) -> some View {
-        HStack(spacing: 14) {
+        settingsNavigationRow(icon: icon, title: title, value: value, disclosure: "arrow.up.right")
+    }
+
+    private func settingsNavigationRow(icon: String, title: String, value: String?, disclosure: String) -> some View {
+        SpendyRowContent(spacing: 14, iconWidth: 28) {
             rowIcon(icon)
+        } content: {
             Text(title)
-                .font(.system(size: 16, weight: .medium))
+                .font(.body.weight(.medium))
                 .foregroundStyle(SpendyColors.textPrimary)
-            Spacer()
-            if let value {
-                Text(value)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } value: {
+            HStack(spacing: 8) {
+                if let value {
+                    Text(value).font(.subheadline)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Image(systemName: disclosure)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textTertiary)
             }
-            Image(systemName: "arrow.up.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .frame(minHeight: 52)
         .contentShape(Rectangle())
     }

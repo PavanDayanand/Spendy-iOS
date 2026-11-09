@@ -736,9 +736,13 @@ struct SharedEntityAnalyticsSheet: View {
         SpendyGlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
                 GlassSegmentedPicker(
-                    selection: $selectedPeriod,
+                    selection: Binding(get: { selectedPeriod }, set: { period in
+                        clearCustomDateRange()
+                        selectedPeriod = period
+                    }),
                     items: ChartPeriod.allCases,
-                    titleFor: { $0.shortLabel }
+                    titleFor: { $0.shortLabel },
+                    showsSelection: customDateRange == nil
                 )
                 .onChange(of: selectedPeriod) { _, _ in
                     customDateRange = nil
@@ -938,7 +942,7 @@ struct SharedEntityAnalyticsSheet: View {
                 id: "in",
                 flowType: .income,
                 label: "Money in",
-                value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                value: "+\(totalInflow.formattedCurrency(symbol: store.currencySymbol, decimals: 2))",
                 valueColor: SpendyColors.incomeGreen
             ))
         }
@@ -947,7 +951,7 @@ struct SharedEntityAnalyticsSheet: View {
                 id: "out",
                 flowType: .expense,
                 label: "Money out",
-                value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                value: "-\(totalOutflow.formattedCurrency(symbol: store.currencySymbol, decimals: 2))",
                 valueColor: SpendyColors.textPrimary
             ))
         }
@@ -956,7 +960,7 @@ struct SharedEntityAnalyticsSheet: View {
                 id: "net",
                 flowType: .net(isPositive: netCashFlow >= 0),
                 label: "Net cash flow",
-                value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                value: "\(netCashFlow >= 0 ? "+" : "-")\(abs(netCashFlow).formattedCurrency(symbol: store.currencySymbol, decimals: 2))",
                 valueColor: netCashFlow >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
             ))
         }
@@ -967,7 +971,7 @@ struct SharedEntityAnalyticsSheet: View {
                 id: "budget",
                 flowType: remaining >= 0 ? .income : .expense,
                 label: remaining >= 0 ? "Budget left" : "Over budget",
-                value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
+                value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 2))",
                 valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
             ))
         }
@@ -1003,7 +1007,7 @@ struct SharedEntityAnalyticsSheet: View {
             id: "rate",
             flowType: nil,
             label: scopedType == .income ? "Daily inflow rate" : "Daily outflow rate",
-            value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 0))/day",
+            value: "\(dailyAverageSpent.formattedCurrency(symbol: store.currencySymbol, decimals: 2))/day",
             valueColor: SpendyColors.textPrimary
         ))
         
