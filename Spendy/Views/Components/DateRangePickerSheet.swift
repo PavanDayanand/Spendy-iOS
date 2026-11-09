@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DateRangePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @Binding var startDate: Date
     @Binding var endDate: Date
@@ -30,51 +31,9 @@ struct DateRangePickerSheet: View {
     }
     
     var body: some View {
-        ZStack {
+        NavigationStack {
+            ScrollView {
             VStack(spacing: 0) {
-                // Header (Cancel | Select Date Range | Apply)
-                HStack {
-                    Button(action: {
-                        HapticsManager.shared.trigger(.light)
-                        dismiss()
-                    }) {
-                        Text("Cancel")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(SpendyColors.separator, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Spacer()
-                    
-                    Text("Select Date Range")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        HapticsManager.shared.trigger(.success)
-                        startDate = tempStartDate
-                        endDate = tempEndDate
-                        onApply?(tempStartDate, tempEndDate)
-                        dismiss()
-                    }) {
-                        Text("Apply")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(SpendyColors.inverseText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(SpendyColors.primaryBlue, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
-                
                 // Date Pickers inside Currency Converter matching card
                 VStack(spacing: 0) {
                     HStack {
@@ -83,7 +42,7 @@ struct DateRangePickerSheet: View {
                             .foregroundStyle(SpendyColors.textPrimary)
                         Spacer()
                         DatePicker(
-                            "",
+                            "Start Date",
                             selection: $tempStartDate,
                             in: ...tempEndDate,
                             displayedComponents: .date
@@ -104,7 +63,7 @@ struct DateRangePickerSheet: View {
                             .foregroundStyle(SpendyColors.textPrimary)
                         Spacer()
                         DatePicker(
-                            "",
+                            "End Date",
                             selection: $tempEndDate,
                             in: tempStartDate...Date(),
                             displayedComponents: .date
@@ -122,10 +81,28 @@ struct DateRangePickerSheet: View {
                 }
                 .padding(.horizontal, 20)
                 
-                Spacer()
+            }
+            .padding(.vertical, 12)
+            }
+            .navigationTitle("Select Date Range")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        HapticsManager.shared.trigger(.success)
+                        startDate = tempStartDate
+                        endDate = tempEndDate
+                        onApply?(tempStartDate, tempEndDate)
+                        dismiss()
+                    }
+                }
             }
         }
-        .presentationDetents([.height(230)])
+        .tint(SpendyColors.textPrimary)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(230)])
         .presentationDragIndicator(.visible)
     }
 }

@@ -441,13 +441,11 @@ struct AccountsView: View {
     private var accountsList: some View {
         Group {
             if sortedAccounts.isEmpty {
-                SpendyEmptyCardView(
-                    icon: "creditcard",
-                    iconColor: SpendyColors.primaryBlue,
+                SpendyPlainEmptyState(
                     title: "No accounts yet",
-                    subtitle: "Add a wallet, bank, or savings account to start tracking",
-                    actionTitle: "Add Account",
-                    isEnclosedInCard: true
+                    message: "Add a wallet, bank, or savings account to start tracking",
+                    icon: "creditcard",
+                    actionTitle: "Add account"
                 ) {
                     showAddAccount = true
                 }

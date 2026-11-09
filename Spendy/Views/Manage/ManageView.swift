@@ -625,6 +625,7 @@ struct SubscriptionsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Past and cancelled, \(cancelledSubs.count)")
+            .accessibilityValue(showCancelledSubs ? "Expanded" : "Collapsed")
 
             if showCancelledSubs {
                 SpendyGroupedList(items: cancelledSubs,
@@ -637,7 +638,7 @@ struct SubscriptionsView: View {
     }
 
     private func cancelledRow(_ sub: Subscription) -> some View {
-        HStack(spacing: 14) {
+        SpendyRowContent(spacing: 14) {
             SpendyIconBadge(
                 sfSymbol: sub.sfSymbol,
                 color: SpendyColors.separator,
@@ -646,6 +647,7 @@ struct SubscriptionsView: View {
                 monogramName: sub.name
             )
 
+        } content: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(sub.name)
                     .font(AppTypography.rowTitle)
@@ -655,14 +657,15 @@ struct SubscriptionsView: View {
                     .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
             }
 
-            Spacer()
-
+        } value: {
             Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
                 .spendyRowAmount()
                 .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
         .contextMenu {
             Button {
                 var updated = sub

@@ -13,23 +13,8 @@ struct ReceiptNoteEditor: View {
     }
 
     var body: some View {
+        NavigationStack {
         VStack(spacing: 20) {
-            HStack {
-                GlassCircleButton(icon: "xmark", size: 44, iconSize: 14,
-                    accessibilityLabel: "Cancel note changes") { dismiss() }
-                Spacer()
-                Text("Note").font(.headline)
-                Spacer()
-                Button("Done") {
-                    HapticsManager.shared.trigger(.success)
-                    onSave(note.trimmingCharacters(in: .whitespacesAndNewlines))
-                    dismiss()
-                }
-                .font(.body.weight(.semibold))
-                .foregroundStyle(SpendyColors.primaryBlue)
-                .frame(minWidth: 44, minHeight: 44)
-                .accessibilityIdentifier("receipt-note-done")
-            }
             TextField("Add a note", text: $note, axis: .vertical)
                 .font(.body)
                 .lineLimit(2...5)
@@ -41,6 +26,24 @@ struct ReceiptNoteEditor: View {
         }
         .foregroundStyle(SpendyColors.textPrimary)
         .padding(20)
+        .navigationTitle("Note")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+                    .accessibilityLabel("Cancel note changes")
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    HapticsManager.shared.trigger(.success)
+                    onSave(note.trimmingCharacters(in: .whitespacesAndNewlines))
+                    dismiss()
+                }
+                .accessibilityIdentifier("receipt-note-done")
+            }
+        }
+        }
+        .tint(SpendyColors.textPrimary)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(260), .large])
         .presentationDragIndicator(.visible)
         .onAppear { isFocused = true }
