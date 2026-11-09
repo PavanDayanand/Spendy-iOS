@@ -509,12 +509,8 @@ struct SubscriptionsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.system(size: 16.5, weight: .bold, design: .default))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .layoutPriority(1)
+                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                    .spendyRowAmount()
                     .foregroundStyle(
                         sub.isPaused
                             ? SpendyColors.textTertiary
@@ -678,8 +674,7 @@ struct SubscriptionsView: View {
             Spacer()
 
             Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                .font(.system(size: 16, weight: .bold, design: .default))
-                .monospacedDigit()
+                .spendyRowAmount()
                 .foregroundStyle(SpendyColors.textTertiary)
         }
         .padding(.horizontal, 16)

@@ -489,12 +489,8 @@ struct AccountsView: View {
                         .lineLimit(1)
                 }
             } value: {
-                Text(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .layoutPriority(1)
+                Text(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                    .spendyRowAmount()
                     .foregroundStyle(bal < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
             }
         }
@@ -513,7 +509,7 @@ struct AccountsView: View {
                 Label("Edit Account", systemImage: "pencil")
             }
         }
-        .accessibilityLabel("\(account.label), \(account.type.rawValue), \(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 0))")
+        .accessibilityLabel("\(account.label), \(account.type.rawValue), \(bal.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
         .accessibilityIdentifier("account-row-\(account.id)")
     }
 }

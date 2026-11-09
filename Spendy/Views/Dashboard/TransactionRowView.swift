@@ -37,8 +37,7 @@ struct TransactionRowView: View {
         } value: {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(amountsHidden ? "••••" : amountText)
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
+                    .spendyRowAmount()
                     .foregroundStyle(transaction.type == .income ? SpendyColors.incomeGreen : SpendyColors.textPrimary)
                     .accessibilityLabel(amountsHidden ? "Amount hidden" : amountText)
                 Text(transaction.date.formattedRelative)

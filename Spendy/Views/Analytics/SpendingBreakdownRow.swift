@@ -17,8 +17,7 @@ struct SpendingBreakdownRow: View {
             }
             Spacer(minLength: 4)
             Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2))
-                .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
-                .lineLimit(1).minimumScaleFactor(0.7)
+                .spendyRowAmount()
         }
         .padding(.horizontal, 16).padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
