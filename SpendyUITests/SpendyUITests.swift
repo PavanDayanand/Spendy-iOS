@@ -584,12 +584,15 @@ final class SpendyUITests: XCTestCase {
     @MainActor func testSettingsCategoryEditorAndGlassCurrencyPicker() {
         let app = launch("analytics")
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Currency")).firstMatch.tap()
+        app.buttons["Edit profile"].tap()
+        XCTAssertTrue(app.buttons["profile-currency"].waitForExistence(timeout: 5))
+        app.buttons["profile-currency"].tap()
         XCTAssertTrue(app.staticTexts["Select currency"].waitForExistence(timeout: 5))
         let currencyShot = XCTAttachment(screenshot: app.screenshot())
         currencyShot.name = "Currency picker original glass"
         currencyShot.lifetime = .keepAlways
         add(currencyShot)
+        app.buttons["Close"].firstMatch.tap()
         app.buttons["Close"].firstMatch.tap()
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Categories,")).firstMatch.tap()
         let category = app.buttons["Groceries, expense category"]

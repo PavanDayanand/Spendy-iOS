@@ -129,7 +129,7 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - Colors & Theming (Apple HIG Luxury Graphite in Dark Mode, Crisp in Light Mode)
     private var themeColor: Color {
-        entity.color
+        SpendyColors.textPrimary
     }
     
     // Keep the presenting page's palette throughout the navigation push.
@@ -142,10 +142,7 @@ struct SharedEntityAnalyticsSheet: View {
     }
     
     private var cardBorderColor: Color {
-        Color(uiColor: .dynamic(
-            light: UIColor(white: 0.0, alpha: 0.06),
-            dark: UIColor(white: 1.0, alpha: 0.08)
-        ))
+        SpendyColors.separator
     }
     
     private var chartTransitionID: String {
@@ -415,13 +412,6 @@ struct SharedEntityAnalyticsSheet: View {
     var body: some View {
         ZStack {
             sheetBackgroundColor.ignoresSafeArea()
-            if !isSettingsPage {
-                SpendyAmbientHeaderBackground(
-                    color: themeColor,
-                    height: 440,
-                    opacity: 0.24
-                )
-            }
             
             SpendyPinnedHeaderLayout(isEnabled: usesCustomHeader, usesSoftScrollEdge: !isSettingsPage) {
 
@@ -437,7 +427,7 @@ struct SharedEntityAnalyticsSheet: View {
                     VStack(alignment: .leading, spacing: 20) {
                         heroIdentityAndAmount
                             .padding(.horizontal, 20)
-                            .padding(.top, usesCustomHeader ? 8 : 12)
+                            .padding(.top, 28)
                         
                         chartSection
                             .padding(.horizontal, 16)
@@ -653,13 +643,10 @@ struct SharedEntityAnalyticsSheet: View {
                     Text(ids.count == 1 ? store.account(for: ids.first!).label : "\(ids.count) selected accounts")
                         .font(.caption).foregroundStyle(SpendyColors.textSecondary)
                 }
-                SpendyGradientText(
-                    heroDisplayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
-                    size: 38,
-                    weight: .heavy,
-                    tracking: -1.0,
-                    colors: SpendyGradientPresets.electricBlueToWhite
-                )
+                Text(heroDisplayAmount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                    .font(.largeTitle.bold()).monospacedDigit()
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .lineLimit(1).minimumScaleFactor(0.5)
                 .accessibilityIdentifier("entity-spending-total")
                 .animation(.spring(response: 0.25, dampingFraction: 0.8), value: activeBarPoint?.id)
                 
@@ -746,7 +733,6 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - 4. Period Scrubber Strip & Calendar Row
     private var scrubberAndCalendarRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
         SpendyGlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
                 GlassSegmentedPicker(
@@ -775,28 +761,33 @@ struct SharedEntityAnalyticsSheet: View {
                 ) {
                     showDatePicker = true
                 }
-            }
-        }
-            if let range = customDateRange {
-                HStack {
-                    Text(range.0.formatted(.dateTime.day().month(.abbreviated).year()) + " – " + range.1.formatted(.dateTime.day().month(.abbreviated).year()))
-                        .font(.footnote).foregroundStyle(SpendyColors.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 4)
-                    Button {
-                        customDateRange = nil
-                        scrubbedBarPoint = nil
-                        isScrubbingChart = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(SpendyColors.textSecondary)
-                            .frame(width: 44, height: 44)
+                .overlay(alignment: .topTrailing) {
+                    if customDateRange != nil {
+                        Circle()
+                            .fill(SpendyColors.textPrimary)
+                            .frame(width: 6, height: 6)
+                            .padding(4)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear date range")
+                }
+                .accessibilityValue(customDateRange == nil ? "No custom range" : "Custom range selected")
+                .accessibilityHint(customDateRange == nil ? "Choose a date range" : "Choose a different range, or touch and hold to clear")
+                .contextMenu {
+                    if customDateRange != nil {
+                        Button("Clear date range", systemImage: "xmark.circle") {
+                            clearCustomDateRange()
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private func clearCustomDateRange() {
+        customDateRange = nil
+        scrubbedBarPoint = nil
+        isScrubbingChart = false
     }
     
     // MARK: - 5. Three Sections Module (Buttons + Horizontal Swiping)
@@ -979,13 +970,14 @@ struct SharedEntityAnalyticsSheet: View {
                 value: "\(remaining >= 0 ? "+" : "-")\(abs(remaining).formattedCurrency(symbol: store.currencySymbol, decimals: 0))",
                 valueColor: remaining >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
             ))
-        } else if case .account = entity, spendingScope?.transactionType == nil {
+        }
+        if entity.isAccount {
             rows.append(OverviewMetric(
                 id: "balance",
-                flowType: currentBalance >= 0 ? .income : .expense,
-                label: "Current balance",
-                value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 0),
-                valueColor: currentBalance >= 0 ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+                flowType: nil,
+                label: "Current balance · All dates",
+                value: currentBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2),
+                valueColor: SpendyColors.textPrimary
             ))
         }
         

@@ -2,8 +2,7 @@
 //  SettingsView.swift
 //  Spendy
 //
-//  Organized settings: profile, display, money, alerts, data, about.
-//  Monochrome row icons. Home gradient lives here, not in profile.
+//  Profile, money, app preferences, data, and a dedicated help/about page.
 //
 
 import SwiftUI
@@ -17,6 +16,7 @@ enum SettingsDestination: Hashable {
     case appAccent
     case insights
     case notifications
+    case about
 }
 
 struct SettingsView: View {
@@ -36,7 +36,6 @@ struct SettingsView: View {
     }
 
     @State private var showProfileEdit: Bool = false
-    @State private var showCurrencyPicker: Bool = false
     @State private var showReceiptPrinter: Bool = false
     @State private var showCoffeeSheet: Bool = false
     @State private var showOnboardingTour: Bool = false
@@ -65,45 +64,14 @@ struct SettingsView: View {
                             NavigationLink(value: SettingsDestination.categories) {
                                 linkRow(icon: "square.grid.2x2", title: "Categories", value: "\(store.categories.count)")
                             }
-                            groupDivider
-                            Button {
-                                HapticsManager.shared.trigger(.light)
-                                showCurrencyPicker = true
-                            } label: {
-                                linkRow(
-                                    icon: "coloncurrencysign",
-                                    title: "Currency",
-                                    value: "\(store.currencyCode) \(store.currencySymbol)"
-                                )
-                            }
-                            .buttonStyle(.plain)
+
                         }
 
-                        settingsGroup(title: "Display") {
-                            appearanceRow
-                            groupDivider
+                        settingsGroup(title: "App preferences") {
                             NavigationLink(value: SettingsDestination.appAccent) {
-                                linkRow(icon: SFIcons.designTools, title: "App accent", value: store.accentPreset.title)
+                                linkRow(icon: "circle.lefthalf.filled", title: "Appearance", value: store.appearanceMode.rawValue)
                             }
                             .accessibilityIdentifier("settings-app-accent")
-                            groupDivider
-                            NavigationLink(value: SettingsDestination.widgets) {
-                                linkRow(icon: "square.grid.2x2", title: "Home Screen widgets", value: nil)
-                            }
-                        }
-
-                        settingsGroup(title: "Preferences") {
-                            toggleRow(
-                                icon: "iphone.radiowaves.left.and.right",
-                                title: "Haptics",
-                                isOn: Binding(
-                                    get: { store.hapticsEnabled },
-                                    set: {
-                                        store.hapticsEnabled = $0
-                                        HapticsManager.shared.trigger(.selection)
-                                    }
-                                )
-                            )
                             groupDivider
                             NavigationLink(value: SettingsDestination.insights) {
                                 linkRow(icon: SpendyInsightBrandMark.symbol, title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
@@ -114,7 +82,7 @@ struct SettingsView: View {
                             }.buttonStyle(.plain)
                         }
 
-                        settingsGroup(title: "Data") {
+                        settingsGroup(title: "Data & exports") {
                             NavigationLink(value: SettingsDestination.dataBackup) {
                                 linkRow(icon: "externaldrive", title: "Backup & Restore", value: "JSON")
                             }
@@ -128,6 +96,141 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
 
+                        settingsGroup(title: "Help & information") {
+                            NavigationLink(value: SettingsDestination.about) {
+                                linkRow(icon: "questionmark.circle", title: "Help & about Spendy", value: nil)
+                            }
+                        }
+
+                        footerSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(SpendyColors.textPrimary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Close")
+                }
+            }
+            .navigationDestination(for: SettingsDestination.self) { dest in
+                switch dest {
+                case .accounts:
+                    AccountsView(isSettingsPage: true)
+                case .categories:
+                    CategoriesSettingsView()
+                case .dataBackup:
+                    DataManagementView()
+                case .privacyPolicy:
+                    PrivacyPolicyView()
+                case .appAccent:
+                    AppAccentSettingsView()
+                case .widgets:
+                    WidgetShowcaseView()
+                case .insights:
+                    InsightsPreferencesView()
+                case .notifications:
+                    NotificationPreferencesView()
+                case .about:
+                    aboutSettingsPage
+                }
+            }
+            .onAppear {
+                if let initial = initialDestination, navigationPath.isEmpty {
+                    navigationPath.append(initial)
+                }
+            }
+            .sheet(isPresented: $showProfileEdit) {
+                EditProfileSheet()
+            }
+            .sheet(isPresented: $showReceiptPrinter) {
+                ReceiptPrinterSheet()
+            }
+            .sheet(isPresented: $showCoffeeSheet) {
+                coffeeSheet
+            }
+            .fullScreenCover(isPresented: $showOnboardingTour) {
+                OnboardingView()
+            }
+        }
+        .presentationBackground(SpendyColors.settingsBackground)
+        .preferredColorScheme(store.colorScheme)
+    }
+
+    // MARK: - Profile
+    private var profileCard: some View {
+        Button {
+            HapticsManager.shared.trigger(.light)
+            showProfileEdit = true
+        } label: {
+            HStack(spacing: 14) {
+                profileAvatar
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(store.userName.isEmpty ? "Your name" : store.userName)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(SpendyColors.textPrimary)
+                    Text("Name, photo, currency")
+                        .font(AppTypography.footnoteMedium)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+            .padding(16)
+            .background { groupedCardBackground }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Edit profile")
+    }
+
+    private var profileAvatar: some View {
+        ZStack {
+            if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 52, height: 52)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(SpendyColors.separator, lineWidth: 1))
+            } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
+                Circle()
+                    .fill(store.topGradientColor)
+                    .frame(width: 52, height: 52)
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+            } else {
+                Circle()
+                    .fill(SpendyColors.cardBackgroundSecondary)
+                    .frame(width: 52, height: 52)
+                Text(store.userName.isEmpty ? "S" : String(store.userName.prefix(1)).uppercased())
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(SpendyColors.textPrimary)
+            }
+        }
+        .frame(width: 52, height: 52)
+    }
+
+    private var aboutSettingsPage: some View {
+        ScrollView {
+            VStack(spacing: 24) {
                         settingsGroup(title: "Legal") {
                             if let privacyURL = PrivacyPolicyDocument.current?.websiteURL {
                                 Link(destination: privacyURL) {
@@ -183,169 +286,13 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
 
-                        footerSection
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 40)
-                }
+
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Close")
-                }
-            }
-            .navigationDestination(for: SettingsDestination.self) { dest in
-                switch dest {
-                case .accounts:
-                    AccountsView(isSettingsPage: true)
-                case .categories:
-                    CategoriesSettingsView()
-                case .dataBackup:
-                    DataManagementView()
-                case .privacyPolicy:
-                    PrivacyPolicyView()
-                case .appAccent:
-                    AppAccentSettingsView()
-                case .widgets:
-                    WidgetShowcaseView()
-                case .insights:
-                    InsightsPreferencesView()
-                case .notifications:
-                    NotificationPreferencesView()
-                }
-            }
-            .onAppear {
-                if let initial = initialDestination, navigationPath.isEmpty {
-                    navigationPath.append(initial)
-                }
-            }
-            .sheet(isPresented: $showProfileEdit) {
-                EditProfileSheet()
-            }
-            .sheet(isPresented: $showCurrencyPicker) {
-                CurrencyPickerSheet()
-            }
-            .sheet(isPresented: $showReceiptPrinter) {
-                ReceiptPrinterSheet()
-            }
-            .sheet(isPresented: $showCoffeeSheet) {
-                coffeeSheet
-            }
-            .fullScreenCover(isPresented: $showOnboardingTour) {
-                OnboardingView()
-            }
+            .padding(20)
         }
-        .presentationBackground(SpendyColors.settingsBackground)
-        .preferredColorScheme(store.colorScheme)
-    }
-
-    // MARK: - Profile
-    private var profileCard: some View {
-        Button {
-            HapticsManager.shared.trigger(.light)
-            showProfileEdit = true
-        } label: {
-            HStack(spacing: 14) {
-                profileAvatar
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.userName.isEmpty ? "Your name" : store.userName)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    Text("Name, photo, accent")
-                        .font(AppTypography.footnoteMedium)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-            }
-            .padding(16)
-            .background { groupedCardBackground }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Edit profile")
-    }
-
-    private var profileAvatar: some View {
-        ZStack {
-            if let imgData = store.profileImageData, let uiImage = UIImage(data: imgData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 52, height: 52)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(SpendyColors.separator, lineWidth: 1))
-            } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
-                Circle()
-                    .fill(store.topGradientColor)
-                    .frame(width: 52, height: 52)
-                Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
-            } else {
-                Circle()
-                    .fill(SpendyColors.cardBackgroundSecondary)
-                    .frame(width: 52, height: 52)
-                Text(store.userName.isEmpty ? "S" : String(store.userName.prefix(1)).uppercased())
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-        }
-        .frame(width: 52, height: 52)
-    }
-
-    // MARK: - Appearance picker
-    private var appearanceRow: some View {
-        HStack(spacing: 14) {
-            rowIcon("circle.lefthalf.filled")
-            Text("Appearance")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-            Spacer()
-            Menu {
-                Picker("Appearance", selection: Binding(
-                    get: { store.appearanceMode },
-                    set: { newValue in
-                        store.appearanceMode = newValue
-                        HapticsManager.shared.trigger(.selection)
-                    }
-                )) {
-                    ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(store.appearanceMode.rawValue)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                }
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 52)
+        .background(SpendyColors.settingsBackground)
+        .navigationTitle("Help & about")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Footer
@@ -458,22 +405,6 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
         .frame(minHeight: 52)
         .contentShape(Rectangle())
-    }
-
-    private func toggleRow(icon: String, title: String, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: 14) {
-            rowIcon(icon)
-            Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textPrimary)
-            Spacer(minLength: 8)
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .tint(SpendyColors.controlAccent)
-        }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 52)
-        .accessibilityElement(children: .combine)
     }
 
     private var coffeeSheet: some View {

@@ -19,6 +19,10 @@ struct EditProfileSheet: View {
     
     // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
+    @State private var showCurrencyPicker = false
+    @State private var currencyCode = ""
+    @State private var currencySymbol = ""
+    @State private var hasLoadedProfile = false
     
     
     @State private var showDiscardConfirm: Bool = false
@@ -28,7 +32,7 @@ struct EditProfileSheet: View {
         let originalIcon = store.profileIconSymbol ?? "person.fill"
         return tempName != originalName ||
                selectedImageData != store.profileImageData ||
-               selectedIconSymbol != originalIcon
+               selectedIconSymbol != originalIcon || currencyCode != store.currencyCode
     }
     
     var body: some View {
@@ -50,6 +54,7 @@ struct EditProfileSheet: View {
                         
                         // Name field
                         nameAndColorCard
+                        currencyCard
                         
                     }
                     .padding(.horizontal, 20)
@@ -57,10 +62,14 @@ struct EditProfileSheet: View {
                 }
             }
             .onAppear {
+                guard !hasLoadedProfile else { return }
+                hasLoadedProfile = true
                 tempName = store.userName.isEmpty ? "Personal" : store.userName
                 selectedImageData = store.profileImageData
                 selectedIconSymbol = store.profileIconSymbol ?? "person.fill"
                 selectedColorHex = store.profileColorHex ?? store.topGradientColorHex
+                currencyCode = store.currencyCode
+                currencySymbol = store.currencySymbol
             }
             
             // Bottom Fixed Action Button Container (White Capsule Save Button)
@@ -100,6 +109,12 @@ struct EditProfileSheet: View {
                 }
             )
         }
+        .sheet(isPresented: $showCurrencyPicker) {
+            CurrencyPickerSheet(selectedCode: currencyCode) { currency in
+                currencyCode = currency.code
+                currencySymbol = currency.symbol
+            }
+        }
     }
     
     // MARK: - Subviews
@@ -107,7 +122,7 @@ struct EditProfileSheet: View {
     // Top Header Bar
     private var topHeaderBar: some View {
         SpendyCreateSheetHeader(
-            title: "Edit Space",
+            title: "Edit Profile",
             onClose: {
                 if hasUnsavedChanges {
                     showDiscardConfirm = true
@@ -166,11 +181,40 @@ struct EditProfileSheet: View {
     }
     
     // MARK: - Bottom Save Action Button (White Capsule)
+    private var currencyCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Currency").font(.subheadline.weight(.semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+            SpendyCreateFormCard(fillColor: SpendyColors.settingsCardBackground) {
+                Button { showCurrencyPicker = true } label: {
+                    SpendyCreateFormRow {
+                        Label("App currency", systemImage: "coloncurrencysign")
+                    } trailing: {
+                        HStack(spacing: 8) {
+                            Text("\(currencyCode) \(currencySymbol)")
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("profile-currency")
+            }
+            Text("Used throughout Spendy. Changing currency doesn’t convert recorded amounts.")
+                .font(.footnote).foregroundStyle(SpendyColors.textSecondary)
+        }
+    }
+
     private var bottomSaveButton: some View {
         SpendyCreatePrimaryButton(title: "Save") {
             store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
             store.profileImageData = selectedImageData
             store.profileIconSymbol = selectedIconSymbol
+            if currencyCode != store.currencyCode {
+                store.updateCurrency(symbol: currencySymbol, code: currencyCode)
+            }
             dismiss()
         }
     }

@@ -19,6 +19,8 @@ private struct AccountInsight: Identifiable {
 struct AccountsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var balanceFontSize = 40.0
     
     var isSettingsPage: Bool = false
     var onDismiss: (() -> Void)? = nil
@@ -121,13 +123,16 @@ struct AccountsView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, topControlsNamespace != nil ? 8 : 12)
                         
-                        if !cardInsights.isEmpty {
-                            insightCard
-                                .padding(.horizontal, 20)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Your accounts").font(.title3.weight(.semibold))
+                                Spacer()
+                                Text("\(sortedAccounts.count)").font(.subheadline)
+                                    .foregroundStyle(SpendyColors.textSecondary)
+                            }
+                            accountsList
                         }
-                        
-                        accountsList
-                            .padding(.horizontal, 20)
+                        .padding(.horizontal, 20)
                     }
                     .padding(.bottom, 40)
                 }
@@ -262,85 +267,77 @@ struct AccountsView: View {
         return values.map { CGFloat(($0 - minVal) / span) }
     }
     
-    private var sparklineColor: Color {
-        guard let first = netWorthSparklinePoints.first, let last = netWorthSparklinePoints.last else {
-            return SpendyColors.textPrimary
-        }
-        if last >= first { return SpendyColors.incomeGreen }
-        return SpendyColors.expenseRed
-    }
-    
     // MARK: - Summary card
     private var summaryCard: some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Total balance")
-                    .font(AppTypography.itemTitle)
+        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Total balance").font(.subheadline)
                     .foregroundStyle(SpendyColors.textSecondary)
-                
                 Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                    .font(.system(size: 32, weight: .heavy, design: .default))
+                    .font(.system(size: balanceFontSize, weight: .bold))
                     .monospacedDigit()
-                    .tracking(-1.0)
-                    .foregroundStyle(store.totalBalance < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.65)
-                    .contentTransition(.numericText())
-                
-                summaryMetaLine
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .accessibilityIdentifier("accounts-total-balance")
+                Text("Across all accounts").font(.footnote)
+                    .foregroundStyle(SpendyColors.textSecondary)
             }
-            
-            Spacer(minLength: 8)
-            
-            SparklineView(
-                points: netWorthSparklinePoints,
-                color: sparklineColor,
-                style: .area,
-                height: 48,
-                lineWidth: 2.2,
-                showEndpoint: true
-            )
-            .frame(width: 112, height: 48)
-            .accessibilityHidden(true)
+            if !sortedAccounts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    SparklineView(points: netWorthSparklinePoints, color: SpendyColors.textPrimary,
+                        style: .area, height: 80, lineWidth: 2, showEndpoint: true)
+                        .frame(height: 80)
+                        .accessibilityHidden(true)
+                    Text("Balance trend · last 14 days").font(.caption)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                }
+                Divider()
+                Text("This month").font(.footnote.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                let flow = thisMonthFlow
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                    : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+                layout {
+                    flowMetric("Money in", amount: flow.inflow, type: .income)
+                    flowMetric("Money out", amount: flow.outflow, type: .expense)
+                }
+            }
         }
-        .padding(18)
+        .foregroundStyle(SpendyColors.textPrimary)
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
+            if store.insightsEnabled && !cardInsights.isEmpty {
+                Divider().overlay(SpendyColors.separator)
+                insightSection
+                    .padding(20)
+                    .background(SpendyColors.cardBackgroundSecondary)
+            }
+        }
         .background { groupedCardBackground }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Total balance \(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
+        .clipShape(.rect(cornerRadius: 24))
     }
-    
-    private var insightCard: some View {
+
+    private func flowMetric(_ title: String, amount: Double, type: SpendyFlowType) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                SpendyFlowIndicator(type: type, size: 14, color: SpendyColors.textSecondary)
+                Text(title).font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
+            }
+            Text(amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                .font(.headline).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.65)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var insightSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SpendyInsightBrandMark(style: .kicker, showsPersonalization: false)
             insightPager
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { groupedCardBackground }
-    }
-    
-    private var summaryMetaLine: some View {
-        let flow = thisMonthFlow
-        return HStack(spacing: 6) {
-            if flow.inflow > 0 || flow.outflow > 0 {
-                Text("+\(flow.inflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) in")
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.incomeGreen)
-                Text("·")
-                    .foregroundStyle(SpendyColors.textTertiary)
-                Text("−\(flow.outflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) out")
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.textSecondary)
-            } else {
-                Text("\(sortedAccounts.count) \(sortedAccounts.count == 1 ? "account" : "accounts")")
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
     }
     
     private var insightPager: some View {
@@ -406,7 +403,7 @@ struct AccountsView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: item.account.map { $0.sfSymbol.isEmpty ? $0.type.defaultSymbol : $0.sfSymbol } ?? "arrow.left.arrow.right")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
+                .foregroundStyle(SpendyColors.textSecondary)
                 .frame(width: 22, height: 22)
                 .padding(.top, 1)
                 .symbolRenderingMode(.monochrome)
@@ -451,7 +448,8 @@ struct AccountsView: View {
                 }
             } else {
                 SpendyGroupedList(items: sortedAccounts,
-                    background: isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground) { account in
+                    background: isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground,
+                    iconWidth: 56) { account in
                     accountRow(account)
                 }
             }
@@ -465,11 +463,11 @@ struct AccountsView: View {
             HapticsManager.shared.trigger(.selection)
             selectedAccountForAnalytics = account
         } label: {
-            SpendyListRow {
+            SpendyRowContent(spacing: 12, iconWidth: 56) {
                 SpendyIconBadge(
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                     color: account.color,
-                    size: .medium,
+                    size: .large,
                     style: .rounded(),
                     monogramName: account.label
                 )
@@ -491,6 +489,9 @@ struct AccountsView: View {
                     .spendyRowAmount()
                     .foregroundStyle(bal < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .contextMenu {

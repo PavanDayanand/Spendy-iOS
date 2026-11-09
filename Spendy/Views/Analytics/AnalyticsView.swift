@@ -51,21 +51,15 @@ private struct ComparisonInterval: Identifiable {
 
 private enum AnalyticsTonalColors {
     static let outer = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(white: 15.0 / 255.0, alpha: 1)
-            : .white
+        traits.userInterfaceStyle == .dark ? UIColor(white: 15.0 / 255.0, alpha: 1) : .white
     })
-
     static let inset = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(white: 25.0 / 255.0, alpha: 1)
             : UIColor(red: 245.0 / 255.0, green: 246.0 / 255.0, blue: 248.0 / 255.0, alpha: 1)
     })
-
     static let outline = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? .clear
-            : UIColor(white: 0, alpha: 0.10)
+        traits.userInterfaceStyle == .dark ? .clear : UIColor(white: 0, alpha: 0.10)
     })
 }
 
@@ -173,8 +167,14 @@ struct AnalyticsView: View {
 
                     Section {
                         VStack(spacing: 16) {
-                            spendingRhythmCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
-                            spendingMixSection.modifier(AnalyticsPanelStyle(verticalPadding: 12))
+                            VStack(alignment: .leading, spacing: 16) {
+                                spendingRhythmCard
+                                if !spendingSnapshot.transactions.isEmpty {
+                                    Divider().padding(.horizontal, 12)
+                                    spendingMixSection.padding(.horizontal, 12)
+                                }
+                            }
+                            .modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
                             periodComparisonCard.modifier(AnalyticsPanelStyle(verticalPadding: 4, horizontalPadding: 4))
                             AnalyticsBudgetSummary { showBudgetHub = true }
                                 .modifier(AnalyticsPanelStyle(verticalPadding: 16))
@@ -422,7 +422,7 @@ struct AnalyticsView: View {
                     .accessibilityValue((selected?.amount ?? snapshot.total).formattedCurrency(symbol: store.currencySymbol, decimals: 2))
                 if !snapshot.transactions.isEmpty {
                     SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
-                                      selectedID: $selectedSpendingBucketID, height: 140, transactionType: snapshot.transactionType)
+                                      selectedID: $selectedSpendingBucketID, height: 190, transactionType: snapshot.transactionType)
                         .padding(.top, 8)
                 } else {
                     SpendyPlainEmptyState(
@@ -645,10 +645,13 @@ struct AnalyticsView: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(groupingMode == .categories ? (isIncome ? "Category income" : "Category spending") : (isIncome ? "Account income" : "Account spending"))
-                    .font(.system(size: 14, weight: .semibold))
+                Text(isIncome ? "Income by" : "Spending by")
+                    .font(.body)
                     .foregroundStyle(SpendyColors.textSecondary)
                 Spacer()
+                Text(groupingMode == .categories ? "Category" : "Account")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(SpendyColors.textPrimary)
             }
 
             if items.isEmpty {
@@ -668,7 +671,7 @@ struct AnalyticsView: View {
                                 selectedAccountForSheet = store.accounts.first { $0.id == item.id }
                             }
                         } label: {
-                            breakdownLegendRow(item, index: index)
+                            breakdownLegendRow(item)
                         }
                         .buttonStyle(.plain)
                         .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
@@ -689,7 +692,7 @@ struct AnalyticsView: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                     }
-                    .font(.subheadline.weight(.medium))
+                    .font(.body.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
                 }
@@ -699,25 +702,25 @@ struct AnalyticsView: View {
         }
     }
 
-    private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
-        HStack(spacing: 10) {
+    private func breakdownLegendRow(_ item: AnalyticsBreakdownItem) -> some View {
+        SpendyRowContent(spacing: 12) {
             SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
-                size: .small, style: .circle, monogramName: item.label)
+                size: .medium, style: .circle, monogramName: item.label)
                 .accessibilityHidden(true)
+        } content: {
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.label).font(.subheadline.weight(.medium))
+                Text(item.label).font(.body.weight(.medium))
                     .foregroundStyle(SpendyColors.textPrimary)
                 Text("\(item.txCount) \(isIncome ? (item.txCount == 1 ? "income transaction" : "income transactions") : (item.txCount == 1 ? "expense" : "expenses"))")
-                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                    .font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
             }
-            Spacer(minLength: 4)
-            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
-                .font(.subheadline.weight(.semibold)).monospacedDigit()
+        } value: {
+            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                .spendyRowAmount()
                 .foregroundStyle(SpendyColors.textPrimary)
-                .lineLimit(1).minimumScaleFactor(0.75)
         }
-        .padding(.vertical, 8)
-        .frame(minHeight: 48)
+        .padding(.vertical, 12)
+        .frame(minHeight: 68)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")

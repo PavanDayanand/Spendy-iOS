@@ -11,6 +11,27 @@ struct AppAccentSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Appearance").font(.headline)
+                    Picker("Theme", selection: Binding(
+                        get: { store.appearanceMode },
+                        set: { store.appearanceMode = $0 }
+                    )) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    Toggle("Haptics", isOn: Binding(
+                        get: { store.hapticsEnabled },
+                        set: { store.hapticsEnabled = $0 }
+                    ))
+                    .tint(SpendyColors.controlAccent)
+                }
+                .padding(16)
+                .background(SpendyColors.settingsCardBackground, in: .rect(cornerRadius: 22))
+
+                Text("App accent").font(.headline)
                 VStack(spacing: 18) {
                     HStack(spacing: 7) {
                         Image(systemName: SFIcons.plus)
@@ -72,7 +93,7 @@ struct AppAccentSettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(SpendyColors.settingsBackground)
-        .navigationTitle("App accent")
+        .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
     }
 

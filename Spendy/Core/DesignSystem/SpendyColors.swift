@@ -92,7 +92,7 @@ enum SpendyColors {
     // Card Surfaces — opaque white in Light, solid opaque charcoal black in Dark
     static let cardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
+        dark: UIColor(white: 18.0/255.0, alpha: 1.0)      // Neutral charcoal
     ))
 
     // Home's activity drawer stays distinct from the flat page in both appearances.
@@ -106,19 +106,22 @@ enum SpendyColors {
 
     // Elevated Secondary Fill (Inside cards or pills)
     static let cardBackgroundSecondary = Color(uiColor: .dynamic(
-        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0), // #F5F6F8
-        dark: UIColor(red: 30.0/255.0, green: 30.0/255.0, blue: 34.0/255.0, alpha: 1.0)       // #1E1E22 Solid
+        light: UIColor(white: 246.0/255.0, alpha: 1.0), // Neutral light grey
+        dark: UIColor(white: 30.0/255.0, alpha: 1.0)       // Neutral raised grey
     ))
 
     // Sheet Card Surfaces
     static let sheetCardBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),                                               // #FFFFFF
-        dark: UIColor(red: 18.0/255.0, green: 18.0/255.0, blue: 20.0/255.0, alpha: 1.0)      // #121214 Solid
+        dark: UIColor(white: 18.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
-    // Match the native grouped Forms used by Notifications and Insights.
-    static let settingsBackground = Color(uiColor: .systemGroupedBackground)
-    static let settingsCardBackground = Color(uiColor: .secondarySystemGroupedBackground)
+    // Neutral grouped surfaces, without the system grey's blue channel bias.
+    static let settingsBackground = Color(uiColor: .dynamic(
+        light: UIColor(white: 242.0/255.0, alpha: 1),
+        dark: .black
+    ))
+    static let settingsCardBackground = cardBackground
 
     static let separator = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.10),
@@ -165,18 +168,18 @@ enum SpendyColors {
     // Transaction entry uses distinct adaptive surfaces so controls remain
     // readable against both the white canvas and the dark keypad tray.
     static let transactionControlSurface = Color(uiColor: .dynamic(
-        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0),
-        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0)
+        light: UIColor(white: 246.0/255.0, alpha: 1.0),
+        dark: UIColor(white: 28.0/255.0, alpha: 1.0)
     ))
 
     static let transactionTraySurface = Color(uiColor: .dynamic(
-        light: UIColor(red: 245.0/255.0, green: 246.0/255.0, blue: 248.0/255.0, alpha: 1.0),
-        dark: UIColor(red: 20.0/255.0, green: 20.0/255.0, blue: 22.0/255.0, alpha: 1.0)
+        light: UIColor(white: 246.0/255.0, alpha: 1.0),
+        dark: UIColor(white: 20.0/255.0, alpha: 1.0)
     ))
 
     static let transactionKeySurface = Color(uiColor: .dynamic(
         light: UIColor(white: 1.0, alpha: 1.0),
-        dark: UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0)
+        dark: UIColor(white: 28.0/255.0, alpha: 1.0)
     ))
 
     static let monoGraphLine = Color(uiColor: .dynamic(
@@ -253,7 +256,7 @@ private struct SpendyCardLiftModifier: ViewModifier {
         if colorScheme == .light {
             content
                 .shadow(color: Color.black.opacity(0.045), radius: 2, y: 1)
-                .shadow(color: Color(red: 0.12, green: 0.22, blue: 0.45).opacity(0.10), radius: 18, y: 8)
+                .shadow(color: Color.black.opacity(0.08), radius: 18, y: 8)
         } else {
             content
         }
@@ -261,7 +264,7 @@ private struct SpendyCardLiftModifier: ViewModifier {
 }
 
 extension View {
-    /// Soft blue-gray elevation used so white cards separate from the paper canvas.
+    /// Neutral elevation used so white cards separate from the paper canvas.
     func spendyCardLift() -> some View {
         modifier(SpendyCardLiftModifier())
     }
