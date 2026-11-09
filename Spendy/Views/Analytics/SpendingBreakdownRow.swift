@@ -7,15 +7,16 @@ struct SpendingBreakdownRow: View {
     var tint: Color = SpendyColors.textPrimary
 
     var body: some View {
-        HStack(spacing: 12) {
+        SpendyRowContent {
             SpendyIconBadge(sfSymbol: item.sfSymbol, color: tint,
                 size: .medium, style: .circle, monogramName: item.label)
+        } content: {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.label).font(AppTypography.rowTitle)
                 Text("\(item.txCount) \(isIncome ? "income transactions" : (item.txCount == 1 ? "expense" : "expenses"))")
                     .font(AppTypography.footnoteMedium).foregroundStyle(SpendyColors.textSecondary)
             }
-            Spacer(minLength: 4)
+        } value: {
             Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2))
                 .spendyRowAmount()
         }

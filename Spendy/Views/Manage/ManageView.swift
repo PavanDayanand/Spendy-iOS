@@ -473,12 +473,12 @@ struct SubscriptionsView: View {
             subscriptionTransitionID = AppTransitionIDs.subscriptionRow(sub.id)
             selectedSubscriptionForDetail = sub
         }) {
-            HStack(alignment: .center, spacing: 14) {
+            SpendyRowContent(spacing: 14) {
                 SubscriptionProgressRingBadge(
                     subscription: sub,
                     size: .medium
                 )
-
+            } content: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(sub.name)
                         .font(AppTypography.rowTitle)
@@ -509,6 +509,7 @@ struct SubscriptionsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            } value: {
                 Text(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
                     .spendyRowAmount()
                     .foregroundStyle(
