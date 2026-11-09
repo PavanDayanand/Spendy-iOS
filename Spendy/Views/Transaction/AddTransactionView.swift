@@ -140,9 +140,7 @@ struct AddTransactionView: View {
         } else if calendar.isDateInYesterday(date) {
             return "Yesterday"
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "d MMM"
-            return formatter.string(from: date)
+            return SpendyDateFormatterCache.dayMonth.string(from: date)
         }
     }
     

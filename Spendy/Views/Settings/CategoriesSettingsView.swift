@@ -277,7 +277,8 @@ struct CategoriesSettingsView: View {
                         if index < categories.count - 1 {
                             Divider()
                                 .overlay(SpendyColors.separator)
-                                .padding(.leading, 68)
+                                .padding(.leading, 74)
+                                .padding(.trailing, 16)
                         }
                     }
                 }

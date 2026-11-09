@@ -22,7 +22,6 @@ struct EditProfileSheet: View {
     
     
     @State private var showDiscardConfirm: Bool = false
-    @Namespace private var profileNamespace
     
     private var hasUnsavedChanges: Bool {
         let originalName = store.userName.isEmpty ? "Personal" : store.userName
@@ -107,37 +106,16 @@ struct EditProfileSheet: View {
     
     // Top Header Bar
     private var topHeaderBar: some View {
-        SpendyGlassEffectContainer(spacing: 0) {
-            HStack {
-                // Close Button
-                GlassCircleButton(
-                    icon: "xmark",
-                    size: 44,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Close",
-                    morphID: "closeButton",
-                    namespace: profileNamespace
-                ) {
-                    if hasUnsavedChanges {
-                        showDiscardConfirm = true
-                    } else {
-                        dismiss()
-                    }
+        SpendyCreateSheetHeader(
+            title: "Edit Space",
+            onClose: {
+                if hasUnsavedChanges {
+                    showDiscardConfirm = true
+                } else {
+                    dismiss()
                 }
-                
-                Spacer()
-                
-                Text("Edit Space")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
             }
-        }
+        )
     }
     
     // MARK: - Avatar Hero Section (Matching AddCategorySheet)
@@ -189,21 +167,11 @@ struct EditProfileSheet: View {
     
     // MARK: - Bottom Save Action Button (White Capsule)
     private var bottomSaveButton: some View {
-        Button(action: {
-            HapticsManager.shared.trigger(.success)
+        SpendyCreatePrimaryButton(title: "Save") {
             store.userName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
             store.profileImageData = selectedImageData
             store.profileIconSymbol = selectedIconSymbol
             dismiss()
-        }) {
-            Text("Save")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(SpendyColors.elevatedControlFill, in: Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 8, y: 3)
         }
-        .buttonStyle(.plain)
     }
 }

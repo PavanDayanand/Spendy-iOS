@@ -25,10 +25,8 @@ struct BudgetView: View {
     private var cycleDateRangeString: String {
         let start = store.budgetCycleStart()
         let end = store.budgetCycleEnd()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        let startStr = formatter.string(from: start)
-        let endStr = formatter.string(from: Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end)
+        let startStr = SpendyDateFormatterCache.monthDay.string(from: start)
+        let endStr = SpendyDateFormatterCache.monthDay.string(from: Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end)
         return "\(startStr) – \(endStr)"
     }
     

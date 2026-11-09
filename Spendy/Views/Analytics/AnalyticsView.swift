@@ -103,7 +103,6 @@ struct AnalyticsView: View {
     var initialDate: Date? = nil
     var initialPeriodFilter: SpendingPeriodFilter? = nil
     @State private var periodFilter: SpendingPeriodFilter?
-    @State private var showsPeriodFilter = false
     @State private var appliedInitialScope = false
     @State private var selectedSpendingBucketID: String?
     @State private var selectedComparisonInterval: String?
@@ -222,11 +221,6 @@ struct AnalyticsView: View {
                     byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
                     topControlsNamespace: analyticsControlsNamespace,
                     sharedNavigationHeader: sharedNavigationHeader)
-            }
-            .sheet(isPresented: $showsPeriodFilter) {
-                SpendingPeriodFilterSheet(month: spendingSnapshot.start, referenceDate: referenceDate) {
-                    periodFilter = $0
-                }
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
@@ -664,24 +658,28 @@ struct AnalyticsView: View {
                     compact: true
                 )
             } else {
-                SpendyGroupedList(items: visibleItems, isEnclosed: false) { item in
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        if groupingMode == .categories {
-                            selectedCategoryForSheet = store.categories.first { $0.id == item.id }
-                        } else {
-                            selectedAccountForSheet = store.accounts.first { $0.id == item.id }
+                VStack(spacing: 0) {
+                    ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            if groupingMode == .categories {
+                                selectedCategoryForSheet = store.categories.first { $0.id == item.id }
+                            } else {
+                                selectedAccountForSheet = store.accounts.first { $0.id == item.id }
+                            }
+                        } label: {
+                            breakdownLegendRow(item, index: index)
                         }
-                    } label: {
-                        SpendingBreakdownRow(item: item, isIncome: isIncome, currencySymbol: store.currencySymbol,
-                            tint: SpendingMixChart.tint(for: item, index: visibleItems.firstIndex { $0.id == item.id } ?? 0))
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
+                        .accessibilityIdentifier("breakdown-\(item.id)")
+                        .spendyNavigationSource(
+                            groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
+                            in: analyticsTransitions)
+                        if index < visibleItems.count - 1 {
+                            Divider().overlay(SpendyColors.separator)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Open \(groupingMode == .categories ? "category" : "account") analytics")
-                    .accessibilityIdentifier("breakdown-\(item.id)")
-                    .spendyNavigationSource(
-                        groupingMode == .categories ? AppTransitionIDs.categoryCard(item.id) : AppTransitionIDs.accountCard(item.id),
-                        in: analyticsTransitions)
                 }
             }
             if !allItems.isEmpty {
@@ -699,6 +697,30 @@ struct AnalyticsView: View {
                 .accessibilityIdentifier("expand-spending-breakdown")
             }
         }
+    }
+
+    private func breakdownLegendRow(_ item: AnalyticsBreakdownItem, index: Int) -> some View {
+        HStack(spacing: 10) {
+            SpendyIconBadge(sfSymbol: item.sfSymbol, color: SpendyColors.textPrimary,
+                size: .small, style: .circle, monogramName: item.label)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.label).font(.subheadline.weight(.medium))
+                    .foregroundStyle(SpendyColors.textPrimary)
+                Text("\(item.txCount) \(isIncome ? (item.txCount == 1 ? "income transaction" : "income transactions") : (item.txCount == 1 ? "expense" : "expenses"))")
+                    .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+            }
+            Spacer(minLength: 4)
+            Text(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0))
+                .font(.subheadline.weight(.semibold)).monospacedDigit()
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(1).minimumScaleFactor(0.75)
+        }
+        .padding(.vertical, 8)
+        .frame(minHeight: 48)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
     }
 
     // MARK: - Header Bar
@@ -749,27 +771,23 @@ struct AnalyticsView: View {
     private var compactHeader: some View {
         SpendyGlassEffectContainer(spacing: 0) {
             HStack(spacing: 0) {
-                // Left: Timeframe Granularity Selector (Apple Native Picker with Checkmarks)
                 Menu {
-                    Picker("Timeframe", selection: Binding(get: { granularity }, set: {
-                        periodFilter = nil
-                        granularity = $0
-                    })) {
+                    Picker("Timeframe", selection: Binding(
+                        get: { periodFilter == nil ? granularity : .month },
+                        set: { value in
+                            selectedDate = periodFilter?.month ?? selectedDate
+                            periodFilter = nil
+                            granularity = value
+                        }
+                    )) {
                         ForEach(TimeGranularity.allCases) { item in
                             Text(item.rawValue).tag(item)
                         }
                     }
-                    Button("Select month…") { showsPeriodFilter = true }
                 } label: {
-                    GlassCircleIcon(
-                        icon: "calendar",
-                        size: 44,
-                        iconSize: 16,
-                        iconWeight: .bold,
-                        foregroundColor: SpendyColors.textPrimary,
-                        morphID: "calendarMenu",
-                        namespace: analyticsControlsNamespace
-                    )
+                    GlassCircleIcon(icon: "calendar", size: 44, iconSize: 16,
+                        iconWeight: .bold, foregroundColor: SpendyColors.textPrimary,
+                        morphID: "calendarMenu", namespace: analyticsControlsNamespace)
                 }
                 .accessibilityLabel("Select Timeframe")
                 
@@ -785,12 +803,11 @@ struct AnalyticsView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(periodFilter != nil)
+                    .accessibilityLabel("Previous period")
                     
                     Button(action: {
                         HapticsManager.shared.trigger(.light)
-                        if periodFilter != nil { showsPeriodFilter = true }
-                        else { showMonthPicker = true }
+                        showMonthPicker = true
                     }) {
                         Text(formattedPillTitle)
                             .font(.system(size: 15, weight: .heavy))
@@ -800,6 +817,7 @@ struct AnalyticsView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Select period, \(formattedPillTitle)")
                     
                     Button(action: { stepPeriod(by: 1) }) {
                         Image(systemName: "chevron.right")
@@ -809,7 +827,7 @@ struct AnalyticsView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(periodFilter != nil)
+                    .accessibilityLabel("Next period")
                 }
                 .padding(.horizontal, 6)
                 .frame(height: 44)
@@ -871,39 +889,15 @@ struct AnalyticsView: View {
 
     // MARK: - Date Picker Modal Sheet (Pure Native Liquid Glass)
     private var datePickerSheet: some View {
-        NavigationStack {
-            ZStack {
-                VStack(spacing: 20) {
-                    DatePicker(
-                        "Choose Date",
-                        selection: $selectedDate,
-                        displayedComponents: [.date]
-                    )
-                    .datePickerStyle(.graphical)
-                    .tint(SpendyColors.primaryBlue)
-                    .padding()
-                    .nativeLiquidGlass(cornerRadius: 20, isInteractive: true)
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
-                }
-                .padding(.top, 20)
-            }
-            .navigationTitle("Select Period")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        showMonthPicker = false
-                    }
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(SpendyColors.primaryBlue)
-                }
-            }
+        AnalyticsPeriodSelectionSheet(
+            period: periodFilter == nil ? granularity : .month,
+            date: periodFilter?.month ?? selectedDate,
+            referenceDate: referenceDate
+        ) { period, date in
+            periodFilter = nil
+            granularity = period
+            selectedDate = date
         }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
     }
     
     // MARK: - Computed Properties & Period Math
@@ -1103,15 +1097,19 @@ struct AnalyticsView: View {
     
     private func stepPeriod(by delta: Int) {
         HapticsManager.shared.trigger(.selection)
+        let anchor = periodFilter?.month ?? selectedDate
+        let activeGranularity: TimeGranularity = periodFilter == nil ? granularity : .month
         let component: Calendar.Component
-        switch granularity {
+        switch activeGranularity {
         case .day: component = .day
         case .week: component = .weekOfYear
         case .month: component = .month
         case .year: component = .year
         }
-        if let newDate = calendar.date(byAdding: component, value: delta, to: selectedDate) {
+        if let newDate = calendar.date(byAdding: component, value: delta, to: anchor) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                periodFilter = nil
+                granularity = activeGranularity
                 selectedDate = newDate
             }
         }

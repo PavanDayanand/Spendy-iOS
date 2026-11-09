@@ -147,51 +147,21 @@ struct AddSubscriptionSheet: View {
     // MARK: - Components
 
     private var topHeaderBar: some View {
-        HStack {
-            // Close Button
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 14,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: headerNamespace
-            ) {
+        SpendyCreateSheetHeader(
+            title: isEditing ? "Edit Subscription" : "New Subscription",
+            showDelete: isEditing,
+            deleteLabel: "Delete Subscription",
+            onClose: {
                 if hasUnsavedChanges {
                     showDiscardConfirmation = true
                 } else {
                     dismiss()
                 }
+            },
+            onDelete: {
+                showDeleteConfirmation = true
             }
-
-            Spacer()
-
-            Text(isEditing ? "Edit Subscription" : "New Subscription")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-
-            Spacer()
-
-            // Delete button (visible in Edit Mode, matches close button glass circle with red icon)
-            if isEditing {
-                GlassCircleButton(
-                    icon: "trash.fill",
-                    size: 44,
-                    iconSize: 14,
-                    foregroundColor: SpendyColors.expenseRed,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Subscription",
-                    morphID: "deleteButton",
-                    namespace: headerNamespace
-                ) {
-                    showDeleteConfirmation = true
-                }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
-            }
-        }
+        )
     }
     
     private var previewProgress: Double {
@@ -382,22 +352,12 @@ struct AddSubscriptionSheet: View {
     }
 
     private var bottomActionButton: some View {
-        Button(action: {
+        SpendyCreatePrimaryButton(
+            title: isEditing ? "Save Changes" : "Create Subscription",
+            isEnabled: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (Double(amountString) ?? 0) > 0
+        ) {
             saveSubscription()
-        }) {
-            Text(isEditing ? "Save Changes" : "Create Subscription")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(SpendyColors.elevatedControlFill)
-                }
         }
-        .buttonStyle(.plain)
-        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Double(amountString) ?? 0) <= 0)
-        .opacity((name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Double(amountString) ?? 0) <= 0) ? 0.5 : 1.0)
     }
 
     private func cycleIcon(for cycle: BillingCycle) -> String {

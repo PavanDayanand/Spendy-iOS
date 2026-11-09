@@ -14,6 +14,7 @@ struct SpendingBreakdownSheet: View {
     @State private var showsFilter = false
     @State private var periodFilter: SpendingPeriodFilter?
     @State private var selectedIDs: Set<String>?
+    @State private var selectedBucket: String?
     @Namespace private var internalControlsNamespace
     private var controlsNamespace: Namespace.ID { topControlsNamespace ?? internalControlsNamespace }
     @State private var selectedCategory: Category?
@@ -73,7 +74,7 @@ struct SpendingBreakdownSheet: View {
         let dismissAction = dismiss
         var items = [
             AnalyticsNavigationHeaderMenuItem(id: "breakdown-chart-toggle", title: "Show chart",
-                systemImage: "chart.pie", isSelected: showsChart) {
+                systemImage: "chart.bar", isSelected: showsChart) {
                 withAnimation(.easeInOut(duration: 0.2)) { chart.wrappedValue.toggle() }
             },
             AnalyticsNavigationHeaderMenuItem(id: "breakdown-filter",
@@ -103,7 +104,7 @@ struct SpendingBreakdownSheet: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { showsChart.toggle() }
                 } label: {
-                    Label("Show chart", systemImage: showsChart ? "checkmark" : "chart.pie")
+                    Label("Show chart", systemImage: showsChart ? "checkmark" : "chart.bar")
                 }
                 .accessibilityValue(showsChart ? "On" : "Off")
                 .accessibilityIdentifier("breakdown-chart-toggle")
@@ -148,15 +149,32 @@ struct SpendingBreakdownSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(snapshot.total.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                        Text(accountLabel + " · " + snapshot.start.formatted(.dateTime.month(.wide).year())
+                            + (selectedIDs.map { " · \($0.count) selected" } ?? ""))
+                            .font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
+                        Text((snapshot.buckets.first { $0.id == selectedBucket }?.amount ?? snapshot.total)
+                            .formattedCurrency(symbol: store.currencySymbol, decimals: 2))
                             .font(.largeTitle.bold()).monospacedDigit()
                             .accessibilityIdentifier("breakdown-total")
-                        Text(accountLabel + " · " + snapshot.rangeLabel)
-                            .font(.caption)
-                            .foregroundStyle(SpendyColors.textSecondary)
-                        if showsChart && visibleItems.contains(where: { $0.amount > 0 }) {
-                            SpendingMixChart(items: visibleItems, currencySymbol: store.currencySymbol, isIncome: isIncome)
+                        Text(snapshot.start.formatted(.dateTime.day().month(.abbreviated)) + " – " + snapshot.recordedEnd.formatted(.dateTime.day().month(.abbreviated).year()) + (snapshot.isInProgress ? " · To date" : ""))
+                            .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                        if let bucket = snapshot.buckets.first(where: { $0.id == selectedBucket }) {
+                            HStack {
+                                Text(bucket.start.formatted(.dateTime.day().month(.abbreviated)) + " · \(bucket.transactionCount) transactions")
+                                Spacer()
+                            }.font(.caption)
+                        } else {
+                            Text(snapshot.comparisonText(currencySymbol: store.currencySymbol))
+                                .font(.caption).foregroundStyle(SpendyColors.textSecondary)
+                        }
+                        if showsChart {
+                            SpendingChartPlot(buckets: snapshot.buckets, currencySymbol: store.currencySymbol,
+                                selectedID: $selectedBucket, height: 160, transactionType: snapshot.transactionType)
                                 .accessibilityIdentifier("breakdown-spending-chart")
+                        }
+                        if selectedBucket != nil {
+                            Text("Categories below cover the full period.")
+                                .font(.caption2).foregroundStyle(SpendyColors.textSecondary)
                         }
                     }
                     if visibleItems.isEmpty {
@@ -169,16 +187,17 @@ struct SpendingBreakdownSheet: View {
                             action: { selectedIDs = nil }
                         )
                     }
-                    SpendyGroupedList(items: visibleItems) { item in
-                        Button {
-                            if byCategory { selectedCategory = store.categories.first { $0.id == item.id } }
-                            else { selectedAccount = store.accounts.first { $0.id == item.id } }
-                        } label: {
-                            SpendingBreakdownRow(item: item, isIncome: isIncome, currencySymbol: store.currencySymbol,
-                                tint: SpendingMixChart.tint(for: item, index: visibleItems.firstIndex { $0.id == item.id } ?? 0))
+                    VStack(spacing: 12) {
+                        ForEach(visibleItems) { item in
+                            Button {
+                                if byCategory { selectedCategory = store.categories.first { $0.id == item.id } }
+                                else { selectedAccount = store.accounts.first { $0.id == item.id } }
+                            } label: {
+                                SpendingBreakdownRow(item: item, isIncome: isIncome, currencySymbol: store.currencySymbol)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("breakdown-\(item.id)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("breakdown-\(item.id)")
                     }
                 }
                 .padding(20)
@@ -214,8 +233,14 @@ struct SpendingBreakdownSheet: View {
                 periodFilter: $periodFilter, initialMonth: snapshot.start,
                 referenceDate: snapshot.referenceDate)
         }
-        .onChange(of: selectedIDs) { _, _ in configureNavigationHeader() }
-        .onChange(of: periodFilter) { _, _ in configureNavigationHeader() }
+        .onChange(of: selectedIDs) { _, _ in
+            selectedBucket = nil
+            configureNavigationHeader()
+        }
+        .onChange(of: periodFilter) { _, _ in
+            selectedBucket = nil
+            configureNavigationHeader()
+        }
         .tint(SpendyColors.textPrimary)
     }
 }

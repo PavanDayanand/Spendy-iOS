@@ -149,6 +149,10 @@ struct AddCategorySheet: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            
+                            SpendyCreateFormDivider()
+                            
+                            SpendyColorSwatchPicker(selectedHex: $selectedColorHex)
                         }
                         
                     }

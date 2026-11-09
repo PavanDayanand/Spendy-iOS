@@ -329,19 +329,21 @@ struct AllTransactionsView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 // Shared searchable, multi-select category picker.
-                Button { showsCategoryFilter = true } label: {
+                Group {
                     let isCatSelected = selectedCategoryIDs != nil || spendingScope?.categoryIDs != nil
                     SpendyFilterControl(title: categoryButtonLabel, systemImage: "circle.grid.2x2",
                         isSelected: isCatSelected,
                         selectedSymbol: (selectedCategoryIDs ?? spendingScope?.categoryIDs)?.first.map { store.category(for: $0).sfSymbol },
                         selectionCount: (selectedCategoryIDs ?? spendingScope?.categoryIDs)?.count ?? 0,
-                        size: .small)
+                        size: .small,
+                        onOpen: { showsCategoryFilter = true },
+                        onClear: selectedCategoryIDs != nil && spendingScope?.categoryIDs == nil ? { selectedCategoryIDs = nil } : nil,
+                        controlIdentifier: "transactions-filter-category")
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("transactions-filter-category")
                 
                 // Match the category control with the existing account picker drawer.
-                Button { showsAccountFilter = true } label: {
+                Group {
                     let isAccSelected = selectedAccountId != nil || spendingScope?.accountIDs != nil
                         || (scopeAccountID != nil && scopeAccountID != "all")
                     SpendyFilterControl(title: accountButtonLabel, systemImage: "building.columns",
@@ -350,10 +352,12 @@ struct AllTransactionsView: View {
                             ?? spendingScope?.accountIDs?.first.map { store.account(for: $0).sfSymbol }
                             ?? scopeAccountID.map { store.account(for: $0).sfSymbol },
                         selectionCount: selectedAccountId != nil ? 1 : spendingScope?.accountIDs?.count ?? 1,
-                        size: .small)
+                        size: .small,
+                        onOpen: { showsAccountFilter = true },
+                        onClear: selectedAccountId != nil && spendingScope?.accountIDs == nil && (scopeAccountID == nil || scopeAccountID == "all") ? { selectedAccountId = nil } : nil,
+                        controlIdentifier: "transactions-filter-account")
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("transactions-filter-account")
                 
                 // 3. [Type] Liquid Glass Menu (Expenses, Income, Transfers)
                 Menu {

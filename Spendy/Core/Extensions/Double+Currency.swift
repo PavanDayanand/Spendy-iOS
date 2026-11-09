@@ -7,6 +7,26 @@
 
 import Foundation
 
+// MARK: - Thread-Safe NumberFormatter Cache
+enum SpendyNumberFormatterCache {
+    private static var formatters: [Int: NumberFormatter] = [:]
+    private static let lock = NSLock()
+
+    static func decimalFormatter(decimals: Int) -> NumberFormatter {
+        lock.lock()
+        defer { lock.unlock() }
+        if let existing = formatters[decimals] {
+            return existing
+        }
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = decimals
+        f.maximumFractionDigits = decimals
+        formatters[decimals] = f
+        return f
+    }
+}
+
 extension Double {
     /// Safely converts Double to Int without crashing on NaN, Infinity, or overflow
     var safeInt: Int {
@@ -19,11 +39,7 @@ extension Double {
     /// Formats a double value with a currency symbol (e.g., "$1,250.00" or "₹1,250.00")
     func formattedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
         guard !self.isNaN && !self.isInfinite else { return "\(symbol)0" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = decimals
-        formatter.maximumFractionDigits = decimals
-        
+        let formatter = SpendyNumberFormatterCache.decimalFormatter(decimals: decimals)
         let formattedNumber = formatter.string(from: NSNumber(value: abs(self))) ?? String(format: "%.\(decimals)f", abs(self))
         let sign = self < 0 ? "-" : ""
         return "\(sign)\(symbol)\(formattedNumber)"
@@ -32,21 +48,14 @@ extension Double {
     /// Formats a double value as a number with standard thousand separator commas (e.g. "1,250.00" or "1,250")
     func formattedNumber(decimals: Int = 2) -> String {
         guard !self.isNaN && !self.isInfinite else { return "0" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = decimals
-        formatter.maximumFractionDigits = decimals
+        let formatter = SpendyNumberFormatterCache.decimalFormatter(decimals: decimals)
         return formatter.string(from: NSNumber(value: self)) ?? String(format: "%.\(decimals)f", self)
     }
     
     /// Formats with a clear +/- sign (e.g. "+$500.00" or "-$45.50")
     func formattedSignedCurrency(symbol: String = "$", decimals: Int = 2) -> String {
         guard !self.isNaN && !self.isInfinite else { return "\(symbol)0" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = decimals
-        formatter.maximumFractionDigits = decimals
-        
+        let formatter = SpendyNumberFormatterCache.decimalFormatter(decimals: decimals)
         let formattedNumber = formatter.string(from: NSNumber(value: abs(self))) ?? String(format: "%.\(decimals)f", abs(self))
         if self > 0 {
             return "+\(symbol)\(formattedNumber)"
@@ -80,10 +89,7 @@ extension String {
             let intPart = parts.first ?? "0"
             let decPart = parts.count > 1 ? parts[1] : ""
             
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.maximumFractionDigits = 0
-            
+            let formatter = SpendyNumberFormatterCache.decimalFormatter(decimals: 0)
             let formattedInt = (Double(intPart).flatMap { formatter.string(from: NSNumber(value: $0)) }) ?? intPart
             if clean.hasSuffix(".") {
                 return "\(formattedInt)."
@@ -91,9 +97,7 @@ extension String {
                 return "\(formattedInt).\(decPart)"
             }
         } else {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.maximumFractionDigits = 0
+            let formatter = SpendyNumberFormatterCache.decimalFormatter(decimals: 0)
             if let num = Double(clean) {
                 return formatter.string(from: NSNumber(value: num)) ?? clean
             }

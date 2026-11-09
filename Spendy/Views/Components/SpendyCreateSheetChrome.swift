@@ -77,6 +77,47 @@ struct SpendyColorSwatchButton: View {
     }
 }
 
+struct SpendyColorSwatchPicker: View {
+    @Binding var selectedHex: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Color")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(SpendyColors.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(SpendyColors.presetAccentColors, id: \.self) { hex in
+                        Button {
+                            HapticsManager.shared.trigger(.selection)
+                            selectedHex = hex
+                        } label: {
+                            Circle()
+                                .fill(Color(hex: hex))
+                                .frame(width: 32, height: 32)
+                                .overlay {
+                                    if selectedHex.uppercased() == hex.uppercased() {
+                                        Circle()
+                                            .stroke(SpendyColors.textPrimary, lineWidth: 2.5)
+                                    }
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Select color \(hex)")
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.bottom, 12)
+        }
+    }
+}
+
 struct SpendyCreateColorPalette: View {
     @Binding var selectedHex: String
     @Binding var hue: Double
@@ -135,7 +176,8 @@ struct SpendyCreateSheetHeader: View {
     var deleteLabel: String = "Delete"
     var onClose: () -> Void
     var onDelete: (() -> Void)? = nil
-    @ViewBuilder var center: () -> AnyView
+    var center: () -> AnyView
+    var trailing: (() -> AnyView)? = nil
     
     init(
         title: String? = nil,
@@ -143,7 +185,8 @@ struct SpendyCreateSheetHeader: View {
         deleteLabel: String = "Delete",
         onClose: @escaping () -> Void,
         onDelete: (() -> Void)? = nil,
-        @ViewBuilder center: @escaping () -> some View = { EmptyView() }
+        @ViewBuilder center: @escaping () -> some View = { EmptyView() },
+        @ViewBuilder trailing: @escaping () -> some View = { EmptyView() }
     ) {
         self.title = title
         self.showDelete = showDelete
@@ -151,6 +194,12 @@ struct SpendyCreateSheetHeader: View {
         self.onClose = onClose
         self.onDelete = onDelete
         self.center = { AnyView(center()) }
+        let trailingView = trailing()
+        if !(trailingView is EmptyView) {
+            self.trailing = { AnyView(trailingView) }
+        } else {
+            self.trailing = nil
+        }
     }
     
     var body: some View {
@@ -179,7 +228,9 @@ struct SpendyCreateSheetHeader: View {
             
             Spacer()
             
-            if showDelete, let onDelete {
+            if let trailing {
+                trailing()
+            } else if showDelete, let onDelete {
                 GlassCircleButton(
                     icon: SFIcons.delete,
                     size: 44,

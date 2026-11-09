@@ -4,34 +4,28 @@ struct SpendingBreakdownRow: View {
     let item: AnalyticsBreakdownItem
     let isIncome: Bool
     let currencySymbol: String
-    let tint: Color
+    var tint: Color = SpendyColors.textPrimary
 
     var body: some View {
-        SpendyListRow {
+        HStack(spacing: 12) {
             SpendyIconBadge(sfSymbol: item.sfSymbol, color: tint,
                 size: .medium, style: .circle, monogramName: item.label)
-        } content: {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.label).font(AppTypography.rowTitle)
-                Text("\(item.txCount) \(isIncome ? (item.txCount == 1 ? "income transaction" : "income transactions") : (item.txCount == 1 ? "expense" : "expenses"))")
-                    .font(.footnote).foregroundStyle(SpendyColors.textSecondary)
+                Text("\(item.txCount) \(isIncome ? "income transactions" : (item.txCount == 1 ? "expense" : "expenses"))")
+                    .font(AppTypography.footnoteMedium).foregroundStyle(SpendyColors.textSecondary)
             }
-        } value: {
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2))
-                    .font(.subheadline.weight(.semibold)).monospacedDigit()
-                HStack(spacing: 5) {
-                    Circle().fill(tint).frame(width: 6, height: 6)
-                    Text(item.percentage.formatted(.number.precision(.fractionLength(1))) + "%")
-                }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(SpendyColors.textSecondary)
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
+            Spacer(minLength: 4)
+            Text(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2))
+                .spendyNumberFont(size: 17, weight: .bold, tracking: -0.5)
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(SpendyColors.separator, lineWidth: 0.8) }
         .foregroundStyle(SpendyColors.textPrimary)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.label), \(item.txCount) transactions, \(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2)), \(item.percentage.formatted(.number.precision(.fractionLength(1)))) percent")
+        .accessibilityLabel("\(item.label), \(item.txCount) transactions, \(item.amount.formattedCurrency(symbol: currencySymbol, decimals: 2))")
     }
 }

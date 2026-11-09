@@ -11,9 +11,7 @@ struct CustomCalendarDrawer: View {
     private let monthSymbols = Calendar.current.shortMonthSymbols
     
     private var monthYearString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: displayedMonth)
+        SpendyDateFormatterCache.monthYear.string(from: displayedMonth)
     }
     
     private var daysInMonth: [Date?] {
@@ -142,9 +140,7 @@ struct CustomCalendarDrawer: View {
     }
     
     private var formattedDateTitle: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter.string(from: selectedDate)
+        SpendyDateFormatterCache.dayMonth.string(from: selectedDate)
     }
     
     private var displayedYearTitle: String {

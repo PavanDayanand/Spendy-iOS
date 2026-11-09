@@ -18,6 +18,7 @@ struct SubscriptionQuickActionSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let sub: Subscription
     let onEdit: (Subscription) -> Void
@@ -51,9 +52,7 @@ struct SubscriptionQuickActionSheet: View {
     }
     
     private var formattedDueDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter.string(from: liveSub.nextBillingDate)
+        SpendyDateFormatterCache.dayMonth.string(from: liveSub.nextBillingDate)
     }
     
     private var daysUntilDue: Int {
@@ -244,45 +243,28 @@ struct SubscriptionQuickActionSheet: View {
         } message: {
             Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
         }
-        .presentationDetents([.height(500), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(500), .large])
+        .presentationDragIndicator(.visible)
     }
     
     // MARK: - Top Action Bar (✕ on Left, Pen Circle on Right)
     private var topActionBar: some View {
-        HStack {
-            // Close Button ✕ (Left, 44pt GlassCircleButton)
-            GlassCircleButton(
-                icon: SFIcons.close,
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: sheetNamespace
-            ) {
-                dismiss()
+        SpendyCreateSheetHeader(
+            onClose: { dismiss() },
+            trailing: {
+                GlassCircleButton(
+                    icon: SFIcons.edit,
+                    size: 44,
+                    iconSize: 16,
+                    iconWeight: .bold,
+                    foregroundColor: SpendyColors.textPrimary,
+                    haptic: .selection,
+                    accessibilityLabel: "Edit Subscription"
+                ) {
+                    onEdit(liveSub)
+                }
             }
-            
-            Spacer()
-            
-            // Edit Circle Button with Pen Icon (Right, 44pt GlassCircleButton)
-            GlassCircleButton(
-                icon: SFIcons.edit,
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Edit Subscription",
-                morphID: "editButton",
-                namespace: sheetNamespace
-            ) {
-                onEdit(liveSub)
-            }
-        }
+        )
     }
     
     // MARK: - Hero Section (Standard Spendy Progress Ring Badge, Title & Status Pill)

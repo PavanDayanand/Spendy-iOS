@@ -26,7 +26,6 @@ struct EditBudgetSheet: View {
     @State private var selectedPeriod: BudgetPeriod = .monthly
     @State private var selectedStartDay: Int = 1
     @State private var showDiscardConfirm: Bool = false
-    @Namespace private var budgetSheetNamespace
     
     let isEditing: Bool
     var onSave: (() -> Void)? = nil
@@ -112,34 +111,16 @@ struct EditBudgetSheet: View {
     
     
     private var headerBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "xmark",
-                size: 44,
-                iconSize: 15,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: budgetSheetNamespace
-            ) {
+        SpendyCreateSheetHeader(
+            title: isEditing ? "Edit Budget" : "Set Budget",
+            onClose: {
                 if hasUnsavedChanges {
                     showDiscardConfirm = true
                 } else {
                     dismiss()
                 }
             }
-            
-            Spacer()
-            
-            Text(isEditing ? "Edit Budget" : "Set Budget")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            Color.clear.frame(width: 44, height: 44)
-        }
+        )
     }
     
     private var amountHero: some View {

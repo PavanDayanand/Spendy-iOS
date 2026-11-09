@@ -21,10 +21,12 @@ struct ReceiptNoteEditor: View {
                 Text("Note").font(.headline)
                 Spacer()
                 Button("Done") {
+                    HapticsManager.shared.trigger(.success)
                     onSave(note.trimmingCharacters(in: .whitespacesAndNewlines))
                     dismiss()
                 }
                 .font(.body.weight(.semibold))
+                .foregroundStyle(SpendyColors.primaryBlue)
                 .frame(minWidth: 44, minHeight: 44)
                 .accessibilityIdentifier("receipt-note-done")
             }

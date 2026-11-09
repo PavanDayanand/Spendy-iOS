@@ -11,6 +11,7 @@ import SwiftUI
 struct TransactionDetailSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let initialTransaction: Transaction
     let onEdit: (Transaction) -> Void
@@ -130,8 +131,8 @@ struct TransactionDetailSheet: View {
         } message: {
             Text("Are you sure you want to delete this transaction? This cannot be undone.")
         }
-        .presentationDetents([.height(500), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(500), .large])
+        .presentationDragIndicator(.visible)
         .onChange(of: store.transactions) { _, newTransactions in
             if !newTransactions.contains(where: { $0.id == initialTransaction.id }) {
                 dismiss()
@@ -140,53 +141,36 @@ struct TransactionDetailSheet: View {
     }
     
     private var topActionBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: SFIcons.close,
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Close",
-                morphID: "closeButton",
-                namespace: sheetNamespace
-            ) {
-                dismiss()
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 10) {
-                GlassCircleButton(
-                    icon: SFIcons.edit,
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Edit Transaction",
-                    morphID: "editButton",
-                    namespace: sheetNamespace
-                ) {
-                    handleEdit()
-                }
-                
-                GlassCircleButton(
-                    icon: SFIcons.trash,
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .semibold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .warning,
-                    accessibilityLabel: "Delete Transaction",
-                    morphID: "deleteButton",
-                    namespace: sheetNamespace
-                ) {
-                    showDeleteConfirm = true
+        SpendyCreateSheetHeader(
+            onClose: { dismiss() },
+            trailing: {
+                HStack(spacing: 10) {
+                    GlassCircleButton(
+                        icon: SFIcons.edit,
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .bold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .selection,
+                        accessibilityLabel: "Edit Transaction"
+                    ) {
+                        handleEdit()
+                    }
+                    
+                    GlassCircleButton(
+                        icon: SFIcons.trash,
+                        size: 44,
+                        iconSize: 16,
+                        iconWeight: .semibold,
+                        foregroundColor: SpendyColors.textPrimary,
+                        haptic: .warning,
+                        accessibilityLabel: "Delete Transaction"
+                    ) {
+                        showDeleteConfirm = true
+                    }
                 }
             }
-        }
+        )
     }
     
     private var heroSection: some View {

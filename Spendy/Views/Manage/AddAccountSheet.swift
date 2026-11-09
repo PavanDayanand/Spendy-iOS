@@ -176,6 +176,10 @@ struct AddAccountSheet: View {
                             }
                             .contentShape(Rectangle())
                             .onTapGesture { isBalanceFocused = true }
+                            
+                            SpendyCreateFormDivider()
+                            
+                            SpendyColorSwatchPicker(selectedHex: $selectedColorHex)
                         }
                         
                     }

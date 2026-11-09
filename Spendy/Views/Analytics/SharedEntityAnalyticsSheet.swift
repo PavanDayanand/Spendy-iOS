@@ -746,6 +746,7 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - 4. Period Scrubber Strip & Calendar Row
     private var scrubberAndCalendarRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
         SpendyGlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
                 GlassSegmentedPicker(
@@ -766,14 +767,33 @@ struct SharedEntityAnalyticsSheet: View {
                     size: 44,
                     iconSize: 16,
                     iconWeight: .bold,
-                    tintColor: customDateRange != nil ? (SpendyColors.isMonoMode ? SpendyColors.cardBackgroundSecondary : themeColor.opacity(0.3)) : nil,
-                    foregroundColor: customDateRange != nil ? (SpendyColors.isMonoMode ? SpendyColors.textPrimary : themeColor) : SpendyColors.textPrimary,
+                    foregroundColor: SpendyColors.textPrimary,
                     haptic: .selection,
                     accessibilityLabel: "Select Date Range",
                     morphID: pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"),
                     namespace: sharedMorphNamespace
                 ) {
                     showDatePicker = true
+                }
+            }
+        }
+            if let range = customDateRange {
+                HStack {
+                    Text(range.0.formatted(.dateTime.day().month(.abbreviated).year()) + " – " + range.1.formatted(.dateTime.day().month(.abbreviated).year()))
+                        .font(.footnote).foregroundStyle(SpendyColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    Button {
+                        customDateRange = nil
+                        scrubbedBarPoint = nil
+                        isScrubbingChart = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(SpendyColors.textSecondary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear date range")
                 }
             }
         }
