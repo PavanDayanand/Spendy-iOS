@@ -447,20 +447,11 @@ struct SubscriptionsView: View {
             if displayedSubscriptions.isEmpty {
                 emptyState
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(displayedSubscriptions.enumerated()), id: \.element.id) { index, sub in
-                        subscriptionRowCard(sub: sub)
-
-                        if index < displayedSubscriptions.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 74)
-                                .padding(.trailing, 16)
-                        }
-                    }
+                SpendyGroupedList(items: displayedSubscriptions,
+                    iconWidth: SubscriptionProgressRingBadge.Size.medium.outerDimension,
+                    rowSpacing: 14) { sub in
+                    subscriptionRowCard(sub: sub)
                 }
-                .background { groupedCardBackground }
             }
         }
     }
@@ -636,19 +627,11 @@ struct SubscriptionsView: View {
             .accessibilityLabel("Past and cancelled, \(cancelledSubs.count)")
 
             if showCancelledSubs {
-                VStack(spacing: 0) {
-                    ForEach(Array(cancelledSubs.enumerated()), id: \.element.id) { index, sub in
-                        cancelledRow(sub)
-                        if index < cancelledSubs.count - 1 {
-                            Rectangle()
-                                .fill(SpendyColors.separator.opacity(0.6))
-                                .frame(height: 0.5)
-                                .padding(.leading, 66)
-                                .padding(.trailing, 16)
-                        }
-                    }
+                SpendyGroupedList(items: cancelledSubs,
+                    iconWidth: SpendyIconBadge.Size.small.dimension,
+                    rowSpacing: 14) { sub in
+                    cancelledRow(sub)
                 }
-                .background { groupedCardBackground }
             }
         }
     }

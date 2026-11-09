@@ -5,6 +5,9 @@ struct SpendyGroupedList<Item: Identifiable, Row: View>: View {
     let items: [Item]
     var background: Color = SpendyColors.cardBackground
     var isEnclosed = true
+    var horizontalPadding: CGFloat = 16
+    var iconWidth: CGFloat = 44
+    var rowSpacing: CGFloat = 12
     @ViewBuilder let row: (Item) -> Row
 
     var body: some View {
@@ -14,8 +17,8 @@ struct SpendyGroupedList<Item: Identifiable, Row: View>: View {
                 if index < items.count - 1 {
                     Divider()
                         .overlay(SpendyColors.separator)
-                        .padding(.leading, 72)
-                        .padding(.trailing, 16)
+                        .padding(.leading, horizontalPadding + iconWidth + rowSpacing)
+                        .padding(.trailing, horizontalPadding)
                 }
             }
         }
