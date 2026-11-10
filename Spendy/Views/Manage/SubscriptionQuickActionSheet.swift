@@ -131,45 +131,10 @@ struct SubscriptionQuickActionSheet: View {
         }
     }
     
-    private var capsuleBackgroundColor: Color {
-        if SpendyColors.isMonoMode {
-            return SpendyColors.cardBackgroundSecondary
-        }
-        if liveSub.isPaused {
-            return SpendyColors.incomeGreen.opacity(0.14)
-        } else if liveSub.isTrial {
-            return SpendyColors.warningOrange.opacity(0.14)
-        } else {
-            return themeColor.opacity(0.14)
-        }
-    }
-    
-    private var capsuleContentColor: Color {
-        if SpendyColors.isMonoMode {
-            return SpendyColors.textPrimary
-        }
-        if liveSub.isPaused {
-            return SpendyColors.incomeGreen
-        } else if liveSub.isTrial {
-            return SpendyColors.warningOrange
-        } else {
-            return themeColor
-        }
-    }
-    
-    private var capsuleStrokeColor: Color {
-        if SpendyColors.isMonoMode {
-            return SpendyColors.separator
-        }
-        if liveSub.isPaused {
-            return SpendyColors.incomeGreen.opacity(0.32)
-        } else if liveSub.isTrial {
-            return SpendyColors.warningOrange.opacity(0.32)
-        } else {
-            return themeColor.opacity(0.30)
-        }
-    }
-    
+    private var capsuleBackgroundColor: Color { store.accentPreset.fill }
+    private var capsuleContentColor: Color { store.accentPreset.foreground }
+    private var capsuleStrokeColor: Color { SpendyColors.separator }
+
     private var contextualNoteText: String {
         if liveSub.isPaused {
             return "Subscription is currently paused. No upcoming expenses will be charged or logged."
@@ -524,11 +489,11 @@ struct SubscriptionQuickActionSheet: View {
                     } else if isPaidSuccess {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.incomeGreen)
+                            .foregroundStyle(capsuleContentColor)
                             .contentTransition(.symbolEffect(.replace))
                         Text(liveSub.isTrial ? "Trial Converted to Paid!" : "Payment Recorded!")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(SpendyColors.incomeGreen)
+                            .foregroundStyle(capsuleContentColor)
                     } else {
                         Image(systemName: capsuleIcon)
                             .font(.system(size: 15, weight: .bold))

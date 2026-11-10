@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A deliberately small palette for primary actions, independent of financial status colors.
 enum SpendyAccentPreset: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -36,4 +37,47 @@ enum SpendyAccentPreset: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     var foreground: Color { usesLightForeground ? .white : .black }
+
+    /// White remains an adaptive neutral selection in both appearances.
+    var selectionFill: Color { self == .white ? SpendyColors.elevatedControlFill : fill }
+    var selectionForeground: Color { self == .white ? SpendyColors.elevatedControlForeground : foreground }
+
+    /// Small glyphs, links, and chart highlights need contrast against their surface.
+    var contentTint: Color {
+        guard self != .white else { return SpendyColors.textPrimary }
+        return Color(uiColor: .dynamic(
+            light: adjustedColor(against: 1, minimumContrast: 4.5, towardsWhite: false),
+            dark: adjustedColor(against: 0.05, minimumContrast: 4.5, towardsWhite: true)
+        ))
+    }
+
+    /// Preserve separation from the native switch's white thumb.
+    var switchTint: Color {
+        guard self != .white else { return Color(white: 0.45) }
+        return Color(uiColor: adjustedColor(against: 1, minimumContrast: 3, towardsWhite: false))
+    }
+
+    private func adjustedColor(against background: Double, minimumContrast: Double, towardsWhite: Bool) -> UIColor {
+        let rgb = components
+        func luminance(_ red: Double, _ green: Double, _ blue: Double) -> Double {
+            func linear(_ value: Double) -> Double {
+                value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        }
+        let target = towardsWhite ? 1.0 : 0.0
+        var amount = 0.0
+        var red = rgb.red, green = rgb.green, blue = rgb.blue
+        for _ in 0..<101 {
+            red = rgb.red + (target - rgb.red) * amount
+            green = rgb.green + (target - rgb.green) * amount
+            blue = rgb.blue + (target - rgb.blue) * amount
+            let value = luminance(red, green, blue)
+            let ratio = (max(value, background) + 0.05) / (min(value, background) + 0.05)
+            if ratio >= minimumContrast { break }
+            amount = min(1, amount + 0.01)
+        }
+        return UIColor(red: red, green: green, blue: blue, alpha: 1)
+    }
+
 }

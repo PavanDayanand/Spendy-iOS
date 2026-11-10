@@ -300,7 +300,7 @@ struct AddSubscriptionSheet: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
-                .tint(SpendyColors.incomeGreen)
+                .tint(store.accentPreset.switchTint)
                 .padding(.vertical, 8)
 
                 Divider().background(SpendyColors.separator)

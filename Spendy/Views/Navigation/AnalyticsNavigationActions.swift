@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Action content lets the stack owner keep one continuous glass surface.
 struct AnalyticsNavigationActions: View {
+    @Environment(ExpenseStore.self) private var store
     let state: AnalyticsNavigationHeaderState
 
     private var trailingAction: StackHeaderAction? {
@@ -36,6 +37,7 @@ struct AnalyticsNavigationActions: View {
                 } label: {
                     Image(systemName: action.symbol)
                         .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(store.accentPreset.contentTint)
                         .contentTransition(.symbolEffect(.replace))
                         .frame(width: 44, height: 44)
                 }

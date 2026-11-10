@@ -90,7 +90,7 @@ struct SettingsView: View {
                                     Text("Haptic feedback").font(.body.weight(.medium))
                                 }
                             }
-                            .tint(SpendyColors.controlAccent)
+                            .tint(store.accentPreset.switchTint)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .frame(minHeight: 52)

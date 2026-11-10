@@ -96,6 +96,8 @@ struct SpendyApp: App {
                 .environment(store)
                 .environment(quickActionManager)
                 .environment(\.isMonoIconMode, store.isMonoIconMode)
+                .environment(\.spendySelectionFill, store.accentPreset.selectionFill)
+                .environment(\.spendySelectionForeground, store.accentPreset.selectionForeground)
                 .preferredColorScheme(store.colorScheme)
                 .toggleStyle(SpendySwitchStyle())
                 .onOpenURL { url in

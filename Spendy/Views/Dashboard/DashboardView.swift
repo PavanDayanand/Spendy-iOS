@@ -28,6 +28,7 @@ struct SpendTrendPoint: Identifiable, Equatable {
 
 // MARK: - On-Screen Hero Spend Bar Chart Component with Interactive Scrubbing
 struct HeroSpendBarChart: View {
+    @Environment(ExpenseStore.self) private var store
     @GestureState private var isHoldingPreview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let dataPoints: [MinimalBarPoint]
@@ -148,7 +149,7 @@ struct HeroSpendBarChart: View {
                                         topTrailingRadius: min(cornerRadius, barH / 2),
                                         style: .continuous
                                     )
-                                        .fill(barColor)
+                                        .fill(isSelected ? store.accentPreset.contentTint : barColor)
                                         .frame(width: barWidth, height: barH)
                                         .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
                                         .opacity(isAnySelected
@@ -251,7 +252,7 @@ struct HeroSpendBarChart: View {
                 if scrubbedPoint?.id == point.id || (scrubbedPoint == nil && index == dataPoints.count - 1) {
                     Circle()
                         .fill(SpendyColors.appBackground)
-                        .overlay(Circle().stroke(barColor, lineWidth: 2))
+                        .overlay(Circle().stroke(scrubbedPoint?.id == point.id ? store.accentPreset.contentTint : barColor, lineWidth: 2))
                         .frame(width: 8, height: 8)
                         .position(coordinates[index])
                 }

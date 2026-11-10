@@ -2,6 +2,7 @@ import SwiftUI
 
 /// A 280-degree budget arc, starting at the lower left and filling clockwise.
 struct BudgetProgressArc: View {
+    @Environment(ExpenseStore.self) private var store
     let progress: Double?
     var lineWidth: CGFloat = 24
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -9,8 +10,7 @@ struct BudgetProgressArc: View {
     private let sweep = 280.0 / 360.0
     private var fraction: Double { min(max(progress ?? 0, 0), 1) }
     private var tint: Color {
-        SpendyColors.isMonoMode ? SpendyColors.textPrimary
-            : (progress ?? 0) > 1 ? SpendyColors.warningOrange : .blue
+        (progress ?? 0) > 1 ? SpendyColors.warningOrange : store.accentPreset.contentTint
     }
 
     var body: some View {

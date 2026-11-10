@@ -53,7 +53,7 @@ struct NotificationPreferencesView: View {
                 if phase == .active { Task { status = await NotificationManager.shared.checkAuthorizationStatus() } }
             }
         }
-        .tint(SpendyColors.controlAccent)
+        .tint(store.accentPreset.switchTint)
     }
 
     private func preference(_ key: ReferenceWritableKeyPath<ExpenseStore, Bool>) -> Binding<Bool> {

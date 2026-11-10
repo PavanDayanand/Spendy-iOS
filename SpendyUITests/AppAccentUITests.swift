@@ -81,6 +81,26 @@ final class AppAccentUITests: XCTestCase {
         capture(app, "White Home Add label")
     }
 
+    @MainActor func testAccentAcrossSelectedControlsAndSettings() {
+        let app = openPicker(light: true)
+        app.buttons["accent-blue"].tap()
+        app.buttons["Dark"].tap()
+        XCTAssertTrue(app.buttons["Dark"].isSelected)
+        capture(app, "Blue selected appearance pill")
+        app.navigationBars.buttons.firstMatch.tap()
+        capture(app, "Blue Settings switches")
+        app.buttons["Close"].tap()
+        app.buttons["All Accounts"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Bank Account (")).firstMatch.tap()
+        capture(app, "Blue active account filter")
+        app.buttons["Add Transaction"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Income"].waitForExistence(timeout: 5))
+        app.buttons["Income"].tap()
+        XCTAssertTrue(app.buttons["Income"].isSelected)
+        app.buttons["5"].tap()
+        capture(app, "Blue income selection and Save")
+    }
+
     @MainActor func testLargeTextPresetsStayAccessible() {
         let app = openPicker(light: true, largeText: true)
         let yellow = app.buttons["accent-yellow"]

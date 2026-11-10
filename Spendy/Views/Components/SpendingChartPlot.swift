@@ -4,6 +4,7 @@ import Accessibility
 
 /// One scale and selection system for the Home overview and spending detail.
 struct SpendingChartPlot: View {
+    @Environment(ExpenseStore.self) private var store
     let buckets: [SpendingChartBucket]
     let currencySymbol: String
     @Binding var selectedID: String?
@@ -23,19 +24,20 @@ struct SpendingChartPlot: View {
     var body: some View {
         Chart {
             ForEach(buckets) { bucket in
+                let markColor = selectedID == bucket.id ? store.accentPreset.contentTint : SpendyColors.textPrimary
                 if showsLine {
                     LineMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount))
                         .interpolationMethod(.linear)
                         .foregroundStyle(SpendyColors.textPrimary)
                     PointMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount))
                         .symbolSize(selectedID == bucket.id ? 45 : 14)
-                        .foregroundStyle(SpendyColors.textPrimary)
+                        .foregroundStyle(markColor)
                         .accessibilityLabel(bucket.start.formatted(.dateTime.month(.wide).day().year()))
                         .accessibilityValue(accessibleValue(bucket))
                 } else {
                     BarMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount), width: .ratio(0.68))
                         .cornerRadius(5)
-                        .foregroundStyle(LinearGradient(colors: [SpendyColors.textPrimary, SpendyColors.textPrimary.opacity(0.55)], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(LinearGradient(colors: [markColor, markColor.opacity(0.55)], startPoint: .top, endPoint: .bottom))
                         .opacity(selectedID == nil || selectedID == bucket.id ? 1 : (contrast == .increased ? 0.65 : 0.35))
                         .accessibilityLabel(bucket.start.formatted(.dateTime.month(.wide).day().year()))
                         .accessibilityValue(accessibleValue(bucket))

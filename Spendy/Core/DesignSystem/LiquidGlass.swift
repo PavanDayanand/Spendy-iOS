@@ -292,7 +292,14 @@ extension ToggleStyle where Self == GlassToggleStyle {
 }
 
 // MARK: - Native Apple Liquid Glass Segmented Picker
+extension EnvironmentValues {
+    @Entry var spendySelectionFill: Color = SpendyColors.elevatedControlFill
+    @Entry var spendySelectionForeground: Color = SpendyColors.elevatedControlForeground
+}
+
 struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
+    @Environment(\.spendySelectionFill) private var selectionFill
+    @Environment(\.spendySelectionForeground) private var selectionForeground
     @Binding var selection: T
     let items: [T]
     var titleFor: (T) -> String
@@ -330,7 +337,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
                     .frame(height: 36)
                     .foregroundStyle(
                         isSelected
-                            ? (selectedForegroundColor ?? SpendyColors.elevatedControlForeground)
+                            ? (selectedForegroundColor ?? selectionForeground)
                             : SpendyColors.textSecondary
                     )
                     .background {
@@ -370,7 +377,7 @@ struct GlassSegmentedPicker<T: Hashable & Identifiable>: View {
         if let tint = activeTint, tint != .white {
             return tint
         }
-        return SpendyColors.elevatedControlFill
+        return selectionFill
     }
 }
 

@@ -228,7 +228,7 @@ struct SubscriptionsView: View {
                 size: 44,
                 iconSize: 16,
                 iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
+                foregroundColor: store.accentPreset.contentTint,
                 haptic: .light,
                 accessibilityLabel: "Add Subscription"
             ) {
@@ -292,7 +292,7 @@ struct SubscriptionsView: View {
                 size: 44,
                 iconSize: 16,
                 iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
+                foregroundColor: store.accentPreset.contentTint,
                 haptic: .light,
                 accessibilityLabel: "Add Subscription"
             ) {
@@ -391,7 +391,7 @@ struct SubscriptionsView: View {
         let today = calendar.startOfDay(for: Date())
         let billDay = calendar.startOfDay(for: sub.nextBillingDate)
         let daysUntil = calendar.dateComponents([.day], from: today, to: billDay).day ?? 0
-        let daysText = daysUntil <= 0 ? "TODAY" : (daysUntil == 1 ? "1d" : "\(daysUntil)d")
+        let daysText = daysUntil <= 0 ? "Today" : (daysUntil == 1 ? "1d" : "\(daysUntil)d")
         
         return Button {
             HapticsManager.shared.trigger(.selection)

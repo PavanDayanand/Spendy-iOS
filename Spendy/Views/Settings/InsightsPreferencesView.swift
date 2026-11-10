@@ -31,6 +31,6 @@ struct InsightsPreferencesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
         }
-        .tint(SpendyColors.controlAccent)
+        .tint(store.accentPreset.switchTint)
     }
 }

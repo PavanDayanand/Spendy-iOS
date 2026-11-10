@@ -76,8 +76,6 @@ extension UIColor {
 
 // MARK: - Spendy Adaptive Monochrome Color System
 enum SpendyColors {
-    // Enabled switches stay distinct from the white thumb in both appearances.
-    static let controlAccent = Color.blue
     // MARK: - Global Mono Mode Flag
     // Set by ExpenseStore when isMonoIconMode changes. Allows static semantic colors
     // to resolve to monochrome without changing any call sites across the app.

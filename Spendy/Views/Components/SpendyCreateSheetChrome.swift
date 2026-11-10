@@ -146,6 +146,7 @@ struct SpendyCreateColorPalette: View {
 }
 
 struct SpendyCreatePrimaryButton: View {
+    @Environment(ExpenseStore.self) private var store
     let title: String
     var isEnabled: Bool = true
     var action: () -> Void
@@ -158,10 +159,11 @@ struct SpendyCreatePrimaryButton: View {
         } label: {
             Text(title)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(SpendyColors.elevatedControlForeground)
+                .foregroundStyle(store.accentPreset.foreground)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(SpendyColors.elevatedControlFill, in: Capsule())
+                .background(store.accentPreset.fill, in: Capsule())
+                .overlay { Capsule().strokeBorder(SpendyColors.separator, lineWidth: 0.8) }
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)

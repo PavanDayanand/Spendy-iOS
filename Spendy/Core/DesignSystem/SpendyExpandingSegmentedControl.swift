@@ -11,6 +11,8 @@ import SwiftUI
 // Existing call sites retain their API; every option now stays labeled.
 struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.spendySelectionFill) private var selectionFill
+    @Environment(\.spendySelectionForeground) private var selectionForeground
     @Binding var selection: T
     let items: [T]
     var titleFor: (T) -> String
@@ -32,7 +34,7 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                 } label: {
                     Text(titleFor(item))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(isSelected ? SpendyColors.inverseText : SpendyColors.textSecondary)
+                        .foregroundStyle(isSelected ? selectionForeground : SpendyColors.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity)
@@ -40,7 +42,7 @@ struct SpendyExpandingSegmentedControl<T: Hashable & Identifiable>: View {
                         .background {
                             if isSelected {
                                 Capsule()
-                                    .fill(SpendyColors.textPrimary)
+                                    .fill(selectionFill)
                                     .padding(.vertical, 4)
                                     .matchedGeometryEffect(id: "selection", in: selectionAnimation)
                             }

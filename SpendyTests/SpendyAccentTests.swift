@@ -65,4 +65,30 @@ final class SpendyAccentTests: XCTestCase {
             XCTAssertEqual(foreground, preset.usesLightForeground ? 1 : 0, accuracy: 0.001)
         }
     }
+
+    @MainActor func testControlTintsStayReadableInBothAppearances() {
+        func luminance(_ color: UIColor, style: UIUserInterfaceStyle) -> Double {
+            let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            XCTAssertTrue(resolved.getRed(&r, green: &g, blue: &b, alpha: &a))
+            func linear(_ component: CGFloat) -> Double {
+                let value = Double(component)
+                return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+        }
+        for preset in SpendyAccentPreset.allCases {
+            let switchLuminance = luminance(UIColor(preset.switchTint), style: .light)
+            XCTAssertGreaterThanOrEqual(1.05 / (switchLuminance + 0.05), 3, preset.title)
+            for style in [UIUserInterfaceStyle.light, .dark] {
+                let background = style == .light ? 1.0 : 0.05
+                let value = luminance(UIColor(preset.contentTint), style: style)
+                XCTAssertGreaterThanOrEqual((max(value, background) + 0.05) / (min(value, background) + 0.05), 4.5, preset.title)
+                let fill = luminance(UIColor(preset.selectionFill), style: style)
+                let foreground = luminance(UIColor(preset.selectionForeground), style: style)
+                XCTAssertGreaterThanOrEqual((max(fill, foreground) + 0.05) / (min(fill, foreground) + 0.05), 4.5, preset.title)
+            }
+        }
+    }
+
 }
