@@ -78,8 +78,7 @@ struct GlassTabBar: View {
 
     private func dockContent(compact: Bool) -> some View {
         let spacing: CGFloat = compact ? 8 : (isExpanded ? 12 : 8)
-        return SpendyGlassEffectContainer(spacing: spacing) {
-            HStack(spacing: spacing) {
+        return HStack(spacing: spacing) {
                 // Navigation Circle Buttons with adaptive responsive spacing
                 HStack(spacing: spacing) {
                     // 1. Home Circle Liquid Glass Button
@@ -117,20 +116,15 @@ struct GlassTabBar: View {
                         HapticsManager.shared.trigger(.cardSnap)
                         onQuickAdd()
                     } label: {
-                        HStack(spacing: isExpanded ? 7 : 5) {
-                            Image(systemName: "plus")
-                                .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
-                            Text("Add")
-                                .font(.system(size: isExpanded ? 16 : 14, weight: .bold, design: .default))
-                        }
-                        .foregroundStyle(store.accentPreset.foreground)
+                        quickAddLabel
                         .padding(.horizontal, compact ? 16 : (isExpanded ? 24 : 18))
                         .frame(height: pillHeight)
                         .contentShape(Capsule())
+                        .modifier(HeroSpendLiquidGlassModifier(tint: store.accentPreset.fill))
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
-                    .modifier(HeroSpendLiquidGlassModifier(tint: store.accentPreset.fill))
                     .spendyNavigationSource(AppTransitionIDs.quickAddButton, in: composeNamespace)
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Add Transaction")
                     .accessibilityValue(store.accentPreset.title)
                     .accessibilityAddTraits(.isButton)
@@ -140,7 +134,17 @@ struct GlassTabBar: View {
             .frame(maxWidth: .infinity, alignment: selectedTab == .subscriptions ? .center : .leading)
             .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isExpanded)
             .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: selectedTab)
+    }
+
+    // Keep the accent action independent of the dock’s glass grouping.
+    private var quickAddLabel: some View {
+        HStack(spacing: isExpanded ? 7 : 5) {
+            Image(systemName: "plus")
+                .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
+            Text("Add")
+                .font(.system(size: isExpanded ? 16 : 14, weight: .bold))
         }
+        .foregroundStyle(store.accentPreset.foreground)
     }
 
     // MARK: - Navigation Circle Glass Button
@@ -226,10 +230,11 @@ struct HeroSpendLiquidGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
-                .glassEffect(
-                    .regular.interactive().tint(tint),
-                    in: .capsule
-                )
+                .background {
+                    Capsule()
+                        .fill(tint)
+                        .glassEffect(.regular.interactive().tint(tint), in: .capsule)
+                }
                 .shadow(color: tint.opacity(0.35), radius: 12, x: 0, y: 5)
         } else {
             content

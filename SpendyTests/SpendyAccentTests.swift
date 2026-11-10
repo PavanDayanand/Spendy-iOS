@@ -41,6 +41,13 @@ final class SpendyAccentTests: XCTestCase {
         XCTAssertEqual(destination.userName, "Restored user")
     }
 
+    @MainActor func testBlueUsesWhiteAndBrightPresetsUseBlack() {
+        XCTAssertTrue(SpendyAccentPreset.blue.usesLightForeground)
+        for preset in [SpendyAccentPreset.green, .pink, .yellow, .white] {
+            XCTAssertFalse(preset.usesLightForeground, preset.title)
+        }
+    }
+
     @MainActor func testEveryPresetHasReadableLabelContrast() {
         for preset in SpendyAccentPreset.allCases {
             let color = UIColor(preset.fill)
@@ -51,7 +58,11 @@ final class SpendyAccentTests: XCTestCase {
                 return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
             }
             let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
-            XCTAssertGreaterThanOrEqual((luminance + 0.05) / 0.05, 4.5, preset.title)
+            let ratio = preset.usesLightForeground ? 1.05 / (luminance + 0.05) : (luminance + 0.05) / 0.05
+            XCTAssertGreaterThanOrEqual(ratio, 4.5, preset.title)
+            var foreground: CGFloat = 0
+            XCTAssertTrue(UIColor(preset.foreground).getWhite(&foreground, alpha: nil))
+            XCTAssertEqual(foreground, preset.usesLightForeground ? 1 : 0, accuracy: 0.001)
         }
     }
 }

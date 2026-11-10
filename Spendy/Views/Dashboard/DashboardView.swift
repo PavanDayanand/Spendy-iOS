@@ -496,13 +496,13 @@ struct DashboardView: View {
                             heroSpendBarSection
                                 .padding(.top, 2)
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, AppSpacing.lg18)
                         .padding(.bottom, 12)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 + topInset + 58 }
                     }
                     .safeAreaBar(edge: .top, spacing: 0) {
                         homeHeaderPlaceholder
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, AppSpacing.lg18)
                             .padding(.top, topInset + 4)
                             .padding(.bottom, 10)
                     }
@@ -644,7 +644,7 @@ struct DashboardView: View {
         .overlay(alignment: .top) {
             if isSharedHeaderVisible || isDetailHeaderVisible {
                 sharedNavigationHeader
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, isSubpageActive ? AppSpacing.lg20 : AppSpacing.lg18)
                     .padding(.top, 4)
             }
         }

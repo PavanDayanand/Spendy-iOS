@@ -5,86 +5,50 @@ struct AppAccentSettingsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 110 : 56), spacing: 12)]
+        [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 160 : 136), spacing: 12)]
     }
 
     var body: some View {
+        @Bindable var store = store
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Appearance").font(.headline)
-                    Picker("Theme", selection: Binding(
-                        get: { store.appearanceMode },
-                        set: { store.appearanceMode = $0 }
-                    )) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.menu)
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Color scheme")
+                        .font(.headline)
+                    GlassSegmentedPicker(
+                        selection: $store.appearanceMode,
+                        items: [.system, .light, .dark],
+                        titleFor: { $0.rawValue },
+                        iconFor: { $0.sfSymbol }
+                    )
                 }
-                .padding(16)
-                .background(SpendyColors.settingsCardBackground, in: .rect(cornerRadius: 22))
 
-                Text("App accent").font(.headline)
-                VStack(spacing: 18) {
-                    HStack(spacing: 7) {
-                        Image(systemName: SFIcons.plus)
-                        Text("Add")
-                    }
-                    .font(.headline)
-                    .foregroundStyle(store.accentPreset.foreground)
-                    .padding(.horizontal, 28)
-                    .frame(height: 56)
-                    .modifier(HeroSpendLiquidGlassModifier(tint: store.accentPreset.fill))
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Add button preview")
-                    .accessibilityValue(store.accentPreset.title)
-                    .accessibilityIdentifier("accent-preview")
-                    Text("Preview").font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 28)
-
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(SpendyAccentPreset.allCases) { preset in
-                        Button { select(preset) } label: {
-                            VStack(spacing: 10) {
-                                Circle()
-                                    .fill(preset.fill)
-                                    .overlay { Circle().strokeBorder(SpendyColors.textPrimary.opacity(0.18), lineWidth: 1) }
-                                    .overlay {
-                                        if store.accentPreset == preset {
-                                            Image(systemName: SFIcons.checkmark)
-                                                .font(.headline).foregroundStyle(preset.foreground)
-                                        }
-                                    }
-                                    .frame(width: 44, height: 44)
-                                Text(preset.title).font(.subheadline)
-                                    .foregroundStyle(SpendyColors.textPrimary)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("App accent")
+                        .font(.headline)
+                    LazyVGrid(columns: columns, spacing: 14) {
+                        ForEach(SpendyAccentPreset.allCases) { preset in
+                            Button { select(preset) } label: {
+                                Label(preset.title, systemImage: store.accentPreset == preset ? "checkmark" : "plus")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(preset.foreground)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, minHeight: 52)
+                                    .padding(.vertical, 4)
+                                    .modifier(HeroSpendLiquidGlassModifier(tint: preset.fill))
                             }
-                            .frame(maxWidth: .infinity, minHeight: 78)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(preset.title) accent")
+                            .accessibilityValue(store.accentPreset == preset ? "Selected" : "Not selected")
+                            .accessibilityAddTraits(store.accentPreset == preset ? .isSelected : [])
+                            .accessibilityIdentifier("accent-\(preset.rawValue)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(preset.title) accent")
-                        .accessibilityValue(store.accentPreset == preset ? "Selected" : "Not selected")
-                        .accessibilityAddTraits(store.accentPreset == preset ? .isSelected : [])
-                        .accessibilityIdentifier("accent-\(preset.rawValue)")
                     }
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("A little color. Still Spendy.").font(.headline)
-                    Text("Applies to Add, transaction Save and budget Save buttons.")
-                        .font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
-                    Text("Available during beta. Part of Spendy Pro at launch.")
-                        .font(.footnote).foregroundStyle(SpendyColors.textSecondary)
-                }
-                .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: 560)
+            .foregroundStyle(SpendyColors.textPrimary)
             .padding(20)
+            .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
         .background(SpendyColors.settingsBackground)

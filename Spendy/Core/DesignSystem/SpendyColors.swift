@@ -116,12 +116,9 @@ enum SpendyColors {
         dark: UIColor(white: 18.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
-    // Neutral grouped surfaces, without the system grey's blue channel bias.
-    static let settingsBackground = Color(uiColor: .dynamic(
-        light: UIColor(white: 242.0/255.0, alpha: 1),
-        dark: .black
-    ))
-    static let settingsCardBackground = cardBackground
+    // Native grouped surfaces adapt to light/dark mode and sheet elevation.
+    static let settingsBackground = Color(uiColor: .systemGroupedBackground)
+    static let settingsCardBackground = Color(uiColor: .secondarySystemGroupedBackground)
 
     static let separator = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.10),

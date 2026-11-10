@@ -2,25 +2,15 @@
 //  AccountsView.swift
 //  Spendy
 //
-//  Accounts dashboard: black canvas, summary card with real money-in/out,
-//  swipeable insights, and a single grouped account list.
+//  Compact balance summary and grouped account directory.
 //
 
 import SwiftUI
 
-private struct AccountInsight: Identifiable {
-    let id: String
-    let headline: String
-    let supporting: String
-    let isWarning: Bool
-    let account: Account?
-}
-
 struct AccountsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .largeTitle) private var balanceFontSize = 40.0
+    @ScaledMetric(relativeTo: .title) private var balanceFontSize = 28.0
     
     var isSettingsPage: Bool = false
     var onDismiss: (() -> Void)? = nil
@@ -30,79 +20,9 @@ struct AccountsView: View {
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
     @State private var selectedAccountForAnalytics: Account? = nil
-    @State private var insightPage: String?
     
     private var sortedAccounts: [Account] {
         store.accounts.sorted { $0.order < $1.order }
-    }
-    
-    private var thisMonthFlow: (inflow: Double, outflow: Double) {
-        let calendar = Calendar.current
-        let now = Date()
-        let txs = store.transactions.filter {
-            calendar.isDate($0.date, equalTo: now, toGranularity: .month)
-                && calendar.isDate($0.date, equalTo: now, toGranularity: .year)
-        }
-        let inflow = txs.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-        let outflow = txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-        return (inflow, outflow)
-    }
-    
-    private var overdrawnAccounts: [Account] {
-        sortedAccounts.filter { store.balance(for: $0.id) < 0 }
-    }
-    
-    private var cardInsights: [AccountInsight] {
-        var items: [AccountInsight] = []
-        
-        if let worst = overdrawnAccounts.min(by: { store.balance(for: $0.id) < store.balance(for: $1.id) }) {
-            let bal = store.balance(for: worst.id)
-            items.append(AccountInsight(
-                id: "overdrawn_\(worst.id)",
-                headline: "\(worst.label) is overdrawn",
-                supporting: abs(bal).formattedCurrency(symbol: store.currencySymbol, decimals: 0) + " below zero",
-                isWarning: true,
-                account: worst
-            ))
-        }
-        
-        let flow = thisMonthFlow
-        let net = flow.inflow - flow.outflow
-        if flow.inflow > 0 || flow.outflow > 0 {
-            items.append(AccountInsight(
-                id: "month_flow",
-                headline: net >= 0 ? "You're ahead this month" : "You're behind this month",
-                supporting: "+\(flow.inflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) in · −\(flow.outflow.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) out",
-                isWarning: net < 0,
-                account: nil
-            ))
-        }
-        
-        if let largest = sortedAccounts.max(by: { store.balance(for: $0.id) < store.balance(for: $1.id) }),
-           store.balance(for: largest.id) > 0,
-           store.totalBalance > 0 {
-            let share = (store.balance(for: largest.id) / store.totalBalance) * 100
-            if share >= 40 {
-                items.append(AccountInsight(
-                    id: "largest_\(largest.id)",
-                    headline: "\(largest.label) holds most of your money",
-                    supporting: String(format: "%.0f%% of total balance", share),
-                    isWarning: false,
-                    account: largest
-                ))
-            }
-        }
-        
-        return Array(items.prefix(5))
-    }
-    
-    private var groupedCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(SpendyColors.separator, lineWidth: 0.8)
-            }
     }
     
     var body: some View {
@@ -118,22 +38,16 @@ struct AccountsView: View {
                     topHeaderBar
                 }
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 16) {
-                        summaryCard
-                            .padding(.horizontal, 20)
-                            .padding(.top, topControlsNamespace != nil ? 8 : 12)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Your accounts").font(.title3.weight(.semibold))
-                                Spacer()
-                                Text("\(sortedAccounts.count)").font(.subheadline)
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                            }
-                            accountsList
+                    VStack(alignment: .leading, spacing: 20) {
+                        balanceAmount
+                        if store.insightsEnabled && !sortedAccounts.isEmpty {
+                            SpendyInsightSummary(moments: accountInsights)
+                                .padding(.horizontal, 4)
                         }
-                        .padding(.horizontal, 20)
+                        accountsList
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
                     .padding(.bottom, 40)
                 }
             }
@@ -232,208 +146,85 @@ struct AccountsView: View {
         .padding(.bottom, 2)
     }
     
-    private var netWorthSparklinePoints: [CGFloat] {
+    // MARK: - Balance
+    private var thisMonthFlow: (income: Double, expenses: Double) {
+        let now = Date()
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let dayCount = 14
-        
-        var running = store.totalBalance
-        var values: [Double] = []
-        var cursor = today
-        
-        for _ in 0..<dayCount {
-            values.append(running)
-            let dayStart = cursor
-            guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
-            let dayTxs = store.transactions.filter {
-                $0.date >= dayStart && $0.date < dayEnd && $0.type != .transfer
-            }
-            for tx in dayTxs {
-                if tx.type == .income {
-                    running -= tx.amount
-                } else if tx.type == .expense {
-                    running += tx.amount
-                }
-            }
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor), previous < cursor else { break }
-            cursor = previous
+        let transactions = store.transactions.filter {
+            $0.date <= now && calendar.isDate($0.date, equalTo: now, toGranularity: .month)
+                && $0.amount.isFinite && $0.amount >= 0
         }
-        
-        values.reverse()
-        guard values.count >= 2 else { return [0.5, 0.5] }
-        let minVal = values.min() ?? 0
-        let maxVal = values.max() ?? 1
-        let span = (maxVal - minVal) == 0 ? 1 : (maxVal - minVal)
-        return values.map { CGFloat(($0 - minVal) / span) }
-    }
-    
-    // MARK: - Summary card
-    private var summaryCard: some View {
-        VStack(spacing: 0) {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Total balance").font(.subheadline)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                    .font(.system(size: balanceFontSize, weight: .bold))
-                    .monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.5)
-                    .accessibilityIdentifier("accounts-total-balance")
-                Text("Across all accounts").font(.footnote)
-                    .foregroundStyle(SpendyColors.textSecondary)
-            }
-            if !sortedAccounts.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SparklineView(points: netWorthSparklinePoints, color: SpendyColors.textPrimary,
-                        style: .area, height: 80, lineWidth: 2, showEndpoint: true)
-                        .frame(height: 80)
-                        .accessibilityHidden(true)
-                    Text("Balance trend · last 14 days").font(.caption)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                Divider()
-                Text("This month").font(.footnote.weight(.semibold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                let flow = thisMonthFlow
-                let layout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
-                    : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
-                layout {
-                    flowMetric("Money in", amount: flow.inflow, type: .income)
-                    flowMetric("Money out", amount: flow.outflow, type: .expense)
-                }
-            }
-        }
-        .foregroundStyle(SpendyColors.textPrimary)
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-            if store.insightsEnabled && !cardInsights.isEmpty {
-                Divider().overlay(SpendyColors.separator)
-                insightSection
-                    .padding(20)
-                    .background(SpendyColors.cardBackgroundSecondary)
-            }
-        }
-        .background { groupedCardBackground }
-        .clipShape(.rect(cornerRadius: 24))
+        return (
+            transactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount },
+            transactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+        )
     }
 
-    private func flowMetric(_ title: String, amount: Double, type: SpendyFlowType) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                SpendyFlowIndicator(type: type, size: 14, color: SpendyColors.textSecondary)
-                Text(title).font(.subheadline).foregroundStyle(SpendyColors.textSecondary)
-            }
-            Text(amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                .font(.headline).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.65)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var insightSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SpendyInsightBrandMark(style: .kicker, showsPersonalization: false)
-            insightPager
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    
-    private var insightPager: some View {
-        VStack(spacing: 8) {
-            if cardInsights.count == 1, let only = cardInsights.first {
-                insightRow(only)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 0) {
-                        ForEach(cardInsights) { item in
-                            insightRow(item)
-                                .containerRelativeFrame(.horizontal)
-                                .clipped()
-                                .id(item.id)
-                        }
-                    }
-                    .scrollTargetLayout()
-                }
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(id: $insightPage)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("accounts-insight-pager")
-                .onChange(of: insightPage) { _, _ in
-                    HapticsManager.shared.trigger(.selection)
-                }
-                
-                HStack(spacing: 5) {
-                    ForEach(cardInsights) { item in
-                        Capsule()
-                            .fill(item.id == (insightPage ?? cardInsights.first?.id) ? SpendyColors.textPrimary : SpendyColors.textTertiary.opacity(0.35))
-                            .frame(width: item.id == (insightPage ?? cardInsights.first?.id) ? 12 : 5, height: 5)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(true)
-            }
-        }
-        .onChange(of: cardInsights.map(\.id)) { _, _ in
-            insightPage = cardInsights.first?.id
-        }
-        .accessibilityHint(cardInsights.count > 1 ? "Swipe left or right for more insights" : "")
-    }
-    
-    private func insightRow(_ item: AccountInsight) -> some View {
-        Group {
-            if let account = item.account {
-                Button {
-                    HapticsManager.shared.trigger(.selection)
-                    selectedAccountForAnalytics = account
-                } label: {
-                    insightContent(item)
-                }
-                .buttonStyle(.plain)
-            } else {
-                insightContent(item)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("accounts-insight-\(item.id)")
-    }
-
-    private func insightContent(_ item: AccountInsight) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: item.account.map { $0.sfSymbol.isEmpty ? $0.type.defaultSymbol : $0.sfSymbol } ?? "arrow.left.arrow.right")
-                .font(.system(size: 16, weight: .medium))
+    private var balanceAmount: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Total balance")
+                .font(.subheadline)
                 .foregroundStyle(SpendyColors.textSecondary)
-                .frame(width: 22, height: 22)
-                .padding(.top, 1)
-                .symbolRenderingMode(.monochrome)
-
-            VStack(alignment: .leading, spacing: 3) {
-                ShinyHeadlineText(
-                    headline: item.headline,
-                    emphasis: item.account.map { [.highlight($0.label)] } ?? [.highlight("ahead"), .highlight("behind")],
-                    font: .subheadline.weight(.semibold),
-                    emphasisFont: .subheadline.bold()
-                )
+            Text(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+                .font(.system(size: balanceFontSize, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(SpendyColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-
-                InsightSupportingText(text: item.supporting, emphasis: [])
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 8)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .padding(.top, 4)
-                .opacity(item.account == nil ? 0 : 1)
-                .accessibilityHidden(true)
+                .accessibilityIdentifier("accounts-total-balance")
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
-        .contentShape(Rectangle())
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
-    
+
+    private var accountInsights: [InsightMoment] {
+        var moments: [InsightMoment] = []
+        let balances = sortedAccounts.map { (account: $0, balance: store.balance(for: $0.id)) }
+        let belowZero = balances.filter { $0.balance < 0 }
+        if let lowest = belowZero.min(by: { $0.balance < $1.balance }) {
+            moments.append(InsightMoment(
+                id: "accounts-below-zero", candidateId: "accounts-below-zero",
+                kind: .warning, family: .spending, surface: .analytics,
+                headline: "\(lowest.account.label) has a negative balance",
+                supportingText: "Recorded balance: \(lowest.balance.formattedCurrency(symbol: store.currencySymbol, decimals: 2)). This can include money owed.",
+                emphasis: [.highlight(lowest.account.label)],
+                attentionPriority: 1, attentionLabel: "Negative balance"
+            ))
+        }
+
+        let (income, expenses) = thisMonthFlow
+        if income > 0 || expenses > 0 {
+            moments.append(InsightMoment(
+                id: "accounts-month-flow", candidateId: "accounts-month-flow",
+                kind: .observation, family: .income, surface: .analytics,
+                headline: "Money in and out this month",
+                supportingText: "\(income.formattedCurrency(symbol: store.currencySymbol, decimals: 2)) recorded income · \(expenses.formattedCurrency(symbol: store.currencySymbol, decimals: 2)) recorded expenses. Transfers between accounts are excluded."
+            ))
+        }
+
+        let positiveTotal = balances.reduce(0) { $0 + max(0, $1.balance) }
+        if balances.count > 1, positiveTotal > 0,
+           let largest = balances.max(by: { $0.balance < $1.balance }) {
+            let share = (largest.balance / positiveTotal * 100).formatted(.number.precision(.fractionLength(0)))
+            moments.append(InsightMoment(
+                id: "accounts-largest-balance", candidateId: "accounts-largest-balance",
+                kind: .observation, family: .spending, surface: .analytics,
+                headline: "\(largest.account.label) has your largest balance",
+                supportingText: "\(share)% of your positive recorded balances.",
+                emphasis: [.highlight(largest.account.label)]
+            ))
+        }
+
+        if moments.isEmpty {
+            moments.append(InsightMoment(
+                id: "accounts-recorded-balance", candidateId: "accounts-recorded-balance",
+                kind: .observation, family: .spending, surface: .analytics,
+                headline: "Your recorded account balance",
+                supportingText: "\(store.totalBalance.formattedCurrency(symbol: store.currencySymbol, decimals: 2)) across your accounts, based on opening balances and recorded transactions."
+            ))
+        }
+        return moments
+    }
+
     // MARK: - Grouped list
     private var accountsList: some View {
         Group {
@@ -449,7 +240,7 @@ struct AccountsView: View {
             } else {
                 SpendyGroupedList(items: sortedAccounts,
                     background: isSettingsPage ? SpendyColors.settingsCardBackground : SpendyColors.cardBackground,
-                    iconWidth: 56) { account in
+                    iconWidth: 44) { account in
                     accountRow(account)
                 }
             }
@@ -463,11 +254,11 @@ struct AccountsView: View {
             HapticsManager.shared.trigger(.selection)
             selectedAccountForAnalytics = account
         } label: {
-            SpendyRowContent(spacing: 12, iconWidth: 56) {
+            SpendyRowContent(spacing: 12, iconWidth: 44) {
                 SpendyIconBadge(
                     sfSymbol: account.sfSymbol.isEmpty ? account.type.defaultSymbol : account.sfSymbol,
                     color: account.color,
-                    size: .large,
+                    size: .medium,
                     style: .rounded(),
                     monogramName: account.label
                 )
@@ -490,7 +281,7 @@ struct AccountsView: View {
                     .foregroundStyle(bal < 0 ? SpendyColors.expenseRed : SpendyColors.textPrimary)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.vertical, 13)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

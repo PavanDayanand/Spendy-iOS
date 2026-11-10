@@ -9,6 +9,7 @@ struct SpendyInsightSummary: View {
     var canSelect: (InsightDestination) -> Bool = { _ in true }
     var onSelect: ((InsightDestination) -> Void)? = nil
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
@@ -58,33 +59,18 @@ struct SpendyInsightSummary: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            SpendyInsightBrandMark(style: .kicker)
-                            Spacer()
-                        }
-                        .frame(minHeight: 44)
-                        .overlay(alignment: .trailing) {
-                            if useful.count > 1 {
-                                Button {
-                                    if offersCategoryTip { CategoryNextInsightTip().invalidate(reason: .actionPerformed) }
-                                    advance()
-                                    HapticsManager.shared.trigger(.selection)
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Text("\(page + 1) / \(useful.count)")
-                                        Image(systemName: "arrow.right")
-                                    }
-                                    .font(.caption2.weight(.medium).monospacedDigit())
-                                    .foregroundStyle(SpendyColors.textSecondary)
-                                    .frame(minWidth: 60, minHeight: 44)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Next insight")
-                                .accessibilityValue("Insight \(page + 1) of \(useful.count)")
-                                .accessibilityIdentifier("next-insight")
-                                .popoverTip(tipsAllowed && offersCategoryTip ? categoryTipGroup?.currentTip as? CategoryNextInsightTip : nil)
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) {
+                                SpendyInsightBrandMark(style: .kicker)
+                                nextInsightButton
                             }
+                        } else {
+                            HStack {
+                                SpendyInsightBrandMark(style: .kicker)
+                                Spacer()
+                            }
+                            .frame(minHeight: 44)
+                            .overlay(alignment: .trailing) { nextInsightButton }
                         }
                         Group {
                             if let destination = moment.destination, let onSelect, canSelect(destination) {
@@ -123,6 +109,31 @@ struct SpendyInsightSummary: View {
                 if let selectedID, !ids.contains(selectedID) { self.selectedID = nil }
                 if old.first != ids.first && (useful.first?.attentionPriority ?? 0) > 0 { selectedID = nil }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var nextInsightButton: some View {
+        if useful.count > 1 {
+            Button {
+                if offersCategoryTip { CategoryNextInsightTip().invalidate(reason: .actionPerformed) }
+                advance()
+                HapticsManager.shared.trigger(.selection)
+            } label: {
+                HStack(spacing: 8) {
+                    Text("\(page + 1) / \(useful.count)")
+                    Image(systemName: "arrow.right")
+                }
+                .font(.caption2.weight(.medium).monospacedDigit())
+                .foregroundStyle(SpendyColors.textSecondary)
+                .frame(minWidth: 60, minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Next insight")
+            .accessibilityValue("Insight \(page + 1) of \(useful.count)")
+            .accessibilityIdentifier("next-insight")
+            .popoverTip(tipsAllowed && offersCategoryTip ? categoryTipGroup?.currentTip as? CategoryNextInsightTip : nil)
         }
     }
 

@@ -1,42 +1,98 @@
 import XCTest
 
 final class AccountsNavigationUITests: XCTestCase {
-    @MainActor func testAccountInsightsKeepTheirLayoutAcrossPages() {
-        verifyInsightPages(largeText: false)
+    @MainActor func testAccountDirectoryVisibleWithoutScrollingLight() {
+        verifyAccountDirectory(light: true, largeText: false)
     }
 
-    @MainActor func testAccountInsightsFitLargeText() {
-        verifyInsightPages(largeText: true)
+    @MainActor func testAccountDirectoryVisibleWithoutScrollingDark() {
+        verifyAccountDirectory(light: false, largeText: false)
     }
 
-    @MainActor private func verifyInsightPages(largeText: Bool) {
+    @MainActor func testAccountDirectoryFitsLargeText() {
+        verifyAccountDirectory(light: true, largeText: true, fromSettings: true)
+    }
+
+    @MainActor func testSettingsAccountDirectoryVisibleWithoutScrolling() {
+        verifyAccountDirectory(light: false, largeText: false, fromSettings: true)
+    }
+
+    @MainActor func testAccountsRespectInsightsSetting() {
         let app = XCUIApplication()
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "accounts-insights"
-        app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = "light"
+        app.launch()
+        XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 15))
+        button("home-profile", in: app).tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Spendy Insights")).firstMatch.tap()
+        let toggle = app.switches["Spendy Insights"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        if toggle.value as? String == "1" {
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        let disabled = expectation(for: NSPredicate(format: "value == %@", "0"), evaluatedWith: toggle)
+        wait(for: [disabled], timeout: 5)
+        capture(app, "Spendy Insights switched off")
+        app.navigationBars["Spendy Insights"].buttons.element(boundBy: 0).tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Accounts")).firstMatch.tap()
+        XCTAssertTrue(button("account-row-credit", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Credit Card has a negative balance"].exists)
+        XCTAssertFalse(button("next-insight", in: app).exists)
+        capture(app, "Accounts with Insights disabled in Settings")
+    }
+
+    @MainActor private func verifyAccountDirectory(light: Bool, largeText: Bool, fromSettings: Bool = false) {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "accounts-insights"
+        app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1"
+        app.launchEnvironment["SPENDY_UI_TEST_APPEARANCE"] = light ? "light" : "dark"
         if largeText {
             app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
         app.launch()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 15))
-        button("All Accounts", in: app).tap()
-        button("home-manage-accounts", in: app).tap()
-        expectHeader("Accounts", in: app)
-        let pager = app.scrollViews["accounts-insight-pager"].firstMatch
-        XCTAssertTrue(pager.waitForExistence(timeout: 5))
-        let height = pager.frame.height
-        XCTAssertGreaterThan(height, 40)
-        capture(app, largeText ? "Account insight first page large text" : "Account insight first page")
-        pager.swipeLeft()
-        XCTAssertTrue(app.staticTexts["You're behind this month"].isHittable)
-        XCTAssertEqual(pager.frame.height, height, accuracy: 2)
-        capture(app, largeText ? "Account insight second page large text" : "Account insight second page")
-        pager.swipeLeft()
-        let third = button("accounts-insight-largest_bank", in: app)
-        XCTAssertTrue(third.isHittable)
-        XCTAssertEqual(pager.frame.height, height, accuracy: 2)
-        capture(app, largeText ? "Account insight third page large text" : "Account insight third page")
-        third.tap()
-        expectHeader("Main Bank", in: app)
+        if fromSettings {
+            button("home-profile", in: app).tap()
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Accounts")).firstMatch.tap()
+        } else {
+            button("All Accounts", in: app).tap()
+            button("home-manage-accounts", in: app).tap()
+            expectHeader("Accounts", in: app)
+        }
+        XCTAssertFalse(app.scrollViews["accounts-insight-pager"].exists)
+        let first = button("account-row-cash", in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        if !largeText {
+            XCTAssertTrue(first.isHittable, "The account list must start on the first screen")
+        }
+        XCTAssertFalse(button("accounts-open-insights", in: app).exists)
+        XCTAssertFalse(app.navigationBars["Spendy insights"].exists)
+        XCTAssertTrue(app.staticTexts["Credit Card has a negative balance"].waitForExistence(timeout: 5), "Insights are visible by default")
+        capture(app, "Default account insights")
+        button("next-insight", in: app).tap()
+        XCTAssertTrue(app.staticTexts["Money in and out this month"].exists)
+        button("next-insight", in: app).tap()
+        XCTAssertTrue(app.staticTexts["Main Bank has your largest balance"].exists)
+        capture(app, "Inline account balance insight")
+        let last = button("account-row-credit", in: app)
+        if largeText {
+            for _ in 0..<6 {
+                if last.isHittable { break }
+                app.swipeUp()
+            }
+            XCTAssertTrue(last.isHittable, "All accounts remain reachable at accessibility sizes")
+        } else {
+            XCTAssertTrue(last.isHittable, "Three accounts should fit without scrolling")
+            XCTAssertLessThanOrEqual(last.frame.maxY, app.frame.maxY)
+            XCTAssertGreaterThanOrEqual(first.frame.height, 44)
+            XCTAssertLessThanOrEqual(first.frame.height, 80)
+        }
+        capture(app, "Compact Accounts \(light ? "light" : "dark")\(largeText ? " large text" : "")\(fromSettings ? " from Settings" : "")")
+        last.tap()
+        if fromSettings {
+            XCTAssertTrue(app.navigationBars["Credit Card"].waitForExistence(timeout: 5))
+        } else {
+            expectHeader("Credit Card", in: app)
+        }
     }
 
     @MainActor func testManageAccountsHeaderAndReturnDark() {

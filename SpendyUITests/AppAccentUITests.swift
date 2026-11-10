@@ -55,6 +55,32 @@ final class AppAccentUITests: XCTestCase {
         }
     }
 
+    @MainActor func testThemeChoicesUseFullWidthControl() {
+        let app = openPicker(light: true)
+        let system = app.buttons["System"]
+        let dark = app.buttons["Dark"]
+        XCTAssertTrue(system.exists)
+        XCTAssertGreaterThan(dark.frame.maxX - system.frame.minX, app.frame.width * 0.65)
+        for name in ["Dark", "Light", "System"] {
+            app.buttons[name].tap()
+            XCTAssertTrue(app.buttons[name].isSelected)
+            capture(app, "Appearance theme \(name)")
+        }
+    }
+
+    @MainActor func testSimpleAppearanceAndWhiteHomeAction() {
+        let app = openPicker()
+        app.buttons["accent-blue"].tap()
+        capture(app, "Simple Appearance with blue selected")
+        app.buttons["accent-white"].tap()
+        capture(app, "Simple Appearance with white selected")
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["Add Transaction"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["Add Transaction"].value as? String, "White")
+        capture(app, "White Home Add label")
+    }
+
     @MainActor func testLargeTextPresetsStayAccessible() {
         let app = openPicker(light: true, largeText: true)
         let yellow = app.buttons["accent-yellow"]
