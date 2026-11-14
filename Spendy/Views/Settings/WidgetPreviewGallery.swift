@@ -10,8 +10,6 @@ struct WidgetPreviewGallery: View {
     enum Family: String, CaseIterable, Identifiable {
         case small = "Small"
         case medium = "Medium"
-        case large = "Large"
-        case extraLarge = "XL"
 
         var id: Self { self }
     }
@@ -37,12 +35,6 @@ struct WidgetPreviewGallery: View {
                     smallWidgets
                 case .medium:
                     mediumWidgets
-                case .large:
-                    largeWidgets
-                case .extraLarge:
-                    WidgetPreviewCard(title: "Monthly brief · iPad", family: .systemExtraLarge) {
-                        SpendyLargeOverviewWidgetView(snapshot: snapshot, previewFamily: .systemExtraLarge)
-                    }
                 }
             }
             .id(selectedFamily)
@@ -65,6 +57,10 @@ struct WidgetPreviewGallery: View {
                 SpendySmallWidgetView(snapshot: snapshot)
             }
 
+            WidgetPreviewCard(title: "Subscriptions", family: .systemSmall) {
+                SpendySubscriptionsWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
+            }
+
             WidgetPreviewCard(title: "Budget", family: .systemSmall) {
                 SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
             }
@@ -79,6 +75,10 @@ struct WidgetPreviewGallery: View {
             WidgetPreviewCard(title: "Quick actions", family: .systemSmall) {
                 SpendyQuickActionsWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
             }
+
+            WidgetPreviewCard(title: "Spending pulse", family: .systemSmall) {
+                SpendyWeekWidgetView(snapshot: snapshot, previewFamily: .systemSmall)
+            }
         }
     }
 
@@ -86,6 +86,10 @@ struct WidgetPreviewGallery: View {
         VStack(spacing: 16) {
             WidgetPreviewCard(title: "Spending pulse", family: .systemMedium) {
                 SpendyWeekWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
+            }
+
+            WidgetPreviewCard(title: "Subscriptions", family: .systemMedium) {
+                SpendySubscriptionsWidgetView(snapshot: snapshot, previewFamily: .systemMedium)
             }
 
             WidgetPreviewCard(title: "Budget", family: .systemMedium) {
@@ -101,20 +105,6 @@ struct WidgetPreviewGallery: View {
             }
         }
     }
-
-    private var largeWidgets: some View {
-        VStack(spacing: 16) {
-            WidgetPreviewCard(title: "Monthly brief", family: .systemLarge) {
-                SpendyLargeOverviewWidgetView(snapshot: snapshot, previewFamily: .systemLarge)
-            }
-            WidgetPreviewCard(title: "Budget", family: .systemLarge) {
-                SpendyBudgetWidgetView(snapshot: snapshot, previewFamily: .systemLarge)
-            }
-            WidgetPreviewCard(title: "Where it went", family: .systemLarge) {
-                SpendyMediumCategoriesWidgetView(previewFamily: .systemLarge, snapshot: snapshot)
-            }
-        }
-    }
 }
 
 private struct WidgetPreviewCard<Content: View>: View {
@@ -125,8 +115,6 @@ private struct WidgetPreviewCard<Content: View>: View {
     private var designSize: CGSize {
         switch family {
         case .systemMedium: CGSize(width: 338, height: 158)
-        case .systemLarge: CGSize(width: 338, height: 354)
-        case .systemExtraLarge: CGSize(width: 715.5, height: 342)
         default: CGSize(width: 158, height: 158)
         }
     }

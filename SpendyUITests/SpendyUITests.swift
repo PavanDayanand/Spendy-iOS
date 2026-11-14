@@ -350,7 +350,7 @@ final class SpendyUITests: XCTestCase {
     @MainActor private func verifyMinimalWidgets(light: Bool) {
         let app = launch("widgets", light: light)
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
-        let widgets = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "widgets")).firstMatch
+        let widgets = app.buttons["settings-widgets"]
         for _ in 0..<6 {
             if widgets.isHittable { break }
             app.swipeUp()
@@ -358,9 +358,6 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(widgets.waitForExistence(timeout: 5))
         widgets.tap()
         XCTAssertTrue(app.staticTexts["Widgets that feel like Spendy"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.links["Add"].exists)
-        XCTAssertTrue(app.links["Scan"].exists)
-        XCTAssertTrue(app.links["Trends"].exists)
         func capture(_ section: String) {
             let shot = XCTAttachment(screenshot: app.screenshot())
             shot.name = "Minimal widgets \(light ? "light" : "dark") \(section)"
@@ -368,16 +365,23 @@ final class SpendyUITests: XCTestCase {
             add(shot)
         }
         capture("small")
+        app.swipeUp()
+        XCTAssertTrue(app.links["Add"].exists)
+        XCTAssertTrue(app.links["Scan"].exists)
+        XCTAssertTrue(app.links["Trends"].exists)
+        capture("small lower")
+        app.swipeDown()
 
         let familyPicker = app.segmentedControls["widget-family-picker"]
         XCTAssertTrue(familyPicker.waitForExistence(timeout: 5))
         familyPicker.buttons["Medium"].tap()
         capture("medium")
+        app.swipeUp()
+        capture("medium lower")
+        app.swipeDown()
 
-        familyPicker.buttons["Large"].tap()
-        capture("large")
-        familyPicker.buttons["XL"].tap()
-        capture("extra large")
+        XCTAssertFalse(familyPicker.buttons["Large"].exists)
+        XCTAssertFalse(familyPicker.buttons["XL"].exists)
     }
 
     @MainActor func testRemainingCategoriesOpenAndReturnToAnalytics() {

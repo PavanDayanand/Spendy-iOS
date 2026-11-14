@@ -58,6 +58,7 @@ struct SubscriptionProgressRingBadge: View {
     var size: Size
     var showRing: Bool
     var monogramName: String = ""
+    var animatesProgress: Bool = true
     
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isMonoIconMode) private var isMonoMode
@@ -74,7 +75,8 @@ struct SubscriptionProgressRingBadge: View {
         isOverdue: Bool = false,
         size: Size = .medium,
         showRing: Bool = true,
-        monogramName: String = ""
+        monogramName: String = "",
+        animatesProgress: Bool = true
     ) {
         self.sfSymbol = sfSymbol
         self.color = color
@@ -85,6 +87,7 @@ struct SubscriptionProgressRingBadge: View {
         self.size = size
         self.showRing = showRing
         self.monogramName = monogramName
+        self.animatesProgress = animatesProgress
     }
     
     init(
@@ -113,6 +116,7 @@ struct SubscriptionProgressRingBadge: View {
     }
     
     private var ringColor: Color { paint.fill }
+    private var displayedProgress: Double { animatesProgress ? animatedProgress : progress }
     
     var body: some View {
         ZStack {
@@ -130,9 +134,9 @@ struct SubscriptionProgressRingBadge: View {
                     )
                 
                 // Active Progress Arc (exact same color as the icon)
-                if !isPaused && animatedProgress > 0 {
+                if !isPaused && displayedProgress > 0 {
                     Circle()
-                        .trim(from: 0, to: CGFloat(min(max(animatedProgress, 0.0), 1.0)))
+                        .trim(from: 0, to: CGFloat(min(max(displayedProgress, 0.0), 1.0)))
                         .stroke(
                             ringColor,
                             style: StrokeStyle(

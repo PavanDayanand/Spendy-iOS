@@ -92,6 +92,11 @@ final class ExpenseStore {
                 }
             }
             if mode == "widgets" {
+                fixture.subscriptions = [
+                    Subscription(name: "Music", amount: 119, nextBillingDate: Date().addingTimeInterval(86400 * 3), sfSymbol: "music.note", colorHex: "#FA426A"),
+                    Subscription(name: "Cloud storage", amount: 75, nextBillingDate: Date().addingTimeInterval(86400 * 6), sfSymbol: "icloud.fill", colorHex: "#007AFF"),
+                    Subscription(name: "Film club", amount: 299, nextBillingDate: Date().addingTimeInterval(86400 * 12), sfSymbol: "play.fill", colorHex: "#AF52DE")
+                ]
                 fixture.budget = Budget(amount: 1200, isActive: true)
                 let amounts = [45.0, 180, 25, 90, 65, 120, 40]
                 let categories = ["groceries", "coffee", "restaurants"]
@@ -1579,32 +1584,6 @@ final class ExpenseStore {
     }
 
     
-    func resetToSampleData() {
-        self.userName = SpendyDefaultData.userName
-        self.soundEnabled = true
-        self.insightsEnabled = true
-        self.weeklySummaryEnabled = false
-        self.loggingRemindersEnabled = false
-        self.budgetAlertsEnabled = false
-        self.hapticsEnabled = true
-        self.hasCompletedOnboarding = true
-        self.appearanceMode = SpendyDefaultData.appearanceMode
-        self.accentPreset = .white
-        self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
-        self.topGradientHue = SpendyDefaultData.topGradientHue
-        self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
-        self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
-        self.accounts = SpendyDefaultData.accounts
-        self.customFolders = SpendyDefaultData.customFolders
-        self.categories = SpendyDefaultData.categories
-        self.subscriptions = SpendyDefaultData.subscriptions
-        self.transactions = SpendyDefaultData.transactions
-        self.budget = SpendyDefaultData.budget
-        self.currencySymbol = SpendyDefaultData.currencySymbol
-        self.currencyCode = SpendyDefaultData.currencyCode
-        scheduleSave()
-    }
-    
     func eraseAllData() {
         if startsServices {
             do { try ReceiptShareStore.clear() }
@@ -1775,7 +1754,9 @@ final class ExpenseStore {
                object["categories"] is [String: Any], importWebExportJSON(data: data) {
                 return true
             }
-            print("Failed to import JSON data: \(error.localizedDescription)")
+            #if DEBUG
+            print("Spendy backup import failed.")
+            #endif
             HapticsManager.shared.trigger(.error)
             return false
         }

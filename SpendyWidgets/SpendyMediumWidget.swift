@@ -15,7 +15,7 @@ struct SpendyWeekWidget: Widget {
         }
         .configurationDisplayName("Spending Pulse")
         .description("See your spending over the last seven days.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
+        .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
 }
@@ -57,21 +57,7 @@ struct SpendyCategoriesWidget: Widget {
         }
         .configurationDisplayName("Where It Went")
         .description("See where your money went this month.")
-        .supportedFamilies([.systemMedium, .systemLarge, .systemExtraLarge])
-        .contentMarginsDisabled()
-    }
-}
-
-struct SpendyOverviewWidget: Widget {
-    let kind = "SpendyOverviewWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SpendyWidgetTimelineProvider()) { entry in
-            SpendyLargeOverviewWidgetView(snapshot: entry.snapshot)
-        }
-        .configurationDisplayName("Monthly Brief")
-        .description("A monthly comparison, seven-day trend, top category, and budget room.")
-        .supportedFamilies([.systemLarge, .systemExtraLarge])
+        .supportedFamilies([.systemMedium])
         .contentMarginsDisabled()
     }
 }

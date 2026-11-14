@@ -41,3 +41,5 @@ Thumbs.db
 
 # Personal exported ledgers
 /spendy_backup*.json
+
+/spendy_demo_data.json

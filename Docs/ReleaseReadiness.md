@@ -1,3 +1,5 @@
+> Latest cleanup and beta status: [BetaReadiness.md](BetaReadiness.md). The validation record below is historical.
+
 # Release readiness — 10 October 2026
 
 The app has a repeatable regression suite and safer local persistence. Passing these checks is evidence for the tested flows; it is not an App Store approval or exhaustive product certification.

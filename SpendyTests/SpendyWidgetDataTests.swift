@@ -67,4 +67,44 @@ final class SpendyWidgetDataTests: XCTestCase {
         XCTAssertTrue(result.categorySpending.isEmpty)
         XCTAssertNil(result.previousMonthToDateTotal)
     }
+
+    func testOldSnapshotWithoutSubscriptionsStillDecodes() throws {
+        let data = Data("{\"todayTotal\":42}".utf8)
+        let snapshot = try JSONDecoder().decode(SpendyWidgetSnapshot.self, from: data)
+        XCTAssertEqual(snapshot.todayTotal, 42)
+        XCTAssertTrue(snapshot.subscriptions.isEmpty)
+    }
+
+    func testRenewalsSurviveMidnightAndSiriExpense() {
+        let manager = manager()
+        let item = WidgetSubscriptionItem(id: "music", name: "Music", amount: 119,
+            renewalDate: Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded() + 86400 * 3), sfSymbol: "music.note", colorHex: "#FA426A", isTrial: true)
+        manager.saveSnapshot(SpendyWidgetSnapshot(subscriptions: [item]))
+        manager.recordLoggedTransaction(amount: 25, isExpense: true, categoryId: "coffee", categoryName: "Coffee",
+            categorySymbol: "cup.and.saucer", categoryColorHex: "#000000", note: nil)
+        XCTAssertEqual(manager.loadSnapshot().subscriptions, [item])
+        XCTAssertEqual(manager.loadSnapshot(asOf: Date().addingTimeInterval(86400)).subscriptions, [item])
+    }
+
+    @MainActor func testPublishedRenewalsExcludePausedCancelledAndRecordedPayments() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        let store = ExpenseStore(storageURL: url, startsServices: false)
+        let paid = Subscription(name: "Paid", amount: 49, nextBillingDate: Date().addingTimeInterval(-3600))
+        let next = Subscription(name: "Music", amount: 119, nextBillingDate: Date().addingTimeInterval(86400), isTrial: true,
+            sfSymbol: "music.note", colorHex: "#FA426A")
+        store.subscriptions = [
+            Subscription(name: "Later", amount: 299, nextBillingDate: Date().addingTimeInterval(86400 * 6)),
+            Subscription(name: "Paused", amount: 999, isPaused: true),
+            Subscription(name: "Cancelled", amount: 999, status: "cancelled"), paid, next
+        ]
+        store.transactions = [Transaction(title: "Paid renewal", amount: 49, categoryId: "subscriptions", accountId: "bank",
+            subscriptionId: paid.id.uuidString)]
+        let manager = manager()
+        manager.updateSnapshot(from: store)
+        let items = manager.loadSnapshot().subscriptions
+        XCTAssertEqual(items.map(\.name), ["Music", "Later"])
+        XCTAssertEqual(items.first?.amount, 119)
+        XCTAssertEqual(items.first?.sfSymbol, "music.note")
+        XCTAssertEqual(items.first?.isTrial, true)
+    }
 }

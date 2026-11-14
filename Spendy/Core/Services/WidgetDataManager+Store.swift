@@ -174,6 +174,14 @@ extension WidgetDataManager {
             recentTransactions: recentItems,
             topCategories: topCategories,
             categorySpending: categorySpending,
+            subscriptions: SubscriptionRenewalAttention.activeUnrecorded(
+                store.subscriptions, transactions: store.transactions, now: now, calendar: calendar
+            ).sorted {
+                $0.nextBillingDate == $1.nextBillingDate ? $0.id.uuidString < $1.id.uuidString : $0.nextBillingDate < $1.nextBillingDate
+            }.map {
+                WidgetSubscriptionItem(id: $0.id.uuidString, name: $0.name, amount: $0.amount,
+                    renewalDate: $0.nextBillingDate, sfSymbol: $0.sfSymbol, colorHex: $0.colorHex, isTrial: $0.isTrial, cycleStart: $0.cycleStartDate)
+            },
             daysLeft: daysLeft,
             pacingCaption: pacingCaption,
             lastUpdated: now

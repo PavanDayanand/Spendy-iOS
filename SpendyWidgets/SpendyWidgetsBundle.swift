@@ -14,7 +14,7 @@ struct SpendyWidgetsBundle: WidgetBundle {
         SpendyQuickActionsWidget()
         SpendyWeekWidget()
         SpendyCategoriesWidget()
-        SpendyOverviewWidget()
+        SpendySubscriptionsWidget()
         SpendyLockWidget()
         SpendyLogControl()
         SpendyQuickAddControl()

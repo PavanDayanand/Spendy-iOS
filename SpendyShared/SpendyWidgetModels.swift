@@ -177,6 +177,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
     let recentTransactions: [WidgetTransactionItem]
     let topCategories: [WidgetCategorySpend]
     let categorySpending: [WidgetCategorySpend]
+    let subscriptions: [WidgetSubscriptionItem]
     let daysLeft: Int
     let pacingCaption: String
     let lastUpdated: Date
@@ -203,6 +204,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         recentTransactions: [WidgetTransactionItem] = [],
         topCategories: [WidgetCategorySpend] = [],
         categorySpending: [WidgetCategorySpend] = [],
+        subscriptions: [WidgetSubscriptionItem] = [],
         daysLeft: Int = 0,
         pacingCaption: String = "",
         lastUpdated: Date = Date()
@@ -228,6 +230,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         self.recentTransactions = recentTransactions
         self.topCategories = topCategories
         self.categorySpending = categorySpending
+        self.subscriptions = subscriptions
         self.daysLeft = daysLeft
         self.pacingCaption = pacingCaption
         self.lastUpdated = lastUpdated
@@ -238,6 +241,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         case todayTotal, todayIncome, monthTotal, previousMonthToDateTotal
         case remainingBudget, budgetTotal, budgetProgress, budgetOverage, budgetPeriod, budgetCycleEnd
         case topCategoryName, topCategorySymbol, topCategoryColorHex, topCategoryAmount
+        case subscriptions
         case weeklySpending, recentTransactions, topCategories, categorySpending, daysLeft, pacingCaption, lastUpdated
     }
 
@@ -264,6 +268,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         recentTransactions = try container.decodeIfPresent([WidgetTransactionItem].self, forKey: .recentTransactions) ?? []
         topCategories = try container.decodeIfPresent([WidgetCategorySpend].self, forKey: .topCategories) ?? []
         categorySpending = try container.decodeIfPresent([WidgetCategorySpend].self, forKey: .categorySpending) ?? topCategories
+        subscriptions = try container.decodeIfPresent([WidgetSubscriptionItem].self, forKey: .subscriptions) ?? []
         daysLeft = try container.decodeIfPresent(Int.self, forKey: .daysLeft) ?? 0
         pacingCaption = try container.decodeIfPresent(String.self, forKey: .pacingCaption) ?? ""
         lastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()
@@ -360,6 +365,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
             recentTransactions: recentTransactions,
             topCategories: Array(categories.prefix(3)),
             categorySpending: categories,
+            subscriptions: subscriptions,
             daysLeft: remainingDays,
             pacingCaption: caption,
             lastUpdated: lastUpdated
@@ -437,6 +443,11 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
                 WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", amount: 312),
                 WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", amount: 148),
                 WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", amount: 96)
+            ],
+            subscriptions: [
+                WidgetSubscriptionItem(id: "music", name: "Music", amount: 119, renewalDate: Date().addingTimeInterval(86400 * 3), sfSymbol: "music.note", colorHex: "#FA426A", isTrial: false),
+                WidgetSubscriptionItem(id: "cloud", name: "Cloud storage", amount: 75, renewalDate: Date().addingTimeInterval(86400 * 6), sfSymbol: "icloud.fill", colorHex: "#007AFF", isTrial: false),
+                WidgetSubscriptionItem(id: "film", name: "Film club", amount: 299, renewalDate: Date().addingTimeInterval(86400 * 12), sfSymbol: "play.fill", colorHex: "#AF52DE", isTrial: false)
             ],
             daysLeft: 14,
             pacingCaption: "₹47 per day left",
@@ -739,6 +750,7 @@ nonisolated final class WidgetDataManager: @unchecked Sendable {
                 recentTransactions: Array(recent),
                 topCategories: Array(categorySpending.prefix(3)),
                 categorySpending: categorySpending,
+                subscriptions: snapshot.subscriptions,
                 daysLeft: snapshot.daysLeft,
                 pacingCaption: pacingCaption,
                 lastUpdated: Date()

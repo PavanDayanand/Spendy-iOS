@@ -73,6 +73,11 @@ struct SettingsView: View {
                             }
                             .accessibilityIdentifier("settings-app-accent")
                             groupDivider
+                            NavigationLink(value: SettingsDestination.widgets) {
+                                linkRow(icon: "rectangle.on.rectangle", title: "Widgets", value: nil)
+                            }
+                            .accessibilityIdentifier("settings-widgets")
+                            groupDivider
                             NavigationLink(value: SettingsDestination.insights) {
                                 linkRow(icon: SpendyInsightBrandMark.symbol, title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
                             }.buttonStyle(.plain)

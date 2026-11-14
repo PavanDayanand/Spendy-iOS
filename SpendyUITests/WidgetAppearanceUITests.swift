@@ -30,13 +30,77 @@ final class WidgetAppearanceUITests: XCTestCase {
         XCUIApplication().launch()
     }
 
+    @MainActor func testBudgetAndSubscriptionAppearances() {
+        XCUIDevice.shared.press(.home)
+        XCUIDevice.shared.press(.home)
+        let app = XCUIApplication()
+        app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "widgets"
+        app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "seen"
+        app.launch()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
+        let widgets = app.buttons["settings-widgets"]
+        for _ in 0..<6 {
+            if widgets.isHittable { break }
+            app.swipeUp()
+        }
+        widgets.tap()
+        XCTAssertTrue(app.staticTexts["Widgets that feel like Spendy"].waitForExistence(timeout: 5))
+        XCUIDevice.shared.press(.home)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        XCTAssertTrue(visibleWidget(springboard).exists)
+        for title in ["Budget Room", "Subscriptions"] {
+            if springboard.staticTexts[title == "Budget Room" ? "Budget" : title].exists { continue }
+            visibleWidget(springboard).press(forDuration: 1.2)
+            springboard.buttons["Edit Home Screen"].tap()
+            springboard.buttons["Edit"].tap()
+            springboard.buttons["Add Widget"].tap()
+            let search = springboard.searchFields.firstMatch
+            XCTAssertTrue(search.waitForExistence(timeout: 5))
+            search.tap()
+            search.typeText("Spendy")
+            let result = springboard.cells["Spendy"].firstMatch
+            XCTAssertTrue(result.waitForExistence(timeout: 5))
+            result.tap()
+            for _ in 0..<12 {
+                if springboard.staticTexts[title].exists { break }
+                springboard.swipeLeft()
+            }
+            XCTAssertTrue(springboard.staticTexts[title].exists)
+            springboard.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Add Widget")).firstMatch.tap()
+            XCUIDevice.shared.press(.home)
+        }
+        XCTAssertTrue(springboard.staticTexts["₹635"].waitForExistence(timeout: 20))
+        for mode in ["Default", "Dark", "Clear"] {
+            openAppearanceControls(springboard)
+            springboard.buttons[mode].tap()
+            XCUIDevice.shared.press(.home)
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = "Budget and subscriptions \(mode)"
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
+        openAppearanceControls(springboard)
+        springboard.buttons["Default"].tap()
+        XCUIDevice.shared.press(.home)
+        app.launch()
+    }
+
     @MainActor private func visibleWidget(_ springboard: XCUIApplication) -> XCUIElement {
-        let widget = springboard.icons.matching(NSPredicate(format: "label == %@ AND value CONTAINS %@", "Spendy", "Widget")).firstMatch
-        for _ in 0..<4 {
-            if widget.exists && widget.frame.minX >= 0 && widget.frame.maxX <= springboard.frame.width && widget.frame.width > 100 { break }
+        let query = springboard.icons.matching(NSPredicate(format: "label == %@ AND value CONTAINS %@", "Spendy", "Widget"))
+        func current() -> XCUIElement? {
+            guard query.firstMatch.exists else { return nil }
+            return query.allElementsBoundByIndex.first {
+                $0.exists && $0.frame.minX >= 0 && $0.frame.maxX <= springboard.frame.width && $0.frame.width > 100
+            }
+        }
+        if let widget = current() { return widget }
+        XCUIDevice.shared.press(.home)
+        XCUIDevice.shared.press(.home)
+        for _ in 0..<5 {
+            if let widget = current() { return widget }
             springboard.swipeLeft()
         }
-        return widget
+        return query.firstMatch
     }
 
     @MainActor private func openAppearanceControls(_ springboard: XCUIApplication) {

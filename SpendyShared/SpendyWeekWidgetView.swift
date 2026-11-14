@@ -17,7 +17,7 @@ struct SpendyWeekWidgetView: View {
                         Text("Last 7 days").font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(SpendyWidgetPalette.secondary)
                         Spacer(minLength: 0)
-                        SpendyWidgetAmount(amount: total, symbol: snapshot.currencySymbol, size: 34)
+                        SpendyWidgetAmount(amount: total, symbol: snapshot.currencySymbol, size: 32)
                         Spacer(minLength: 0)
                         Text("\(SpendyWidgetFormat.compactAmount(total / 7, symbol: snapshot.currencySymbol)) daily avg")
                             .font(.system(size: 11)).foregroundStyle(SpendyWidgetPalette.secondary)
@@ -30,7 +30,7 @@ struct SpendyWeekWidgetView: View {
             } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Last 7 days").font(.system(size: 12, weight: .semibold)).foregroundStyle(SpendyWidgetPalette.secondary)
-                SpendyWidgetAmount(amount: total, symbol: snapshot.currencySymbol, size: resolved == .systemSmall ? 30 : 40)
+                SpendyWidgetAmount(amount: total, symbol: snapshot.currencySymbol, size: resolved == .systemSmall ? 28 : 40)
                 Spacer(minLength: 0)
                 SpendyWeekBars(days: snapshot.weeklySpending, accentHex: "", height: resolved == .systemSmall || resolved == .systemMedium ? 38 : 110)
                 if resolved == .systemLarge || resolved == .systemExtraLarge {

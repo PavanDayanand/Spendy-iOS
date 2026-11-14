@@ -10,6 +10,21 @@ final class ExpenseStoreTests: XCTestCase {
         return (ExpenseStore(storageURL: url, startsServices: false), url)
     }
 
+    @MainActor func testFreshInstallContainsNoPersonalOrSampleLedger() throws {
+        let (store, url) = try temporaryStore()
+        XCTAssertTrue(store.userName.isEmpty)
+        XCTAssertTrue(store.transactions.isEmpty)
+        XCTAssertTrue(store.subscriptions.isEmpty)
+        XCTAssertTrue(store.customFolders.isEmpty)
+        XCTAssertFalse(store.hasCompletedOnboarding)
+        XCTAssertEqual(store.totalBalance, 0)
+        store.flushPendingSave()
+        let reloaded = ExpenseStore(storageURL: url, startsServices: false)
+        XCTAssertTrue(reloaded.transactions.isEmpty)
+        XCTAssertTrue(reloaded.userName.isEmpty)
+        XCTAssertFalse(reloaded.hasCompletedOnboarding)
+    }
+
     @MainActor func testTransfersIgnoreStaleExpenseCategoryAndPreserveBalances() throws {
         let (store, url) = try temporaryStore()
         store.accounts = [
