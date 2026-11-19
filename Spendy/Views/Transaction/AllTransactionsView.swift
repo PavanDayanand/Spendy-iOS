@@ -3,7 +3,8 @@
 //  Spendy
 //
 //  Clean Full-Screen Transactions View:
-//  - Top Sticky Layer: Liquid Glass Circular Back Button + "All Transactions" Title + 3 Liquid Glass Filter Toggles (Floating on Top Layer)
+//  - Native navigation bar with Back, title, and filter visibility action
+//  - Pinned content filters below the system toolbar
 //  - Individual Transaction Cards with SpendyIconBadge, Title, Mini Bank Indicator & Formatted Amount
 //  - Lowered Floating Liquid Glass Search Bar + Liquid Glass Quick Add (+) Button on Bottom Layer
 //
@@ -13,12 +14,8 @@ import SwiftUI
 struct AllTransactionsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     
-    var usesSharedHeader: Bool = false
-    var areFiltersExpanded: Bool = true
-    var onDismiss: (() -> Void)? = nil
-    var topControlsNamespace: Namespace.ID? = nil
+    @State var areFiltersExpanded: Bool = true
     
     // Optional chart scope stays applied even when the browser filters change.
     var spendingScope: SpendingScope? = nil
@@ -160,12 +157,6 @@ struct AllTransactionsView: View {
     
     private var pinnedHeader: some View {
         VStack(spacing: 0) {
-            if usesSharedHeader {
-                Color.clear.frame(height: 56)
-                    .accessibilityHidden(true)
-            } else {
-                topHeaderBar
-            }
             if let scopeStart, let scopeEnd {
                 VStack(spacing: 3) {
                     Text("Expenses · \(spendingScope?.accountIDs != nil ? accountButtonLabel : (store.accounts.first { $0.id == scopeAccountID }?.label ?? "All accounts"))")
@@ -263,8 +254,16 @@ struct AllTransactionsView: View {
         }
         .navigationTitle(scopeTitle ?? "All Transactions")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(areFiltersExpanded ? "Hide transaction filters" : "Show transaction filters",
+                       systemImage: areFiltersExpanded ? "xmark" : "line.3.horizontal.decrease") {
+                    areFiltersExpanded.toggle()
+                }
+                .accessibilityIdentifier("home-transactions-filters")
+            }
+        }
         .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
@@ -293,35 +292,6 @@ struct AllTransactionsView: View {
                 inspectingTransaction = nil
             }
         }
-    }
-    
-    private var topHeaderBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                accessibilityLabel: "Back",
-                morphID: "topControl_left",
-                namespace: topControlsNamespace
-            ) {
-                if let onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-            Spacer()
-            Text(scopeTitle ?? "All Transactions")
-                .font(.headline)
-                .foregroundStyle(SpendyColors.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            Color.clear.frame(width: 44, height: 44)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
     }
 
     // MARK: - 2. Horizontal Scrollable Liquid Glass Filter Capsules (On Top Layer)

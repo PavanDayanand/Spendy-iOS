@@ -40,13 +40,25 @@ flowchart TD
   was tapped. Insights and deep links use the system transition.
 - Edit flows dismiss details before opening an editor, using `onDismiss` rather
   than delays. Editors are not anchored to a detail view that has disappeared.
-- Reduce Motion disables the added zoom transitions and shared toolbar morphs.
+- Reduce Motion disables added zoom transitions. System toolbars manage their own motion and accessibility adaptations.
 - Inactive tabs are hidden from accessibility navigation.
-- All Transactions has an explicit Back control. The Home dock is hidden while
+- Pushed pages use the system Back control. The Home dock is hidden while
   Home's navigation stack shows a child screen.
 - The Home drawer handle toggles expansion; drags move the drawer. Header
   controls, including See all and Clear, receive normal taps. Horizontal filter
   scrolling is outside the drawer header's vertical drag gesture.
+
+## Top controls
+
+Home, Analytics, Accounts, Budget, Subscriptions, the transaction browser, and
+entity/breakdown pages use the navigation stack's system bar. Each page declares
+its own title and toolbar actions; the system owns glass backgrounds, grouping,
+press feedback, and navigation transitions. No persistent header overlay mirrors
+the current page's state or forces a separate header spring.
+
+Home's profile button and action menu retain their existing routes. The
+transaction browser owns filter visibility and starts collapsed when opened
+from Home. Custom glass remains in content filters and the floating bottom dock.
 
 ## Current limits
 

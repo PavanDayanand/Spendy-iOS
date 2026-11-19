@@ -15,7 +15,6 @@ struct MainTabView: View {
     @State private var isHomeDrawerExpanded: Bool = false
     @State private var isHomeSubpageActive: Bool = false
     @State private var isAnalyticsSubpageActive: Bool = false
-    @State private var analyticsNavigationHeader = AnalyticsNavigationHeaderState()
     @State private var quickActionManager = QuickActionManager.shared
 
     @AppStorage("hasSeenReceiptScanIntroduction") private var hasSeenReceiptIntroduction = false
@@ -67,17 +66,8 @@ struct MainTabView: View {
                 NavigationStack {
                     AnalyticsView(
                         selectedTab: $selectedTab,
-                        sharedNavigationHeader: analyticsNavigationHeader,
                         isSubpageActiveBinding: $isAnalyticsSubpageActive
                     )
-                }
-                .overlay(alignment: .top) {
-                    if analyticsNavigationHeader.isVisible {
-                        AnalyticsNavigationHeader(state: analyticsNavigationHeader)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 4)
-                            .transition(.identity)
-                    }
                 }
                 .environment(\.spendyTipsAllowed, selectedTab == .analytics && !showAddTransaction)
                 .opacity(selectedTab == .analytics ? 1 : 0)

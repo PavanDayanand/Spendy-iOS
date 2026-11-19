@@ -6,8 +6,6 @@ struct SpendingBreakdownSheet: View {
     let byCategory: Bool
     let accountLabel: String
     let accountID: String
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @AppStorage("spendingBreakdownShowsChart") private var showsChart = true
@@ -15,8 +13,6 @@ struct SpendingBreakdownSheet: View {
     @State private var periodFilter: SpendingPeriodFilter?
     @State private var selectedIDs: Set<String>?
     @State private var selectedBucket: String?
-    @Namespace private var internalControlsNamespace
-    private var controlsNamespace: Namespace.ID { topControlsNamespace ?? internalControlsNamespace }
     @State private var selectedCategory: Category?
     @State private var selectedAccount: Account?
     private var isIncome: Bool { snapshot.transactionType == .income }
@@ -63,83 +59,6 @@ struct SpendingBreakdownSheet: View {
                     percentage: current.total > 0 ? amount / current.total * 100 : 0)
             }
             .sorted { $0.amount == $1.amount ? $0.id < $1.id : $0.amount > $1.amount }
-    }
-
-    private func configureNavigationHeader() {
-        guard selectedCategory == nil, selectedAccount == nil else { return }
-        let chart = $showsChart
-        let filter = $showsFilter
-        let selection = $selectedIDs
-        let period = $periodFilter
-        let dismissAction = dismiss
-        var items = [
-            AnalyticsNavigationHeaderMenuItem(id: "breakdown-chart-toggle", title: "Show chart",
-                systemImage: "chart.bar", isSelected: showsChart) {
-                withAnimation(.easeInOut(duration: 0.2)) { chart.wrappedValue.toggle() }
-            },
-            AnalyticsNavigationHeaderMenuItem(id: "breakdown-filter",
-                title: selectedIDs.map { "Filter · \($0.count) selected" } ?? periodFilter.map { "Filter · \($0.title)" } ?? "Filter",
-                systemImage: "line.3.horizontal.decrease") { filter.wrappedValue = true }
-        ]
-        if selectedIDs != nil || periodFilter != nil {
-            items.append(AnalyticsNavigationHeaderMenuItem(id: "breakdown-reset-filters",
-                title: "Reset filters", systemImage: "arrow.counterclockwise") { selection.wrappedValue = nil; period.wrappedValue = nil })
-        }
-        sharedNavigationHeader?.show(title: title, onBack: { dismissAction() },
-            menuItems: items, menuLabel: isIncome ? "Income options" : "Spending options",
-            menuIdentifier: "breakdown-menu",
-            menuValue: selectedIDs.map { "\($0.count) selected" } ?? "All selected")
-    }
-
-    private var headerBar: some View {
-        HStack {
-            GlassCircleButton(icon: "chevron.left", size: 44, iconSize: 15,
-                iconWeight: .bold, foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection, accessibilityLabel: "Back",
-                morphID: "topControl_left", namespace: controlsNamespace) { dismiss() }
-            Spacer()
-            Text(title).font(.system(size: 17, weight: .bold)).accessibilityAddTraits(.isHeader)
-            Spacer()
-            Menu {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { showsChart.toggle() }
-                } label: {
-                    Label("Show chart", systemImage: showsChart ? "checkmark" : "chart.bar")
-                }
-                .accessibilityValue(showsChart ? "On" : "Off")
-                .accessibilityIdentifier("breakdown-chart-toggle")
-                Button { showsFilter = true } label: {
-                    Label(selectedIDs.map { "Filter · \($0.count) selected" } ?? periodFilter.map { "Filter · \($0.title)" } ?? "Filter", systemImage: "line.3.horizontal.decrease")
-                }
-                .accessibilityIdentifier("breakdown-filter")
-                if selectedIDs != nil || periodFilter != nil {
-                    Button("Reset filters") { selectedIDs = nil; periodFilter = nil }
-                        .accessibilityIdentifier("breakdown-reset-filters")
-                }
-            } label: {
-                GlassCircleIcon(size: 44, morphID: "topControl_right", namespace: controlsNamespace) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 15, weight: .semibold))
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                if let selectedIDs {
-                    Text("\(selectedIDs.count)")
-                        .font(.caption2.bold().monospacedDigit())
-                        .foregroundStyle(SpendyColors.inverseText)
-                        .padding(4)
-                        .background(SpendyColors.textPrimary, in: Capsule())
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-            }
-            .accessibilityLabel(isIncome ? "Income options" : "Spending options")
-            .accessibilityIdentifier("breakdown-menu")
-            .accessibilityValue(selectedIDs.map { "\($0.count) selected" } ?? "All selected")
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
     }
 
     var body: some View {
@@ -203,31 +122,42 @@ struct SpendingBreakdownSheet: View {
                 .padding(20)
             }
             .accessibilityIdentifier("breakdown-scroll")
-            .safeAreaBar(edge: .top, spacing: 0) {
-                if sharedNavigationHeader != nil {
-                    Color.clear.frame(height: 58).accessibilityHidden(true)
-                } else {
-                    headerBar.padding(.bottom, 8)
-                }
-            }
             .scrollEdgeEffectStyle(.soft, for: .top)
         }
         .background(SpendyColors.appBackground.ignoresSafeArea())
         .foregroundStyle(SpendyColors.textPrimary)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("Options", systemImage: "ellipsis") {
+                    Toggle("Show chart", isOn: $showsChart)
+                        .accessibilityIdentifier("breakdown-chart-toggle")
+                    Button(selectedIDs.map { "Filter · \($0.count) selected" }
+                           ?? periodFilter.map { "Filter · \($0.title)" } ?? "Filter",
+                           systemImage: "line.3.horizontal.decrease") { showsFilter = true }
+                        .accessibilityIdentifier("breakdown-filter")
+                    if selectedIDs != nil || periodFilter != nil {
+                        Button("Reset filters", systemImage: "arrow.counterclockwise") {
+                            selectedIDs = nil
+                            periodFilter = nil
+                        }
+                        .accessibilityIdentifier("breakdown-reset-filters")
+                    }
+                }
+                .accessibilityLabel(isIncome ? "Income options" : "Spending options")
+                .accessibilityIdentifier("breakdown-menu")
+                .accessibilityValue(selectedIDs.map { "\($0.count) selected" } ?? "All selected")
+            }
+        }
         .toolbar(.hidden, for: .tabBar)
         .navigationDestination(item: $selectedCategory) { category in
-            CategoryAnalyticsSheet(category: category, spendingScope: spendingScope,
-                topControlsNamespace: controlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+            CategoryAnalyticsSheet(category: category, spendingScope: spendingScope)
         }
         .navigationDestination(item: $selectedAccount) { account in
-            AccountAnalyticsSheet(account: account, spendingScope: spendingScope,
-                topControlsNamespace: controlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+            AccountAnalyticsSheet(account: account, spendingScope: spendingScope)
         }
-        .onAppear { configureNavigationHeader() }
-        .onChange(of: selectedCategory?.id) { _, _ in configureNavigationHeader() }
-        .onChange(of: selectedAccount?.id) { _, _ in configureNavigationHeader() }
-        .onChange(of: showsChart) { _, _ in configureNavigationHeader() }
         .sheet(isPresented: $showsFilter) {
             SpendingBreakdownFilter(items: filterItems, byCategory: byCategory, selectedIDs: $selectedIDs,
                 periodFilter: $periodFilter, initialMonth: snapshot.start,
@@ -235,11 +165,9 @@ struct SpendingBreakdownSheet: View {
         }
         .onChange(of: selectedIDs) { _, _ in
             selectedBucket = nil
-            configureNavigationHeader()
         }
         .onChange(of: periodFilter) { _, _ in
             selectedBucket = nil
-            configureNavigationHeader()
         }
         .tint(SpendyColors.textPrimary)
     }

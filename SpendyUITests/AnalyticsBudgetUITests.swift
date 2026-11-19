@@ -31,7 +31,7 @@ final class AnalyticsBudgetUITests: XCTestCase {
         screenshot.name = "Native category sectors light"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        app.buttons["analytics-stack-back"].firstMatch.tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
 
     }
 
@@ -78,7 +78,7 @@ final class AnalyticsBudgetUITests: XCTestCase {
         screenshot.lifetime = .keepAlways
         add(screenshot)
         summary.tap()
-        let title = app.staticTexts["analytics-stack-title"].firstMatch
+        let title = app.navigationBars["Budget"].staticTexts["Budget"].firstMatch
         let opened = expectation(for: NSPredicate(format: "label == %@", "Budget"), evaluatedWith: title)
         wait(for: [opened], timeout: 5)
         if active {
@@ -90,7 +90,7 @@ final class AnalyticsBudgetUITests: XCTestCase {
             gauge.lifetime = .keepAlways
             add(gauge)
         }
-        app.buttons["analytics-stack-back"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         let returned = expectation(for: NSPredicate(format: "label == %@", "Analytics"), evaluatedWith: title)
         wait(for: [returned], timeout: 5)
         XCTAssertTrue(summary.isHittable)

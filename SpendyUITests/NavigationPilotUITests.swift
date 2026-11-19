@@ -28,22 +28,22 @@ final class NavigationPilotUITests: XCTestCase {
         XCTAssertTrue(seeAll.waitForExistence(timeout: 5))
         seeAll.tap()
 
-        let back = app.buttons["home-transactions-back"]
+        let back = app.navigationBars["All Transactions"].buttons.element(boundBy: 0)
         let filters = app.buttons["home-transactions-filters"]
         XCTAssertTrue(back.waitForExistence(timeout: 5))
         XCTAssertTrue(back.isHittable)
         XCTAssertTrue(filters.isHittable)
-        XCTAssertEqual(filters.value as? String, "Collapsed")
+        XCTAssertEqual(filters.label, "Show transaction filters")
         XCTAssertFalse(app.buttons["home-profile"].exists)
         XCTAssertFalse(app.buttons["Subscriptions"].isHittable)
         capture(app, "Transactions compact header")
 
         filters.tap()
-        XCTAssertEqual(filters.value as? String, "Expanded")
+        XCTAssertEqual(filters.label, "Hide transaction filters")
         XCTAssertTrue(app.descendants(matching: .any)["transaction-filters"].exists)
         capture(app, "Transactions expanded filters")
         filters.tap()
-        XCTAssertEqual(filters.value as? String, "Collapsed")
+        XCTAssertEqual(filters.label, "Show transaction filters")
         XCTAssertFalse(app.descendants(matching: .any)["transaction-filters"].exists)
 
         let search = app.textFields["Search transactions"]
@@ -69,7 +69,7 @@ final class NavigationPilotUITests: XCTestCase {
         // Re-entry starts compact, and completing an edge swipe returns Home.
         seeAll.tap()
         XCTAssertTrue(filters.waitForExistence(timeout: 5))
-        XCTAssertEqual(filters.value as? String, "Collapsed")
+        XCTAssertEqual(filters.label, "Show transaction filters")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
             .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)))
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))

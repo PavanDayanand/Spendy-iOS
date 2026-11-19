@@ -13,13 +13,8 @@ struct CategoryAnalyticsSheet: View {
     let category: Category
     var spendingScope: SpendingScope? = nil
     var initialType: TransactionType = .expense
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
-    var backButtonMorphID: String = "topControl_left"
-    var editButtonMorphID: String = "topControl_right"
     var periodControlMorphID: String = "periodNavCapsule"
     var calendarControlMorphID: String = "calendarMenu"
-    var onDismiss: (() -> Void)? = nil
     
     @ViewBuilder
     var body: some View {
@@ -37,13 +32,7 @@ struct CategoryAnalyticsSheet: View {
             entity: .category(category),
             initialType: initialType,
             spendingScope: spendingScope,
-            topControlsNamespace: topControlsNamespace,
-            sharedNavigationHeader: sharedNavigationHeader,
-            backButtonMorphID: backButtonMorphID,
-            editButtonMorphID: editButtonMorphID,
             periodControlMorphID: periodControlMorphID,
-            calendarControlMorphID: calendarControlMorphID,
-            onDismiss: onDismiss
-        )
+            calendarControlMorphID: calendarControlMorphID)
     }
 }

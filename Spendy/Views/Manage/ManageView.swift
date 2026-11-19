@@ -14,13 +14,9 @@ import TipKit
 struct SubscriptionsView: View {
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
 
     var isPushed: Bool = false
     var initialSelectedSubscriptionId: String? = nil
-    var onDismiss: (() -> Void)? = nil
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
 
     @State private var showAddSubscription: Bool = false
     @State private var pendingSubscriptionEdit: Subscription? = nil
@@ -134,20 +130,6 @@ struct SubscriptionsView: View {
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
-                        if !isPushed {
-                            tabHeaderBar(showsControls: false)
-                        } else {
-                            Text("Subscriptions")
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .padding(.top, 8)
-                                .accessibilityAddTraits(.isHeader)
-                                .opacity(sharedNavigationHeader == nil ? 1 : 0)
-                                .accessibilityHidden(sharedNavigationHeader != nil)
-                        }
-
                         summaryCard
                             .padding(.horizontal, 20)
                             .padding(.top, isPushed ? 12 : 2)
@@ -163,18 +145,17 @@ struct SubscriptionsView: View {
                     .padding(.bottom, 120)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                if isPushed {
-                    if sharedNavigationHeader == nil {
-                        topHeaderBar.padding(.bottom, 6)
-                    }
-                } else {
-                    tabHeaderBar(showsControls: true)
-                }
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle("Subscriptions")
+        .navigationBarTitleDisplayMode(isPushed ? .inline : .large)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add Subscription", systemImage: "plus") { showAddSubscription = true }
+                    .accessibilityIdentifier("subscriptions-add")
+            }
+        }
         .task {
             NotificationManager.shared.refresh(from: store)
         }
@@ -194,7 +175,6 @@ struct SubscriptionsView: View {
             }
         }
         .onAppear {
-            configureNavigationHeader()
             selectInitialSubscriptionIfNeeded()
         }
         .task(id: initialSelectedSubscriptionId) {
@@ -210,100 +190,7 @@ struct SubscriptionsView: View {
         }
     }
 
-    // MARK: - Tab Header Bar (Large Title with Top Right 44pt Add Button)
-    private func tabHeaderBar(showsControls: Bool) -> some View {
-        HStack(alignment: .center) {
-            Text("Subscriptions")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .opacity(showsControls ? 0 : 1)
-                .accessibilityHidden(showsControls)
-                .accessibilityAddTraits(.isHeader)
 
-            Spacer()
-
-            if showsControls {
-            GlassCircleButton(
-                icon: "plus",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: store.accentPreset.contentTint,
-                haptic: .light,
-                accessibilityLabel: "Add Subscription"
-            ) {
-                HapticsManager.shared.trigger(.selection)
-                showAddSubscription = true
-            }
-            } else {
-                Color.clear.frame(width: 44, height: 44)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-    }
-
-    private func configureNavigationHeader() {
-        guard isPushed else { return }
-        let backAction = onDismiss
-        let dismissAction = dismiss
-        let addSubscription = $showAddSubscription
-        sharedNavigationHeader?.show(title: "Subscriptions", onBack: {
-            if let backAction { backAction() } else { dismissAction() }
-        }, primaryAction: StackHeaderAction(id: "subscriptions-add", title: "Add Subscription", symbol: "plus") {
-            addSubscription.wrappedValue = true
-        })
-    }
-
-    // MARK: - Top Header Bar (When Pushed from Home with Liquid Glass Morph)
-    private var topHeaderBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back",
-                morphID: "topControl_left",
-                namespace: topControlsNamespace
-            ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-
-            Spacer()
-
-            Text("Subscriptions")
-                .hidden()
-                .accessibilityHidden(true)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-
-            Spacer()
-
-            GlassCircleButton(
-                icon: "plus",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: store.accentPreset.contentTint,
-                haptic: .light,
-                accessibilityLabel: "Add Subscription"
-            ) {
-                HapticsManager.shared.trigger(.selection)
-                showAddSubscription = true
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-    }
 
     // Typealias for backwards compatibility
 

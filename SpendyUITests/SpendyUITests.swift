@@ -581,7 +581,7 @@ final class SpendyUITests: XCTestCase {
         shot.name = "Account analytics from Analytics black"
         shot.lifetime = .keepAlways
         add(shot)
-        app.buttons["analytics-stack-back"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(row.waitForExistence(timeout: 5))
     }
 

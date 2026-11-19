@@ -9,13 +9,9 @@ import SwiftUI
 
 struct AccountsView: View {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     @ScaledMetric(relativeTo: .title) private var balanceFontSize = 28.0
     
     var isSettingsPage: Bool = false
-    var onDismiss: (() -> Void)? = nil
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
     
     @State private var showAddAccount: Bool = false
     @State private var editingAccount: Account? = nil
@@ -32,11 +28,6 @@ struct AccountsView: View {
             
             VStack(spacing: 0) {
 
-                if sharedNavigationHeader != nil {
-                    Color.clear.frame(height: 50).accessibilityHidden(true)
-                } else if topControlsNamespace != nil {
-                    topHeaderBar
-                }
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         balanceAmount
@@ -54,23 +45,12 @@ struct AccountsView: View {
         }
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(sharedNavigationHeader != nil || topControlsNamespace != nil ? .hidden : .visible, for: .navigationBar)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            if sharedNavigationHeader == nil && topControlsNamespace == nil {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        HapticsManager.shared.trigger(.selection)
-                        showAddAccount = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Add Account")
-                }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add Account", systemImage: "plus") { showAddAccount = true }
+                    .accessibilityIdentifier("accounts-add")
             }
         }
         .sheet(isPresented: $showAddAccount) {
@@ -80,70 +60,8 @@ struct AccountsView: View {
             AddAccountSheet(accountToEdit: acc)
         }
         .navigationDestination(item: $selectedAccountForAnalytics) { acc in
-            AccountAnalyticsSheet(account: acc, isSettingsPage: isSettingsPage,
-                topControlsNamespace: topControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+            AccountAnalyticsSheet(account: acc, isSettingsPage: isSettingsPage)
         }
-        .onAppear { configureNavigationHeader() }
-        .onChange(of: selectedAccountForAnalytics?.id) { _, _ in configureNavigationHeader() }
-    }
-
-    private func configureNavigationHeader() {
-        // A returning parent must not overwrite a child's header during a cancelled pop.
-        guard selectedAccountForAnalytics == nil else { return }
-        let backAction = onDismiss
-        let dismissAction = dismiss
-        let addAccount = $showAddAccount
-        sharedNavigationHeader?.show(title: "Accounts", onBack: {
-            if let backAction { backAction() } else { dismissAction() }
-        }, primaryAction: StackHeaderAction(id: "accounts-add", title: "Add Account", symbol: "plus") {
-            addAccount.wrappedValue = true
-        })
-    }
-    
-    // MARK: - Header (pushed from Home)
-    private var topHeaderBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back",
-                morphID: "topControl_left",
-                namespace: topControlsNamespace
-            ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-            
-            Spacer()
-            
-            Text("Accounts")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-            
-            Spacer()
-            
-            GlassCircleButton(
-                icon: "plus",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Add Account"
-            ) {
-                showAddAccount = true
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
     }
     
     // MARK: - Balance

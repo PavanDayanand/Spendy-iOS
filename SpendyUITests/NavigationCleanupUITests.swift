@@ -17,22 +17,22 @@ final class NavigationCleanupUITests: XCTestCase {
         }
         category.tap()
         expectHeader("Groceries", in: app)
-        XCTAssertTrue(actionSurface(app).exists)
+        XCTAssertFalse(actionSurface(app).exists, "System toolbar owns its glass surface")
         XCTAssertTrue(button("analytics-stack-edit", in: app).isHittable)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         expectHeader("Analytics", in: app)
         XCTAssertFalse(actionSurface(app).exists)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
-        XCTAssertTrue(actionSurface(app).exists)
+        XCTAssertFalse(actionSurface(app).exists, "System toolbar owns its glass surface")
     }
 
-    @MainActor func testBudgetSharedHeaderEditAndDeleteCancellation() {
+    @MainActor func testBudgetNativeToolbarEditAndDeleteCancellation() {
         let app = launch(mode: "home-attention")
         app.buttons["More actions"].tap()
         button("Budget", in: app).tap()
         expectHeader("Budget", in: app)
-        XCTAssertTrue(actionSurface(app).exists)
+        XCTAssertFalse(actionSurface(app).exists, "System toolbar owns its glass surface")
         XCTAssertFalse(app.buttons["home-profile"].exists)
         button("budget-options", in: app).tap()
         button("budget-edit", in: app).tap()
@@ -45,11 +45,11 @@ final class NavigationCleanupUITests: XCTestCase {
         app.alerts.buttons["Cancel"].tap()
         expectHeader("Budget", in: app)
         capture(app, "Budget shared header after cancelled deletion")
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
     }
 
-    @MainActor func testHomeSubscriptionInsightReturnsToSharedHubHeader() {
+    @MainActor func testHomeSubscriptionInsightReturnsToNativeHubToolbar() {
         let app = launch(mode: "home-attention-single")
         let insights = button("home-priority-insight", in: app)
         if !insights.isHittable { app.scrollViews["home-spending-canvas"].firstMatch.swipeUp() }
@@ -71,7 +71,7 @@ final class NavigationCleanupUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["New Subscription"].waitForExistence(timeout: 5))
         button("Close", in: app).tap()
         expectHeader("Subscriptions", in: app)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
     }
 
@@ -95,14 +95,10 @@ final class NavigationCleanupUITests: XCTestCase {
     }
 
     @MainActor private func expectHeader(_ title: String, in app: XCUIApplication) {
-        let label = app.staticTexts["analytics-stack-title"].firstMatch
-        let match = expectation(for: NSPredicate(format: "label == %@", title), evaluatedWith: label)
-        wait(for: [match], timeout: 5)
-        let back = button("analytics-stack-back", in: app)
-        XCTAssertTrue(back.isHittable)
-        let backs = app.buttons.matching(NSPredicate(format: "label == %@", "Back"))
-            .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - back.frame.midY) < 20 }
-        XCTAssertEqual(backs.count, 1)
+        let bar = app.navigationBars[title]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), "Expected native navigation bar: \(title)")
+        XCTAssertTrue(bar.buttons.element(boundBy: 0).isHittable, "Native Back remains available")
+        XCTAssertFalse(app.buttons["home-profile"].exists, "Home actions must not leak into pushed pages")
     }
 
     @MainActor private func capture(_ app: XCUIApplication, _ name: String) {

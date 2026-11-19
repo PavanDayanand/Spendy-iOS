@@ -1,15 +1,11 @@
 import SwiftUI
+import TipKit
 
-/// Persistent controls for Home and its transaction browser.
-struct HomeNavigationHeader: View {
+/// Home actions use the navigation bar's system glass and interaction behavior.
+struct HomeNavigationHeader: ToolbarContent {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var detailHeader: AnalyticsNavigationHeaderState? = nil
-    let isShowingTransactions: Bool
-    @Binding var filtersExpanded: Bool
     @Binding var hideBalance: Bool
-    let namespace: Namespace.ID
-    let onBack: () -> Void
+    var analyticsTip: HomeAnalyticsTip? = nil
     let onSettings: () -> Void
     let onAnalytics: () -> Void
     let onBudget: () -> Void
@@ -21,86 +17,32 @@ struct HomeNavigationHeader: View {
         return name.isEmpty ? "Personal" : name
     }
 
-    var body: some View {
-        SpendyGlassEffectContainer(spacing: 12) {
-            ZStack(alignment: .trailing) {
-                if let detailHeader {
-                    AnalyticsNavigationControls(state: detailHeader, namespace: namespace,
-                        showsTrailingAction: false)
-                } else {
-                    homeControls
-                }
-                if hasVisibleActions {
-                    homeActions
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button(action: onSettings) {
+                HStack(spacing: 8) {
+                    avatar
+                    Text(profileName).lineLimit(1)
                 }
             }
+            .accessibilityLabel("Profile, \(profileName). Opens settings.")
+            .accessibilityIdentifier("home-profile")
         }
-        .transaction(value: detailHeader != nil) { transaction in
-            transaction.disablesAnimations = reduceMotion
-            transaction.animation = reduceMotion ? nil : AppMotion.fluidSpring
-        }
-        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader?.hasActions)
-        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader != nil)
-        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: detailHeader?.title)
-        .transaction(value: isShowingTransactions) { transaction in
-            // Navigation can suppress implicit animations; the persistent header
-            // has its own transaction so its glass can reshape during a push/pop.
-            transaction.disablesAnimations = reduceMotion
-            transaction.animation = reduceMotion ? nil : AppMotion.fluidSpring
-        }
-        .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: filtersExpanded)
-    }
-
-    private var homeControls: some View {
-            HStack(spacing: 12) {
-                if isShowingTransactions {
-                    GlassCircleButton(icon: "chevron.left", size: 44, iconSize: 15,
-                        accessibilityLabel: "Back", morphID: "topControl_left",
-                        namespace: namespace, action: onBack)
-                        .accessibilityIdentifier("home-transactions-back")
-                } else {
-                    profileButton
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button("Analytics and statistics", systemImage: SFIcons.tabAnalytics, action: onAnalytics)
+                .popoverTip(analyticsTip)
+            Menu("More actions", systemImage: "ellipsis") {
+                Button("Budget", systemImage: "target", action: onBudget)
+                Button("Select Spending Month", systemImage: "calendar", action: onSelectSpendingMonth)
+                Button("Currency Converter", systemImage: "arrow.left.arrow.right", action: onConverter)
+                Divider()
+                Button(hideBalance ? "Show Amounts" : "Hide Amounts",
+                       systemImage: hideBalance ? SFIcons.eyeSlash : SFIcons.eye) {
+                    hideBalance.toggle()
                 }
-
-                Spacer(minLength: 0)
-
-                if isShowingTransactions {
-                    Text("All Transactions")
-                        .font(.headline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 0)
-                }
-                Color.clear
-                    .frame(width: isShowingTransactions ? 44 : 89, height: 44)
-                    .accessibilityHidden(true)
             }
-            .frame(height: 44)
-            .foregroundStyle(SpendyColors.textPrimary)
-    }
-
-    private var profileButton: some View {
-        Button {
-            HapticsManager.shared.trigger(.light)
-            onSettings()
-        } label: {
-            HStack(spacing: 8) {
-                avatar
-                Text(profileName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .padding(.leading, 5)
-            .padding(.trailing, 14)
-            .frame(height: 44)
+            .accessibilityHint("Budget, currency converter, and amount visibility")
         }
-        .buttonStyle(GlassCirclePressStyle())
-        .nativeLiquidGlassCapsule(isInteractive: true)
-        .glassMorphID("topControl_left", in: namespace)
-        .accessibilityLabel("Profile, \(profileName). Opens settings.")
-        .accessibilityIdentifier("home-profile")
     }
 
     private var avatar: some View {
@@ -128,81 +70,4 @@ struct HomeNavigationHeader: View {
         .accessibilityHidden(true)
     }
 
-    private var showsHomeActions: Bool { detailHeader == nil && !isShowingTransactions }
-    private var showsTransactionFilters: Bool { detailHeader == nil && isShowingTransactions }
-    private var hasVisibleActions: Bool { detailHeader?.hasActions ?? true }
-
-    private var homeActions: some View {
-        ZStack(alignment: .trailing) {
-            homeActionButtons
-                .opacity(showsHomeActions ? 1 : 0)
-                .allowsHitTesting(showsHomeActions)
-                .accessibilityHidden(!showsHomeActions)
-            transactionFilterButton
-                .opacity(showsTransactionFilters ? 1 : 0)
-                .allowsHitTesting(showsTransactionFilters)
-                .accessibilityHidden(!showsTransactionFilters)
-            if let detailHeader {
-                AnalyticsNavigationActions(state: detailHeader)
-            }
-        }
-        .frame(width: showsHomeActions ? 89 : 44, height: 44, alignment: .trailing)
-        .foregroundStyle(SpendyColors.textPrimary)
-        .nativeLiquidGlassCapsule(isInteractive: true)
-        .glassMorphID("topControl_right", in: namespace)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home-shared-action-surface")
-    }
-
-    private var transactionFilterButton: some View {
-        Button {
-            HapticsManager.shared.trigger(.selection)
-            filtersExpanded.toggle()
-        } label: {
-            Image(systemName: filtersExpanded ? "xmark" : "line.3.horizontal.decrease")
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 44, height: 44)
-        }
-        .buttonStyle(GlassCirclePressStyle())
-        .accessibilityLabel(filtersExpanded ? "Hide transaction filters" : "Show transaction filters")
-        .accessibilityValue(filtersExpanded ? "Expanded" : "Collapsed")
-        .accessibilityIdentifier("home-transactions-filters")
-    }
-
-    private var homeActionButtons: some View {
-        HStack(spacing: 0) {
-            Button {
-                HapticsManager.shared.trigger(.selection)
-                onAnalytics()
-            } label: {
-                Image(systemName: SFIcons.tabAnalytics)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(GlassCirclePressStyle())
-            .accessibilityLabel("Analytics and statistics")
-
-            Rectangle().fill(SpendyColors.separator)
-                .frame(width: 1, height: 18)
-                .accessibilityHidden(true)
-
-            Menu {
-                Button("Budget", systemImage: "target", action: onBudget)
-                Button("Select Spending Month", systemImage: "calendar", action: onSelectSpendingMonth)
-                Button("Currency Converter", systemImage: "arrow.left.arrow.right", action: onConverter)
-                Divider()
-                Button(hideBalance ? "Show Amounts" : "Hide Amounts",
-                       systemImage: hideBalance ? SFIcons.eyeSlash : SFIcons.eye) {
-                    HapticsManager.shared.trigger(.selection)
-                    hideBalance.toggle()
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("More actions")
-            .accessibilityHint("Budget, currency converter, and amount visibility")
-        }
-    }
 }

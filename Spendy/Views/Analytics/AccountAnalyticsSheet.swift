@@ -12,13 +12,8 @@ struct AccountAnalyticsSheet: View {
     let account: Account
     var spendingScope: SpendingScope? = nil
     var isSettingsPage: Bool = false
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
-    var backButtonMorphID: String = "topControl_left"
-    var editButtonMorphID: String = "topControl_right"
     var periodControlMorphID: String = "periodNavCapsule"
     var calendarControlMorphID: String = "calendarMenu"
-    var onDismiss: (() -> Void)? = nil
     
     var body: some View {
         SharedEntityAnalyticsSheet(
@@ -26,13 +21,7 @@ struct AccountAnalyticsSheet: View {
             isSettingsPage: isSettingsPage,
             initialType: .expense,
             spendingScope: spendingScope,
-            topControlsNamespace: topControlsNamespace,
-            sharedNavigationHeader: sharedNavigationHeader,
-            backButtonMorphID: backButtonMorphID,
-            editButtonMorphID: editButtonMorphID,
             periodControlMorphID: periodControlMorphID,
-            calendarControlMorphID: calendarControlMorphID,
-            onDismiss: onDismiss
-        )
+            calendarControlMorphID: calendarControlMorphID)
     }
 }

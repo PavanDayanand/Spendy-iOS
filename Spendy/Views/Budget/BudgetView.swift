@@ -9,11 +9,7 @@ import SwiftUI
 
 struct BudgetView: View {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
-    var onDismiss: (() -> Void)? = nil
     
     @State private var showEditBudgetSheet: Bool = false
     @State private var showDeleteConfirmation: Bool = false
@@ -37,15 +33,6 @@ struct BudgetView: View {
             ZStack(alignment: .top) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        Text("Budget")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .padding(.top, 8)
-                            .accessibilityAddTraits(.isHeader)
-                            .opacity(sharedNavigationHeader == nil ? 1 : 0)
-                            .accessibilityHidden(sharedNavigationHeader != nil)
                         if !hasActiveBudget {
                             // Empty State View
                             emptyStateView
@@ -57,13 +44,26 @@ struct BudgetView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 36)
                 }
-                if sharedNavigationHeader == nil {
-                    topHeaderBar.padding(.bottom, 6)
+            }
+        }
+        .navigationTitle("Budget")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            if hasActiveBudget {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("Budget Options", systemImage: "ellipsis") {
+                        Button("Edit Budget", systemImage: "pencil") { showEditBudgetSheet = true }
+                            .accessibilityIdentifier("budget-edit")
+                        Button("Delete Budget", systemImage: "trash", role: .destructive) {
+                            showDeleteConfirmation = true
+                        }
+                        .accessibilityIdentifier("budget-delete")
+                    }
+                    .accessibilityIdentifier("budget-options")
                 }
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showEditBudgetSheet) {
             EditBudgetSheet(isEditing: hasActiveBudget)
@@ -80,101 +80,7 @@ struct BudgetView: View {
             Text("This will remove your current budget limit.")
         }
         .navigationDestination(item: $selectedCategoryForSheet) { category in
-            CategoryAnalyticsSheet(category: category, topControlsNamespace: topControlsNamespace,
-                sharedNavigationHeader: sharedNavigationHeader)
-        }
-        .onAppear { configureNavigationHeader() }
-        .onChange(of: selectedCategoryForSheet?.id) { _, _ in configureNavigationHeader() }
-        .onChange(of: store.budget.isActive) { _, _ in configureNavigationHeader() }
-    }
-
-    private func configureNavigationHeader() {
-        guard selectedCategoryForSheet == nil else { return }
-        let backAction = onDismiss
-        let dismissAction = dismiss
-        let editor = $showEditBudgetSheet
-        let deletion = $showDeleteConfirmation
-        let items: [AnalyticsNavigationHeaderMenuItem] = hasActiveBudget ? [
-            AnalyticsNavigationHeaderMenuItem(id: "budget-edit", title: "Edit Budget", systemImage: "pencil") {
-                editor.wrappedValue = true
-            },
-            AnalyticsNavigationHeaderMenuItem(id: "budget-delete", title: "Delete Budget",
-                systemImage: "trash", role: .destructive) { deletion.wrappedValue = true }
-        ] : []
-        sharedNavigationHeader?.show(title: "Budget", onBack: {
-            if let backAction { backAction() } else { dismissAction() }
-        }, menuItems: items, menuLabel: "Budget Options", menuIdentifier: "budget-options")
-    }
-    
-    // MARK: - Top Header Bar
-    private var topHeaderBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back",
-                morphID: "topControl_left",
-                namespace: topControlsNamespace
-            ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-
-            Spacer()
-
-            Text("Budget")
-                .hidden()
-                .accessibilityHidden(true)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-
-            Spacer()
-
-            if hasActiveBudget {
-                actionButtons
-            } else {
-                Color.clear.frame(width: 44, height: 44)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-    }
-    
-    // MARK: - Sticky Action Buttons (Stay fixed at top right)
-    private var actionButtons: some View {
-        Menu {
-            Button {
-                showEditBudgetSheet = true
-            } label: {
-                Label("Edit Budget", systemImage: "pencil")
-            }
-            
-            Divider()
-            
-            Button(role: .destructive) {
-                showDeleteConfirmation = true
-            } label: {
-                Label("Delete Budget", systemImage: "trash")
-            }
-        } label: {
-            GlassCircleButton(
-                icon: "ellipsis",
-                size: 44,
-                iconSize: 16,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Budget Options"
-            ) { }
+            CategoryAnalyticsSheet(category: category)
         }
     }
     

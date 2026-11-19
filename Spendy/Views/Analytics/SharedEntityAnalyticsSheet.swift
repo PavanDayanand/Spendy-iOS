@@ -84,20 +84,14 @@ enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
 struct SharedEntityAnalyticsSheet: View {
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     
     let entity: AnalyticsEntity
     var isSettingsPage: Bool = false
     var initialType: TransactionType = .expense
     var spendingScope: SpendingScope? = nil
     @State private var appliedSpendingScope = false
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
-    var backButtonMorphID: String = "topControl_left"
-    var editButtonMorphID: String = "topControl_right"
     var periodControlMorphID: String = "periodNavCapsule"
     var calendarControlMorphID: String = "calendarMenu"
-    var onDismiss: (() -> Void)? = nil
     
     // Period & Filter State
     @State private var selectedPeriod: ChartPeriod = .month
@@ -150,18 +144,6 @@ struct SharedEntityAnalyticsSheet: View {
             return "custom_\(custom.start.timeIntervalSince1970)_\(custom.end.timeIntervalSince1970)"
         }
         return selectedPeriod.rawValue
-    }
-    
-    private var usesCustomHeader: Bool {
-        sharedNavigationHeader != nil || topControlsNamespace != nil
-    }
-    
-    private var sharedMorphNamespace: Namespace.ID {
-        topControlsNamespace ?? internalSheetNamespace
-    }
-    
-    private func pageMorphID(shared: String, fallback: String) -> String {
-        topControlsNamespace == nil ? fallback : shared
     }
     
     // MARK: - Transactions & Calculation Engine
@@ -413,68 +395,46 @@ struct SharedEntityAnalyticsSheet: View {
         ZStack {
             sheetBackgroundColor.ignoresSafeArea()
             
-            SpendyPinnedHeaderLayout(isEnabled: usesCustomHeader, usesSoftScrollEdge: !isSettingsPage) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    heroIdentityAndAmount
+                        .padding(.horizontal, 20)
+                        .padding(.top, 28)
 
-                if usesCustomHeader {
-                    if sharedNavigationHeader != nil {
-                        Color.clear.frame(height: 50).accessibilityHidden(true)
-                    } else {
-                        topHeaderBar
-                    }
-                }
-            } content: {
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        heroIdentityAndAmount
-                            .padding(.horizontal, 20)
-                            .padding(.top, 28)
-                        
-                        chartSection
-                            .padding(.horizontal, 16)
-                        
-                        scrubberAndCalendarRow
-                            .padding(.horizontal, 16)
-                        
-                        if !visibleInsights.isEmpty, !isScrubbingChart {
-                            SpendyInsightSummary(moments: visibleInsights, offersCategoryTip: !entity.isAccount && store.hasCompletedOnboarding,
-                                categoryTipGroup: categoryTipGroup, canSelect: { destination in
-                                if case .transaction = destination { return true }
-                                return false
-                            }) { destination in
-                                if case .transaction(let id) = destination {
-                                    inspectingTransaction = store.transactions.first { $0.id == id }
-                                }
+                    chartSection
+                        .padding(.horizontal, 16)
+
+                    scrubberAndCalendarRow
+                        .padding(.horizontal, 16)
+
+                    if !visibleInsights.isEmpty, !isScrubbingChart {
+                        SpendyInsightSummary(moments: visibleInsights, offersCategoryTip: !entity.isAccount && store.hasCompletedOnboarding,
+                            categoryTipGroup: categoryTipGroup, canSelect: { destination in
+                            if case .transaction = destination { return true }
+                            return false
+                        }) { destination in
+                            if case .transaction(let id) = destination {
+                                inspectingTransaction = store.transactions.first { $0.id == id }
                             }
-                            .padding(.horizontal, 20)
                         }
-                        
-                        threeSectionsModule
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 40)
+                        .padding(.horizontal, 20)
                     }
+
+                    threeSectionsModule
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 40)
                 }
-                .scrollDisabled(isScrubbingChart)
             }
+            .scrollDisabled(isScrubbingChart)
         }
         .presentationBackground(sheetBackgroundColor)
-        .navigationTitle(usesCustomHeader ? "" : entity.label)
+        .navigationTitle(entity.label)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(usesCustomHeader ? .hidden : .visible, for: .navigationBar)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
-            if !usesCustomHeader {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        HapticsManager.shared.trigger(.light)
-                        triggerEditEntity()
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Edit \(entity.label)")
-                }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Edit \(entity.label)", systemImage: "pencil", action: triggerEditEntity)
+                    .accessibilityIdentifier("analytics-stack-edit")
             }
         }
         .sheet(isPresented: $showDatePicker) {
@@ -511,7 +471,6 @@ struct SharedEntityAnalyticsSheet: View {
             AddTransactionView(transactionToEdit: tx)
         }
         .onAppear {
-            configureNavigationHeader()
             if !appliedSpendingScope, let spendingScope {
                 customDateRange = (spendingScope.start, spendingScope.end.addingTimeInterval(-0.000001))
                 customStartDate = spendingScope.start
@@ -527,79 +486,6 @@ struct SharedEntityAnalyticsSheet: View {
         }
     }
     
-    // MARK: - 1. Top Header Bar (When Pushed with Liquid Glass Morph)
-    private var topHeaderBar: some View {
-        HStack {
-            GlassCircleButton(
-                icon: "chevron.left",
-                size: 44,
-                iconSize: 15,
-                iconWeight: .bold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .selection,
-                accessibilityLabel: "Back",
-                morphID: backButtonMorphID,
-                namespace: topControlsNamespace
-            ) {
-                if let onDismiss = onDismiss {
-                    onDismiss()
-                } else {
-                    dismiss()
-                }
-            }
-            
-            Spacer()
-            
-            VStack(spacing: 1) {
-                Text(entity.label)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .lineLimit(1)
-                
-                Text(entity.subtitle)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                    .lineLimit(1)
-            }
-            
-            Spacer()
-            
-            GlassCircleButton(
-                icon: "pencil",
-                size: 44,
-                iconSize: 15,
-                iconWeight: .semibold,
-                foregroundColor: SpendyColors.textPrimary,
-                haptic: .light,
-                accessibilityLabel: "Edit \(entity.label)",
-                morphID: pageMorphID(shared: editButtonMorphID, fallback: "editButton"),
-                namespace: sharedMorphNamespace
-            ) {
-                HapticsManager.shared.trigger(.light)
-                triggerEditEntity()
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
-    }
-    
-    private func configureNavigationHeader() {
-        let backAction = onDismiss
-        let dismissAction = dismiss
-        let categoryEditor = $editingCategoryToEdit
-        let accountEditor = $editingAccountToEdit
-        let currentEntity = entity
-        sharedNavigationHeader?.show(title: entity.label, subtitle: entity.subtitle,
-            onBack: {
-                if let backAction { backAction() } else { dismissAction() }
-            }, onEdit: {
-                switch currentEntity {
-                case .category(let category): categoryEditor.wrappedValue = category
-                case .account(let account): accountEditor.wrappedValue = account
-                }
-            })
-    }
 
     private func triggerEditEntity() {
         switch entity {
@@ -749,7 +635,7 @@ struct SharedEntityAnalyticsSheet: View {
                     scrubbedBarPoint = nil
                     isScrubbingChart = false
                 }
-                .glassMorphID(pageMorphID(shared: periodControlMorphID, fallback: "periodCapsule"), in: sharedMorphNamespace)
+                .glassMorphID(periodControlMorphID, in: internalSheetNamespace)
                 
                 // Calendar Date Picker Button
                 GlassCircleButton(
@@ -760,8 +646,8 @@ struct SharedEntityAnalyticsSheet: View {
                     foregroundColor: SpendyColors.textPrimary,
                     haptic: .selection,
                     accessibilityLabel: "Select Date Range",
-                    morphID: pageMorphID(shared: calendarControlMorphID, fallback: "calendarButton"),
-                    namespace: sharedMorphNamespace
+                    morphID: calendarControlMorphID,
+                    namespace: internalSheetNamespace
                 ) {
                     showDatePicker = true
                 }

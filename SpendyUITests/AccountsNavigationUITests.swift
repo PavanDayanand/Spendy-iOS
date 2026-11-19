@@ -114,7 +114,7 @@ final class AccountsNavigationUITests: XCTestCase {
         button("home-manage-accounts", in: app).tap()
         expectHeader("Accounts", in: app)
         expectAction("accounts-add", in: app)
-        let backFrame = button("analytics-stack-back", in: app).frame
+        let backFrame = app.navigationBars.buttons.element(boundBy: 0).frame
         capture(app, "Manage Accounts shared header")
 
         // Repeat entry to catch stale parent actions after a pop.
@@ -127,7 +127,7 @@ final class AccountsNavigationUITests: XCTestCase {
             XCTAssertTrue(total.exists)
             let originalTotal = total.label
             XCTAssertFalse(originalTotal.isEmpty)
-            XCTAssertEqual(button("analytics-stack-back", in: app).frame.minY, backFrame.minY, accuracy: 1)
+            XCTAssertEqual(app.navigationBars.buttons.element(boundBy: 0).frame.minY, backFrame.minY, accuracy: 1)
             if attempt == 0 {
                 capture(app, "Account analytics keeps shared Back and Edit")
                 button("analytics-stack-edit", in: app).tap()
@@ -145,7 +145,7 @@ final class AccountsNavigationUITests: XCTestCase {
                 expectHeader("Cash", in: app)
                 expectAction("analytics-stack-edit", in: app)
             }
-            button("analytics-stack-back", in: app).tap()
+            app.navigationBars.buttons.element(boundBy: 0).tap()
             expectHeader("Accounts", in: app)
             expectAction("accounts-add", in: app)
             XCTAssertFalse(button("analytics-stack-edit", in: app).exists)
@@ -161,7 +161,7 @@ final class AccountsNavigationUITests: XCTestCase {
         XCTAssertEqual(app.textFields["Account name"].firstMatch.value as? String, bankName)
         button("Close", in: app).tap()
         expectHeader(bankName, in: app)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         expectHeader("Accounts", in: app)
 
         button("accounts-add", in: app).tap()
@@ -169,22 +169,16 @@ final class AccountsNavigationUITests: XCTestCase {
         button("Close", in: app).tap()
         expectHeader("Accounts", in: app)
         capture(app, "Accounts Add action restored")
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Analytics and statistics"].isHittable)
     }
 
     @MainActor private func expectHeader(_ title: String, in app: XCUIApplication) {
-        let label = app.staticTexts.matching(identifier: "analytics-stack-title").firstMatch
-        let match = expectation(for: NSPredicate(format: "label == %@", title), evaluatedWith: label)
-        wait(for: [match], timeout: 5)
-        let backs = app.buttons.matching(identifier: "analytics-stack-back").allElementsBoundByIndex.filter { $0.isHittable }
-        XCTAssertEqual(backs.count, 1)
-        if let back = backs.first {
-            let visibleBacks = app.buttons.matching(NSPredicate(format: "label == %@", "Back"))
-                .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - back.frame.midY) < 20 }
-            XCTAssertEqual(visibleBacks.count, 1)
-        }
+        let bar = app.navigationBars[title]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), "Expected native navigation bar: \(title)")
+        XCTAssertTrue(bar.buttons.element(boundBy: 0).isHittable, "Native Back remains available")
+        XCTAssertFalse(app.buttons["home-profile"].exists, "Home actions must not leak into pushed pages")
     }
 
     @MainActor private func expectAction(_ id: String, in app: XCUIApplication) {

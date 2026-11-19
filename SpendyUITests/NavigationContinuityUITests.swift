@@ -1,7 +1,7 @@
 import XCTest
 
 final class NavigationContinuityUITests: XCTestCase {
-    @MainActor func testBreakdownCategoryTransactionEditReturnsThroughOneHeader() {
+    @MainActor func testBreakdownCategoryTransactionEditReturnsThroughNativeNavigation() {
         let app = XCUIApplication()
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "charts"
         app.launchEnvironment["SPENDY_DISABLE_INSIGHT_ROTATION"] = "1"
@@ -11,13 +11,13 @@ final class NavigationContinuityUITests: XCTestCase {
         expectHeader("Analytics", in: app)
         revealButton("expand-spending-breakdown", in: app).tap()
         expectHeader("Spending by Category", in: app)
-        let backFrame = button("analytics-stack-back", in: app).frame
+        let backFrame = app.navigationBars.buttons.element(boundBy: 0).frame
         capture(app, "Breakdown uses persistent header")
 
         revealButton("breakdown-groceries", in: app).tap()
         expectHeader("Groceries", in: app)
         XCTAssertTrue(app.staticTexts["entity-spending-total"].firstMatch.label.contains("600"))
-        XCTAssertEqual(button("analytics-stack-back", in: app).frame.minY, backFrame.minY, accuracy: 1)
+        XCTAssertEqual(app.navigationBars.buttons.element(boundBy: 0).frame.minY, backFrame.minY, accuracy: 1)
 
         revealButton("Recent Activity", in: app).tap()
         let transaction = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Chart groceries")).firstMatch
@@ -42,29 +42,23 @@ final class NavigationContinuityUITests: XCTestCase {
                    thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.14, dy: 0.5)),
                    withVelocity: .slow, thenHoldForDuration: 0.6)
         expectHeader("Groceries", in: app)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         expectHeader("Spending by Category", in: app)
         XCTAssertTrue(button("breakdown-menu", in: app).isHittable)
         XCTAssertTrue(app.staticTexts["breakdown-total"].label.contains("1,200"))
         capture(app, "Breakdown restored after transaction editing")
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         expectHeader("Analytics", in: app)
-        button("analytics-stack-back", in: app).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["home-spending-total"].firstMatch.label.contains("1,200"), true)
     }
 
     @MainActor private func expectHeader(_ title: String, in app: XCUIApplication) {
-        let label = app.staticTexts.matching(identifier: "analytics-stack-title").firstMatch
-        let correctTitle = expectation(for: NSPredicate(format: "label == %@", title), evaluatedWith: label)
-        wait(for: [correctTitle], timeout: 5)
-        let backs = app.buttons.matching(identifier: "analytics-stack-back").allElementsBoundByIndex.filter { $0.isHittable }
-        XCTAssertEqual(backs.count, 1)
-        if let back = backs.first {
-            let visibleHeaderBacks = app.buttons.matching(NSPredicate(format: "label == %@", "Back"))
-                .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - back.frame.midY) < 20 }
-            XCTAssertEqual(visibleHeaderBacks.count, 1)
-        }
+        let bar = app.navigationBars[title]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), "Expected native navigation bar: \(title)")
+        XCTAssertTrue(bar.buttons.element(boundBy: 0).isHittable, "Native Back remains available")
+        XCTAssertFalse(app.buttons["home-profile"].exists, "Home actions must not leak into pushed pages")
     }
 
     @MainActor private func button(_ id: String, in app: XCUIApplication) -> XCUIElement {

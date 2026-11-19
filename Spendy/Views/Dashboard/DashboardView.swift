@@ -329,15 +329,12 @@ struct DashboardView: View {
     @State private var categorySpendingScope: SpendingScope? = nil
     @State private var selectedAccountForSheet: Account? = nil
     
-    @State private var analyticsNavigationHeader = AnalyticsNavigationHeaderState()
-    @Namespace private var topControlsNamespace
     
     // Filter, Privacy & Expand State
     @State private var selectedAccountId: String = "all"
     @State private var homeSummaryHeight: CGFloat = 0
     @State private var hideBalance: Bool = false
     @State private var showAllTransactions: Bool = false
-    @State private var transactionFiltersExpanded = false
     @State private var showEditBudgetSheet: Bool = false
     @State private var analyticsInitialDate: Date? = nil
     @State private var analyticsInitialPeriodFilter: SpendingPeriodFilter?
@@ -506,12 +503,7 @@ struct DashboardView: View {
                         .padding(.bottom, 12)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 + topInset + 58 }
                     }
-                    .safeAreaBar(edge: .top, spacing: 0) {
-                        homeHeaderPlaceholder
-                            .padding(.horizontal, AppSpacing.lg18)
-                            .padding(.top, topInset + 4)
-                            .padding(.bottom, 10)
-                    }
+                    .padding(.top, topInset + 4)
                     .scrollEdgeEffectStyle(.soft, for: .top)
                     .scrollBounceBehavior(.basedOnSize)
                     .scrollDisabled(homeSummaryHeight <= restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8)
@@ -527,7 +519,10 @@ struct DashboardView: View {
                 }
                 .ignoresSafeArea()
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { homeToolbar }
+            .toolbar(isSheetExpanded ? .hidden : .visible, for: .navigationBar)
             .sheet(isPresented: $showSettings, onDismiss: {
                 settingsInitialDestination = nil
             }) {
@@ -556,52 +551,37 @@ struct DashboardView: View {
             .navigationDestination(isPresented: $showAnalyticsView) {
                 AnalyticsView(
                     selectedTab: selectedTab,
-                    topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader,
+                    isPushed: true,
                     initialAccountID: selectedAccountId,
                     initialDate: analyticsInitialDate,
                     initialPeriodFilter: analyticsInitialPeriodFilter
                 )
             }
             .navigationDestination(isPresented: $showBudgetHub) {
-                BudgetView(topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader)
+                BudgetView()
             }
             .navigationDestination(isPresented: $showSubscriptionsHub) {
                 SubscriptionsView(
                     isPushed: true,
-                    initialSelectedSubscriptionId: initialSubscriptionIdForHub,
-                    topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader
+                    initialSelectedSubscriptionId: initialSubscriptionIdForHub
                 )
             }
             .navigationDestination(isPresented: $showAccounts) {
-                AccountsView(topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader)
+                AccountsView()
             }
             .navigationDestination(isPresented: $showAllTransactions) {
-                AllTransactionsView(
-                    usesSharedHeader: true,
-                    areFiltersExpanded: transactionFiltersExpanded,
-                    topControlsNamespace: topControlsNamespace
-                )
+                AllTransactionsView(areFiltersExpanded: false)
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
                     spendingScope: categorySpendingScope,
-                    topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader,
-                    backButtonMorphID: "topControl_left",
                     periodControlMorphID: "accountDropdownCapsule"
                 )
             }
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
-                    topControlsNamespace: topControlsNamespace,
-                    sharedNavigationHeader: analyticsNavigationHeader,
-                    backButtonMorphID: "topControl_left",
                     periodControlMorphID: "accountDropdownCapsule"
                 )
             }
@@ -647,81 +627,31 @@ struct DashboardView: View {
                 }
             }
         }
-        .overlay(alignment: .top) {
-            if isSharedHeaderVisible || isDetailHeaderVisible {
-                sharedNavigationHeader
-                    .padding(.horizontal, isSubpageActive ? AppSpacing.lg20 : AppSpacing.lg18)
-                    .padding(.top, 4)
-            }
-        }
-        .onChange(of: showAnalyticsView) { _, showing in
-            if !showing { analyticsNavigationHeader.isVisible = false }
-        }
         .onChange(of: selectedCategoryForSheet?.id) { _, id in
             if id == nil { categorySpendingScope = nil }
-        }
-        .onChange(of: showAllTransactions) { _, _ in
-            transactionFiltersExpanded = false
         }
         .onChange(of: store.transactions.contains(where: { $0.type == .expense }), initial: true) { _, hasSpending in
             HomeAnalyticsTip.hasSpending = hasSpending
         }
     }
 
-    // TipKit stays inside the stack's presentation context; the visible chrome lives above it.
-    private var homeHeaderPlaceholder: some View {
-        HStack(spacing: 0) {
-            Spacer()
-            Color.clear
-                .frame(width: 44, height: 44)
-                .popoverTip(tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive && !isSheetExpanded
-                    ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil)
-            Color.clear.frame(width: 45, height: 44)
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var isSharedHeaderVisible: Bool {
-        !showAnalyticsView && !showBudgetHub && !showSubscriptionsHub && !showAccounts
-            && selectedCategoryForSheet == nil && selectedAccountForSheet == nil
-            && (showAllTransactions || !isSheetExpanded)
-    }
-
-    private var isDetailHeaderVisible: Bool {
-        analyticsNavigationHeader.isVisible &&
-            (showAnalyticsView || showAccounts || showBudgetHub || showSubscriptionsHub ||
-                selectedCategoryForSheet != nil || selectedAccountForSheet != nil)
-    }
-
-    // The same container survives Home, Transactions, and Analytics navigation.
-    private var sharedNavigationHeader: some View {
-        HomeNavigationHeader(
-            detailHeader: isDetailHeaderVisible ? analyticsNavigationHeader : nil,
-            isShowingTransactions: showAllTransactions,
-            filtersExpanded: $transactionFiltersExpanded,
-            hideBalance: $hideBalance,
-            namespace: topControlsNamespace,
-            onBack: { showAllTransactions = false },
+    private var homeToolbar: some ToolbarContent {
+        HomeNavigationHeader(hideBalance: $hideBalance,
+            analyticsTip: tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive && !isSheetExpanded
+                ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil,
             onSettings: {
                 settingsInitialDestination = nil
                 showSettings = true
             },
             onAnalytics: {
-                let selection = $showAnalyticsView
-                analyticsNavigationHeader.show(title: "Analytics", onBack: { selection.wrappedValue = false })
                 analyticsInitialDate = nil
                 analyticsInitialPeriodFilter = nil
                 showAnalyticsView = true
                 HomeAnalyticsTip().invalidate(reason: .actionPerformed)
             },
-            onBudget: {
-                let selection = $showBudgetHub
-                analyticsNavigationHeader.show(title: "Budget", onBack: { selection.wrappedValue = false })
-                showBudgetHub = true
-            },
+            onBudget: { showBudgetHub = true },
             onConverter: { showCurrencyConverter = true },
-            onSelectSpendingMonth: { showsSpendingMonthPicker = true }
-        )
+            onSelectSpendingMonth: { showsSpendingMonthPicker = true })
     }
 
     // MARK: - 2. Account Selector Dropdown Menu Chip
@@ -761,8 +691,6 @@ struct DashboardView: View {
                     
                     Button(action: {
                         HapticsManager.shared.trigger(.selection)
-                        let selection = $showAccounts
-                        analyticsNavigationHeader.show(title: "Accounts", onBack: { selection.wrappedValue = false })
                         showAccounts = true
                     }) {
                         Label("Manage Accounts...", systemImage: "creditcard")

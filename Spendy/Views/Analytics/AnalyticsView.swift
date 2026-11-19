@@ -84,13 +84,10 @@ private struct AnalyticsPanelStyle: ViewModifier {
 
 struct AnalyticsView: View {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption2) private var comparisonChartHeight = 140.0
     var selectedTab: Binding<AppTab>? = nil
-    var topControlsNamespace: Namespace.ID? = nil
-    var sharedNavigationHeader: AnalyticsNavigationHeaderState? = nil
-    var onDismiss: (() -> Void)? = nil
+    var isPushed = false
     var isSubpageActiveBinding: Binding<Bool>? = nil
     
     var initialAccountID: String = "all"
@@ -159,12 +156,6 @@ struct AnalyticsView: View {
             
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 18, pinnedViews: [.sectionHeaders]) {
-                    if sharedNavigationHeader == nil || (topControlsNamespace == nil && onDismiss == nil) {
-                        headerBar
-                            .padding(.horizontal, 20)
-                            .padding(.top, topControlsNamespace != nil ? 4 : 10)
-                    }
-
                     Section {
                         VStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 16) {
@@ -190,16 +181,9 @@ struct AnalyticsView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .safeAreaBar(edge: .top, spacing: 0) {
-                if sharedNavigationHeader != nil && (topControlsNamespace != nil || onDismiss != nil) {
-                    // The persistent header remains in its parent overlay during navigation.
-                    Color.clear.frame(height: 66).accessibilityHidden(true)
-                }
-            }
             .accessibilityIdentifier("analytics-scroll")
             .scrollEdgeEffectStyle(.soft, for: .top)
         }
-            .toolbarVisibility(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $showAddTransaction) {
                 AddTransactionView()
             }
@@ -218,16 +202,13 @@ struct AnalyticsView: View {
             }
             .navigationDestination(isPresented: $showsSpendingBreakdown) {
                 SpendingBreakdownSheet(snapshot: spendingSnapshot,
-                    byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId,
-                    topControlsNamespace: analyticsControlsNamespace,
-                    sharedNavigationHeader: sharedNavigationHeader)
+                    byCategory: groupingMode == .categories, accountLabel: selectedAccountLabel, accountID: selectedAccountId)
             }
             .sheet(isPresented: $showMonthPicker) {
                 datePickerSheet
             }
             .navigationDestination(isPresented: $showSubscriptionSheet) {
-                SubscriptionsView(isPushed: true, initialSelectedSubscriptionId: selectedSubscriptionIdForDetail,
-                    topControlsNamespace: analyticsControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+                SubscriptionsView(isPushed: true, initialSelectedSubscriptionId: selectedSubscriptionIdForDetail)
             }
             .fullScreenCover(item: $editingTransaction) { tx in
                 AddTransactionView(transactionToEdit: tx)
@@ -242,7 +223,7 @@ struct AnalyticsView: View {
                 }
             }
             .navigationDestination(isPresented: $showBudgetHub) {
-                BudgetView(topControlsNamespace: analyticsControlsNamespace, sharedNavigationHeader: sharedNavigationHeader)
+                BudgetView()
             }
             .fullScreenCover(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
@@ -250,18 +231,14 @@ struct AnalyticsView: View {
             .navigationDestination(item: $selectedAccountForSheet) { account in
                 AccountAnalyticsSheet(
                     account: account,
-                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate, transactionType: transactionType),
-                    topControlsNamespace: analyticsControlsNamespace,
-                    sharedNavigationHeader: sharedNavigationHeader
+                    spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end, referenceDate: referenceDate, transactionType: transactionType)
                 )
             }
             .navigationDestination(item: $selectedCategoryForSheet) { category in
                 CategoryAnalyticsSheet(
                     category: category,
                     spendingScope: SpendingScope(start: spendingSnapshot.start, end: spendingSnapshot.end,
-                        referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId], transactionType: transactionType),
-                    topControlsNamespace: analyticsControlsNamespace,
-                    sharedNavigationHeader: sharedNavigationHeader
+                        referenceDate: referenceDate, accountIDs: selectedAccountId == "all" ? nil : [selectedAccountId], transactionType: transactionType)
                 )
             }
 
@@ -275,13 +252,9 @@ struct AnalyticsView: View {
                     appliedInitialScope = true
                 }
                 openRequestedWeek()
-                configureNavigationHeader()
             }
             .onChange(of: quickActions.requestedAnalyticsWeekDate) { _, _ in openRequestedWeek() }
             .onChange(of: isSubpageActive) { _, active in
-                if !active {
-                    configureNavigationHeader()
-                }
                 withAnimation(AppMotion.fluidSpring) {
                     isSubpageActiveBinding?.wrappedValue = active
                 }
@@ -292,23 +265,13 @@ struct AnalyticsView: View {
             .onChange(of: granularity) { _, _ in resetSelections() }
             .onChange(of: transactionType) { _, _ in resetSelections() }
             .onChange(of: selectedAccountId) { _, _ in resetSelections() }
-            .navigationBarBackButtonHidden(true)
-            .toolbarVisibility(.hidden, for: .navigationBar)
-    }
-
-    private func configureNavigationHeader() {
-        guard selectedCategoryForSheet == nil, selectedAccountForSheet == nil else { return }
-        let backAction = onDismiss
-        let dismissAction = dismiss
-        sharedNavigationHeader?.show(title: "Analytics",
-            isVisible: topControlsNamespace != nil || onDismiss != nil,
-            onBack: {
-                if let backAction { backAction() } else { dismissAction() }
-            })
+            .navigationTitle("Analytics")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
     }
 
     private func openRequestedWeek() {
-        guard topControlsNamespace == nil, let date = quickActions.requestedAnalyticsWeekDate else { return }
+        guard !isPushed, let date = quickActions.requestedAnalyticsWeekDate else { return }
         periodFilter = nil
         granularity = .week
         selectedDate = date
@@ -726,50 +689,6 @@ struct AnalyticsView: View {
         .accessibilityLabel("\(item.label), \(item.txCount) \(isIncome ? "income transactions" : "expenses"), \(item.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 2))")
     }
 
-    // MARK: - Header Bar
-    private var headerBar: some View {
-        HStack(alignment: .center) {
-            if topControlsNamespace != nil || onDismiss != nil {
-                GlassCircleButton(
-                    icon: "chevron.left",
-                    size: 44,
-                    iconSize: 15,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Back",
-                    morphID: "topControl_left",
-                    namespace: topControlsNamespace
-                ) {
-                    if let onDismiss = onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }
-                
-                Spacer()
-                
-                Text("Analytics")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                
-                Spacer()
-                
-                Color.clear
-                    .frame(width: 44, height: 44)
-            } else {
-                Text("Analytics")
-                    .font(.system(size: 32, weight: .heavy))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                
-                Spacer()
-            }
-        }
-    }
-    
     // MARK: - 1. Compact Header Row
     private var compactHeader: some View {
         SpendyGlassEffectContainer(spacing: 0) {
@@ -1131,9 +1050,6 @@ struct AnalyticsView: View {
             return "\(sym)\(Int(amount))"
         }
     }
-    
-    
-
     
     private func resetSelections() {
         selectedSpendingBucketID = nil

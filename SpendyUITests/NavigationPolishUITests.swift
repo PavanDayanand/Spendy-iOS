@@ -17,14 +17,14 @@ final class NavigationPolishUITests: XCTestCase {
     }
 
     @MainActor private func title(_ app: XCUIApplication) -> XCUIElement {
-        let matches = app.staticTexts.matching(identifier: "analytics-stack-title")
+        let matches = app.navigationBars.staticTexts
         return matches.allElementsBoundByIndex.first { $0.isHittable } ?? matches.firstMatch
     }
 
     @MainActor func testAnalyticsReusesBackForCategoryAndReturns() {
         let app = launch()
         app.buttons["Analytics and statistics"].tap()
-        let back = button(app, "analytics-stack-back")
+        let back = app.navigationBars.buttons.element(boundBy: 0)
         XCTAssertTrue(back.waitForExistence(timeout: 5))
         XCTAssertEqual(title(app).label, "Analytics")
         let originalFrame = back.frame
@@ -38,9 +38,9 @@ final class NavigationPolishUITests: XCTestCase {
         XCTAssertEqual(title(app).label, "Groceries")
         XCTAssertEqual(back.frame.minX, originalFrame.minX, accuracy: 1)
         XCTAssertEqual(back.frame.minY, originalFrame.minY, accuracy: 1)
-        XCTAssertEqual(app.buttons.matching(identifier: "analytics-stack-back")
+        XCTAssertEqual(app.navigationBars.buttons.matching(identifier: "BackButton")
             .allElementsBoundByIndex.filter { $0.isHittable }.count, 1)
-        let headerBacks = app.buttons.matching(NSPredicate(format: "label == %@", "Back"))
+        let headerBacks = app.buttons.matching(NSPredicate(format: "identifier == %@", "BackButton"))
             .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - originalFrame.midY) < 20 }
         XCTAssertEqual(headerBacks.count, 1, "Only one Back control may occupy the header")
         capture(app, "Category uses shared Analytics Back")
@@ -72,8 +72,8 @@ final class NavigationPolishUITests: XCTestCase {
         XCTAssertFalse(app.buttons["More actions"].exists)
         capture(app, "Expanded Recent Activity without Home controls")
         app.buttons["See all transactions"].tap()
-        XCTAssertTrue(app.buttons["home-transactions-back"].waitForExistence(timeout: 5))
-        app.buttons["home-transactions-back"].tap()
+        XCTAssertTrue(app.navigationBars["All Transactions"].buttons.element(boundBy: 0).waitForExistence(timeout: 5))
+        app.navigationBars["All Transactions"].buttons.element(boundBy: 0).tap()
         XCTAssertFalse(app.buttons["home-profile"].exists)
         app.buttons["Collapse recent activity"].tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
@@ -124,7 +124,7 @@ final class NavigationPolishUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Analytics and statistics"].exists)
         XCTAssertFalse(app.buttons["More actions"].exists)
         capture(app, "Budget without retained Home capsule")
-        button(app, "Back").tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
     }
 
@@ -138,13 +138,13 @@ final class NavigationPolishUITests: XCTestCase {
         let empty = app.staticTexts["No matching transactions"]
         XCTAssertTrue(empty.waitForExistence(timeout: 5))
         XCTAssertEqual(empty.frame.midX, app.frame.midX, accuracy: 3)
-        XCTAssertGreaterThan(empty.frame.minY, app.buttons["home-transactions-back"].frame.maxY + 30)
+        XCTAssertGreaterThan(empty.frame.minY, app.navigationBars["All Transactions"].buttons.element(boundBy: 0).frame.maxY + 30)
         XCTAssertTrue(app.buttons["Clear search and filters"].isHittable)
         capture(app, "Centered empty search results")
         app.buttons["Clear search and filters"].tap()
         XCTAssertFalse(empty.exists)
         XCTAssertEqual(search.value as? String, "Search transactions")
-        app.buttons["home-transactions-back"].tap()
+        app.navigationBars["All Transactions"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
     }
 
