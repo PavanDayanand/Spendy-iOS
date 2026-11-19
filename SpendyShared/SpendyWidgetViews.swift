@@ -11,11 +11,20 @@ import UIKit
 import WidgetKit
 
 enum SpendyWidgetPalette {
-    static let canvas = Color(uiColor: UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 18 / 255, green: 18 / 255, blue: 20 / 255, alpha: 1)
-            : UIColor.white
-    })
+    // Sampled from the supplied Reminders reference: a subtle charcoal-to-black finish.
+    // The widget container remains removable for Clear, tinted, and StandBy rendering.
+    static let canvas = LinearGradient(
+        colors: [
+            Color(uiColor: UIColor { trait in
+                trait.userInterfaceStyle == .dark ? UIColor(white: 31 / 255, alpha: 1) : .white
+            }),
+            Color(uiColor: UIColor { trait in
+                trait.userInterfaceStyle == .dark ? UIColor(white: 12 / 255, alpha: 1) : .white
+            })
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
     static let text = Color(uiColor: .label)
     static let secondary = Color(uiColor: .secondaryLabel)
     static let tertiary = Color(uiColor: .tertiaryLabel)

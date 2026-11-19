@@ -1,4 +1,4 @@
-> Latest cleanup and beta status: [BetaReadiness.md](BetaReadiness.md). The validation record below is historical.
+> Latest cleanup and beta status: [beta-readiness.md](beta-readiness.md). The validation record below is historical.
 
 # Release readiness — 10 October 2026
 

@@ -1,0 +1,366 @@
+{
+  "userName": "Migration Test",
+  "transactions": [
+    {
+      "id": "b9f3d7d8-9953-5f4d-8cc4-db2aa1790a7e",
+      "title": "Pay day",
+      "amount": 500,
+      "type": "income",
+      "categoryId": "paycheck",
+      "accountId": "bank",
+      "date": "2026-11-01T12:34:56.789Z",
+      "notes": "Keep this note 👋"
+    },
+    {
+      "id": "eda94b40-cccc-59b2-bc63-350fec2b3fe2",
+      "title": "Lunch",
+      "amount": 12.25,
+      "type": "expense",
+      "categoryId": "food",
+      "accountId": "bank",
+      "date": "2026-11-02T12:35:00.000Z"
+    },
+    {
+      "id": "6008a678-482a-5610-b113-5d80ec06c359",
+      "title": "Cash withdrawal",
+      "amount": 100,
+      "type": "transfer",
+      "categoryId": "transfer",
+      "accountId": "bank",
+      "date": "2026-11-03T12:00:00.000Z",
+      "toAccountId": "cash"
+    },
+    {
+      "id": "9d2f1832-d8b7-5a0d-a46b-70e2cabbe47b",
+      "title": "Music",
+      "amount": 9.99,
+      "type": "expense",
+      "categoryId": "subscriptions",
+      "accountId": "bank",
+      "date": "2026-11-05T00:00:00.000Z",
+      "subscriptionId": "f886e810-bd26-51b0-afe3-2d453c0ddefc"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "bank",
+      "label": "Everyday",
+      "sfSymbol": "building.columns.fill",
+      "colorHex": "#007AFF",
+      "openingBalance": 1000,
+      "order": 0,
+      "type": "Bank"
+    },
+    {
+      "id": "cash",
+      "label": "Cash",
+      "sfSymbol": "banknote.fill",
+      "colorHex": "#34C759",
+      "openingBalance": -10,
+      "order": 1,
+      "type": "Cash"
+    }
+  ],
+  "categories": [
+    {
+      "id": "food",
+      "label": "Coffee & Lunch",
+      "sfSymbol": "fork.knife",
+      "colorHex": "#FF9500",
+      "type": "expense",
+      "folder": "My essentials",
+      "isHidden": true,
+      "order": 0
+    },
+    {
+      "id": "subscriptions",
+      "label": "Subscriptions",
+      "sfSymbol": "receipt",
+      "colorHex": "#AF52DE",
+      "type": "expense",
+      "folder": "Everyday Spending",
+      "isHidden": false,
+      "order": 1
+    },
+    {
+      "id": "paycheck",
+      "label": "Paycheck",
+      "sfSymbol": "banknote.fill",
+      "colorHex": "#30D158",
+      "type": "income",
+      "folder": "Salary & Career",
+      "isHidden": false,
+      "order": 0
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "f886e810-bd26-51b0-afe3-2d453c0ddefc",
+      "name": "Music",
+      "amount": 9.99,
+      "cycle": "monthly",
+      "nextBillingDate": "2026-12-05",
+      "categoryId": "subscriptions",
+      "accountId": "bank",
+      "autoDeduct": true,
+      "isPaused": false,
+      "isTrial": true,
+      "status": "active",
+      "sfSymbol": "music.note",
+      "colorHex": "#00AABB",
+      "isDarkBadge": true
+    }
+  ],
+  "budget": {
+    "amount": 300,
+    "period": "monthly",
+    "startDay": 3,
+    "isActive": true,
+    "categoryBudgets": {
+      "food": 50
+    }
+  },
+  "currencyCode": "INR",
+  "currencySymbol": "₹",
+  "customFolders": [
+    {
+      "id": "f66553b5-1f58-5c1f-8990-f08e1be2ab16",
+      "name": "My essentials",
+      "type": "expense"
+    }
+  ],
+  "isMonoIconMode": true,
+  "hasCompletedOnboarding": true,
+  "appearanceMode": "Dark",
+  "isGradientBackgroundEnabled": true,
+  "topGradientColorHex": "#001A99",
+  "_spendyMigration": {
+    "version": 1,
+    "source": "Spendy PWA",
+    "idMap": {
+      "transactions": {
+        "tx_income": "b9f3d7d8-9953-5f4d-8cc4-db2aa1790a7e",
+        "tx_lunch": "eda94b40-cccc-59b2-bc63-350fec2b3fe2",
+        "tx_transfer": "6008a678-482a-5610-b113-5d80ec06c359",
+        "tx_subscription": "9d2f1832-d8b7-5a0d-a46b-70e2cabbe47b"
+      },
+      "subscriptions": {
+        "sub_music": "f886e810-bd26-51b0-afe3-2d453c0ddefc"
+      }
+    },
+    "report": {
+      "counts": {
+        "transactions": 4,
+        "accounts": 2,
+        "categories": 3,
+        "subscriptions": 1
+      },
+      "currencyCode": "INR",
+      "totals": {
+        "income": 500,
+        "expense": 22.240000000000002,
+        "transfer": 100
+      },
+      "balances": [
+        {
+          "id": "bank",
+          "label": "Everyday",
+          "before": 1377.76,
+          "after": 1377.76
+        },
+        {
+          "id": "cash",
+          "label": "Cash",
+          "before": 90,
+          "after": 90
+        }
+      ],
+      "warnings": [
+        {
+          "code": "archive-only",
+          "path": "goals",
+          "message": "Goals are preserved in the file archive. The current iOS backup format has no goals field."
+        },
+        {
+          "code": "archive-only",
+          "path": "transactions",
+          "message": "PWA-only transaction fields (previousBilling) remain in the file archive, not the iOS ledger."
+        }
+      ],
+      "iconMappings": [
+        {
+          "label": "Everyday",
+          "original": "🏦",
+          "symbol": "building.columns.fill",
+          "approximate": false
+        },
+        {
+          "label": "Cash",
+          "original": "💵",
+          "symbol": "banknote.fill",
+          "approximate": false
+        },
+        {
+          "label": "Coffee & Lunch",
+          "original": "fastfood",
+          "symbol": "fork.knife",
+          "approximate": false
+        },
+        {
+          "label": "Subscriptions",
+          "original": "receipt",
+          "symbol": "receipt",
+          "approximate": false
+        },
+        {
+          "label": "Paycheck",
+          "original": "money",
+          "symbol": "banknote.fill",
+          "approximate": false
+        },
+        {
+          "label": "Music",
+          "original": "music",
+          "symbol": "music.note",
+          "approximate": false
+        }
+      ],
+      "archivedPreferences": [
+        "cardShape",
+        "theme",
+        "hasSeenOnboarding"
+      ],
+      "sourceArchived": true
+    },
+    "originalBackup": {
+      "userName": "Migration Test",
+      "currency": "₹",
+      "theme": "dark",
+      "hasSeenOnboarding": true,
+      "accounts": [
+        {
+          "id": "bank",
+          "label": "Everyday",
+          "openingBalance": 1000,
+          "icon": "🏦"
+        },
+        {
+          "id": "cash",
+          "label": "Cash",
+          "openingBalance": -10,
+          "icon": "💵"
+        }
+      ],
+      "categories": {
+        "expense": [
+          {
+            "id": "food",
+            "label": "Coffee & Lunch",
+            "iconType": "icon",
+            "iconName": "fastfood",
+            "color": "#FF9500",
+            "folder": "My essentials",
+            "hidden": true
+          },
+          {
+            "id": "subscriptions",
+            "label": "Subscriptions",
+            "iconType": "icon",
+            "iconName": "receipt",
+            "color": "#AF52DE"
+          }
+        ],
+        "income": [
+          {
+            "id": "paycheck",
+            "label": "Paycheck",
+            "iconType": "icon",
+            "iconName": "money",
+            "color": "#30D158"
+          }
+        ]
+      },
+      "transactions": [
+        {
+          "id": "tx_income",
+          "title": "Pay day",
+          "amount": 500,
+          "type": "income",
+          "category": "paycheck",
+          "accountId": "bank",
+          "date": "2026-11-01T12:34:56.789Z",
+          "notes": "Keep this note 👋"
+        },
+        {
+          "id": "tx_lunch",
+          "title": "Lunch",
+          "amount": "12.25",
+          "type": "expense",
+          "category": "food",
+          "accountId": "bank",
+          "date": "2026-11-02T18:05:00+05:30"
+        },
+        {
+          "id": "tx_transfer",
+          "title": "Cash withdrawal",
+          "amount": 100,
+          "type": "transfer",
+          "category": "transfer",
+          "accountId": "bank",
+          "toAccountId": "cash",
+          "date": 1793707200000
+        },
+        {
+          "id": "tx_subscription",
+          "title": "Music",
+          "amount": 9.99,
+          "type": "expense",
+          "category": "subscriptions",
+          "accountId": "bank",
+          "date": "2026-11-05T00:00:00Z",
+          "subscriptionId": "sub_music",
+          "previousBilling": "2026-11-05"
+        }
+      ],
+      "subscriptions": [
+        {
+          "id": "sub_music",
+          "name": "Music",
+          "amount": 9.99,
+          "cycle": "monthly",
+          "nextBilling": "2026-12-05",
+          "account": "bank",
+          "category": "subscriptions",
+          "autoDeduct": true,
+          "isPaused": false,
+          "isTrial": true,
+          "status": "active",
+          "icon": {
+            "type": "icon",
+            "value": "music"
+          },
+          "color": "#00AABB"
+        }
+      ],
+      "budget": {
+        "amount": 300,
+        "period": "monthly",
+        "startDay": 3,
+        "isActive": true,
+        "categoryBudgets": {
+          "food": 50
+        }
+      },
+      "goals": [
+        {
+          "id": "goal_trip",
+          "name": "Holiday",
+          "target": 2500
+        }
+      ],
+      "cardShape": "rounded",
+      "topGradientColor": "#001A99",
+      "enableGradient": true
+    }
+  }
+}

@@ -437,6 +437,10 @@ final class ExpenseStore {
     var isGradientBackgroundEnabled: Bool = true {
         didSet { scheduleSave() }
     }
+
+    var homeGradientStyle: HomeGradientStyle = .blueAura {
+        didSet { scheduleSave() }
+    }
     
     var topGradientHue: Double = 0.60 {
         didSet {
@@ -542,6 +546,7 @@ final class ExpenseStore {
         var isMonoIconMode: Bool?
         var topGradientColorHex: String?
         var isGradientBackgroundEnabled: Bool?
+        var homeGradientStyle: String?
         var topGradientHue: Double?
         var topGradientBrightness: Double?
         var transactions: [Transaction]
@@ -592,6 +597,7 @@ final class ExpenseStore {
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
+                self.homeGradientStyle = payload.homeGradientStyle.flatMap(HomeGradientStyle.init(rawValue:)) ?? .blueAura
                 self.topGradientHue = payload.topGradientHue ?? 0.60
                 self.topGradientBrightness = payload.topGradientBrightness ?? 0.85
                 if let orderRaw = payload.dashboardSectionOrder {
@@ -714,6 +720,7 @@ final class ExpenseStore {
             isMonoIconMode: isMonoIconMode,
             topGradientColorHex: topGradientColorHex,
             isGradientBackgroundEnabled: isGradientBackgroundEnabled,
+            homeGradientStyle: homeGradientStyle.rawValue,
             topGradientHue: topGradientHue,
             topGradientBrightness: topGradientBrightness,
             transactions: transactions,
@@ -789,6 +796,7 @@ final class ExpenseStore {
         self.topGradientHue = SpendyDefaultData.topGradientHue
         self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
         self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
+        self.homeGradientStyle = .blueAura
         self.accounts = Account.defaultAccounts
         self.customFolders = []
         self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
@@ -1624,6 +1632,7 @@ final class ExpenseStore {
             isMonoIconMode: isMonoIconMode,
             topGradientColorHex: topGradientColorHex,
             isGradientBackgroundEnabled: isGradientBackgroundEnabled,
+            homeGradientStyle: homeGradientStyle.rawValue,
             topGradientHue: topGradientHue,
             topGradientBrightness: topGradientBrightness,
             transactions: transactions,
@@ -1722,6 +1731,7 @@ final class ExpenseStore {
                 SpendyColors.isMonoMode = self.isMonoIconMode
                 self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex
                 self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? self.isGradientBackgroundEnabled
+                self.homeGradientStyle = payload.homeGradientStyle.flatMap(HomeGradientStyle.init(rawValue:)) ?? .blueAura
                 self.topGradientHue = payload.topGradientHue ?? self.topGradientHue
                 self.topGradientBrightness = payload.topGradientBrightness ?? self.topGradientBrightness
                 self.transactions = payload.transactions

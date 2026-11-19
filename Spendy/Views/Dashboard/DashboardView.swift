@@ -488,8 +488,13 @@ struct DashboardView: View {
                 let bottomInset = geometry.safeAreaInsets.bottom
                 
                 ZStack(alignment: .topLeading) {
-                    SpendyColors.appBackground
-                        .ignoresSafeArea()
+                    if store.isGradientBackgroundEnabled {
+                        HomeNeonBackground(style: store.homeGradientStyle)
+                            .ignoresSafeArea()
+                    } else {
+                        SpendyColors.appBackground
+                            .ignoresSafeArea()
+                    }
                     
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {
@@ -513,7 +518,7 @@ struct DashboardView: View {
                     .frame(height: max(0, restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8), alignment: .top)
                     .accessibilityIdentifier("home-spending-canvas")
 
-                    // 2. Interactive Bottom Transactions Drawer (Solid Opaque Surface)
+                    // 2. Interactive Bottom Transactions Drawer
                     recentTransactionsDrawer(
                         totalHeight: totalHeight,
                         topInset: topInset,

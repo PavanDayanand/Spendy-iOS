@@ -14,7 +14,7 @@ final class AppAccentUITests: XCTestCase {
         XCTAssertTrue(accent.waitForExistence(timeout: 5))
         if !accent.isHittable { app.swipeUp() }
         accent.tap()
-        XCTAssertTrue(app.buttons["accent-blue"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Appearance"].waitForExistence(timeout: 5))
         return app
     }
 
@@ -23,6 +23,55 @@ final class AppAccentUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    @MainActor func testHomeGradientTogglesFromAppearance() {
+        for light in [false, true] {
+            let app = openPicker(light: light)
+            let gradient = app.switches["appearance-home-gradient"]
+            XCTAssertTrue(gradient.waitForExistence(timeout: 5))
+            XCTAssertEqual(gradient.value as? String, "1")
+            capture(app, "Gradient Appearance \(light ? "light" : "dark")")
+            gradient.tap()
+            XCTAssertEqual(gradient.value as? String, "0")
+            app.navigationBars.buttons.firstMatch.tap()
+            app.buttons["Close"].tap()
+            capture(app, "Plain Home \(light ? "light" : "dark")")
+
+            app.buttons["home-profile"].tap()
+            app.buttons["settings-app-accent"].tap()
+            XCTAssertEqual(gradient.value as? String, "0")
+            gradient.tap()
+            XCTAssertEqual(gradient.value as? String, "1")
+            app.navigationBars.buttons.firstMatch.tap()
+            app.buttons["Close"].tap()
+            capture(app, "Gradient Home \(light ? "light" : "dark")")
+            if !light {
+                app.buttons["Expand recent activity"].tap()
+                XCTAssertTrue(app.buttons["Collapse recent activity"].waitForExistence(timeout: 5))
+                capture(app, "Expanded gradient activity solid surface")
+                app.buttons["Collapse recent activity"].tap()
+            }
+        }
+    }
+
+    @MainActor func testIndigoGradientChoiceDarkAndLight() {
+        for light in [false, true] {
+            let app = openPicker(light: light)
+            let indigo = app.buttons["home-gradient-indigo"]
+            XCTAssertTrue(indigo.waitForExistence(timeout: 5))
+            indigo.tap()
+            XCTAssertEqual(indigo.value as? String, "Selected")
+            capture(app, "Indigo Appearance \(light ? "light" : "dark")")
+            app.navigationBars.buttons.firstMatch.tap()
+            app.buttons["Close"].tap()
+            capture(app, "Indigo Home \(light ? "light" : "dark")")
+            app.buttons["home-profile"].tap()
+            app.buttons["settings-app-accent"].tap()
+            XCTAssertEqual(indigo.value as? String, "Selected")
+            app.buttons["home-gradient-blueAura"].tap()
+            XCTAssertEqual(app.buttons["home-gradient-blueAura"].value as? String, "Selected")
+        }
     }
 
     @MainActor func testAllPresetsDarkAndLiveButtons() {
