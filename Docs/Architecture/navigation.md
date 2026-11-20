@@ -58,7 +58,21 @@ the current page's state or forces a separate header spring.
 
 Home's profile button and action menu retain their existing routes. The
 transaction browser owns filter visibility and starts collapsed when opened
-from Home. Custom glass remains in content filters and the floating bottom dock.
+from Home. The transaction browser uses system search in its bottom toolbar beside Add
+Transaction. The system manages search focus, clearing, keyboard presentation,
+and glass transitions. Filtering still applies to the original transaction scope.
+
+Transaction and receipt date editing share a native graphical `DatePicker` in a
+sheet. Shared standalone circular buttons use the native glass button style,
+with their existing actions, tints, and haptics. Custom glass remains in content
+filters and the floating bottom dock.
+
+Monthly Receipt uses a large native sheet with Close and Share toolbar actions.
+Pinned month controls open the shared native month/year chooser; Cancel preserves
+the current report and Apply selects a month. A SwiftUI printer feeds the receipt
+slowly once on opening. Month changes update the paper without replaying the feed. Reduce Motion shows the complete paper
+immediately. Sharing renders the full selected report separately from the feed,
+so a partially printed preview never produces a partial export.
 
 ## Current limits
 

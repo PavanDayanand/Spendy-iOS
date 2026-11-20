@@ -106,7 +106,7 @@ struct ReceiptReviewView: View {
                     scanResult?.merchantName = note
                 }
             case .date:
-                CustomCalendarDrawer(selectedDate: reviewedDate)
+                TransactionDatePickerSheet(selectedDate: reviewedDate)
             case .category:
                 CategoryPickerDrawer(selectedCategoryId: reviewedCategoryID,
                     currentType: scanResult?.transactionType ?? .expense,

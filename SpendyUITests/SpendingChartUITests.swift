@@ -222,7 +222,7 @@ final class SpendingChartUITests: XCTestCase {
         let app = launch()
         button(app, "See all transactions").tap()
         XCTAssertTrue(app.staticTexts["All Transactions"].waitForExistence(timeout: 5))
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         search.tap()
         search.typeText("unmatched-transaction-query")
         XCTAssertTrue(app.staticTexts["No matching transactions"].waitForExistence(timeout: 5))

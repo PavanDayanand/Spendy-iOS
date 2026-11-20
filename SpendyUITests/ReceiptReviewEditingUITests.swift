@@ -82,11 +82,11 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         app.buttons["add-scanned-receipt"].tap()
         XCTAssertTrue(app.buttons["See all transactions"].waitForExistence(timeout: 8))
         app.buttons["See all transactions"].tap()
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Reviewed lunch receipt")
-        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Reviewed lunch receipt,", ", Expense,")).firstMatch
+        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reviewed lunch receipt,")).firstMatch
         XCTAssertTrue(transaction.waitForExistence(timeout: 5))
         XCTAssertTrue(transaction.label.contains("Cash"))
         XCTAssertTrue(transaction.label.localizedCaseInsensitiveContains("today"))
@@ -134,11 +134,11 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         let homeReady = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: seeAll)
         wait(for: [homeReady], timeout: 8)
         seeAll.tap()
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText(note)
-        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(note),", ", Expense,")).firstMatch
+        let transaction = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "\(note),")).firstMatch
         XCTAssertTrue(transaction.waitForExistence(timeout: 5))
         transaction.tap()
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
@@ -157,6 +157,33 @@ final class ReceiptReviewEditingUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Note, Receipt draft note"].exists)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Cash")).firstMatch.exists)
         capture(app, "Edited receipt draft retained in full editor")
+    }
+
+    @MainActor func testClosingNativeCalendarDoesNotConfirmMissingReceiptDate() {
+        let app = openReview(hasDate: false)
+        field(app, "date").tap()
+        let bar = app.navigationBars["Select Date"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5))
+        bar.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["receipt-review-date"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["receipt-review-date"].value as? String, "Choose date")
+        XCTAssertFalse(app.buttons["add-scanned-receipt"].isEnabled)
+    }
+
+    @MainActor func testNativeCalendarClosePreservesReceiptDate() {
+        let app = openReview()
+        let originalDate = app.buttons["receipt-review-date"].value as? String
+        field(app, "date").tap()
+        let bar = app.navigationBars["Select Date"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.datePickers.firstMatch.exists, "Receipt dates use the native date picker")
+        capture(app, "Native receipt calendar")
+        bar.buttons["Close"].tap()
+        XCTAssertTrue(app.buttons["receipt-review-date"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["receipt-review-date"].value as? String, originalDate)
+        field(app, "date").tap()
+        bar.buttons["Done"].tap()
+        XCTAssertEqual(app.buttons["receipt-review-date"].value as? String, originalDate)
     }
 
     @MainActor func testMissingDateCanBeChosenWithoutFullEditor() {

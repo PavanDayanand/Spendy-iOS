@@ -283,7 +283,7 @@ struct AddTransactionView: View {
                     accounts: store.accounts
                 )
             case .calendar:
-                CustomCalendarDrawer(selectedDate: $date)
+                TransactionDatePickerSheet(selectedDate: $date)
             case .receiptIntroduction:
                 ReceiptScanIntroductionSheet {
                     hasSeenReceiptScanIntroduction = true

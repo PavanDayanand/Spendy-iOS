@@ -6,7 +6,7 @@
 //  - Native navigation bar with Back, title, and filter visibility action
 //  - Pinned content filters below the system toolbar
 //  - Individual Transaction Cards with SpendyIconBadge, Title, Mini Bank Indicator & Formatted Amount
-//  - Lowered Floating Liquid Glass Search Bar + Liquid Glass Quick Add (+) Button on Bottom Layer
+//  - System search and Add Transaction action in the bottom toolbar
 //
 
 import SwiftUI
@@ -32,8 +32,7 @@ struct AllTransactionsView: View {
     @State private var showsAccountFilter = false
     @State private var selectedAccountId: String? = nil
     @State private var selectedTransactionType: TransactionType? = nil
-    @FocusState private var isSearchFocused: Bool
-    @Namespace private var allTransactionsNamespace
+    @State private var isSearchPresented = false
     
     // Sheets
     @State private var pendingTransactionEdit: Transaction? = nil
@@ -195,7 +194,7 @@ struct AllTransactionsView: View {
                             // Grouped Transactions List
                             if filteredTransactions.isEmpty {
                                 emptyStateView
-                                    .frame(minHeight: max(0, viewport.size.height - pinnedHeaderHeight - 110))
+                                    .frame(minHeight: max(0, viewport.size.height - pinnedHeaderHeight - 24))
                                     .frame(maxWidth: .infinity)
                             } else {
                                 LazyVStack(spacing: 20) {
@@ -225,7 +224,7 @@ struct AllTransactionsView: View {
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.top, 2)
-                                .padding(.bottom, 110) // Clearance for floating bottom search & add bar
+                                .padding(.bottom, 16)
                             }
                         }
                     }
@@ -241,20 +240,13 @@ struct AllTransactionsView: View {
                     pinnedHeader.zIndex(1)
 
                 }
-            
-                // Floating Bottom Liquid Glass Search Bar + Quick Add (+) Button on Top Layer
-                VStack {
-                    Spacer()
-                    floatingBottomBar
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
-                }
-                .zIndex(100)
             }
         }
         .navigationTitle(scopeTitle ?? "All Transactions")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.visible, for: .navigationBar)
+        .toolbarVisibility(.visible, for: .navigationBar)
+        .searchable(text: $searchQuery, isPresented: $isSearchPresented, prompt: "Search transactions")
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(areFiltersExpanded ? "Hide transaction filters" : "Show transaction filters",
@@ -263,8 +255,14 @@ struct AllTransactionsView: View {
                 }
                 .accessibilityIdentifier("home-transactions-filters")
             }
+            DefaultToolbarItem(kind: .search, placement: .bottomBar)
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
+                Button("Add Transaction", systemImage: "plus") { showAddTransaction = true }
+                    .accessibilityIdentifier("transactions-add")
+            }
         }
-        .toolbar(.hidden, for: .tabBar)
+        .toolbarVisibility(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: $showAddTransaction) {
             AddTransactionView()
         }
@@ -423,76 +421,6 @@ struct AllTransactionsView: View {
         }
     }
     
-    // MARK: - 4. Floating Bottom Liquid Glass Search Bar + Liquid Glass Quick Add (+) Button
-    private var floatingBottomBar: some View {
-        let isSearchActive = isSearchFocused || !searchQuery.isEmpty
-        return SpendyGlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                // Liquid Glass Search Capsule (Smoothly expands to full width when focused or containing text)
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    
-                    TextField("Search transactions", text: $searchQuery)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .focused($isSearchFocused)
-                        .submitLabel(.search)
-                    
-                    if isSearchActive {
-                        Button {
-                            HapticsManager.shared.trigger(.tick)
-                            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
-                                searchQuery = ""
-                                isSearchFocused = false
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Clear search")
-                    }
-                }
-                .padding(.leading, 16)
-                .padding(.trailing, isSearchActive ? 4 : 16)
-                .frame(height: 50)
-                .frame(maxWidth: .infinity)
-                .nativeLiquidGlassCapsule(isInteractive: true)
-                .glassMorphID("transactionsSearchCapsule", in: allTransactionsNamespace)
-                
-                if !isSearchActive {
-                    // Liquid Glass Floating Quick Add Button (+)
-                    Button {
-                        HapticsManager.shared.trigger(.cardSnap)
-                        showAddTransaction = true
-                    } label: {
-                        ZStack {
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                                .frame(width: 50, height: 50)
-                                .nativeLiquidGlassCircle(isInteractive: true)
-                        }
-                        .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add Transaction")
-                    .glassMorphID("transactionsAddButton", in: allTransactionsNamespace)
-                    .transition(reduceMotion ? .opacity : .asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity),
-                        removal: .scale(scale: 0.8).combined(with: .opacity)
-                    ))
-                }
-            }
-            .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: isSearchActive)
-        }
-    }
-    
     private var emptyStateView: some View {
         let hasFilters = !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || selectedCategoryIDs != nil || selectedAccountId != nil || selectedTransactionType != nil
@@ -511,7 +439,7 @@ struct AllTransactionsView: View {
                         selectedCategoryIDs = nil
                         selectedAccountId = nil
                         selectedTransactionType = nil
-                        isSearchFocused = false
+                        isSearchPresented = false
                     } else { showAddTransaction = true }
                 }
                 .buttonStyle(.plain)

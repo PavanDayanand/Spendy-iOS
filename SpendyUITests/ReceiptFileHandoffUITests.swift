@@ -61,7 +61,7 @@ final class ReceiptFileHandoffUITests: XCTestCase {
             app.buttons["add-scanned-receipt"].tap()
             XCTAssertTrue(app.buttons["home-receipt-scan"].waitForExistence(timeout: 5))
             app.buttons["See all transactions"].tap()
-            let search = app.textFields["Search transactions"]
+            let search = app.searchFields["Search transactions"]
             XCTAssertTrue(search.waitForExistence(timeout: 5))
             search.tap(); search.typeText("Corner Cafe")
             let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Corner Cafe, Expense")).firstMatch

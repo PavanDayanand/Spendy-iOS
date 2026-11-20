@@ -522,7 +522,7 @@ struct DashboardView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { homeToolbar }
-            .toolbar(isSheetExpanded ? .hidden : .visible, for: .navigationBar)
+            .toolbar(.visible, for: .navigationBar)
             .sheet(isPresented: $showSettings, onDismiss: {
                 settingsInitialDestination = nil
             }) {
@@ -808,9 +808,8 @@ struct DashboardView: View {
             
             }
 
-            return ZStack(alignment: .top) {
-                // Activity scrolls behind the pinned controls and floating dock.
-                ScrollView(showsIndicators: isSheetExpanded) {
+            // The actual header belongs to the scroll edge so iOS can blur underneath it.
+            return ScrollView(showsIndicators: isSheetExpanded) {
                     if transactions.isEmpty {
                         emptyRecentActivityView
                             .padding(.horizontal, 20)
@@ -857,14 +856,15 @@ struct DashboardView: View {
                         .padding(.horizontal, 4)
                     }
                 }
-                .safeAreaPadding(.top, 72 + 56 * expansion)
+                .accessibilityIdentifier("homeActivityViewport")
+                .safeAreaBar(edge: .top, spacing: 0) {
+                    pinnedHeader
+                }
+                .scrollEdgeEffectStyle(.soft, for: .top)
                 .safeAreaPadding(.bottom, bottomInset + 78)
                 .scrollDisabled(!isSheetExpanded)
                 .frame(maxHeight: .infinity, alignment: .top)
-                .accessibilityIdentifier("homeActivityViewport")
 
-                pinnedHeader
-            }
         }
     }
 

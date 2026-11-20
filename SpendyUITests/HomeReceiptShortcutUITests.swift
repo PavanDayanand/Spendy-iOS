@@ -49,7 +49,7 @@ final class HomeReceiptShortcutUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home-receipt-scan"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Add receipt"].exists)
         app.buttons["See all transactions"].tap()
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Corner Cafe")

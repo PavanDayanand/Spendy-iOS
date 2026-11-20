@@ -3,20 +3,10 @@
 //  Spendy
 //
 //  Native Apple Liquid Glass Circular Button & Icon Component
-//  Standard 44x44 pt Apple HIG Touch Target with Spring Micro-Interactions & Haptics
+//  System glass press behavior with a minimum 44-point touch target and app haptics
 //
 
 import SwiftUI
-
-// MARK: - Glass Circle Press Style
-struct GlassCirclePressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.90 : 1.0)
-            .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.65), value: configuration.isPressed)
-    }
-}
 
 // MARK: - Glass Circle Default Icon View
 struct GlassCircleDefaultIconView: View {
@@ -142,25 +132,24 @@ struct GlassCircleButton<Content: View>: View {
     }
     
     var body: some View {
-        Button(action: {
-            if let haptic = haptic {
-                HapticsManager.shared.trigger(haptic)
-            }
+        let button = Button {
+            if let haptic { HapticsManager.shared.trigger(haptic) }
             action()
-        }) {
-            GlassCircleIcon(
-                size: size,
-                tintColor: tintColor,
-                isInteractive: false,
-                morphID: morphID,
-                namespace: namespace
-            ) {
-                content()
-            }
-            .contentShape(Circle())
+        } label: {
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(GlassCirclePressStyle())
-        .accessibilityLabel(accessibilityLabel ?? "")
+        .buttonStyle(.glass(.regular.tint(tintColor)))
+        .buttonBorderShape(.circle)
+        .buttonSizing(.flexible)
+        .frame(width: max(44, size), height: max(44, size))
+        .modifier(OptionalGlassMorphModifier(id: morphID, namespace: namespace))
+
+        if let accessibilityLabel {
+            button.accessibilityLabel(accessibilityLabel)
+        } else {
+            button
+        }
     }
 }
 

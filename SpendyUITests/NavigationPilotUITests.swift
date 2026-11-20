@@ -46,11 +46,11 @@ final class NavigationPilotUITests: XCTestCase {
         XCTAssertEqual(filters.label, "Show transaction filters")
         XCTAssertFalse(app.descendants(matching: .any)["transaction-filters"].exists)
 
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         search.tap()
         search.typeText("no matching purchase")
         XCTAssertTrue(app.staticTexts["No matching transactions"].waitForExistence(timeout: 5))
-        app.buttons["Clear search"].tap()
+        app.buttons["Clear search and filters"].tap()
         XCTAssertTrue(back.isHittable)
 
         // A short edge swipe should cancel and leave the destination usable.

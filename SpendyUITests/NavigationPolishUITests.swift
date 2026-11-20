@@ -63,18 +63,20 @@ final class NavigationPolishUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
     }
 
-    @MainActor func testExpandedActivityHidesHomeHeader() {
+    @MainActor func testExpandedActivityKeepsHomeHeaderStable() {
         let app = launch()
+        let initialY = app.buttons["home-profile"].frame.midY
         app.buttons["Expand recent activity"].tap()
         XCTAssertTrue(app.buttons["Collapse recent activity"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["home-profile"].exists)
-        XCTAssertFalse(app.buttons["Analytics and statistics"].exists)
-        XCTAssertFalse(app.buttons["More actions"].exists)
-        capture(app, "Expanded Recent Activity without Home controls")
+        XCTAssertTrue(app.buttons["home-profile"].exists)
+        XCTAssertTrue(app.buttons["Analytics and statistics"].exists)
+        XCTAssertTrue(app.buttons["More actions"].exists)
+        XCTAssertEqual(app.buttons["home-profile"].frame.midY, initialY, accuracy: 1)
+        capture(app, "Expanded activity with stable toolbar and material header")
         app.buttons["See all transactions"].tap()
         XCTAssertTrue(app.navigationBars["All Transactions"].buttons.element(boundBy: 0).waitForExistence(timeout: 5))
         app.navigationBars["All Transactions"].buttons.element(boundBy: 0).tap()
-        XCTAssertFalse(app.buttons["home-profile"].exists)
+        XCTAssertTrue(app.buttons["home-profile"].exists)
         app.buttons["Collapse recent activity"].tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Analytics and statistics"].isHittable)
@@ -131,7 +133,7 @@ final class NavigationPolishUITests: XCTestCase {
     @MainActor func testSearchEmptyStateIsCenteredAndClears() {
         let app = launch(light: true)
         app.buttons["See all transactions"].tap()
-        let search = app.textFields["Search transactions"]
+        let search = app.searchFields["Search transactions"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("Hello")

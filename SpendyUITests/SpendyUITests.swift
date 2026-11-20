@@ -624,6 +624,21 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(category.waitForExistence(timeout: 5))
     }
 
+    @MainActor func testCategoryCreationHasTrailingTypeAndNoColorSwatches() {
+        let app = launch("analytics")
+        app.buttons["home-profile"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Categories,")).firstMatch.tap()
+        app.buttons["Add Options Menu"].firstMatch.tap()
+        app.buttons["Create a Category"].tap()
+        XCTAssertTrue(app.textFields["Category name"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Create"].isHittable)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Select color ")).firstMatch.exists)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Category creation trailing type control without colors"
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
     @MainActor func testCompactAccountAndCategoryCreationSheets() {
         let app = launch("analytics")
         func capture(_ name: String) {
