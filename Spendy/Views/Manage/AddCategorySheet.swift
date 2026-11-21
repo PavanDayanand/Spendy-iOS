@@ -86,26 +86,14 @@ struct AddCategorySheet: View {
                             dismiss()
                         }
                     },
-                    onDelete: { showDeleteConfirm = true }
-                ) {
-                    EmptyView()
-                } trailing: {
-                    HStack(spacing: 12) {
+                    onDelete: { showDeleteConfirm = true },
+                    center: {
                         SpendyTransactionTypeToggle(
                             selection: $type,
                             availableTypes: [.expense, .income]
                         )
-                        if isEditing {
-                            Button("Delete Category", systemImage: SFIcons.delete) {
-                                showDeleteConfirm = true
-                            }
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(.glass)
-                            .buttonBorderShape(.circle)
-                            .tint(SpendyColors.expenseRed)
-                        }
                     }
-                }
+                )
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 8)

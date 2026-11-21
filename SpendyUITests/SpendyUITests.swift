@@ -582,6 +582,10 @@ final class SpendyUITests: XCTestCase {
         categoryShot.name = "Edit category from Settings grey"
         categoryShot.lifetime = .keepAlways
         add(categoryShot)
+        app.buttons["Delete Category"].tap()
+        XCTAssertTrue(app.alerts["Delete Category?"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(app.textFields["Category name"].exists)
         app.buttons["Edit category icon"].tap()
         XCTAssertTrue(app.staticTexts["Choose Icon"].waitForExistence(timeout: 5))
         let iconShot = XCTAttachment(screenshot: app.screenshot())

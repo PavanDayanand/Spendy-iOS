@@ -14,6 +14,37 @@ final class AdaptiveLayoutUITests: XCTestCase {
         return app
     }
 
+    @MainActor func testTransferActionFitsAfterScrolling() {
+        let app = launch(systemNavigation: true)
+        if !app.buttons["Add Transaction"].isHittable { app.buttons["More"].tap() }
+        app.buttons["Add Transaction"].tap()
+        app.buttons["Transfer"].tap()
+        let five = app.buttons["5"]
+        for _ in 0..<6 {
+            if five.isHittable { break }
+            app.swipeUp()
+        }
+        five.tap()
+        let transfer = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Transfer to ")).firstMatch
+        XCTAssertTrue(transfer.waitForExistence(timeout: 5))
+        for _ in 0..<6 {
+            if transfer.isHittable && app.frame.contains(transfer.frame) { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(transfer.isHittable)
+        XCTAssertTrue(app.frame.contains(transfer.frame))
+        capture(app, "Transfer action inside the visible viewport")
+    }
+
+    @MainActor func testRestoredCameraOpensAndCloses() {
+        let app = launch(systemNavigation: true)
+        app.open(URL(string: "spendy://scan")!)
+        XCTAssertTrue(app.buttons["Close camera"].waitForExistence(timeout: 10))
+        capture(app, "Restored camera layout")
+        app.buttons["Close camera"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
+    }
+
     @MainActor func testCompactDockDoesNotRenderNativeTabs() throws {
         continueAfterFailure = false
         let app = launch()

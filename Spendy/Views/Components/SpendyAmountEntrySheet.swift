@@ -17,31 +17,26 @@ struct SpendyAmountEntrySheet<Header: View, Content: View, Dock: View>: View {
                             header()
                             content()
                         }
+                        .frame(minHeight: max(0, geometry.size.height - 32))
                     }
                     .scrollDismissesKeyboard(.interactively)
                 } secondary: {
                     ScrollView {
                         dock()
                             .padding(12)
+                            .frame(minHeight: max(0, geometry.size.height - 32))
                     }
                 }
                 .padding(16)
-            } else if geometry.size.height < 620 {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        header()
-                        content()
-                        dock().padding(.horizontal, 12)
-                    }
-                    .padding(.bottom, bottomPadding)
-                    .frame(maxWidth: 560)
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollDismissesKeyboard(.interactively)
             } else {
-                standardLayout
-                    .frame(maxWidth: 560)
-                    .frame(maxWidth: .infinity)
+                ScrollView {
+                    standardLayout
+                        .frame(minHeight: geometry.size.height)
+                        .frame(maxWidth: 560)
+                        .frame(maxWidth: .infinity)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .presentationBackground(.ultraThinMaterial)
