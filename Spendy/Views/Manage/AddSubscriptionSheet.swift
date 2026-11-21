@@ -117,7 +117,6 @@ struct AddSubscriptionSheet: View {
         // Match the currency picker; allow expansion for the longer form.
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)

@@ -198,7 +198,6 @@ struct AddAccountSheet: View {
         // Short forms start compact; larger text can use the full sheet.
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(480), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)

@@ -180,7 +180,6 @@ struct AddCategorySheet: View {
         // Short forms start compact; larger text can use the full sheet.
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(420), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
             CategoryIconPickerSheet(selectedSymbol: $selectedSymbol)

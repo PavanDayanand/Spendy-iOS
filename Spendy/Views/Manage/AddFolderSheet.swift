@@ -120,7 +120,6 @@ struct AddFolderSheet: View {
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(350), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {

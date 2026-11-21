@@ -257,7 +257,6 @@ struct CategoryIconPickerSheet: View {
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let item = newItem else { return }
             Task {
