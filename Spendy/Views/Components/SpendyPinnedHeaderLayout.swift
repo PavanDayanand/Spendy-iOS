@@ -19,7 +19,9 @@ struct SpendyPinnedHeaderLayout<Header: View, Content: View>: View {
     var body: some View {
         if isEnabled && usesSoftScrollEdge {
             content
-                .safeAreaBar(edge: .top, spacing: 0) { header }
+                .safeAreaBar(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) { header }
+                }
                 .scrollEdgeEffectStyle(.soft, for: .top)
         } else if isEnabled {
             ZStack(alignment: .top) {

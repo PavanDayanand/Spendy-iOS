@@ -244,14 +244,13 @@ struct CategoryIconPickerSheet: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 4)
                         
-                        // Bottom spacing to prevent floating search bar overlap
-                        Color.clear
-                            .frame(height: 72)
+                        Color.clear.frame(height: 12)
                     }
                 }
             }
             
-            // 4. Floating Liquid Glass Bottom Search Bar
+        }
+        .safeAreaBar(edge: .bottom, spacing: 0) {
             floatingSearchCapsule
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)

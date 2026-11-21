@@ -78,7 +78,7 @@ struct EditProfileSheet: View {
                     .padding(.top, 16)
             }
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .toolbar(.hidden, for: .navigationBar)

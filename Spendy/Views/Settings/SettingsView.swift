@@ -20,6 +20,7 @@ enum SettingsDestination: Hashable {
 struct SettingsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var initialDestination: SettingsDestination? = nil
     @State private var navigationPath: NavigationPath
@@ -177,7 +178,8 @@ struct SettingsView: View {
                 OnboardingView()
             }
         }
-        .presentationBackground(SpendyColors.settingsBackground)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
         .preferredColorScheme(store.colorScheme)
     }
 

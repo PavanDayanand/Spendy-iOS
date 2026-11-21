@@ -13,12 +13,11 @@ struct HomeActivityDrawer<Content: View>: View {
     @State private var translation: CGFloat = 0
 
     private var restingOffset: CGFloat {
-        let compactHeight: CGFloat = 72 + 3 * 60 + 42 + 56 + bottomInset
-        return max(totalHeight * 0.55, totalHeight - compactHeight)
+        SpendyAdaptiveLayout.activityRestingOffset(totalHeight: totalHeight, bottomInset: bottomInset)
     }
 
     // The host keeps the drawer below the native toolbar; retain a small gap there.
-    private var expandedOffset: CGFloat { topInset + 10 }
+    private var expandedOffset: CGFloat { min(topInset + 10, restingOffset) }
 
     private var currentOffset: CGFloat {
         let raw = (isExpanded ? expandedOffset : restingOffset) + translation

@@ -65,3 +65,16 @@ The current unsigned archive is `/tmp/spendy-duo-20261121/Spendy-usability.xcarc
 - `usability-archive.log`: **ARCHIVE SUCCEEDED**. The unsigned archive passed the beta-package checker after the current production edits. `git diff --check` passed.
 
 VERDICT: PASS — scoped usability refinements and executable checks. Actual Duo display/fold/camera behavior and landscape rendering remain unverified on a compatible runtime/device.
+
+
+## Activity and sheet repairs — November 21 follow-up
+
+The dedicated iPhone Duo runtime is now installed: iOS 27.2, build 24B91016s (`com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4`).
+
+- Home summary and activity drawer now share one resting-offset policy. It reserves the header, three recent rows, dock, and bottom clearance instead of capping the card at 45% of the safe-area-adjusted height.
+- Shared pinned headers explicitly stack multiple header children. The icon picker reserves its bottom search bar with a native safe-area bar.
+- Settings/profile, Edit Profile, and Monthly Receipt use medium/large native sheet detents, with large-only presentation at accessibility text sizes.
+- `/tmp/spendy-sheet-repair.xcresult`: four adaptive layout unit tests and two Duo UI tests passed. UI flows cover Monthly Receipt open/close and Settings → profile → currency → category → icon picker → return. Icon-picker and receipt captures were visually inspected.
+- Signed iPhone build: `/tmp/spendy-sheet-repair-phone-build.log`, BUILD SUCCEEDED. Simulator build and test run passed. Physical iPhone was unavailable for installation; no further physical-phone UI tests were run, per user request.
+
+VERDICT: PASS — scoped build, layout checks, and Duo sheet flows. Physical-phone visual confirmation and the broader pose/camera checks remain pending.

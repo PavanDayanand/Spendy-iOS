@@ -64,7 +64,7 @@ struct ReceiptPrinterSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $showsMonthPicker) {
             SpendingPeriodFilterSheet(month: selectedMonth, referenceDate: .now) { period in

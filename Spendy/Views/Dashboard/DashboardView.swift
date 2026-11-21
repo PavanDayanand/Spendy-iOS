@@ -533,8 +533,6 @@ struct DashboardView: View {
                 settingsInitialDestination = nil
             }) {
                 SettingsView(initialDestination: settingsInitialDestination)
-                    .presentationBackground(SpendyColors.settingsBackground)
-                    .presentationDragIndicator(.hidden)
             }
             .fullScreenCover(isPresented: $showEditBudgetSheet) {
                 EditBudgetSheet(isEditing: store.budget.isActive)
@@ -1064,8 +1062,7 @@ struct DashboardView: View {
 
     private func restingDrawerOffset(totalHeight: CGFloat, bottomInset: CGFloat) -> CGFloat {
         // Header + three 60-point rows + a small gap + the existing dock and safe area.
-        let compactHeight: CGFloat = 72 + 3 * 60 + 42 + 56 + bottomInset
-        return max(totalHeight * 0.55, totalHeight - compactHeight)
+        SpendyAdaptiveLayout.activityRestingOffset(totalHeight: totalHeight, bottomInset: bottomInset)
     }
 
     // MARK: - Transaction Row Item (Matches Exact Visual Design)
