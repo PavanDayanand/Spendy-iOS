@@ -300,6 +300,8 @@ struct HeroSpendBarChart: View {
 struct DashboardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.spendyUsesSystemNavigation) private var usesSystemNavigation
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @Environment(QuickActionManager.self) private var quickActionManager
@@ -307,6 +309,7 @@ struct DashboardView: View {
     var selectedTab: Binding<AppTab>? = nil
     var isSheetExpandedBinding: Binding<Bool>? = nil
     var isSubpageActiveBinding: Binding<Bool>? = nil
+    var onReceiptSources: () -> Void = {}
     
     // Sheets & Navigation State
     @State private var showSettings: Bool = false
@@ -318,6 +321,8 @@ struct DashboardView: View {
     @State private var showAnalyticsView: Bool = false
     @State private var showCurrencyConverter: Bool = false
     @State private var showsSpendingMonthPicker = false
+    @State private var homeSelectedBucketID: String?
+    @State private var homePeriodFilter: SpendingPeriodFilter?
     @State private var showBudgetHub: Bool = false
     @State private var showSubscriptionsHub: Bool = false
     @State private var initialSubscriptionIdForHub: String? = nil
@@ -480,40 +485,46 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                let totalHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
-                let topInset = geometry.safeAreaInsets.top
-                let bottomInset = geometry.safeAreaInsets.bottom
+                if usesSystemNavigation || horizontalSizeClass == .regular || geometry.size.height < 580 {
+                    adaptiveHome(in: geometry.size, activeFold: SpendyAdaptiveLayout.hasActiveFold(in: geometry))
+                } else {
+                    // The navigation stack already reserves the top toolbar's safe area.
+                    // Only the drawer extends beneath the bottom home-indicator area.
+                    let bottomInset = geometry.safeAreaInsets.bottom
+                    let totalHeight = geometry.size.height + bottomInset
+                    let summaryHeight = max(0, restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8)
                 
-                ZStack(alignment: .topLeading) {
-                    SpendyColors.appBackground
-                        .ignoresSafeArea()
+                    ZStack(alignment: .topLeading) {
+                        SpendyColors.appBackground
+                            .ignoresSafeArea()
                     
-                    // The summary can scroll independently at larger text sizes.
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            heroSpendBarSection
-                                .padding(.top, 2)
+                        // The summary can scroll independently at larger text sizes.
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                heroSpendBarSection
+                                    .padding(.top, 6)
+                            }
+                            .padding(.horizontal, AppSpacing.lg18)
+                            .padding(.bottom, 12)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 }
                         }
-                        .padding(.horizontal, AppSpacing.lg18)
-                        .padding(.bottom, 12)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { homeSummaryHeight = $0 + topInset + 58 }
-                    }
-                    .padding(.top, topInset + 4)
-                    .scrollEdgeEffectStyle(.soft, for: .top)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .scrollDisabled(homeSummaryHeight <= restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8)
-                    .frame(height: max(0, restingDrawerOffset(totalHeight: totalHeight, bottomInset: bottomInset) - 8), alignment: .top)
-                    .accessibilityIdentifier("home-spending-canvas")
+                        .scrollEdgeEffectStyle(.soft, for: .top)
+                        .scrollBounceBehavior(.basedOnSize)
+                        .scrollDisabled(homeSummaryHeight <= summaryHeight)
+                        .frame(height: summaryHeight, alignment: .top)
+                        .accessibilityIdentifier("home-spending-canvas")
 
-                    // 2. Interactive Bottom Transactions Drawer
-                    recentTransactionsDrawer(
-                        totalHeight: totalHeight,
-                        topInset: topInset,
-                        bottomInset: bottomInset
-                    )
+                        // 2. Interactive Bottom Transactions Drawer
+                        recentTransactionsDrawer(
+                            totalHeight: totalHeight,
+                            topInset: 0,
+                            bottomInset: bottomInset
+                        )
+                    }
+                    .ignoresSafeArea(edges: .bottom)
                 }
-                .ignoresSafeArea()
             }
+            .modifier(SpendyNavigationAdaptation())
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { homeToolbar }
@@ -630,7 +641,103 @@ struct DashboardView: View {
         }
     }
 
-    private var homeToolbar: some ToolbarContent {
+    @ViewBuilder private func adaptiveHome(in size: CGSize, activeFold: Bool) -> some View {
+        let layout = SpendyAdaptiveLayout.home(size: size,
+            regularWidth: horizontalSizeClass == .regular, activeFold: activeFold)
+        if layout == .arranged {
+            SpendyAdaptiveColumns(allowsVertical: true) {
+                adaptiveSummary
+            } secondary: {
+                GeometryReader { pane in
+                    recentTransactionsDrawer(totalHeight: pane.size.height, topInset: 0, bottomInset: 0, isInline: true)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        } else {
+            ScrollView {
+                VStack(spacing: 24) {
+                    heroSpendBarSection
+                        .padding(.horizontal, AppSpacing.lg18)
+                    activityPreview(limit: layout == .compact ? 3 : 8,
+                        showsFilters: layout == .portrait || drawerFilterCategoryId != nil
+                            || drawerFilterAccountId != nil || drawerFilterType != nil)
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, layout == .portrait ? 16 : 8)
+                .padding(.bottom, usesSystemNavigation ? 24 : 80)
+                .frame(maxWidth: 840)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .accessibilityIdentifier("home-adaptive-scroll")
+        }
+    }
+
+    private func activityPreview(limit: Int, showsFilters: Bool) -> some View {
+        let transactions = Array(displayedTransactions.prefix(limit))
+        return VStack(spacing: 0) {
+            HStack {
+                Text("Recent activity")
+                    .font(.title2.bold())
+                    .foregroundStyle(SpendyColors.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 12)
+                Button("See all") { showAllTransactions = true }
+                    .font(.subheadline)
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("See all transactions")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            if showsFilters { drawerFilterBar.padding(.bottom, 8) }
+            if transactions.isEmpty {
+                emptyRecentActivityView.padding(20)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(transactions) { transaction in
+                        transactionRow(transaction)
+                        if transaction.id != transactions.last?.id {
+                            Divider().padding(.leading, 72)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+        }
+        .padding(.bottom, 12)
+        .background(SpendyColors.recentActivityBackground, in: .rect(cornerRadius: 28))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home-activity-preview")
+    }
+
+    private var adaptiveSummary: some View {
+        ScrollView {
+            heroSpendBarSection
+                .padding(.horizontal, AppSpacing.lg18)
+                .padding(.vertical, 12)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .accessibilityIdentifier("home-spending-canvas")
+    }
+
+    @ToolbarContentBuilder private var homeToolbar: some ToolbarContent {
+        if usesSystemNavigation {
+            if #available(iOS 27.0, *) {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add Transaction", systemImage: "plus") { showAddTransaction = true }
+                }
+                .visibilityPriority(.high)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Add Transaction", systemImage: "plus") { showAddTransaction = true }
+                }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Scan receipt", systemImage: "receipt.viewfinder", action: onReceiptSources)
+            }
+        }
         HomeNavigationHeader(hideBalance: $hideBalance,
             analyticsTip: tipsAllowed && store.hasCompletedOnboarding && !showSettings && !isSubpageActive && !isSheetExpanded
                 ? homeTipGroup.currentTip as? HomeAnalyticsTip : nil,
@@ -710,6 +817,8 @@ struct DashboardView: View {
             tipGroup: homeTipGroup,
             accountSelector: accountDropdownSelector,
             showsPeriodFilter: $showsSpendingMonthPicker,
+            selectedID: $homeSelectedBucketID,
+            periodFilter: $homePeriodFilter,
             onInsight: { destination, date, periodFilter in
                 switch destination {
                 case .category(let id):
@@ -738,30 +847,40 @@ struct DashboardView: View {
     }
 
     // MARK: - 4. Interactive Bottom Transactions Drawer
-    private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat) -> some View {
+    private func recentTransactionsDrawer(totalHeight: CGFloat, topInset: CGFloat, bottomInset: CGFloat, isInline: Bool = false) -> some View {
+        let activityExpanded = isInline || isSheetExpanded
         let transactions = displayedTransactions
         let recentIDs = Set(transactions.prefix(3).map(\.id))
         let groups = drawerGroupedTransactions.compactMap { title, net, transactions -> (String, Double, [Transaction])? in
-            let visible = isSheetExpanded ? transactions : transactions.filter { recentIDs.contains($0.id) }
+            let visible = activityExpanded ? transactions : transactions.filter { recentIDs.contains($0.id) }
             return visible.isEmpty ? nil : (title, net, visible)
         }
         return HomeActivityDrawer(
-            totalHeight: totalHeight, topInset: topInset, bottomInset: bottomInset,
+            totalHeight: totalHeight, topInset: topInset, bottomInset: bottomInset, isInline: isInline,
             isExpanded: Binding(get: { isSheetExpanded }, set: { setExpandedState($0) })
         ) { expansion, drag in
             let pinnedHeader = VStack(spacing: 0) {
                 // A stable header keeps its identity and spacing throughout a drag.
                 VStack(spacing: 0) {
-                    Capsule()
-                        .fill(SpendyColors.textTertiary)
-                        .frame(width: 32, height: 4)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 24)
-                        .contentShape(Rectangle())
-                        .onTapGesture { toggleActivityDrawer() }
-                        .accessibilityHidden(true)
+                    if !isInline {
+                        Capsule()
+                            .fill(SpendyColors.textTertiary)
+                            .frame(width: 32, height: 4)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 24)
+                            .contentShape(Rectangle())
+                            .onTapGesture { toggleActivityDrawer() }
+                            .accessibilityHidden(true)
+                    }
 
                     HStack(spacing: 12) {
+                        if isInline {
+                            Text("Recent activity")
+                                .font(.title2.bold())
+                                .foregroundStyle(SpendyColors.textPrimary)
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                .accessibilityAddTraits(.isHeader)
+                        } else {
                         Button { toggleActivityDrawer() } label: {
                             Text("Recent activity")
                                 .font(.system(size: 24, weight: .bold, design: .default))
@@ -773,6 +892,7 @@ struct DashboardView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(isSheetExpanded ? "Collapse recent activity" : "Expand recent activity")
                         .accessibilityValue("\(transactions.count) transactions")
+                        }
 
                         Button {
                             HapticsManager.shared.trigger(.selection)
@@ -799,13 +919,13 @@ struct DashboardView: View {
                     .frame(height: 56 * expansion, alignment: .top)
                     .clipped()
                     .opacity(expansion)
-                    .allowsHitTesting(isSheetExpanded)
-                    .accessibilityHidden(!isSheetExpanded)
+                    .allowsHitTesting(activityExpanded)
+                    .accessibilityHidden(!activityExpanded)
             
             }
 
             // The actual header belongs to the scroll edge so iOS can blur underneath it.
-            return ScrollView(showsIndicators: isSheetExpanded) {
+            return ScrollView(showsIndicators: activityExpanded) {
                     if transactions.isEmpty {
                         emptyRecentActivityView
                             .padding(.horizontal, 20)
@@ -832,7 +952,7 @@ struct DashboardView: View {
                                     .frame(height: 30 * expansion, alignment: .bottom)
                                     .clipped()
                                     .opacity(expansion)
-                                    .accessibilityHidden(!isSheetExpanded)
+                                    .accessibilityHidden(!activityExpanded)
 
                                     ForEach(Array(txs.enumerated()), id: \.element.id) { index, tx in
                                         transactionRow(tx)
@@ -857,8 +977,8 @@ struct DashboardView: View {
                     pinnedHeader
                 }
                 .scrollEdgeEffectStyle(.soft, for: .top)
-                .safeAreaPadding(.bottom, bottomInset + 78)
-                .scrollDisabled(!isSheetExpanded)
+                .safeAreaPadding(.bottom, isInline || usesSystemNavigation ? 16 : bottomInset + 78)
+                .scrollDisabled(!activityExpanded)
                 .frame(maxHeight: .infinity, alignment: .top)
 
         }

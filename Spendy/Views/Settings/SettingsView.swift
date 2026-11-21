@@ -129,21 +129,18 @@ struct SettingsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, 40)
+                    .frame(maxWidth: 680)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
                     }
+                    .labelStyle(.iconOnly)
                     .accessibilityLabel("Close")
                 }
             }

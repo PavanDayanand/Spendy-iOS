@@ -19,7 +19,7 @@ struct ReceiptCameraCaptureView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color.black.ignoresSafeArea()
             if camera.status == .ready {
                 ReceiptCameraPreview(session: camera.session, onFocus: camera.focus)
             } else {
@@ -29,15 +29,14 @@ struct ReceiptCameraCaptureView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             cameraControls
                 .padding(.horizontal, 24)
-                .padding(.bottom, 28)
+                .padding(.vertical, 12)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Receipt camera")
         .accessibilityIdentifier("receipt-camera-viewport")
-        .ignoresSafeArea(.container, edges: .bottom)
         .environment(\.colorScheme, .dark)
         .onAppear {
             camera.onCapture = onCapture
@@ -52,7 +51,7 @@ struct ReceiptCameraCaptureView: View {
                 Button(action: onCancel) {
                     Image(systemName: "xmark")
                         .font(.system(size: 20, weight: .semibold))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
@@ -70,7 +69,7 @@ struct ReceiptCameraCaptureView: View {
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 20, weight: .semibold))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)

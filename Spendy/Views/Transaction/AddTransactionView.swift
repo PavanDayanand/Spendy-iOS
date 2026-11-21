@@ -188,7 +188,7 @@ struct AddTransactionView: View {
     }
     
     var body: some View {
-        return SpendyAmountEntrySheet(bottomPadding: type == .transfer ? 8 : 14) {
+        return SpendyAmountEntrySheet(bottomPadding: type == .transfer ? 8 : 14, allowsColumns: !isEditingNote) {
             // MARK: - 1. Top Header Bar (Close ✕ | Compact Type Switcher | More ...)
             topHeaderBar
                 .padding(.horizontal, 20)

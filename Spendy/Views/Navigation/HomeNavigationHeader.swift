@@ -4,6 +4,7 @@ import TipKit
 /// Home actions use the navigation bar's system glass and interaction behavior.
 struct HomeNavigationHeader: ToolbarContent {
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.spendyUsesSystemNavigation) private var usesSystemNavigation
     @Binding var hideBalance: Bool
     var analyticsTip: HomeAnalyticsTip? = nil
     let onSettings: () -> Void
@@ -19,19 +20,42 @@ struct HomeNavigationHeader: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button(action: onSettings) {
-                HStack(spacing: 8) {
-                    avatar
-                    Text(profileName).lineLimit(1)
+            if usesSystemNavigation {
+                Button("Settings", systemImage: "person.crop.circle", action: onSettings)
+                    .accessibilityLabel("Profile, \(profileName). Opens settings.")
+                    .accessibilityIdentifier("home-profile")
+            } else {
+                Button(action: onSettings) {
+                    HStack(spacing: 8) {
+                        avatar
+                        Text(profileName).lineLimit(1)
+                    }
                 }
+                .accessibilityLabel("Profile, \(profileName). Opens settings.")
+                .accessibilityIdentifier("home-profile")
             }
-            .accessibilityLabel("Profile, \(profileName). Opens settings.")
-            .accessibilityIdentifier("home-profile")
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button("Analytics and statistics", systemImage: SFIcons.tabAnalytics, action: onAnalytics)
                 .popoverTip(analyticsTip)
-            Menu("More actions", systemImage: "ellipsis") {
+            if !usesSystemNavigation {
+                Menu("More actions", systemImage: "ellipsis") { moreActions }
+                    .accessibilityHint("Budget, currency converter, and amount visibility")
+            }
+
+        }
+        if usesSystemNavigation {
+            if #available(iOS 27.0, *) {
+                ToolbarOverflowMenu { moreActions }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("More actions", systemImage: "ellipsis") { moreActions }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var moreActions: some View {
                 Button("Budget", systemImage: "target", action: onBudget)
                 Button("Select Spending Month", systemImage: "calendar", action: onSelectSpendingMonth)
                 Button("Currency Converter", systemImage: "arrow.left.arrow.right", action: onConverter)
@@ -40,9 +64,6 @@ struct HomeNavigationHeader: ToolbarContent {
                        systemImage: hideBalance ? SFIcons.eyeSlash : SFIcons.eye) {
                     hideBalance.toggle()
                 }
-            }
-            .accessibilityHint("Budget, currency converter, and amount visibility")
-        }
     }
 
     private var avatar: some View {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Keeps custom header controls fixed; opt in to the native soft edge only on uncovered scroll headers.
+/// Keeps custom header controls fixed with the same native soft edge as navigation bars.
 /// Measured padding keeps the initial content clear, including with larger text.
 struct SpendyPinnedHeaderLayout<Header: View, Content: View>: View {
     let isEnabled: Bool
@@ -9,7 +9,7 @@ struct SpendyPinnedHeaderLayout<Header: View, Content: View>: View {
     private let content: Content
     @State private var headerHeight: CGFloat = 0
 
-    init(isEnabled: Bool = true, usesSoftScrollEdge: Bool = false, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
+    init(isEnabled: Bool = true, usesSoftScrollEdge: Bool = true, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
         self.isEnabled = isEnabled
         self.usesSoftScrollEdge = usesSoftScrollEdge
         self.header = header()

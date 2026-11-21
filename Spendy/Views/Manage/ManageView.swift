@@ -14,6 +14,7 @@ import TipKit
 struct SubscriptionsView: View {
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.spendyUsesSystemNavigation) private var usesSystemNavigation
 
     var isPushed: Bool = false
     var initialSelectedSubscriptionId: String? = nil
@@ -142,7 +143,9 @@ struct SubscriptionsView: View {
                                 .padding(.horizontal, 20)
                         }
                     }
-                    .padding(.bottom, 120)
+                    .padding(.bottom, usesSystemNavigation || isPushed ? 24 : 120)
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }

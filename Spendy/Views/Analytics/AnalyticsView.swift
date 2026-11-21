@@ -180,6 +180,8 @@ struct AnalyticsView: View {
                     }
                 }
                 .padding(.bottom, 24)
+                .frame(maxWidth: 960)
+                .frame(maxWidth: .infinity)
             }
             .accessibilityIdentifier("analytics-scroll")
             .scrollEdgeEffectStyle(.soft, for: .top)

@@ -37,12 +37,12 @@ public struct OnboardingView: View {
             header
             GeometryReader { geometry in
                 ZStack(alignment: .top) {
-                    // Normal text sizes use a fixed page. Scrolling is only an accessibility fallback.
-                    if dynamicTypeSize.isAccessibilitySize {
-                        ScrollView { pageContent }
+                    // Short displays and a visible keyboard need the same scrolling fallback as large text.
+                    if dynamicTypeSize.isAccessibilitySize || geometry.size.height < 600 {
+                        ScrollView { pageContent(scrolls: true) }
                             .scrollDismissesKeyboard(.interactively)
                     } else {
-                        pageContent
+                        pageContent(scrolls: false)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -102,13 +102,13 @@ public struct OnboardingView: View {
         .accessibilityHidden(true)
     }
 
-    private var pageContent: some View {
+    private func pageContent(scrolls: Bool) -> some View {
         stepContent
             .frame(maxWidth: 480, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .top)
             .padding(.horizontal, 24)
             .padding(.vertical, isNameFocused ? 8 : 16)
-            .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? nil : .infinity)
+            .frame(maxHeight: scrolls ? nil : .infinity)
             .id(currentStep)
             .transition(pageTransition)
     }

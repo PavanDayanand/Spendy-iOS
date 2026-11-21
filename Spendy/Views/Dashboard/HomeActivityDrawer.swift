@@ -5,6 +5,7 @@ struct HomeActivityDrawer<Content: View>: View {
     let totalHeight: CGFloat
     let topInset: CGFloat
     let bottomInset: CGFloat
+    var isInline = false
     @Binding var isExpanded: Bool
     @ViewBuilder let content: (CGFloat, AnyGesture<DragGesture.Value>) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -16,7 +17,8 @@ struct HomeActivityDrawer<Content: View>: View {
         return max(totalHeight * 0.55, totalHeight - compactHeight)
     }
 
-    private var expandedOffset: CGFloat { max(topInset + 10, 56) }
+    // The host keeps the drawer below the native toolbar; retain a small gap there.
+    private var expandedOffset: CGFloat { topInset + 10 }
 
     private var currentOffset: CGFloat {
         let raw = (isExpanded ? expandedOffset : restingOffset) + translation
@@ -26,10 +28,10 @@ struct HomeActivityDrawer<Content: View>: View {
     }
 
     var body: some View {
-        let expansion = min(1, max(0, (restingOffset - currentOffset) / max(1, restingOffset - expandedOffset)))
+        let expansion = isInline ? 1 : min(1, max(0, (restingOffset - currentOffset) / max(1, restingOffset - expandedOffset)))
         content(expansion, AnyGesture(drag))
             .frame(maxWidth: .infinity)
-            .frame(height: max(100, totalHeight - currentOffset))
+            .frame(height: isInline ? totalHeight : max(100, totalHeight - currentOffset))
             .background {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(SpendyColors.recentActivityBackground)
@@ -42,18 +44,21 @@ struct HomeActivityDrawer<Content: View>: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .padding(.horizontal, 8 * (1 - expansion))
-            .offset(y: currentOffset)
+            .offset(y: isInline ? 0 : currentOffset)
+            .onChange(of: totalHeight) { _, _ in translation = 0 }
     }
 
     private var drag: some Gesture<DragGesture.Value> {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
+                guard !isInline else { return }
                 guard abs(value.translation.height) >= 8 || abs(value.translation.width) <= abs(value.translation.height) else { return }
                 withAnimation(reduceMotion ? nil : .interactiveSpring()) {
                     translation = value.translation.height
                 }
             }
             .onEnded { value in
+                guard !isInline else { return }
                 let base = isExpanded ? expandedOffset : restingOffset
                 let target: Bool
                 if value.velocity.height < -350 { target = true }

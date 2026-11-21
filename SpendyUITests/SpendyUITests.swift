@@ -545,6 +545,14 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5))
     }
 
+    @MainActor private func tapVisibleClose(in app: XCUIApplication) {
+        guard let close = app.buttons.matching(NSPredicate(format: "label == %@", "Close")).allElementsBoundByIndex.first(where: { $0.isHittable }) else {
+            XCTFail("No visible Close control")
+            return
+        }
+        close.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
     @MainActor func testSettingsCategoryEditorAndGlassCurrencyPicker() {
         let app = launch("analytics")
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
@@ -556,8 +564,8 @@ final class SpendyUITests: XCTestCase {
         currencyShot.name = "Currency picker original glass"
         currencyShot.lifetime = .keepAlways
         add(currencyShot)
-        app.buttons["Close"].firstMatch.tap()
-        app.buttons["Close"].firstMatch.tap()
+        tapVisibleClose(in: app)
+        tapVisibleClose(in: app)
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Categories,")).firstMatch.tap()
         let category = app.buttons["Groceries, expense category"]
         for _ in 0..<5 {
@@ -578,9 +586,9 @@ final class SpendyUITests: XCTestCase {
         iconShot.name = "Icon picker native sheet material"
         iconShot.lifetime = .keepAlways
         add(iconShot)
-        app.buttons["Close"].firstMatch.tap()
+        tapVisibleClose(in: app)
         XCTAssertTrue(app.textFields["Category name"].waitForExistence(timeout: 5))
-        app.buttons["Close"].firstMatch.tap()
+        tapVisibleClose(in: app)
         XCTAssertTrue(category.waitForExistence(timeout: 5))
     }
 
@@ -667,9 +675,9 @@ final class SpendyUITests: XCTestCase {
         add(shot)
         app.buttons["Edit subscription icon"].tap()
         XCTAssertTrue(app.staticTexts["Choose Icon"].waitForExistence(timeout: 5))
-        app.buttons["Close"].firstMatch.tap()
+        tapVisibleClose(in: app)
         XCTAssertTrue(app.staticTexts["New Subscription"].waitForExistence(timeout: 5))
-        app.buttons["Close"].firstMatch.tap()
+        tapVisibleClose(in: app)
         XCTAssertTrue(app.buttons["Add Subscription"].waitForExistence(timeout: 5))
     }
 

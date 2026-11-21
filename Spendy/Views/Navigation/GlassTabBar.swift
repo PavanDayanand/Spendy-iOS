@@ -158,13 +158,14 @@ struct GlassTabBar: View {
                 .font(.system(size: 21, weight: isSelected ? .bold : .medium))
                 .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textSecondary)
                 .frame(width: compact ? 44 : circleButtonSize, height: compact ? 44 : circleButtonSize)
-                .contentShape(Circle())
+                .contentShape(Rectangle())
                 .contentTransition(.symbolEffect(.replace.downUp))
                 .symbolEffect(.bounce.byLayer, value: reduceMotion ? false : isSelected)
         }
         .buttonStyle(LiquidScaleButtonStyle())
         .modifier(CircleLiquidGlassModifier(isSelected: isSelected))
         .accessibilityLabel(label)
+        .accessibilityIdentifier("spendy-dock-\(tab.rawValue)")
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
     }
 

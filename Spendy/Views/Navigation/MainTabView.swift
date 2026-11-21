@@ -2,7 +2,7 @@
 //  MainTabView.swift
 //  Spendy
 //
-//  Root Navigation Shell hosting Home, Subscriptions, and Floating Bottom Dock
+//  Adaptive system tabs with the existing floating dock in compact, horizontal-bar layouts.
 //
 
 import SwiftUI
@@ -16,6 +16,15 @@ struct MainTabView: View {
     @State private var isHomeSubpageActive: Bool = false
     @State private var isAnalyticsSubpageActive: Bool = false
     @State private var quickActionManager = QuickActionManager.shared
+    @State private var systemNavigationRequested = false
+    @State private var showReceiptSourceChoices = false
+
+    private var usesSystemNavigation: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["SPENDY_UI_TEST_SYSTEM_NAVIGATION"] == "1" { return true }
+        #endif
+        return systemNavigationRequested
+    }
 
     @AppStorage("hasSeenReceiptScanIntroduction") private var hasSeenReceiptIntroduction = false
     @State private var receiptSheet: HomeReceiptSheet?
@@ -43,58 +52,70 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // Main Screen Content
-            ZStack {
-                DashboardView(
-                    showAddTransaction: $showAddTransaction,
-                    selectedTab: $selectedTab,
-                    isSheetExpandedBinding: $isHomeDrawerExpanded,
-                    isSubpageActiveBinding: $isHomeSubpageActive
-                )
-                .environment(\.spendyTipsAllowed, selectedTab == .home && !showAddTransaction && receiptSheet == nil && !showReceiptPhotos)
-                .opacity(selectedTab == .home ? 1 : 0)
-                .allowsHitTesting(selectedTab == .home)
-                .accessibilityHidden(selectedTab != .home)
-
-                NavigationStack {
-                    SubscriptionsView()
-                }
-                .environment(\.spendyTipsAllowed, selectedTab == .subscriptions && !showAddTransaction)
-                .opacity(selectedTab == .subscriptions ? 1 : 0)
-                .allowsHitTesting(selectedTab == .subscriptions)
-                .accessibilityHidden(selectedTab != .subscriptions)
-
-                NavigationStack {
-                    AnalyticsView(
+            TabView(selection: $selectedTab) {
+                Tab("Home", systemImage: "house", value: AppTab.home) {
+                    DashboardView(
+                        showAddTransaction: $showAddTransaction,
                         selectedTab: $selectedTab,
-                        isSubpageActiveBinding: $isAnalyticsSubpageActive
+                        isSheetExpandedBinding: $isHomeDrawerExpanded,
+                        isSubpageActiveBinding: $isHomeSubpageActive,
+                        onReceiptSources: requestReceiptSources
                     )
+                    .environment(\.spendyTipsAllowed, selectedTab == .home && !showAddTransaction && receiptSheet == nil && !showReceiptPhotos)
+                    .modifier(SpendyNavigationAdaptation())
                 }
-                .environment(\.spendyTipsAllowed, selectedTab == .analytics && !showAddTransaction)
-                .opacity(selectedTab == .analytics ? 1 : 0)
-                .allowsHitTesting(selectedTab == .analytics)
-                .accessibilityHidden(selectedTab != .analytics)
+
+                Tab("Subscriptions", systemImage: SFIcons.subscriptions, value: AppTab.subscriptions) {
+                    NavigationStack {
+                        SubscriptionsView()
+                            .modifier(SpendyNavigationAdaptation())
+                    }
+                    .environment(\.spendyTipsAllowed, selectedTab == .subscriptions && !showAddTransaction)
+                }
+
+                Tab("Stats", systemImage: SFIcons.tabAnalyticsOutline, value: AppTab.analytics) {
+                    NavigationStack {
+                        AnalyticsView(
+                            selectedTab: $selectedTab,
+                            isSubpageActiveBinding: $isAnalyticsSubpageActive
+                        )
+                        .modifier(SpendyNavigationAdaptation())
+                    }
+                    .environment(\.spendyTipsAllowed, selectedTab == .analytics && !showAddTransaction)
+                }
             }
+            .tabViewStyle(.tabBarOnly)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Adaptive Bottom Dock (Home + Subscriptions + Hero Blue Spend Pill)
-            GlassTabBar(
-                selectedTab: $selectedTab,
-                isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
-                onQuickAdd: {
-                    receiptToEdit = nil
-                    showAddTransaction = true
-                },
-                receiptNeedsIntroduction: !hasSeenReceiptIntroduction,
-                receiptMenuRequest: receiptMenuRequest,
-                onReceiptIntroduction: { receiptSheet = .introduction },
-                onReceiptSource: selectReceiptSource
-            )
-            .padding(.bottom, 6)
-            .offset(y: isDockVisible || reduceMotion ? 0 : 120)
-            .opacity(isDockVisible ? 1 : 0)
-            .allowsHitTesting(isDockVisible)
-            .accessibilityHidden(!isDockVisible)
-            .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isDockVisible)
+            if !usesSystemNavigation {
+                // Adaptive Bottom Dock (Home + Subscriptions + Hero Blue Spend Pill)
+                GlassTabBar(
+                    selectedTab: $selectedTab,
+                    isExpanded: selectedTab == .home ? isHomeDrawerExpanded : true,
+                    onQuickAdd: {
+                        receiptToEdit = nil
+                        showAddTransaction = true
+                    },
+                    receiptNeedsIntroduction: !hasSeenReceiptIntroduction,
+                    receiptMenuRequest: receiptMenuRequest,
+                    onReceiptIntroduction: { receiptSheet = .introduction },
+                    onReceiptSource: selectReceiptSource
+                )
+                .padding(.bottom, 6)
+                .offset(y: isDockVisible || reduceMotion ? 0 : 120)
+                .opacity(isDockVisible ? 1 : 0)
+                .allowsHitTesting(isDockVisible)
+                .accessibilityHidden(!isDockVisible)
+                .animation(reduceMotion ? nil : AppMotion.fluidSpring, value: isDockVisible)
+            }
+        }
+        .environment(\.spendyUsesSystemNavigation, usesSystemNavigation)
+        .onPreferenceChange(SpendySystemNavigationPreference.self) { systemNavigationRequested = $0 }
+        .confirmationDialog("Receipt image", isPresented: $showReceiptSourceChoices, titleVisibility: .visible) {
+            Button("Scan with camera", systemImage: "camera") { selectReceiptSource(.camera) }
+            Button("Choose photo", systemImage: "photo") { selectReceiptSource(.photos) }
+            Button("Paste image", systemImage: "document.on.clipboard") { selectReceiptSource(.paste) }
+            Button("Cancel", role: .cancel) {}
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         #if DEBUG
@@ -182,12 +203,19 @@ struct MainTabView: View {
         }
         .onChange(of: quickActionManager.targetTab) { _, target in
             if let target {
-                withAnimation(AppMotion.snappySpring) {
-                    selectedTab = target
+                if target == .quickAdd {
+                    showAddTransaction = true
+                } else {
+                    withAnimation(reduceMotion ? nil : AppMotion.snappySpring) { selectedTab = target }
                 }
                 quickActionManager.targetTab = nil
             }
         }
+    }
+
+    private func requestReceiptSources() {
+        if hasSeenReceiptIntroduction { showReceiptSourceChoices = true }
+        else { receiptSheet = .introduction }
     }
 
     private func openRequestedReceiptCamera() {
@@ -260,7 +288,8 @@ struct MainTabView: View {
             showReceiptPhotos = true
         } else if openReceiptMenuOnDismiss {
             openReceiptMenuOnDismiss = false
-            receiptMenuRequest += 1
+            if usesSystemNavigation { showReceiptSourceChoices = true }
+            else { receiptMenuRequest += 1 }
         }
     }
 

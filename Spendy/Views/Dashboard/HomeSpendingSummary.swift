@@ -12,6 +12,8 @@ struct HomeSpendingSummary<AccountSelector: View>: View {
     let tipGroup: TipGroup
     let accountSelector: AccountSelector
     @Binding var showsPeriodFilter: Bool
+    @Binding var selectedID: String?
+    @Binding var periodFilter: SpendingPeriodFilter?
     var onInsight: ((InsightDestination, Date, SpendingPeriodFilter?) -> Void)? = nil
     var onExplore: (Date, SpendingPeriodFilter?) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -20,9 +22,7 @@ struct HomeSpendingSummary<AccountSelector: View>: View {
     @State private var showsInsights = false
     @State private var pendingInsight: InsightDestination?
     @State private var insightDate = Date()
-    @State private var selectedID: String?
     @State private var showsInfo = false
-    @State private var periodFilter: SpendingPeriodFilter?
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 40.0
 
     var body: some View {

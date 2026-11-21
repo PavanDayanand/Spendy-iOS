@@ -100,6 +100,8 @@ struct SpendyApp: App {
                 .tint(SpendyColors.textPrimary)
                 .preferredColorScheme(store.colorScheme)
                 .toggleStyle(SpendySwitchStyle())
+                // Keep the same native fade beneath bars across tabs, pushes, and sheets.
+                .scrollEdgeEffectStyle(.soft, for: .top)
                 .onOpenURL { url in
                     quickActionManager.handleURL(url)
                 }
