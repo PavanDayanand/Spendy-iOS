@@ -565,7 +565,9 @@ final class SpendyUITests: XCTestCase {
         currencyShot.lifetime = .keepAlways
         add(currencyShot)
         tapVisibleClose(in: app)
-        tapVisibleClose(in: app)
+        XCTAssertTrue(app.navigationBars["Edit Profile"].waitForExistence(timeout: 5))
+        app.buttons["BackButton"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Categories,")).firstMatch.tap()
         let category = app.buttons["Groceries, expense category"]
         for _ in 0..<5 {
@@ -681,7 +683,7 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add Subscription"].waitForExistence(timeout: 5))
     }
 
-    @MainActor func testMonthlyReceiptUsesNativeSheetBackground() {
+    @MainActor func testMonthlyReceiptUsesFullPageAndReturns() {
         let app = launch("analytics")
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
         let receipt = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Monthly receipt")).firstMatch
@@ -694,10 +696,10 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Monthly Receipt"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["SPENDY EXPENSE REPORT"].exists)
         let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "Monthly receipt native background"
+        shot.name = "Monthly receipt full navigation page"
         shot.lifetime = .keepAlways
         add(shot)
-        app.buttons["Close"].firstMatch.tap()
+        app.buttons["BackButton"].tap()
         XCTAssertTrue(receipt.waitForExistence(timeout: 5))
     }
 

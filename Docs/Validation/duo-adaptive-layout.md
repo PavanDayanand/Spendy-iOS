@@ -78,3 +78,10 @@ The dedicated iPhone Duo runtime is now installed: iOS 27.2, build 24B91016s (`c
 - Signed iPhone build: `/tmp/spendy-sheet-repair-phone-build.log`, BUILD SUCCEEDED. Simulator build and test run passed. Physical iPhone was unavailable for installation; no further physical-phone UI tests were run, per user request.
 
 VERDICT: PASS — scoped build, layout checks, and Duo sheet flows. Physical-phone visual confirmation and the broader pose/camera checks remain pending.
+
+
+## Settings presentation correction — November 21
+
+Supersedes the medium-sheet behavior above: Settings again opens at full height. Edit Profile and Monthly Receipt are destinations in the existing Settings navigation stack, with Back navigation rather than nested sheets. Icon and currency pickers remain sheets.
+
+`/tmp/spendy-settings-pages-back.xcresult`: both Duo UI flows passed, covering receipt push/pop and profile/currency/category/icon navigation. The full-page receipt capture was inspected. The signed iPhone build passed (`/tmp/spendy-settings-pages-phone-build.log`). No physical-phone UI tests were run.

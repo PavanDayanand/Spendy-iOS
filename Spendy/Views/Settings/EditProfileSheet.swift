@@ -2,7 +2,7 @@
 //  EditProfileSheet.swift
 //  Spendy
 //
-//  Drawer Sheet for Editing User Profile & Space Settings matching AddCategorySheet Liquid Glass Design
+//  Profile editing destination in the Settings navigation stack.
 //
 
 import SwiftUI
@@ -10,7 +10,6 @@ import SwiftUI
 struct EditProfileSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @State private var tempName: String = ""
     @State private var selectedImageData: Data? = nil
@@ -36,15 +35,7 @@ struct EditProfileSheet: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            SpendyPinnedHeaderLayout {
-
-                // Top Header Bar: Close, Title "Edit Space" (Sticky at top!)
-                topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
-                    .zIndex(10)
-            } content: {
+            Group {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Hero Circle Avatar (Matching AddCategorySheet)
@@ -78,10 +69,17 @@ struct EditProfileSheet: View {
                     .padding(.top, 16)
             }
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(32)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle("Edit Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .navigationBarBackButtonHidden(hasUnsavedChanges)
+        .toolbar {
+            if hasUnsavedChanges {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back", systemImage: "chevron.backward") { showDiscardConfirm = true }
+                }
+            }
+        }
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Discard Changes?", isPresented: $showDiscardConfirm) {
             Button("Discard Changes", role: .destructive) {
@@ -116,20 +114,6 @@ struct EditProfileSheet: View {
     }
     
     // MARK: - Subviews
-    
-    // Top Header Bar
-    private var topHeaderBar: some View {
-        SpendyCreateSheetHeader(
-            title: "Edit Profile",
-            onClose: {
-                if hasUnsavedChanges {
-                    showDiscardConfirm = true
-                } else {
-                    dismiss()
-                }
-            }
-        )
-    }
     
     // MARK: - Avatar Hero Section (Matching AddCategorySheet)
     private var avatarHeroSection: some View {

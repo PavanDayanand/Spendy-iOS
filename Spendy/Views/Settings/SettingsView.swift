@@ -8,6 +8,8 @@
 import SwiftUI
 
 enum SettingsDestination: Hashable {
+    case editProfile
+    case monthlyReceipt
     case accounts
     case categories
     case dataBackup
@@ -20,7 +22,6 @@ enum SettingsDestination: Hashable {
 struct SettingsView: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var initialDestination: SettingsDestination? = nil
     @State private var navigationPath: NavigationPath
@@ -34,8 +35,6 @@ struct SettingsView: View {
         _navigationPath = State(initialValue: path)
     }
 
-    @State private var showProfileEdit: Bool = false
-    @State private var showReceiptPrinter: Bool = false
     @State private var showOnboardingTour: Bool = false
 
     private let feedbackURL = URL(string: "https://spendy.userjot.com/")
@@ -109,10 +108,7 @@ struct SettingsView: View {
                                 linkRow(icon: "externaldrive", title: "Backup & Restore", value: "JSON")
                             }
                             groupDivider
-                            Button {
-                                HapticsManager.shared.trigger(.selection)
-                                showReceiptPrinter = true
-                            } label: {
+                            NavigationLink(value: SettingsDestination.monthlyReceipt) {
                                 linkRow(icon: "printer", title: "Monthly receipt", value: nil)
                             }
                             .buttonStyle(.plain)
@@ -147,6 +143,10 @@ struct SettingsView: View {
             }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
+                case .editProfile:
+                    EditProfileSheet()
+                case .monthlyReceipt:
+                    ReceiptPrinterSheet()
                 case .accounts:
                     AccountsView(isSettingsPage: true)
                 case .categories:
@@ -168,27 +168,19 @@ struct SettingsView: View {
                     navigationPath.append(initial)
                 }
             }
-            .sheet(isPresented: $showProfileEdit) {
-                EditProfileSheet()
-            }
-            .sheet(isPresented: $showReceiptPrinter) {
-                ReceiptPrinterSheet()
-            }
             .fullScreenCover(isPresented: $showOnboardingTour) {
                 OnboardingView()
             }
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-        .presentationDragIndicator(.visible)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+        .presentationBackground(SpendyColors.settingsBackground)
         .preferredColorScheme(store.colorScheme)
     }
 
     // MARK: - Profile
     private var profileCard: some View {
-        Button {
-            HapticsManager.shared.trigger(.light)
-            showProfileEdit = true
-        } label: {
+        NavigationLink(value: SettingsDestination.editProfile) {
             HStack(spacing: 14) {
                 profileAvatar
 

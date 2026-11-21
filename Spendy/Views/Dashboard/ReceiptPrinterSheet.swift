@@ -3,7 +3,6 @@ import SwiftUI
 /// A monthly report printed onto a shareable strip of paper.
 struct ReceiptPrinterSheet: View {
     @Environment(ExpenseStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var selectedMonth = Calendar.current.dateInterval(of: .month, for: .now)?.start ?? .now
@@ -23,7 +22,7 @@ struct ReceiptPrinterSheet: View {
 
     var body: some View {
         let report = snapshot
-        NavigationStack {
+        Group {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 14) {
@@ -50,9 +49,6 @@ struct ReceiptPrinterSheet: View {
             .navigationTitle("Monthly Receipt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", systemImage: "xmark") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     if let shareImage, sharedReport == report {
                         ShareLink(item: shareImage,
@@ -64,8 +60,6 @@ struct ReceiptPrinterSheet: View {
                 }
             }
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
-        .presentationDragIndicator(.visible)
         .sheet(isPresented: $showsMonthPicker) {
             SpendingPeriodFilterSheet(month: selectedMonth, referenceDate: .now) { period in
                 selectedMonth = Calendar.current.dateInterval(of: .month, for: period.month)?.start ?? period.month
