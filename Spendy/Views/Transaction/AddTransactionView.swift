@@ -208,31 +208,19 @@ struct AddTransactionView: View {
             }
 
         } content: {
-            if isEditingNote {
-                inlineNoteEditorView
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                Spacer()
+            // Keep transaction context visible while the keyboard edits the note below.
+            if type == .transfer {
+                transferCardsSection
+                    .padding(.bottom, 4)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             } else {
-                // MARK: - 3. Amount Display
-                if type == .transfer {
-                    transferCardsSection
-                        .padding(.bottom, 4)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                            removal: .opacity.combined(with: .scale(scale: 0.98))
-                        ))
-                } else {
-                    standardAmountSection
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                            removal: .opacity.combined(with: .scale(scale: 0.98))
-                        ))
-                }
-
+                standardAmountSection
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         } dock: {
-            if !isEditingNote {
+            if isEditingNote {
+                inlineNoteEditorView
+            } else {
                 keypadAndActionsSection
             }
         }
@@ -565,7 +553,7 @@ struct AddTransactionView: View {
                     .textCase(.lowercase)
             }
             
-            if !trimmedNote.isEmpty {
+            if !trimmedNote.isEmpty && !isEditingNote {
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                         isEditingNote = true
@@ -854,51 +842,40 @@ struct AddTransactionView: View {
         .spendyAmountEntryDock(bottomPadding: type == .transfer ? 14 : 22)
     }
     
-    // MARK: - 6. Inline Note Editor (Matching Image 2 with iOS Liquid Glass styling)
+    // MARK: - 6. Note entry stays in the form, replacing only the numeric keypad.
     private var inlineNoteEditorView: some View {
-        VStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField("Add notes or tags starting with #", text: $note, axis: .vertical)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(4...6)
-                        .focused($isNoteFocused)
-                        .padding(16)
-                    
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 160)
-                .nativeLiquidGlass(cornerRadius: 22, isInteractive: false)
-                
-                // Confirm Checkmark Button (White circle with black checkmark)
-                Button(action: {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Note")
+                    .font(.headline)
+                    .foregroundStyle(SpendyColors.textPrimary)
+                Spacer()
+                Button("Done") {
                     isNoteFocused = false
+                    isEditingNote = false
                     HapticsManager.shared.trigger(.selection)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        isEditingNote = false
-                    }
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(SpendyColors.incomeGreen)
-                            .frame(width: 40, height: 40)
-                            .shadow(color: SpendyColors.incomeGreen.opacity(0.35), radius: 6, y: 2)
-                        
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(SpendyColors.elevatedControlForeground)
-                    }
                 }
+                .font(.body.weight(.semibold))
+                .foregroundStyle(SpendyColors.textPrimary)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityIdentifier("transaction-note-done")
+            }
+
+            TextField("Add notes or tags starting with #", text: $note, axis: .vertical)
+                .font(.body)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .lineLimit(2...4)
+                .focused($isNoteFocused)
+                .accessibilityLabel("Transaction note")
+                .accessibilityIdentifier("transaction-note-input")
                 .padding(14)
-            }
-            .onAppear {
-                isNoteFocused = true
-            }
+                .background(SpendyColors.cardBackgroundSecondary, in: .rect(cornerRadius: 14))
         }
+        .padding(.horizontal, 14)
+        .padding(.bottom, 8)
+        .task { isNoteFocused = true }
     }
-    
+
     private func selectReceiptSource(_ source: ReceiptSourceMenuButton.Source) {
         switch source {
         case .paste:

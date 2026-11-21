@@ -14,6 +14,50 @@ final class AdaptiveLayoutUITests: XCTestCase {
         return app
     }
 
+    @MainActor func testTransactionNoteStaysInFormAndSaves() {
+        continueAfterFailure = false
+        let app = launch(systemNavigation: true)
+        if !app.buttons["Add Transaction"].isHittable { app.buttons["More"].tap() }
+        app.buttons["Add Transaction"].tap()
+        let five = app.buttons["5"]
+        for _ in 0..<5 {
+            if five.isHittable { break }
+            app.swipeUp()
+        }
+        five.tap()
+        app.buttons["Add Note"].tap()
+        let field = app.descendants(matching: .any).matching(identifier: "transaction-note-input").firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let amount = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Amount,")).firstMatch
+        capture(app, "Note entry context")
+        XCTAssertTrue(amount.exists, "The amount must remain in the form while entering a note.")
+        XCTAssertTrue(app.buttons["Expense"].exists)
+        XCTAssertTrue(app.buttons["transaction-note-done"].isHittable)
+        field.tap()
+        field.typeText("Inline note check")
+        capture(app, "Note in transaction form above keyboard")
+        app.buttons["transaction-note-done"].tap()
+        XCTAssertTrue(app.buttons["Edit Note"].waitForExistence(timeout: 5))
+        app.buttons["Edit Note"].tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "Inline note check")
+        app.buttons["transaction-note-done"].tap()
+        let save = app.buttons["Save"]
+        for _ in 0..<5 {
+            if save.isHittable { break }
+            app.swipeUp()
+        }
+        save.tap()
+        XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
+        let saved = app.staticTexts["Inline note check"]
+        for _ in 0..<5 {
+            if saved.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(saved.exists, "The note must be saved with the transaction.")
+    }
+
     @MainActor func testTransferActionFitsAfterScrolling() {
         let app = launch(systemNavigation: true)
         if !app.buttons["Add Transaction"].isHittable { app.buttons["More"].tap() }
