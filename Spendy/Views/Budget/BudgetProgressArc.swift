@@ -9,7 +9,7 @@ struct BudgetProgressArc: View {
 
     private var fraction: Double { min(max(progress ?? 0, 0), 1) }
     private var tint: Color {
-        (progress ?? 0) > 1 ? SpendyColors.warningOrange : store.accentPreset.contentTint
+        (progress ?? 0) > 1 ? SpendyColors.warningOrange : SpendyColors.textPrimary
     }
 
     var body: some View {

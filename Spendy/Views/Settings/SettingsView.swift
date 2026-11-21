@@ -12,8 +12,6 @@ enum SettingsDestination: Hashable {
     case categories
     case dataBackup
     case privacyPolicy
-    case widgets
-    case appAccent
     case insights
     case notifications
     case about
@@ -37,16 +35,15 @@ struct SettingsView: View {
 
     @State private var showProfileEdit: Bool = false
     @State private var showReceiptPrinter: Bool = false
-    @State private var showCoffeeSheet: Bool = false
     @State private var showOnboardingTour: Bool = false
 
     private let feedbackURL = URL(string: "https://spendy.userjot.com/")
     private let instagramURL = URL(string: "https://www.instagram.com/pav6n")
-    private let websiteURL = URL(string: "https://studiopavan.netlify.app")
+    private let websiteURL = URL(string: "https://spendy-ebon.vercel.app")
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
-    private let coffeeURL = URL(string: "https://www.buymeacoffee.com/spendy")
 
     var body: some View {
+        @Bindable var store = store
         NavigationStack(path: $navigationPath) {
             ZStack {
                 SpendyColors.settingsBackground
@@ -68,15 +65,20 @@ struct SettingsView: View {
                         }
 
                         settingsGroup(title: "App preferences") {
-                            NavigationLink(value: SettingsDestination.appAccent) {
-                                linkRow(icon: "circle.lefthalf.filled", title: "Appearance", value: store.appearanceMode.rawValue)
+                            Menu {
+                                Picker("Appearance", selection: $store.appearanceMode) {
+                                    ForEach([AppearanceMode.system, .light, .dark]) { mode in
+                                        Label(mode.rawValue, systemImage: mode.sfSymbol)
+                                            .tag(mode)
+                                    }
+                                }
+                            } label: {
+                                settingsNavigationRow(icon: "circle.lefthalf.filled", title: "Appearance",
+                                                      value: store.appearanceMode.rawValue, disclosure: "chevron.up.chevron.down")
                             }
-                            .accessibilityIdentifier("settings-app-accent")
-                            groupDivider
-                            NavigationLink(value: SettingsDestination.widgets) {
-                                linkRow(icon: "rectangle.on.rectangle", title: "Widgets", value: nil)
-                            }
-                            .accessibilityIdentifier("settings-widgets")
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("settings-appearance")
+                            .accessibilityValue(store.appearanceMode.rawValue)
                             groupDivider
                             NavigationLink(value: SettingsDestination.insights) {
                                 linkRow(icon: SpendyInsightBrandMark.symbol, title: "Spendy Insights", value: store.insightsEnabled ? "On" : "Off")
@@ -95,7 +97,7 @@ struct SettingsView: View {
                                     Text("Haptic feedback").font(.body.weight(.medium))
                                 }
                             }
-                            .tint(store.accentPreset.switchTint)
+                            .tint(SpendyColors.switchTint)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .frame(minHeight: 52)
@@ -119,6 +121,7 @@ struct SettingsView: View {
                             NavigationLink(value: SettingsDestination.about) {
                                 linkRow(icon: "questionmark.circle", title: "Help & about Spendy", value: nil)
                             }
+                            .accessibilityIdentifier("settings-help-about")
                         }
 
                         footerSection
@@ -154,10 +157,6 @@ struct SettingsView: View {
                     DataManagementView()
                 case .privacyPolicy:
                     PrivacyPolicyView()
-                case .appAccent:
-                    AppAccentSettingsView()
-                case .widgets:
-                    WidgetShowcaseView()
                 case .insights:
                     InsightsPreferencesView()
                 case .notifications:
@@ -176,9 +175,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showReceiptPrinter) {
                 ReceiptPrinterSheet()
-            }
-            .sheet(isPresented: $showCoffeeSheet) {
-                coffeeSheet
             }
             .fullScreenCover(isPresented: $showOnboardingTour) {
                 OnboardingView()
@@ -230,11 +226,11 @@ struct SettingsView: View {
                     .overlay(Circle().stroke(SpendyColors.separator, lineWidth: 1))
             } else if let symbol = store.profileIconSymbol, !symbol.isEmpty {
                 Circle()
-                    .fill(store.topGradientColor)
+                    .fill(SpendyColors.textPrimary)
                     .frame(width: 52, height: 52)
                 Image(systemName: symbol)
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SpendyColors.inverseText)
             } else {
                 Circle()
                     .fill(SpendyColors.cardBackgroundSecondary)
@@ -251,17 +247,10 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 24) {
                         settingsGroup(title: "Legal") {
-                            if let privacyURL = PrivacyPolicyDocument.current?.websiteURL {
-                                Link(destination: privacyURL) {
-                                    externalRow(icon: "hand.raised", title: "Privacy Policy")
-                                }
-                                .accessibilityIdentifier("settings-privacy-policy")
-                            } else {
-                                NavigationLink(value: SettingsDestination.privacyPolicy) {
-                                    linkRow(icon: "hand.raised", title: "Privacy Policy", value: nil)
-                                }
-                                .accessibilityIdentifier("settings-privacy-policy")
+                            NavigationLink(value: SettingsDestination.privacyPolicy) {
+                                linkRow(icon: "hand.raised", title: "Privacy Policy", value: nil)
                             }
+                            .accessibilityIdentifier("settings-privacy-policy")
                             if let termsOfUseURL {
                                 groupDivider
                                 Link(destination: termsOfUseURL) {
@@ -272,6 +261,14 @@ struct SettingsView: View {
                         }
 
                         settingsGroup(title: "About") {
+                            if let email = PrivacyPolicyDocument.current?.contactEmail,
+                               let supportURL = URL(string: "mailto:\(email)") {
+                                Link(destination: supportURL) {
+                                    externalRow(icon: "envelope", title: "Contact support")
+                                }
+                                .accessibilityIdentifier("settings-contact-support")
+                                groupDivider
+                            }
                             if let feedbackURL {
                                 Link(destination: feedbackURL) {
                                     externalRow(icon: "envelope", title: "Request a feature")
@@ -293,16 +290,9 @@ struct SettingsView: View {
                             if let websiteURL {
                                 groupDivider
                                 Link(destination: websiteURL) {
-                                    externalRow(icon: "safari", title: "Website", value: "studiopavan")
+                                    externalRow(icon: "safari", title: "Website", value: "Spendy")
                                 }
                             }
-                            groupDivider
-                            Button {
-                                showCoffeeSheet = true
-                            } label: {
-                                linkRow(icon: "cup.and.saucer", title: "Support Spendy", value: nil)
-                            }
-                            .buttonStyle(.plain)
                         }
 
 
@@ -418,44 +408,4 @@ struct SettingsView: View {
         .contentShape(Rectangle())
     }
 
-    private var coffeeSheet: some View {
-        NavigationStack {
-            ZStack {
-                VStack(spacing: 16) {
-                    Image(systemName: "cup.and.saucer")
-                        .font(.system(size: 36, weight: .medium))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .padding(.top, 24)
-                    Text("Support Spendy")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                    Text("Keep Spendy independent, ad-free, and on-device.")
-                        .font(.system(.body))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                    if let coffeeURL {
-                        Link(destination: coffeeURL) {
-                            Text("Buy me a coffee")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(SpendyColors.inverseText)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(SpendyColors.textPrimary, in: Capsule())
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 8)
-                    }
-                    Spacer()
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showCoffeeSheet = false }
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
 }

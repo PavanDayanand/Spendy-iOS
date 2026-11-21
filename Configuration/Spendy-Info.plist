@@ -24,8 +24,8 @@
 		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Spendy uses the camera to scan physical receipts and bills for instant transaction logging.</string>
+	<string>Spendy uses the camera to scan a receipt or bill and prepare a transaction for you to review.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Spendy accesses your photos to import receipt and payment confirmation screenshots.</string>
+	<string>Spendy uses photos you choose to scan receipts and payment screenshots, or to set a profile or category photo.</string>
 </dict>
 </plist>

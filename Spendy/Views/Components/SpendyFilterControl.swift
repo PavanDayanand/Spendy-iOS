@@ -41,7 +41,7 @@ struct SpendyFilterControl: View {
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(isSelected ? store.accentPreset.contentTint : SpendyColors.textPrimary)
+        .foregroundStyle(isSelected ? SpendyColors.textPrimary : SpendyColors.textPrimary)
         .padding(.horizontal, title == nil ? 8 : 14)
         .frame(width: title == nil ? 44 : nil)
         .frame(minWidth: 44, minHeight: size.height)
@@ -79,7 +79,7 @@ struct SpendyFilterControl: View {
         .glassEffect(.regular.interactive(), in: .capsule)
         .overlay {
             if isSelected {
-                Capsule().strokeBorder(store.accentPreset.contentTint.opacity(0.7), lineWidth: 1)
+                Capsule().strokeBorder(SpendyColors.textPrimary.opacity(0.7), lineWidth: 1)
                     .allowsHitTesting(false)
             }
         }

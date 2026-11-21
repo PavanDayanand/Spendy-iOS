@@ -95,9 +95,9 @@ struct SpendyApp: App {
             ContentView()
                 .environment(store)
                 .environment(quickActionManager)
-                .environment(\.isMonoIconMode, store.isMonoIconMode)
-                .environment(\.spendySelectionFill, store.accentPreset.selectionFill)
-                .environment(\.spendySelectionForeground, store.accentPreset.selectionForeground)
+                .environment(\.spendySelectionFill, SpendyColors.elevatedControlFill)
+                .environment(\.spendySelectionForeground, SpendyColors.elevatedControlForeground)
+                .tint(SpendyColors.textPrimary)
                 .preferredColorScheme(store.colorScheme)
                 .toggleStyle(SpendySwitchStyle())
                 .onOpenURL { url in

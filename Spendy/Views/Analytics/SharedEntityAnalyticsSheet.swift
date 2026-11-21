@@ -601,7 +601,7 @@ struct SharedEntityAnalyticsSheet: View {
             dataPoints: chartDataPoints,
             scrubbedPoint: $scrubbedBarPoint,
             isScrubbing: $isScrubbingChart,
-            barColor: SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : SpendyColors.textPrimary,
+            barColor: SpendyColors.monoGraphLine,
             barTopCornerRadius: 5
         )
         .id(chartTransitionID)

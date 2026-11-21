@@ -31,6 +31,6 @@ struct InsightsPreferencesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
         }
-        .tint(store.accentPreset.switchTint)
+        .tint(SpendyColors.switchTint)
     }
 }

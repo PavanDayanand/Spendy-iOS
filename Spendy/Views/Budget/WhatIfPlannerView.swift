@@ -97,13 +97,9 @@ private struct CustomSpendSlider: View {
                         .fill(Color(uiColor: .dynamic(light: UIColor(white: 0.0, alpha: 0.06), dark: UIColor(white: 1.0, alpha: 0.12))))
                         .frame(height: 5)
                     
-                    // Active Filled Track (Gradient)
+                    // Active Filled Track
                     Capsule()
-                        .fill(LinearGradient(
-                            colors: [Color(hex: "#FF9500"), Color(hex: "#FF2D55")],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ))
+                        .fill(SpendyColors.textPrimary)
                         .frame(width: max(0, thumbX), height: 5)
                     
                     // Thumb

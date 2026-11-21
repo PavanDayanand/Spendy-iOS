@@ -79,17 +79,19 @@ final class ExpenseStoreTests: XCTestCase {
     @MainActor func testBackupWithRetiredBackgroundColorsStillImports() throws {
         let (source, _) = try temporaryStore()
         source.appearanceMode = .light
-        source.isGradientBackgroundEnabled = false
         source.userName = "Legacy user"
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(source.exportJSONData())) as? [String: Any])
+        object["isGradientBackgroundEnabled"] = true
+        object["appAccent"] = "pink"
         object["darkBackgroundHex"] = "#0033FF"
         object["lightBackgroundHex"] = "#0033FF"
         let (destination, _) = try temporaryStore()
         XCTAssertTrue(destination.importJSONData(data: try JSONSerialization.data(withJSONObject: object)))
         XCTAssertEqual(destination.userName, "Legacy user")
         XCTAssertEqual(destination.appearanceMode, .light)
-        XCTAssertFalse(destination.isGradientBackgroundEnabled)
         let exported = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(destination.exportJSONData())) as? [String: Any])
+        XCTAssertNil(exported["appAccent"])
+        XCTAssertNil(exported["isGradientBackgroundEnabled"])
         XCTAssertNil(exported["darkBackgroundHex"])
         XCTAssertNil(exported["lightBackgroundHex"])
     }

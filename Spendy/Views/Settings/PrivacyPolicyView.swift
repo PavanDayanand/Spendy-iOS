@@ -10,6 +10,11 @@ struct PrivacyPolicyView: View {
                         .font(.footnote)
                         .foregroundStyle(SpendyColors.textSecondary)
                     Text(policy.intro)
+                    if let websiteURL = policy.websiteURL {
+                        Link("View privacy policy online", destination: websiteURL)
+                            .underline()
+                            .accessibilityIdentifier("privacy-policy-online")
+                    }
                     ForEach(policy.sections.filter { $0.scope != "website" }) { section in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(section.title).font(.title3.bold()).accessibilityAddTraits(.isHeader)
@@ -34,7 +39,6 @@ struct PrivacyPolicyView: View {
                 .font(.body)
                 .textSelection(.enabled)
                 .padding(20)
-                .accessibilityIdentifier("privacy-policy-document")
             } else {
                 ContentUnavailableView("Privacy policy unavailable", systemImage: "doc.text",
                     description: Text("Please try again after updating Spendy."))

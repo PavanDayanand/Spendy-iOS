@@ -139,7 +139,7 @@ struct EditorialInsightMomentView: View {
             if hasDestination, let action = moment.actionTitle, !action.isEmpty {
                 Text(action)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(SpendyColors.accentCyan)
+                    .foregroundStyle(SpendyColors.textPrimary)
                     .padding(.top, 4)
                     .lineLimit(1)
             }

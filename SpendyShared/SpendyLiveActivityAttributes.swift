@@ -17,7 +17,7 @@ nonisolated public struct BudgetPacingActivityAttributes: ActivityAttributes {
         public var remainingToday: Double
         public var pacingPercent: Double // 0.0 to 1.0+
         public var statusText: String    // e.g. "On Track", "62% spent", "Over Budget"
-        public var statusColorHex: String // e.g. "#34C759", "#FF9500", "#FF3B30"
+        public var statusColorHex: String // e.g. "#808080", "#808080", "#808080"
         public var nextSubscriptionTitle: String?
         public var nextSubscriptionAmount: Double?
         public var nextSubscriptionDueDays: Int?

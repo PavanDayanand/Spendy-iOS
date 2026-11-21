@@ -34,36 +34,7 @@ extension Color {
         )
     }
 
-    func toHex() -> String {
-        let uic = UIColor(self)
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        if uic.getRed(&r, green: &g, blue: &b, alpha: &a) {
-            return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
-        }
-        return "#4F46E5"
-    }
 
-    /// Automatically darkens/saturates light colors in dark mode so they never look washed out or invisible
-    func clampedToDarkModeAccent() -> Color {
-        let uiColor = UIColor(self)
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-
-        if uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) {
-            // Clamp brightness to max 0.55 so bright/light colors (white, pastel pink, bright yellow)
-            // are automatically turned into dark-mode-safe, rich saturated accent tones.
-            let clampedBrightness = min(brightness, 0.55)
-            let clampedSaturation = max(saturation, 0.35)
-            let adjustedUIColor = UIColor(hue: hue, saturation: clampedSaturation, brightness: clampedBrightness, alpha: alpha)
-            return Color(uiColor: adjustedUIColor)
-        }
-        return self
-    }
 }
 
 extension UIColor {
@@ -76,10 +47,9 @@ extension UIColor {
 
 // MARK: - Spendy Adaptive Monochrome Color System
 enum SpendyColors {
-    // MARK: - Global Mono Mode Flag
-    // Set by ExpenseStore when isMonoIconMode changes. Allows static semantic colors
-    // to resolve to monochrome without changing any call sites across the app.
-    static var isMonoMode: Bool = true
+    /// Rendering is always monochrome, including shared widget badges.
+    static let isMonoMode = true
+    static let switchTint = Color(white: 0.45)
     
     // Dynamic Base Backgrounds (paper white in Light, pitch black in Dark)
     static let appBackground = Color(uiColor: .dynamic(
@@ -195,16 +165,13 @@ enum SpendyColors {
     // Tab Bar Accent follows the monochrome system.
     static let tabSelectedBlue = primaryBlue
 
-    static let accentCyan = Color(uiColor: .systemCyan)
-    static let vibrantPurple = Color(uiColor: .systemPurple)
-    static let vibrantIndigo = Color(uiColor: .systemIndigo)
 
     // Status Beacons & Chips
-    static var statusBeaconCoral: Color { isMonoMode ? textPrimary : Color(hex: "#FF5959") }
-    static var statusBeaconGreen: Color { isMonoMode ? textPrimary : Color(hex: "#30D158") }
-    static var statusBeaconAmber: Color { isMonoMode ? textPrimary : Color(hex: "#FF9F0A") }
-    static var statusBeaconBlue: Color { isMonoMode ? textPrimary : Color(hex: "#007AFF") }
-    static var statusBeaconYellow: Color { isMonoMode ? textPrimary : Color(hex: "#FFCC00") }
+    static var statusBeaconCoral: Color { textPrimary }
+    static var statusBeaconGreen: Color { textPrimary }
+    static var statusBeaconAmber: Color { textPrimary }
+    static var statusBeaconBlue: Color { textPrimary }
+    static var statusBeaconYellow: Color { textPrimary }
     
     static let chipBackground = Color(uiColor: .dynamic(
         light: UIColor(white: 0.0, alpha: 0.05),
@@ -216,25 +183,19 @@ enum SpendyColors {
     ))
 
     // Semantic Status Colors — Mono-aware: resolve to textPrimary when Mono Mode is on
-    static var expenseRed: Color { isMonoMode ? textPrimary : Color(uiColor: .systemRed) }
-    static var incomeGreen: Color { isMonoMode ? textPrimary : Color(uiColor: .systemGreen) }
-    static var transferBlue: Color { isMonoMode ? textPrimary : Color(uiColor: .systemBlue) }
-    static var warningOrange: Color { isMonoMode ? textPrimary : Color(uiColor: .systemOrange) }
-    static var dangerRed: Color { isMonoMode ? textPrimary : Color(uiColor: .systemRed) }
-    static var goldYellow: Color { isMonoMode ? textPrimary : Color(uiColor: .systemYellow) }
-    static var pinkSubscription: Color { isMonoMode ? textPrimary : Color(uiColor: .systemPink) }
-    static var tealSavings: Color { isMonoMode ? textPrimary : Color(uiColor: .systemTeal) }
+    static var expenseRed: Color { textPrimary }
+    static var incomeGreen: Color { textPrimary }
+    static var transferBlue: Color { textPrimary }
+    static var warningOrange: Color { textPrimary }
+    static var dangerRed: Color { textPrimary }
+    static var goldYellow: Color { textPrimary }
+    static var pinkSubscription: Color { textPrimary }
+    static var tealSavings: Color { textPrimary }
 
     // Static Helpers
     static let monochromeBlack = Color(hex: "#000000")
     static let monochromeWhite = Color(hex: "#FFFFFF")
     static let monochromeGray = Color(hex: "#71717A")
-
-    // Preset accent swatches
-    static let presetAccentColors: [String] = [
-        "#FF3B30", "#FF9500", "#FFCC00", "#34C759",
-        "#00C7BE", "#007AFF", "#5856D6", "#AF52DE"
-    ]
 
     // Interactive Pressed States
     static let pressedOverlay = Color(uiColor: .dynamic(

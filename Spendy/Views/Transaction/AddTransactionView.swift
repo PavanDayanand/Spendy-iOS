@@ -798,7 +798,7 @@ struct AddTransactionView: View {
                         HStack(spacing: 8) {
                             SpendyIconBadge(
                                 sfSymbol: selectedCategory?.sfSymbol ?? "cart.fill",
-                                color: selectedCategory?.color ?? Color(hex: "#34C759"),
+                                color: SpendyColors.textPrimary,
                                 size: .small,
                                 style: .circle,
                                 monogramName: selectedCategory?.label ?? ""
@@ -823,16 +823,16 @@ struct AddTransactionView: View {
                     }) {
                         Text("Save")
                             .font(.system(size: 16, weight: .bold, design: .default))
-                            .foregroundStyle(currentAmountValue > 0 ? store.accentPreset.foreground : SpendyColors.textTertiary)
+                            .foregroundStyle(currentAmountValue > 0 ? SpendyColors.elevatedControlForeground : SpendyColors.textTertiary)
                             .padding(.horizontal, 32)
                             .frame(height: 44)
                             .nativeLiquidGlass(cornerRadius: 14, isInteractive: true,
-                                tint: currentAmountValue > 0 ? store.accentPreset.fill : nil)
+                                tint: currentAmountValue > 0 ? SpendyColors.elevatedControlFill : nil)
                     }
                     .buttonStyle(KeypadPressStyle())
                     .disabled(currentAmountValue <= 0)
                     .accessibilityLabel("Save")
-                    .accessibilityValue(store.accentPreset.title)
+
                 }
                 .padding(.top, 8)
             } else {

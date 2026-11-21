@@ -22,7 +22,6 @@ struct AddAccountSheet: View {
     @State private var label: String = ""
     @State private var openingBalanceString: String = ""
     @State private var selectedSymbol: String = SFIcons.bankAccount
-    @State private var selectedColorHex: String = "#007AFF"
     @State private var selectedType: AccountType = .bank
     
     @State private var showIconPickerSheet: Bool = false
@@ -60,13 +59,11 @@ struct AddAccountSheet: View {
             let formattedInit = acc.openingBalance.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", acc.openingBalance) : String(format: "%.2f", acc.openingBalance)
             _openingBalanceString = State(initialValue: formattedInit)
             _selectedSymbol = State(initialValue: acc.sfSymbol)
-            _selectedColorHex = State(initialValue: acc.colorHex)
             _selectedType = State(initialValue: acc.type)
         } else {
             _label = State(initialValue: "")
             _openingBalanceString = State(initialValue: "0")
             _selectedSymbol = State(initialValue: SFIcons.bankAccount)
-            _selectedColorHex = State(initialValue: "#007AFF")
             _selectedType = State(initialValue: .bank)
         }
     }
@@ -177,9 +174,6 @@ struct AddAccountSheet: View {
                             .contentShape(Rectangle())
                             .onTapGesture { isBalanceFocused = true }
                             
-                            SpendyCreateFormDivider()
-                            
-                            SpendyColorSwatchPicker(selectedHex: $selectedColorHex)
                         }
                         
                     }
@@ -260,7 +254,7 @@ struct AddAccountSheet: View {
     private var avatarHeroSection: some View {
         SpendyEditableHeroIcon(
             sfSymbol: selectedSymbol.isEmpty ? selectedType.defaultSymbol : selectedSymbol,
-            color: Color(hex: selectedColorHex),
+            color: SpendyColors.textPrimary,
             style: .rounded(),
             monogramName: label,
             accessibilityLabel: "Edit account icon"
@@ -287,7 +281,6 @@ struct AddAccountSheet: View {
                 updated.label = trimmedLabel.isEmpty ? acc.label : trimmedLabel
             }
             updated.sfSymbol = selectedSymbol
-            updated.colorHex = selectedColorHex
             updated.type = selectedType
             store.updateAccount(updated)
             store.updateAccountBalance(id: acc.id, newBalance: parsedBalance)
@@ -298,7 +291,6 @@ struct AddAccountSheet: View {
                 id: newId,
                 label: finalLabel,
                 sfSymbol: selectedSymbol,
-                colorHex: selectedColorHex,
                 openingBalance: parsedBalance,
                 order: store.accounts.count,
                 type: selectedType

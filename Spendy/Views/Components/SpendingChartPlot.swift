@@ -24,7 +24,7 @@ struct SpendingChartPlot: View {
     var body: some View {
         Chart {
             ForEach(buckets) { bucket in
-                let markColor = selectedID == bucket.id ? store.accentPreset.contentTint : SpendyColors.textPrimary
+                let markColor = selectedID == bucket.id ? SpendyColors.textPrimary : SpendyColors.textPrimary
                 if showsLine {
                     LineMark(x: .value("Period", bucket.id), y: .value(transactionType == .income ? "Income" : "Spending", bucket.amount))
                         .interpolationMethod(.linear)

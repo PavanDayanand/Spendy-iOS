@@ -22,7 +22,6 @@ struct AddSubscriptionSheet: View {
     @State private var isTrial: Bool = false
     @State private var selectedAccountId: String = "bank"
     @State private var selectedSymbol: String = SFIcons.subscriptions
-    @State private var selectedColorHex: String = "#5856D6"
     
     // UI states
     @State private var showIconPickerSheet: Bool = false
@@ -73,7 +72,6 @@ struct AddSubscriptionSheet: View {
             _isTrial = State(initialValue: sub.isTrial)
             _selectedAccountId = State(initialValue: sub.accountId)
             _selectedSymbol = State(initialValue: sub.sfSymbol)
-            _selectedColorHex = State(initialValue: sub.colorHex)
         } else {
             _name = State(initialValue: "")
             _amountString = State(initialValue: "")
@@ -82,7 +80,6 @@ struct AddSubscriptionSheet: View {
             _isTrial = State(initialValue: false)
             _selectedAccountId = State(initialValue: "bank")
             _selectedSymbol = State(initialValue: SFIcons.subscriptions)
-            _selectedColorHex = State(initialValue: "#5856D6")
         }
     }
 
@@ -191,7 +188,7 @@ struct AddSubscriptionSheet: View {
             } icon: {
                 SubscriptionProgressRingBadge(
                     sfSymbol: selectedSymbol,
-                    color: Color(hex: selectedColorHex),
+                    color: SpendyColors.textPrimary,
                     progress: previewProgress,
                     isPaused: false,
                     size: .hero,
@@ -300,7 +297,7 @@ struct AddSubscriptionSheet: View {
                             .foregroundStyle(SpendyColors.textTertiary)
                     }
                 }
-                .tint(store.accentPreset.switchTint)
+                .tint(SpendyColors.switchTint)
                 .padding(.vertical, 8)
 
                 Divider().background(SpendyColors.separator)
@@ -381,7 +378,6 @@ struct AddSubscriptionSheet: View {
             updated.isTrial = isTrial
             updated.accountId = selectedAccountId
             updated.sfSymbol = selectedSymbol
-            updated.colorHex = selectedColorHex
             updated.isDarkBadge = true
             store.updateSubscription(updated)
         } else {
@@ -394,7 +390,6 @@ struct AddSubscriptionSheet: View {
                 isTrial: isTrial,
                 status: "active",
                 sfSymbol: selectedSymbol,
-                colorHex: selectedColorHex,
                 isDarkBadge: true
             )
             store.addSubscription(newSub)

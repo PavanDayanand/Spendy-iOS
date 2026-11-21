@@ -259,7 +259,7 @@ struct ReceiptReviewView: View {
         VStack(spacing: 14) {
             SpendyIconBadge(
                 sfSymbol: category?.sfSymbol ?? "doc.text",
-                color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
+                color: SpendyColors.textPrimary,
                 size: .large,
                 style: .circle,
                 monogramName: category?.label ?? "Receipt"
@@ -328,7 +328,7 @@ struct ReceiptReviewView: View {
             editableDetailRow(.category, label: "Category", valueDescription: category?.label ?? "Choose category") {
                 entityValue(
                     symbol: category?.sfSymbol ?? "tag.fill",
-                    color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
+                    color: SpendyColors.textPrimary,
                     name: category?.label ?? "Choose category",
                     isCircle: true
                 )
@@ -337,7 +337,7 @@ struct ReceiptReviewView: View {
             editableDetailRow(.account, label: "Account", valueDescription: account?.label ?? "Choose account") {
                 entityValue(
                     symbol: account?.sfSymbol ?? account?.type.defaultSymbol ?? "building.columns.fill",
-                    color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
+                    color: SpendyColors.textPrimary,
                     name: account?.label ?? "Choose account"
                 )
             }

@@ -25,7 +25,7 @@ struct Insight: Identifiable, Hashable {
     var categoryId: String? = nil
     
     var color: Color {
-        Color(hex: colorHex)
+        SpendyColors.textPrimary
     }
 }
 

@@ -36,6 +36,7 @@ struct Subscription: Identifiable, Codable, Hashable {
     var isTrial: Bool
     var status: String // "active", "cancelled", "paused"
     var sfSymbol: String
+    // Legacy backup metadata; rendering always uses the monochrome palette.
     var colorHex: String
     var isDarkBadge: Bool
     
@@ -52,7 +53,7 @@ struct Subscription: Identifiable, Codable, Hashable {
         isTrial: Bool = false,
         status: String = "active",
         sfSymbol: String = SFIcons.subscriptions,
-        colorHex: String = "#5856D6",
+        colorHex: String = "#808080",
         isDarkBadge: Bool = false
     ) {
         self.id = id
@@ -89,12 +90,12 @@ struct Subscription: Identifiable, Codable, Hashable {
         self.isTrial = try container.decodeIfPresent(Bool.self, forKey: .isTrial) ?? false
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "active"
         self.sfSymbol = try container.decodeIfPresent(String.self, forKey: .sfSymbol) ?? SFIcons.subscriptions
-        self.colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex) ?? "#5856D6"
+        self.colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex) ?? "#808080"
         self.isDarkBadge = try container.decodeIfPresent(Bool.self, forKey: .isDarkBadge) ?? false
     }
     
     var color: Color {
-        Color(hex: colorHex)
+        SpendyColors.textPrimary
     }
     
     var isCancelled: Bool {

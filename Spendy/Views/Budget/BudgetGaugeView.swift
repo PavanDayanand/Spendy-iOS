@@ -15,8 +15,7 @@ struct BudgetGaugeView: View {
         abs(remaining).formattedCurrency(symbol: currencySymbol, decimals: 0)
     }
     private var tint: Color {
-        SpendyColors.isMonoMode ? SpendyColors.textPrimary
-            : isExceeded ? SpendyColors.warningOrange : .blue
+        SpendyColors.textPrimary
     }
 
     var body: some View {

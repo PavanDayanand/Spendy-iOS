@@ -53,98 +53,6 @@ struct SpendyCreateFormDivider: View {
     }
 }
 
-struct SpendyColorSwatchButton: View {
-    let hex: String
-    var action: () -> Void
-    
-    var body: some View {
-        Button {
-            HapticsManager.shared.trigger(.light)
-            action()
-        } label: {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color(hex: hex))
-                .frame(width: 28, height: 28)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 1)
-                }
-                .shadow(color: Color(hex: hex).opacity(0.28), radius: 3, y: 1)
-        }
-        .buttonStyle(.plain)
-        .frame(minWidth: 44, minHeight: 44)
-        .accessibilityLabel("Color")
-    }
-}
-
-struct SpendyColorSwatchPicker: View {
-    @Binding var selectedHex: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Color")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(SpendyColors.presetAccentColors, id: \.self) { hex in
-                        Button {
-                            HapticsManager.shared.trigger(.selection)
-                            selectedHex = hex
-                        } label: {
-                            Circle()
-                                .fill(Color(hex: hex))
-                                .frame(width: 32, height: 32)
-                                .overlay {
-                                    if selectedHex.uppercased() == hex.uppercased() {
-                                        Circle()
-                                            .stroke(SpendyColors.textPrimary, lineWidth: 2.5)
-                                    }
-                                }
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Select color \(hex)")
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-            .padding(.bottom, 12)
-        }
-    }
-}
-
-struct SpendyCreateColorPalette: View {
-    @Binding var selectedHex: String
-    @Binding var hue: Double
-    @Binding var brightness: Double
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            SpendyColorPresetSwatches(
-                selectedHex: $selectedHex,
-                hue: $hue,
-                brightness: $brightness
-            )
-        }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-                .spendyCardLift()
-        }
-        .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-}
-
 struct SpendyCreatePrimaryButton: View {
     @Environment(ExpenseStore.self) private var store
     let title: String
@@ -159,10 +67,10 @@ struct SpendyCreatePrimaryButton: View {
         } label: {
             Text(title)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(store.accentPreset.foreground)
+                .foregroundStyle(SpendyColors.elevatedControlForeground)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(store.accentPreset.fill, in: Capsule())
+                .background(SpendyColors.elevatedControlFill, in: Capsule())
                 .overlay { Capsule().strokeBorder(SpendyColors.separator, lineWidth: 0.8) }
         }
         .buttonStyle(.plain)

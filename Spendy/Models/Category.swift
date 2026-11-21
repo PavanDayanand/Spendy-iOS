@@ -11,6 +11,7 @@ struct Category: Identifiable, Codable, Hashable {
     var id: String
     var label: String
     var sfSymbol: String
+    // Legacy backup metadata; rendering always uses the monochrome palette.
     var colorHex: String
     var type: TransactionType
     var folder: String
@@ -21,7 +22,7 @@ struct Category: Identifiable, Codable, Hashable {
         id: String,
         label: String,
         sfSymbol: String,
-        colorHex: String,
+        colorHex: String = "#808080",
         type: TransactionType = .expense,
         folder: String = "Uncategorized",
         isHidden: Bool = false,
@@ -54,56 +55,56 @@ struct Category: Identifiable, Codable, Hashable {
     }
     
     var color: Color {
-        Color(hex: colorHex)
+        SpendyColors.textPrimary
     }
     
-    // MARK: - Default Expense Categories (Vibrant Colors Baked In)
+    // MARK: - Default Expense Categories
     static let defaultExpenseCategories: [Category] = [
         // Everyday Spending
-        Category(id: "groceries", label: "Groceries", sfSymbol: SFIcons.groceries, colorHex: "#34C759", type: .expense, folder: "Everyday Spending", order: 0),
-        Category(id: "restaurants", label: "Restaurants", sfSymbol: SFIcons.food, colorHex: "#FF9F0A", type: .expense, folder: "Everyday Spending", order: 1),
-        Category(id: "food_delivery", label: "Food Delivery", sfSymbol: "bag.badge.plus", colorHex: "#FF6482", type: .expense, folder: "Everyday Spending", order: 2),
-        Category(id: "coffee", label: "Coffee & Cafés", sfSymbol: SFIcons.coffee, colorHex: "#A2845E", type: .expense, folder: "Everyday Spending", order: 3),
+        Category(id: "groceries", label: "Groceries", sfSymbol: SFIcons.groceries, colorHex: "#808080", type: .expense, folder: "Everyday Spending", order: 0),
+        Category(id: "restaurants", label: "Restaurants", sfSymbol: SFIcons.food, colorHex: "#808080", type: .expense, folder: "Everyday Spending", order: 1),
+        Category(id: "food_delivery", label: "Food Delivery", sfSymbol: "bag.badge.plus", colorHex: "#808080", type: .expense, folder: "Everyday Spending", order: 2),
+        Category(id: "coffee", label: "Coffee & Cafés", sfSymbol: SFIcons.coffee, colorHex: "#808080", type: .expense, folder: "Everyday Spending", order: 3),
         
         // Transport
-        Category(id: "public_transport", label: "Public Transport", sfSymbol: SFIcons.publicTransport, colorHex: "#007AFF", type: .expense, folder: "Transport", order: 4),
-        Category(id: "fuel", label: "Fuel", sfSymbol: SFIcons.fuel, colorHex: "#FF9500", type: .expense, folder: "Transport", order: 5),
-        Category(id: "taxi", label: "Taxi & Ride-hailing", sfSymbol: SFIcons.transport, colorHex: "#FFCC00", type: .expense, folder: "Transport", order: 6),
-        Category(id: "car_maintenance", label: "Car Maintenance", sfSymbol: SFIcons.carMaintenance, colorHex: "#8E8E93", type: .expense, folder: "Transport", order: 7),
+        Category(id: "public_transport", label: "Public Transport", sfSymbol: SFIcons.publicTransport, colorHex: "#808080", type: .expense, folder: "Transport", order: 4),
+        Category(id: "fuel", label: "Fuel", sfSymbol: SFIcons.fuel, colorHex: "#808080", type: .expense, folder: "Transport", order: 5),
+        Category(id: "taxi", label: "Taxi & Ride-hailing", sfSymbol: SFIcons.transport, colorHex: "#808080", type: .expense, folder: "Transport", order: 6),
+        Category(id: "car_maintenance", label: "Car Maintenance", sfSymbol: SFIcons.carMaintenance, colorHex: "#808080", type: .expense, folder: "Transport", order: 7),
         
         // Living
-        Category(id: "rent", label: "Rent", sfSymbol: SFIcons.rent, colorHex: "#FF3B30", type: .expense, folder: "Living", order: 8),
-        Category(id: "utilities", label: "Utilities", sfSymbol: SFIcons.utilities, colorHex: "#FFD60A", type: .expense, folder: "Living", order: 9),
-        Category(id: "subscriptions", label: "Subscriptions", sfSymbol: SFIcons.subscriptions, colorHex: "#AF52DE", type: .expense, folder: "Living", order: 10),
-        Category(id: "insurance", label: "Insurance", sfSymbol: SFIcons.insurance, colorHex: "#0A84FF", type: .expense, folder: "Living", order: 11),
-        Category(id: "internet_mobile", label: "Internet & Mobile", sfSymbol: SFIcons.internetMobile, colorHex: "#5AC8FA", type: .expense, folder: "Living", order: 12),
-        Category(id: "education", label: "Education", sfSymbol: SFIcons.education, colorHex: "#5856D6", type: .expense, folder: "Living", order: 13),
+        Category(id: "rent", label: "Rent", sfSymbol: SFIcons.rent, colorHex: "#808080", type: .expense, folder: "Living", order: 8),
+        Category(id: "utilities", label: "Utilities", sfSymbol: SFIcons.utilities, colorHex: "#808080", type: .expense, folder: "Living", order: 9),
+        Category(id: "subscriptions", label: "Subscriptions", sfSymbol: SFIcons.subscriptions, colorHex: "#808080", type: .expense, folder: "Living", order: 10),
+        Category(id: "insurance", label: "Insurance", sfSymbol: SFIcons.insurance, colorHex: "#808080", type: .expense, folder: "Living", order: 11),
+        Category(id: "internet_mobile", label: "Internet & Mobile", sfSymbol: SFIcons.internetMobile, colorHex: "#808080", type: .expense, folder: "Living", order: 12),
+        Category(id: "education", label: "Education", sfSymbol: SFIcons.education, colorHex: "#808080", type: .expense, folder: "Living", order: 13),
         
         // Personal & Wellness
-        Category(id: "shopping", label: "Shopping", sfSymbol: SFIcons.shopping, colorHex: "#5856D6", type: .expense, folder: "Personal & Wellness", order: 14),
-        Category(id: "entertainment", label: "Entertainment", sfSymbol: SFIcons.entertainment, colorHex: "#BF5AF2", type: .expense, folder: "Personal & Wellness", order: 15),
-        Category(id: "health", label: "Health & Fitness", sfSymbol: SFIcons.health, colorHex: "#FF2D55", type: .expense, folder: "Personal & Wellness", order: 16),
-        Category(id: "gifts", label: "Gifts", sfSymbol: SFIcons.gifts, colorHex: "#FF6482", type: .expense, folder: "Personal & Wellness", order: 17),
-        Category(id: "beauty", label: "Beauty & Personal Care", sfSymbol: SFIcons.beauty, colorHex: "#FF9FF3", type: .expense, folder: "Personal & Wellness", order: 18),
-        Category(id: "clothing", label: "Clothing", sfSymbol: SFIcons.clothing, colorHex: "#AC8E68", type: .expense, folder: "Personal & Wellness", order: 19),
-        Category(id: "travel", label: "Travel", sfSymbol: SFIcons.travel, colorHex: "#30B0C7", type: .expense, folder: "Personal & Wellness", order: 20),
-        Category(id: "pets", label: "Pets", sfSymbol: SFIcons.pets, colorHex: "#FF9500", type: .expense, folder: "Personal & Wellness", order: 21)
+        Category(id: "shopping", label: "Shopping", sfSymbol: SFIcons.shopping, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 14),
+        Category(id: "entertainment", label: "Entertainment", sfSymbol: SFIcons.entertainment, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 15),
+        Category(id: "health", label: "Health & Fitness", sfSymbol: SFIcons.health, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 16),
+        Category(id: "gifts", label: "Gifts", sfSymbol: SFIcons.gifts, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 17),
+        Category(id: "beauty", label: "Beauty & Personal Care", sfSymbol: SFIcons.beauty, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 18),
+        Category(id: "clothing", label: "Clothing", sfSymbol: SFIcons.clothing, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 19),
+        Category(id: "travel", label: "Travel", sfSymbol: SFIcons.travel, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 20),
+        Category(id: "pets", label: "Pets", sfSymbol: SFIcons.pets, colorHex: "#808080", type: .expense, folder: "Personal & Wellness", order: 21)
     ]
     
-    // MARK: - Default Income Categories (Vibrant Colors Baked In)
+    // MARK: - Default Income Categories
     static let defaultIncomeCategories: [Category] = [
         // Salary & Career
-        Category(id: "paycheck", label: "Salary / Paycheck", sfSymbol: SFIcons.paycheck, colorHex: "#34C759", type: .income, folder: "Salary & Career", order: 0),
-        Category(id: "freelance", label: "Freelance", sfSymbol: SFIcons.freelance, colorHex: "#007AFF", type: .income, folder: "Salary & Career", order: 1),
-        Category(id: "bonus", label: "Bonus", sfSymbol: SFIcons.bonus, colorHex: "#FFD60A", type: .income, folder: "Salary & Career", order: 2),
-        Category(id: "side_hustle", label: "Side Hustle", sfSymbol: SFIcons.sideHustle, colorHex: "#FF9500", type: .income, folder: "Salary & Career", order: 3),
+        Category(id: "paycheck", label: "Salary / Paycheck", sfSymbol: SFIcons.paycheck, colorHex: "#808080", type: .income, folder: "Salary & Career", order: 0),
+        Category(id: "freelance", label: "Freelance", sfSymbol: SFIcons.freelance, colorHex: "#808080", type: .income, folder: "Salary & Career", order: 1),
+        Category(id: "bonus", label: "Bonus", sfSymbol: SFIcons.bonus, colorHex: "#808080", type: .income, folder: "Salary & Career", order: 2),
+        Category(id: "side_hustle", label: "Side Hustle", sfSymbol: SFIcons.sideHustle, colorHex: "#808080", type: .income, folder: "Salary & Career", order: 3),
         
         // Investments & Other
-        Category(id: "investment", label: "Investments", sfSymbol: SFIcons.investment, colorHex: "#30B0C7", type: .income, folder: "Investments & Other", order: 4),
-        Category(id: "refund", label: "Refunds", sfSymbol: SFIcons.refund, colorHex: "#32D74B", type: .income, folder: "Investments & Other", order: 5),
-        Category(id: "interest", label: "Interest", sfSymbol: SFIcons.interest, colorHex: "#64D2FF", type: .income, folder: "Investments & Other", order: 6),
-        Category(id: "rental_income", label: "Rental Income", sfSymbol: SFIcons.rentalIncome, colorHex: "#FF9F0A", type: .income, folder: "Investments & Other", order: 7),
-        Category(id: "dividends", label: "Dividends", sfSymbol: SFIcons.dividends, colorHex: "#5AC8FA", type: .income, folder: "Investments & Other", order: 8),
-        Category(id: "gifts_received", label: "Gifts Received", sfSymbol: SFIcons.giftsReceived, colorHex: "#FF6482", type: .income, folder: "Investments & Other", order: 9)
+        Category(id: "investment", label: "Investments", sfSymbol: SFIcons.investment, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 4),
+        Category(id: "refund", label: "Refunds", sfSymbol: SFIcons.refund, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 5),
+        Category(id: "interest", label: "Interest", sfSymbol: SFIcons.interest, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 6),
+        Category(id: "rental_income", label: "Rental Income", sfSymbol: SFIcons.rentalIncome, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 7),
+        Category(id: "dividends", label: "Dividends", sfSymbol: SFIcons.dividends, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 8),
+        Category(id: "gifts_received", label: "Gifts Received", sfSymbol: SFIcons.giftsReceived, colorHex: "#808080", type: .income, folder: "Investments & Other", order: 9)
     ]
 }

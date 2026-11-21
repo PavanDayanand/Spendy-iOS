@@ -2,7 +2,6 @@ import SwiftUI
 
 /// Keeps per-frame gesture updates out of Home's chart and transaction queries.
 struct HomeActivityDrawer<Content: View>: View {
-    @Environment(ExpenseStore.self) private var store
     let totalHeight: CGFloat
     let topInset: CGFloat
     let bottomInset: CGFloat
@@ -10,7 +9,6 @@ struct HomeActivityDrawer<Content: View>: View {
     @ViewBuilder let content: (CGFloat, AnyGesture<DragGesture.Value>) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @State private var translation: CGFloat = 0
 
     private var restingOffset: CGFloat {
@@ -35,14 +33,7 @@ struct HomeActivityDrawer<Content: View>: View {
             .background {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(SpendyColors.recentActivityBackground)
-                    .overlay {
-                        // A darker resting drawer blends with Blue Aura's black base.
-                        // Opening it restores the normal solid activity surface.
-                        if store.isGradientBackgroundEnabled && colorScheme == .dark && contrast != .increased {
-                            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                .fill(.black.opacity(0.28 * (1 - expansion)))
-                        }
-                    }
+
                     .overlay {
                         RoundedRectangle(cornerRadius: 32, style: .continuous)
                             .stroke(SpendyColors.separator.opacity(0.8), lineWidth: 0.8)

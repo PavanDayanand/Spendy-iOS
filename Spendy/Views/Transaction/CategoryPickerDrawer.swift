@@ -184,7 +184,7 @@ struct CategoryPickerDrawer: View {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#8E8E93"))
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
             }
         }

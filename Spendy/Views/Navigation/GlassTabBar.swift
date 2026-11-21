@@ -120,13 +120,13 @@ struct GlassTabBar: View {
                         .padding(.horizontal, compact ? 16 : (isExpanded ? 24 : 18))
                         .frame(height: pillHeight)
                         .contentShape(Capsule())
-                        .modifier(HeroSpendLiquidGlassModifier(tint: store.accentPreset.fill))
+                        .modifier(HeroSpendLiquidGlassModifier(tint: SpendyColors.elevatedControlFill))
                     }
                     .buttonStyle(LiquidScaleButtonStyle())
                     .spendyNavigationSource(AppTransitionIDs.quickAddButton, in: composeNamespace)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Add Transaction")
-                    .accessibilityValue(store.accentPreset.title)
+
                     .accessibilityAddTraits(.isButton)
                 }
             }
@@ -144,7 +144,7 @@ struct GlassTabBar: View {
             Text("Add")
                 .font(.system(size: isExpanded ? 16 : 14, weight: .bold))
         }
-        .foregroundStyle(store.accentPreset.foreground)
+        .foregroundStyle(SpendyColors.elevatedControlForeground)
     }
 
     // MARK: - Navigation Circle Glass Button

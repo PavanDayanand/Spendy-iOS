@@ -48,7 +48,7 @@ struct SubscriptionQuickActionSheet: View {
     }
     
     private var themeColor: Color {
-        Color(hex: liveSub.colorHex)
+        SpendyColors.textPrimary
     }
     
     private var formattedDueDate: String {
@@ -131,8 +131,8 @@ struct SubscriptionQuickActionSheet: View {
         }
     }
     
-    private var capsuleBackgroundColor: Color { store.accentPreset.fill }
-    private var capsuleContentColor: Color { store.accentPreset.foreground }
+    private var capsuleBackgroundColor: Color { SpendyColors.elevatedControlFill }
+    private var capsuleContentColor: Color { SpendyColors.elevatedControlForeground }
     private var capsuleStrokeColor: Color { SpendyColors.separator }
 
     private var contextualNoteText: String {
@@ -159,8 +159,7 @@ struct SubscriptionQuickActionSheet: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // MARK: - Ambient Subscription Gradient Header Glow
-            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+
             
             // MARK: - Scrollable Content
             ScrollView(showsIndicators: false) {
@@ -414,7 +413,7 @@ struct SubscriptionQuickActionSheet: View {
                 HStack(spacing: 8) {
                     SpendyIconBadge(
                         sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
-                        color: Color(hex: linkedCategory?.colorHex ?? "#5856D6"),
+                        color: SpendyColors.textPrimary,
                         size: .small,
                         style: .circle,
                         monogramName: linkedCategory?.label ?? ""
@@ -446,7 +445,7 @@ struct SubscriptionQuickActionSheet: View {
                     }()
                     SpendyIconBadge(
                         sfSymbol: accountSymbol,
-                        color: Color(hex: linkedAccount.colorHex),
+                        color: SpendyColors.textPrimary,
                         size: .small,
                         style: .rounded(),
                         monogramName: linkedAccount.label

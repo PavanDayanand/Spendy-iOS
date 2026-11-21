@@ -41,7 +41,9 @@ struct MonthlyReceiptPrinter: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paperHeight = $0 }
                     .offset(y: -paperHeight * (1 - progress))
-                    .frame(height: max(0, paperHeight * progress), alignment: .top)
+                    // A still/completed receipt must lay out fully on its first render,
+                    // before the geometry callback has measured the paper.
+                    .frame(height: progress >= 1 ? nil : max(0, paperHeight * progress), alignment: .top)
                     .clipped()
                     .overlay(alignment: .top) {
                         LinearGradient(colors: [.black.opacity(0.22), .clear],

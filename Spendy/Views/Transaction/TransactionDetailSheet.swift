@@ -50,10 +50,7 @@ struct TransactionDetailSheet: View {
     }
     
     private var themeColor: Color {
-        if let sub = subscription { return Color(hex: sub.colorHex) }
-        if let cat = category { return Color(hex: cat.colorHex) }
-        if transaction.type == .income { return SpendyColors.incomeGreen }
-        return SpendyColors.primaryBlue
+        SpendyColors.textPrimary
     }
     
     private var typeBadgeTitle: String {
@@ -93,7 +90,7 @@ struct TransactionDetailSheet: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            SpendyAmbientHeaderBackground(color: themeColor, height: 320, opacity: 0.30)
+
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
@@ -180,7 +177,7 @@ struct TransactionDetailSheet: View {
             } else {
                 SpendyIconBadge(
                     sfSymbol: category?.sfSymbol ?? (transaction.type == .income ? "arrow.down.left" : "tag.fill"),
-                    color: category.map { Color(hex: $0.colorHex) } ?? themeColor,
+                    color: SpendyColors.textPrimary,
                     size: .large,
                     style: .circle,
                     monogramName: category?.label ?? heroTitle
@@ -209,7 +206,7 @@ struct TransactionDetailSheet: View {
                 detailRow(label: "Category") {
                     entityValue(
                         symbol: category?.sfSymbol ?? "tag.fill",
-                        color: category.map { Color(hex: $0.colorHex) } ?? SpendyColors.primaryBlue,
+                        color: SpendyColors.textPrimary,
                         name: category?.label ?? "General",
                         isCircle: true
                     )
@@ -222,7 +219,7 @@ struct TransactionDetailSheet: View {
                 detailRow(label: "From") {
                     entityValue(
                         symbol: accountSymbol,
-                        color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
+                        color: SpendyColors.textPrimary,
                         name: account?.label ?? "Cash"
                     )
                 }
@@ -231,7 +228,7 @@ struct TransactionDetailSheet: View {
                     detailRow(label: "To") {
                         entityValue(
                             symbol: toAccountSymbol,
-                            color: Color(hex: to.colorHex),
+                            color: SpendyColors.textPrimary,
                             name: to.label
                         )
                     }
@@ -240,7 +237,7 @@ struct TransactionDetailSheet: View {
                 detailRow(label: "Account") {
                     entityValue(
                         symbol: accountSymbol,
-                        color: account.map { Color(hex: $0.colorHex) } ?? SpendyColors.incomeGreen,
+                        color: SpendyColors.textPrimary,
                         name: account?.label ?? "Cash"
                     )
                 }
@@ -251,7 +248,7 @@ struct TransactionDetailSheet: View {
                 detailRow(label: "Subscription") {
                     entityValue(
                         symbol: sub.sfSymbol,
-                        color: Color(hex: sub.colorHex),
+                        color: SpendyColors.textPrimary,
                         name: sub.name,
                         isCircle: true
                     )

@@ -253,11 +253,7 @@ final class ExpenseStore {
     var profileIconSymbol: String? = nil {
         didSet { scheduleSave() }
     }
-    
-    var profileColorHex: String? = nil {
-        didSet { scheduleSave() }
-    }
-    
+
     var soundEnabled: Bool = true {
         didSet {
             SoundManager.shared.isEnabled = soundEnabled
@@ -351,17 +347,6 @@ final class ExpenseStore {
         didSet { scheduleSave() }
     }
     
-    var accentPreset: SpendyAccentPreset = .white {
-        didSet { scheduleSave() }
-    }
-
-    var isMonoIconMode: Bool = true {
-        didSet {
-            SpendyColors.isMonoMode = isMonoIconMode
-            scheduleSave()
-        }
-    }
-    
     // MARK: - Dashboard Section Visibility & Ordering Controls
     var dashboardSectionOrder: [DashboardSectionId] = [
         .spendingChart,
@@ -434,56 +419,6 @@ final class ExpenseStore {
         }
     }
     
-    var isGradientBackgroundEnabled: Bool = true {
-        didSet { scheduleSave() }
-    }
-
-    var homeGradientStyle: HomeGradientStyle = .blueAura {
-        didSet { scheduleSave() }
-    }
-    
-    var topGradientHue: Double = 0.60 {
-        didSet {
-            updateGradientHexFromHSB()
-            scheduleSave()
-        }
-    }
-    
-    var topGradientBrightness: Double = 0.85 {
-        didSet {
-            updateGradientHexFromHSB()
-            scheduleSave()
-        }
-    }
-    
-    var topGradientColorHex: String = "#007AFF" {
-        didSet { scheduleSave() }
-    }
-    
-    var topGradientColor: Color {
-        Color(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.98))
-    }
-    
-    private func updateGradientHexFromHSB() {
-        let uiColor = UIColor(hue: topGradientHue, saturation: 0.90, brightness: min(max(topGradientBrightness, 0.20), 0.95), alpha: 1.0)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
-            self.topGradientColorHex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
-        }
-    }
-    
-    func setTopGradientColor(_ color: Color) {
-        let uiColor = UIColor(color)
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        if uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
-            self.topGradientHue = Double(h)
-            self.topGradientBrightness = Double(min(max(b, 0.20), 0.95))
-        } else {
-            let clamped = color.clampedToDarkModeAccent()
-            self.topGradientColorHex = clamped.toHex()
-        }
-    }
-    
     // MARK: - JSON Coders with Multi-Format Date Support
     static var jsonDecoder: JSONDecoder {
         let decoder = JSONDecoder()
@@ -534,7 +469,6 @@ final class ExpenseStore {
         var hapticsEnabled: Bool?
         var profileImageData: Data?
         var profileIconSymbol: String?
-        var profileColorHex: String?
         var soundEnabled: Bool?
         var insightsEnabled: Bool?
         var weeklySummaryEnabled: Bool?
@@ -542,13 +476,6 @@ final class ExpenseStore {
         var budgetAlertsEnabled: Bool?
         var notificationsEnabled: Bool?
         var appearanceMode: AppearanceMode?
-        var appAccent: String?
-        var isMonoIconMode: Bool?
-        var topGradientColorHex: String?
-        var isGradientBackgroundEnabled: Bool?
-        var homeGradientStyle: String?
-        var topGradientHue: Double?
-        var topGradientBrightness: Double?
         var transactions: [Transaction]
         var accounts: [Account]
         var categories: [Category]
@@ -584,7 +511,7 @@ final class ExpenseStore {
                 self.hapticsEnabled = payload.hapticsEnabled ?? true
                 self.profileImageData = payload.profileImageData
                 self.profileIconSymbol = payload.profileIconSymbol
-                self.profileColorHex = payload.profileColorHex
+
                 self.soundEnabled = payload.soundEnabled ?? true
                 self.insightsEnabled = payload.insightsEnabled ?? true
                 self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? false
@@ -592,14 +519,7 @@ final class ExpenseStore {
                 self.budgetAlertsEnabled = payload.budgetAlertsEnabled ?? false
                 self.notificationsEnabled = payload.notificationsEnabled ?? true
                 self.appearanceMode = payload.appearanceMode ?? .dark
-                self.accentPreset = payload.appAccent.flatMap(SpendyAccentPreset.init(rawValue:)) ?? .white
-                self.isMonoIconMode = true
-                SpendyColors.isMonoMode = self.isMonoIconMode
-                self.topGradientColorHex = payload.topGradientColorHex ?? "#007AFF"
-                self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? true
-                self.homeGradientStyle = payload.homeGradientStyle.flatMap(HomeGradientStyle.init(rawValue:)) ?? .blueAura
-                self.topGradientHue = payload.topGradientHue ?? 0.60
-                self.topGradientBrightness = payload.topGradientBrightness ?? 0.85
+
                 if let orderRaw = payload.dashboardSectionOrder {
                     let decodedOrder = orderRaw.compactMap { DashboardSectionId(rawValue: $0) }
                     var fullOrder = decodedOrder
@@ -708,7 +628,7 @@ final class ExpenseStore {
             hapticsEnabled: hapticsEnabled,
             profileImageData: profileImageData,
             profileIconSymbol: profileIconSymbol,
-            profileColorHex: profileColorHex,
+
             soundEnabled: soundEnabled,
             insightsEnabled: insightsEnabled,
             weeklySummaryEnabled: weeklySummaryEnabled,
@@ -716,13 +636,7 @@ final class ExpenseStore {
             budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
-            appAccent: accentPreset.rawValue,
-            isMonoIconMode: isMonoIconMode,
-            topGradientColorHex: topGradientColorHex,
-            isGradientBackgroundEnabled: isGradientBackgroundEnabled,
-            homeGradientStyle: homeGradientStyle.rawValue,
-            topGradientHue: topGradientHue,
-            topGradientBrightness: topGradientBrightness,
+
             transactions: transactions,
             accounts: accounts,
             categories: categories,
@@ -791,12 +705,7 @@ final class ExpenseStore {
         self.hapticsEnabled = true
         self.hasCompletedOnboarding = false
         self.appearanceMode = .dark
-        self.accentPreset = .white
-        self.topGradientColorHex = SpendyDefaultData.topGradientColorHex
-        self.topGradientHue = SpendyDefaultData.topGradientHue
-        self.topGradientBrightness = SpendyDefaultData.topGradientBrightness
-        self.isGradientBackgroundEnabled = SpendyDefaultData.isGradientBackgroundEnabled
-        self.homeGradientStyle = .blueAura
+
         self.accounts = Account.defaultAccounts
         self.customFolders = []
         self.categories = Category.defaultExpenseCategories + Category.defaultIncomeCategories
@@ -1591,7 +1500,6 @@ final class ExpenseStore {
         case invalidResponse
     }
 
-    
     func eraseAllData() {
         if startsServices {
             do { try ReceiptShareStore.clear() }
@@ -1620,7 +1528,7 @@ final class ExpenseStore {
             hapticsEnabled: hapticsEnabled,
             profileImageData: profileImageData,
             profileIconSymbol: profileIconSymbol,
-            profileColorHex: profileColorHex,
+
             soundEnabled: soundEnabled,
             insightsEnabled: insightsEnabled,
             weeklySummaryEnabled: weeklySummaryEnabled,
@@ -1628,13 +1536,7 @@ final class ExpenseStore {
             budgetAlertsEnabled: budgetAlertsEnabled,
             notificationsEnabled: notificationsEnabled,
             appearanceMode: appearanceMode,
-            appAccent: accentPreset.rawValue,
-            isMonoIconMode: isMonoIconMode,
-            topGradientColorHex: topGradientColorHex,
-            isGradientBackgroundEnabled: isGradientBackgroundEnabled,
-            homeGradientStyle: homeGradientStyle.rawValue,
-            topGradientHue: topGradientHue,
-            topGradientBrightness: topGradientBrightness,
+
             transactions: transactions,
             accounts: accounts,
             categories: categories,
@@ -1709,7 +1611,7 @@ final class ExpenseStore {
                 self.userName = payload.userName ?? self.userName
                 self.profileImageData = payload.profileImageData
                 self.profileIconSymbol = payload.profileIconSymbol
-                self.profileColorHex = payload.profileColorHex
+
                 self.insightsEnabled = payload.insightsEnabled ?? self.insightsEnabled
                 self.weeklySummaryEnabled = payload.weeklySummaryEnabled ?? self.weeklySummaryEnabled
                 self.loggingRemindersEnabled = payload.loggingRemindersEnabled ?? self.loggingRemindersEnabled
@@ -1726,14 +1628,7 @@ final class ExpenseStore {
                 self.soundEnabled = payload.soundEnabled ?? self.soundEnabled
                 self.hapticsEnabled = payload.hapticsEnabled ?? self.hapticsEnabled
                 self.appearanceMode = payload.appearanceMode ?? self.appearanceMode
-                self.accentPreset = payload.appAccent.flatMap(SpendyAccentPreset.init(rawValue:)) ?? .white
-                self.isMonoIconMode = true
-                SpendyColors.isMonoMode = self.isMonoIconMode
-                self.topGradientColorHex = payload.topGradientColorHex ?? self.topGradientColorHex
-                self.isGradientBackgroundEnabled = payload.isGradientBackgroundEnabled ?? self.isGradientBackgroundEnabled
-                self.homeGradientStyle = payload.homeGradientStyle.flatMap(HomeGradientStyle.init(rawValue:)) ?? .blueAura
-                self.topGradientHue = payload.topGradientHue ?? self.topGradientHue
-                self.topGradientBrightness = payload.topGradientBrightness ?? self.topGradientBrightness
+
                 self.transactions = payload.transactions
                 self.accounts = payload.accounts
                 self.categories = payload.categories

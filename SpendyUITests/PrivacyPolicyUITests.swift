@@ -12,6 +12,13 @@ final class PrivacyPolicyUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 10))
         app.buttons["home-profile"].tap()
+        let about = app.buttons["settings-help-about"]
+        for _ in 0..<8 {
+            if about.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(about.isHittable)
+        about.tap()
         let row = app.buttons["settings-privacy-policy"]
         for _ in 0..<8 {
             if row.isHittable { break }
@@ -27,6 +34,7 @@ final class PrivacyPolicyUITests: XCTestCase {
         row.tap()
         XCTAssertTrue(app.staticTexts["Information you keep in Spendy"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Privacy policy unavailable"].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "privacy-policy-online").firstMatch.exists)
         return app
     }
 
@@ -39,7 +47,7 @@ final class PrivacyPolicyUITests: XCTestCase {
         }
         XCTAssertTrue(receiptHeading.isHittable)
         capture(app, "Native privacy policy dark")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars["Privacy Policy"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["settings-privacy-policy"].waitForExistence(timeout: 5))
     }
 
@@ -47,8 +55,21 @@ final class PrivacyPolicyUITests: XCTestCase {
         let app = launch(light: true, largeText: true)
         XCTAssertTrue(app.navigationBars["Privacy Policy"].exists)
         capture(app, "Native privacy policy largest text light")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars["Privacy Policy"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["settings-privacy-policy"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testHelpIncludesSupportWithoutExternalTip() {
+        let app = launch(light: true)
+        app.navigationBars["Privacy Policy"].buttons.element(boundBy: 0).tap()
+        let support = app.descendants(matching: .any).matching(identifier: "settings-contact-support").firstMatch
+        for _ in 0..<4 {
+            if support.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(support.isHittable)
+        XCTAssertFalse(app.buttons["Support Spendy"].exists)
+        XCTAssertFalse(app.links["Buy me a coffee"].exists)
     }
 
     @MainActor private func capture(_ app: XCUIApplication, _ name: String) {

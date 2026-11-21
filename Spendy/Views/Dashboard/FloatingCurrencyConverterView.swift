@@ -57,7 +57,7 @@ struct FloatingCurrencyConverterView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            SpendyAmbientHeaderBackground(color: SpendyColors.primaryBlue, height: 320, opacity: 0.30)
+
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {

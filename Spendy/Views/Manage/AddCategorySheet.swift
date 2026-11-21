@@ -22,7 +22,6 @@ struct AddCategorySheet: View {
     @State private var type: TransactionType = .expense
     @State private var selectedFolder: String = "Everyday Spending"
     @State private var selectedSymbol: String = "tag.fill"
-    @State private var selectedColorHex: String = "#FFFFFF"
     
     // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
@@ -63,11 +62,9 @@ struct AddCategorySheet: View {
             _type = State(initialValue: cat.type)
             _selectedFolder = State(initialValue: cat.folder.isEmpty ? "Uncategorized" : cat.folder)
             _selectedSymbol = State(initialValue: cat.sfSymbol)
-            _selectedColorHex = State(initialValue: cat.colorHex)
         } else {
             _type = State(initialValue: defaultType)
             _selectedFolder = State(initialValue: defaultFolder ?? (defaultType == .expense ? "Everyday Spending" : "Salary & Career"))
-            _selectedColorHex = State(initialValue: "#007AFF")
         }
     }
     
@@ -225,7 +222,7 @@ struct AddCategorySheet: View {
     private var avatarHeroSection: some View {
         SpendyEditableHeroIcon(
             sfSymbol: selectedSymbol,
-            color: Color(hex: selectedColorHex),
+            color: SpendyColors.textPrimary,
             style: .circle,
             monogramName: label,
             accessibilityLabel: "Edit category icon"
@@ -242,7 +239,6 @@ struct AddCategorySheet: View {
             var updated = existing
             updated.label = trimmed
             updated.sfSymbol = selectedSymbol
-            updated.colorHex = selectedColorHex
             updated.type = type
             updated.folder = selectedFolder
             store.updateCategory(updated)
@@ -251,7 +247,6 @@ struct AddCategorySheet: View {
                 id: UUID().uuidString.lowercased(),
                 label: trimmed,
                 sfSymbol: selectedSymbol,
-                colorHex: selectedColorHex,
                 type: type,
                 folder: selectedFolder,
                 order: store.categories.count

@@ -33,6 +33,7 @@ struct Account: Identifiable, Codable, Hashable {
     var id: String
     var label: String
     var sfSymbol: String
+    // Legacy backup metadata; rendering always uses the monochrome palette.
     var colorHex: String
     var openingBalance: Double
     var order: Int
@@ -42,7 +43,7 @@ struct Account: Identifiable, Codable, Hashable {
         id: String,
         label: String,
         sfSymbol: String = SFIcons.bankAccount,
-        colorHex: String = "#007AFF",
+        colorHex: String = "#808080",
         openingBalance: Double = 0.0,
         order: Int = 0,
         type: AccountType = .bank
@@ -72,12 +73,12 @@ struct Account: Identifiable, Codable, Hashable {
     }
     
     var color: Color {
-        Color(hex: colorHex)
+        SpendyColors.textPrimary
     }
     
     // MARK: - Default Accounts
     static let defaultAccounts: [Account] = [
-        Account(id: "cash", label: "Cash", sfSymbol: SFIcons.cashAccount, colorHex: "#34C759", openingBalance: 0.0, order: 0, type: .cash),
-        Account(id: "bank", label: "Bank Account", sfSymbol: SFIcons.bankAccount, colorHex: "#007AFF", openingBalance: 0.0, order: 1, type: .bank)
+        Account(id: "cash", label: "Cash", sfSymbol: SFIcons.cashAccount, colorHex: "#808080", openingBalance: 0.0, order: 0, type: .cash),
+        Account(id: "bank", label: "Bank Account", sfSymbol: SFIcons.bankAccount, colorHex: "#808080", openingBalance: 0.0, order: 1, type: .bank)
     ]
 }

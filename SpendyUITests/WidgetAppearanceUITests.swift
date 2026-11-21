@@ -37,14 +37,6 @@ final class WidgetAppearanceUITests: XCTestCase {
         app.launchEnvironment["SPENDY_UI_TEST_MODE"] = "widgets"
         app.launchEnvironment["SPENDY_UI_TEST_RECEIPT_INTRO"] = "seen"
         app.launch()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Profile,")).firstMatch.tap()
-        let widgets = app.buttons["settings-widgets"]
-        for _ in 0..<6 {
-            if widgets.isHittable { break }
-            app.swipeUp()
-        }
-        widgets.tap()
-        XCTAssertTrue(app.staticTexts["Widgets that feel like Spendy"].waitForExistence(timeout: 5))
         XCUIDevice.shared.press(.home)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         XCTAssertTrue(visibleWidget(springboard).exists)

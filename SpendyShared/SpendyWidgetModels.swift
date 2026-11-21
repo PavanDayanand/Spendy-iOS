@@ -19,55 +19,10 @@ nonisolated enum SpendyAppGroup {
     static let pendingShortcutLogKey = "spendy_widget_pending_shortcut_log"
 }
 
+/// Legacy payload colors do not control widget or Live Activity presentation.
 enum SpendyHexColor {
-    static func color(from hex: String) -> Color {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3:
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6:
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8:
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (255, 0, 122, 255)
-        }
-        return Color(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-
-    static func glyphColor(from hex: String) -> Color {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let r, g, b: UInt64
-        switch hex.count {
-        case 3:
-            (r, g, b) = ((int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6:
-            (r, g, b) = (int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8:
-            (r, g, b) = (int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            return .white
-        }
-        func linear(_ channel: Double) -> Double {
-            channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
-        }
-        let luminance =
-            0.2126 * linear(Double(r) / 255) +
-            0.7152 * linear(Double(g) / 255) +
-            0.0722 * linear(Double(b) / 255)
-        return luminance > 0.55 ? Color.black.opacity(0.88) : Color.white
-    }
+    static func color(from hex: String) -> Color { Color(uiColor: .label) }
+    static func glyphColor(from hex: String) -> Color { Color(uiColor: .systemBackground) }
 }
 
 nonisolated enum SpendyWidgetFormat {
@@ -198,7 +153,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         budgetCycleEnd: Date? = nil,
         topCategoryName: String = "Groceries",
         topCategorySymbol: String = "cart.fill",
-        topCategoryColorHex: String = "#34C759",
+        topCategoryColorHex: String = "#808080",
         topCategoryAmount: Double = 0,
         weeklySpending: [WidgetDaySpending] = [],
         recentTransactions: [WidgetTransactionItem] = [],
@@ -262,7 +217,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         budgetCycleEnd = try container.decodeIfPresent(Date.self, forKey: .budgetCycleEnd)
         topCategoryName = try container.decodeIfPresent(String.self, forKey: .topCategoryName) ?? "Groceries"
         topCategorySymbol = try container.decodeIfPresent(String.self, forKey: .topCategorySymbol) ?? "cart.fill"
-        topCategoryColorHex = try container.decodeIfPresent(String.self, forKey: .topCategoryColorHex) ?? "#34C759"
+        topCategoryColorHex = try container.decodeIfPresent(String.self, forKey: .topCategoryColorHex) ?? "#808080"
         topCategoryAmount = try container.decodeIfPresent(Double.self, forKey: .topCategoryAmount) ?? 0
         weeklySpending = try container.decodeIfPresent([WidgetDaySpending].self, forKey: .weeklySpending) ?? []
         recentTransactions = try container.decodeIfPresent([WidgetTransactionItem].self, forKey: .recentTransactions) ?? []
@@ -376,7 +331,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
         SpendyWidgetSnapshot(
             topCategoryName: "Spendy",
             topCategorySymbol: "cart.fill",
-            topCategoryColorHex: "#34C759"
+            topCategoryColorHex: "#808080"
         )
     }
 
@@ -394,7 +349,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
             budgetProgress: 0.56,
             topCategoryName: "Groceries",
             topCategorySymbol: "cart.fill",
-            topCategoryColorHex: "#34C759",
+            topCategoryColorHex: "#808080",
             topCategoryAmount: 312,
             weeklySpending: [
                 WidgetDaySpending(dayLabel: "M", amount: 24.50, isToday: false),
@@ -412,7 +367,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
                     amount: 5.50,
                     isExpense: true,
                     categorySymbol: "cup.and.saucer.fill",
-                    categoryColorHex: "#A2845E",
+                    categoryColorHex: "#808080",
                     formattedTime: "10:30 AM"
                 ),
                 WidgetTransactionItem(
@@ -421,7 +376,7 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
                     amount: 28.50,
                     isExpense: true,
                     categorySymbol: "cart.fill",
-                    categoryColorHex: "#34C759",
+                    categoryColorHex: "#808080",
                     formattedTime: "12:15 PM"
                 ),
                 WidgetTransactionItem(
@@ -430,24 +385,24 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
                     amount: 2400,
                     isExpense: false,
                     categorySymbol: "banknote.fill",
-                    categoryColorHex: "#34C759",
+                    categoryColorHex: "#808080",
                     formattedTime: "9:00 AM"
                 )
             ],
             topCategories: [
-                WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", amount: 312),
-                WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", amount: 148),
-                WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", amount: 96)
+                WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#808080", amount: 312),
+                WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#808080", amount: 148),
+                WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#808080", amount: 96)
             ],
             categorySpending: [
-                WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", amount: 312),
-                WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", amount: 148),
-                WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", amount: 96)
+                WidgetCategorySpend(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#808080", amount: 312),
+                WidgetCategorySpend(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#808080", amount: 148),
+                WidgetCategorySpend(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#808080", amount: 96)
             ],
             subscriptions: [
-                WidgetSubscriptionItem(id: "music", name: "Music", amount: 119, renewalDate: Date().addingTimeInterval(86400 * 3), sfSymbol: "music.note", colorHex: "#FA426A", isTrial: false),
-                WidgetSubscriptionItem(id: "cloud", name: "Cloud storage", amount: 75, renewalDate: Date().addingTimeInterval(86400 * 6), sfSymbol: "icloud.fill", colorHex: "#007AFF", isTrial: false),
-                WidgetSubscriptionItem(id: "film", name: "Film club", amount: 299, renewalDate: Date().addingTimeInterval(86400 * 12), sfSymbol: "play.fill", colorHex: "#AF52DE", isTrial: false)
+                WidgetSubscriptionItem(id: "music", name: "Music", amount: 119, renewalDate: Date().addingTimeInterval(86400 * 3), sfSymbol: "music.note", colorHex: "#808080", isTrial: false),
+                WidgetSubscriptionItem(id: "cloud", name: "Cloud storage", amount: 75, renewalDate: Date().addingTimeInterval(86400 * 6), sfSymbol: "icloud.fill", colorHex: "#808080", isTrial: false),
+                WidgetSubscriptionItem(id: "film", name: "Film club", amount: 299, renewalDate: Date().addingTimeInterval(86400 * 12), sfSymbol: "play.fill", colorHex: "#808080", isTrial: false)
             ],
             daysLeft: 14,
             pacingCaption: "₹47 per day left",
@@ -456,22 +411,22 @@ nonisolated struct SpendyWidgetSnapshot: Codable, Sendable {
     }
 
     static let fallbackCategories: [WidgetCategoryRecord] = [
-        WidgetCategoryRecord(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#34C759", isExpense: true, isHidden: false, order: 0),
-        WidgetCategoryRecord(id: "restaurants", name: "Restaurants", sfSymbol: "fork.knife", colorHex: "#FF9F0A", isExpense: true, isHidden: false, order: 1),
-        WidgetCategoryRecord(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#A2845E", isExpense: true, isHidden: false, order: 2),
-        WidgetCategoryRecord(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#FF9500", isExpense: true, isHidden: false, order: 3),
-        WidgetCategoryRecord(id: "shopping", name: "Shopping", sfSymbol: "bag.fill", colorHex: "#5856D6", isExpense: true, isHidden: false, order: 4),
-        WidgetCategoryRecord(id: "transport", name: "Taxi & Ride-hailing", sfSymbol: "car.fill", colorHex: "#FFCC00", isExpense: true, isHidden: false, order: 5),
-        WidgetCategoryRecord(id: "health", name: "Health & Fitness", sfSymbol: "heart.fill", colorHex: "#FF2D55", isExpense: true, isHidden: false, order: 6),
-        WidgetCategoryRecord(id: "entertainment", name: "Entertainment", sfSymbol: "popcorn.fill", colorHex: "#BF5AF2", isExpense: true, isHidden: false, order: 7),
-        WidgetCategoryRecord(id: "paycheck", name: "Salary / Paycheck", sfSymbol: "banknote.fill", colorHex: "#34C759", isExpense: false, isHidden: false, order: 0),
-        WidgetCategoryRecord(id: "freelance", name: "Freelance", sfSymbol: "laptopcomputer", colorHex: "#007AFF", isExpense: false, isHidden: false, order: 1),
-        WidgetCategoryRecord(id: "bonus", name: "Bonus", sfSymbol: "sparkles", colorHex: "#FFD60A", isExpense: false, isHidden: false, order: 2)
+        WidgetCategoryRecord(id: "groceries", name: "Groceries", sfSymbol: "cart.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 0),
+        WidgetCategoryRecord(id: "restaurants", name: "Restaurants", sfSymbol: "fork.knife", colorHex: "#808080", isExpense: true, isHidden: false, order: 1),
+        WidgetCategoryRecord(id: "coffee", name: "Coffee & Cafés", sfSymbol: "cup.and.saucer.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 2),
+        WidgetCategoryRecord(id: "fuel", name: "Fuel", sfSymbol: "fuelpump.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 3),
+        WidgetCategoryRecord(id: "shopping", name: "Shopping", sfSymbol: "bag.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 4),
+        WidgetCategoryRecord(id: "transport", name: "Taxi & Ride-hailing", sfSymbol: "car.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 5),
+        WidgetCategoryRecord(id: "health", name: "Health & Fitness", sfSymbol: "heart.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 6),
+        WidgetCategoryRecord(id: "entertainment", name: "Entertainment", sfSymbol: "popcorn.fill", colorHex: "#808080", isExpense: true, isHidden: false, order: 7),
+        WidgetCategoryRecord(id: "paycheck", name: "Salary / Paycheck", sfSymbol: "banknote.fill", colorHex: "#808080", isExpense: false, isHidden: false, order: 0),
+        WidgetCategoryRecord(id: "freelance", name: "Freelance", sfSymbol: "laptopcomputer", colorHex: "#808080", isExpense: false, isHidden: false, order: 1),
+        WidgetCategoryRecord(id: "bonus", name: "Bonus", sfSymbol: "sparkles", colorHex: "#808080", isExpense: false, isHidden: false, order: 2)
     ]
 
     static let fallbackAccounts: [WidgetAccountRecord] = [
-        WidgetAccountRecord(id: "cash", name: "Cash", sfSymbol: "banknote.fill", colorHex: "#34C759", order: 0),
-        WidgetAccountRecord(id: "bank", name: "Bank Account", sfSymbol: "building.columns.fill", colorHex: "#007AFF", order: 1)
+        WidgetAccountRecord(id: "cash", name: "Cash", sfSymbol: "banknote.fill", colorHex: "#808080", order: 0),
+        WidgetAccountRecord(id: "bank", name: "Bank Account", sfSymbol: "building.columns.fill", colorHex: "#808080", order: 1)
     ]
 }
 

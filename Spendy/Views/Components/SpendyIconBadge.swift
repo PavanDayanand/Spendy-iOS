@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - Mono Icon Mode Environment Key
 private struct MonoIconModeKey: EnvironmentKey {
-    static let defaultValue: Bool = false
+    static let defaultValue: Bool = true
 }
 
 extension EnvironmentValues {
@@ -87,68 +87,12 @@ enum SpendyIconPaint {
         mono: Bool,
         prominent: Bool
     ) -> Resolved {
-        if mono || SpendyColors.isMonoMode {
-            return Resolved(
-                fill: SpendyColors.textPrimary,
-                glyph: SpendyColors.inverseText,
-                glow: .clear
-            )
-        }
-        
-        let uiColor = UIColor(color)
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-        uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        
-        // Near-white / washed greys can't carry a glyph. Fall back to paper.
-        let nearWhite = brightness > 0.90 && saturation < 0.14
-        if nearWhite {
-            return Resolved(
-                fill: SpendyColors.cardBackgroundSecondary,
-                glyph: SpendyColors.textPrimary,
-                glow: .clear
-            )
-        }
-        
-        // Keep the hue the user picked. Lift crushed darks, pull neon down
-        // just enough that yellows stay yellow and blues stay blue.
-        let fillSaturation = min(1.0, max(0.42, saturation * (scheme == .dark ? 1.06 : 1.0)))
-        let fillBrightness: CGFloat = scheme == .light
-            ? min(0.90, max(0.38, brightness))
-            : min(0.82, max(0.46, brightness))
-        let fill = Color(
-            hue: Double(hue),
-            saturation: Double(fillSaturation),
-            brightness: Double(fillBrightness)
+        // Legacy item colors and mode arguments never affect presentation.
+        Resolved(
+            fill: SpendyColors.textPrimary,
+            glyph: SpendyColors.inverseText,
+            glow: .clear
         )
-        
-        let glyph: Color = relativeLuminance(
-            hue: hue,
-            saturation: fillSaturation,
-            brightness: fillBrightness
-        ) > 0.55 ? Color.black.opacity(0.88) : Color.white
-        
-        let glow: Color = prominent
-            ? fill.opacity(scheme == .light ? 0.22 : 0.34)
-            : .clear
-        
-        return Resolved(fill: fill, glyph: glyph, glow: glow)
-    }
-    
-    private static func relativeLuminance(
-        hue: CGFloat,
-        saturation: CGFloat,
-        brightness: CGFloat
-    ) -> CGFloat {
-        let ui = UIColor(hue: hue, saturation: saturation, brightness: brightness, alpha: 1)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
-        func linear(_ channel: CGFloat) -> CGFloat {
-            channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
     }
 }
 

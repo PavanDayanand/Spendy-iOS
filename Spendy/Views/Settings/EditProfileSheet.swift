@@ -15,7 +15,6 @@ struct EditProfileSheet: View {
     @State private var tempName: String = ""
     @State private var selectedImageData: Data? = nil
     @State private var selectedIconSymbol: String = "person.fill"
-    @State private var selectedColorHex: String = "#007AFF"
     
     // Icon picker sheet
     @State private var showIconPickerSheet: Bool = false
@@ -53,7 +52,7 @@ struct EditProfileSheet: View {
                             .padding(.top, 40)
                         
                         // Name field
-                        nameAndColorCard
+                        nameCard
                         currencyCard
                         
                     }
@@ -67,7 +66,6 @@ struct EditProfileSheet: View {
                 tempName = store.userName.isEmpty ? "Personal" : store.userName
                 selectedImageData = store.profileImageData
                 selectedIconSymbol = store.profileIconSymbol ?? "person.fill"
-                selectedColorHex = store.profileColorHex ?? store.topGradientColorHex
                 currencyCode = store.currencyCode
                 currencySymbol = store.currencySymbol
             }
@@ -150,7 +148,7 @@ struct EditProfileSheet: View {
                 } else {
                     SpendyIconBadge(
                         sfSymbol: selectedIconSymbol.isEmpty ? "person.fill" : selectedIconSymbol,
-                        color: Color(hex: selectedColorHex),
+                        color: SpendyColors.textPrimary,
                         size: .hero,
                         style: .circle,
                         monogramName: tempName
@@ -165,7 +163,7 @@ struct EditProfileSheet: View {
     }
     
     // MARK: - Name Card
-    private var nameAndColorCard: some View {
+    private var nameCard: some View {
         HStack {
             TextField("Personal", text: $tempName)
                 .font(.system(size: 15, weight: .medium))

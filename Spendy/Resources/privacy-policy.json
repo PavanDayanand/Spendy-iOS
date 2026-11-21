@@ -1,10 +1,10 @@
 {
   "title": "Privacy Policy",
-  "updated": "25 October 2026",
+  "updated": "21 November 2026",
   "developer": "Pavan Labs",
   "contactEmail": "hello.pavanlabs@gmail.com",
-  "privacyPolicyURL": null,
-  "intro": "Spendy is a personal finance app built by Pavan Labs. This policy explains how the current app and the Spendy website handle information. The app is in development; the public website address will be confirmed before public release.",
+  "privacyPolicyURL": "https://spendy-ebon.vercel.app/privacy",
+  "intro": "Spendy is a personal finance app built by Pavan Labs. This policy explains how the app and the Spendy website handle information.",
   "sections": [
     {
       "id": "app-data",
@@ -21,7 +21,7 @@
       "title": "Receipt images and scanning",
       "scope": "app",
       "paragraphs": [
-        "If you use receipt scanning, you choose an image from Photos, capture one with the camera, or explicitly paste a copied image. The app reads that image using Apple’s Vision framework on your device. Optional Apple Intelligence assistance uses Apple’s on-device Foundation Models framework when available.",
+        "If you use receipt scanning, you choose an image from Photos or Files, capture one with the camera, explicitly paste a copied image, or share an image to Spendy from another app. The app reads that image using Apple’s Vision framework on your device. Optional Apple Intelligence assistance uses Apple’s on-device Foundation Models framework when available.",
         "The current app processes receipt images and recognised text for the review flow without sending them to a Spendy server. The saved transaction contains the fields you confirm; this version does not attach the original image or full recognised text to your saved transaction. An image already in your photo library remains there until you delete it yourself."
       ]
     },
@@ -59,7 +59,7 @@
       "title": "Widgets, reminders and permissions",
       "scope": "app",
       "paragraphs": [
-        "Spendy shares selected account, budget and transaction information with its own widgets and App Intents through local storage shared with those extensions. Widget content may be visible on your Home Screen or other system surfaces where you choose to place it.",
+        "Spendy shares selected account, budget and transaction information with its own widgets, receipt action extension and App Intents through local storage shared with those extensions. Confirmed receipt entries may remain in this shared storage until the app saves them to your ledger. Widget content may be visible on your Home Screen or other system surfaces where you choose to place it.",
         "If you enable notifications, the app uses Apple’s notification system for local reminders and budget alerts. Notification content can appear on your Lock Screen according to your settings.",
         "Camera, photo selection, Siri and notification features are optional. You can decline the relevant permission and continue using manual transaction entry. You can change permissions and notification visibility in your device’s Settings."
       ]
@@ -89,10 +89,10 @@
       "title": "The website and optional beta waitlist",
       "scope": "website",
       "paragraphs": [
-        "If you join the Spendy website’s beta waitlist, the website stores your email address, signup time, consent time and the version of the consent wording in its server database. The waitlist does not ask for or receive your in-app financial records.",
+        "If you join the Spendy website’s beta waitlist, the website stores your email address, signup time, consent time and the version of the consent wording in a private Google Sheet controlled by Pavan Labs. The waitlist does not ask for or receive your in-app financial records.",
         "We use that address for Spendy beta availability and launch updates. Joining is optional. The current website does not automatically send promotional emails or verify ownership of a submitted address.",
-        "When you visit a website, its server and hosting service receive technical request information, such as an IP address and browser information, to deliver and secure the page. The current website uses temporary IP-based rate limiting to reduce repeated form submissions. It does not add advertising trackers, visitor-analytics scripts or tracking cookies.",
-        "Waitlist entries are retained for the beta and launch purpose until removed from the database. You may request access, correction, withdrawal from the waitlist, or deletion through the privacy contact below. A request may need verification so that someone else cannot remove your entry. The hosting service, any future email provider, and their applicable retention details will be added before public waitlist collection begins."
+        "When you visit the website, Vercel receives technical request information, such as an IP address and browser information, to deliver and secure the page. The website uses temporary IP-based rate limiting to reduce repeated form submissions. It does not add advertising trackers, visitor-analytics scripts or tracking cookies.",
+        "Waitlist entries are retained for the beta and launch purpose until removed from the private waitlist. You may request access, correction, withdrawal from the waitlist, or deletion through the privacy contact below. A request may need verification so that someone else cannot remove your entry. Any future email provider and its applicable retention details will be added before launch emails are sent."
       ]
     },
     {

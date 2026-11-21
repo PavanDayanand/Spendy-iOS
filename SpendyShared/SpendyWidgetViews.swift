@@ -41,8 +41,8 @@ enum SpendyWidgetPalette {
     static let inverse = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark ? .black : .white
     })
-    static let expense = Color(uiColor: .systemRed)
-    static let income = Color(uiColor: .systemGreen)
+    static let expense = text
+    static let income = text
 }
 
 struct WidgetCategoryBadge: View {

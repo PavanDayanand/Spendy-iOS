@@ -40,7 +40,7 @@ struct SparklineView: View {
     var showEndpoint: Bool = true
     
     private var effectiveColor: Color {
-        SpendyColors.isMonoMode ? SpendyColors.monoGraphLine : color
+        SpendyColors.monoGraphLine
     }
     
     var body: some View {
@@ -173,9 +173,7 @@ struct TrendSparkline: View {
     var height: CGFloat = 32
     
     private var effectiveColor: Color {
-        if SpendyColors.isMonoMode { return SpendyColors.monoGraphLine }
-        if let color = color { return color }
-        return isPositive ? SpendyColors.incomeGreen : SpendyColors.expenseRed
+        SpendyColors.monoGraphLine
     }
     
     private var mockPoints: [CGFloat] {

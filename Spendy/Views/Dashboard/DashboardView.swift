@@ -149,7 +149,7 @@ struct HeroSpendBarChart: View {
                                         topTrailingRadius: min(cornerRadius, barH / 2),
                                         style: .continuous
                                     )
-                                        .fill(isSelected ? store.accentPreset.contentTint : barColor)
+                                        .fill(isSelected ? SpendyColors.textPrimary : barColor)
                                         .frame(width: barWidth, height: barH)
                                         .scaleEffect(isSelected ? 1.06 : 1.0, anchor: .bottom)
                                         .opacity(isAnySelected
@@ -252,7 +252,7 @@ struct HeroSpendBarChart: View {
                 if scrubbedPoint?.id == point.id || (scrubbedPoint == nil && index == dataPoints.count - 1) {
                     Circle()
                         .fill(SpendyColors.appBackground)
-                        .overlay(Circle().stroke(scrubbedPoint?.id == point.id ? store.accentPreset.contentTint : barColor, lineWidth: 2))
+                        .overlay(Circle().stroke(scrubbedPoint?.id == point.id ? SpendyColors.textPrimary : barColor, lineWidth: 2))
                         .frame(width: 8, height: 8)
                         .position(coordinates[index])
                 }
@@ -485,13 +485,8 @@ struct DashboardView: View {
                 let bottomInset = geometry.safeAreaInsets.bottom
                 
                 ZStack(alignment: .topLeading) {
-                    if store.isGradientBackgroundEnabled {
-                        HomeNeonBackground(style: store.homeGradientStyle)
-                            .ignoresSafeArea()
-                    } else {
-                        SpendyColors.appBackground
-                            .ignoresSafeArea()
-                    }
+                    SpendyColors.appBackground
+                        .ignoresSafeArea()
                     
                     // The summary can scroll independently at larger text sizes.
                     ScrollView(showsIndicators: false) {
@@ -771,6 +766,7 @@ struct DashboardView: View {
                             Text("Recent activity")
                                 .font(.system(size: 24, weight: .bold, design: .default))
                                 .foregroundStyle(SpendyColors.textPrimary)
+                                .offset(y: -6)
                                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
