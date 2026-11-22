@@ -1,684 +1,321 @@
-//
-//  SubscriptionQuickActionSheet.swift
-//  Spendy
-//
-//  Native Apple Floating Glass Sheet Card for Subscriptions (Rainbow / Apple Wallet Style).
-//  Features:
-//  - Top Bar: Close Button (✕) on Left, More Options Menu (•••) on Right
-//  - Clean Seamless Hero: Avatar with Dynamic Glow, Large Amount & Status Subtitle
-//  - Interactive Action Capsule Button: Live State, Spring Press Feedback, Loading & Success Morph
-//  - Dynamic Contextual Info Note
-//  - Structured Metadata Rows: Payment Method, Category, Billing Cycle, Next Date, Auto-Log, Annual Cost
-//  - Dynamic Toast Feedback & Tactile Haptic Physics
-//
-
 import SwiftUI
 
 struct SubscriptionQuickActionSheet: View {
     @Environment(ExpenseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    
+
     let sub: Subscription
     let onEdit: (Subscription) -> Void
-    
-    // Action & Animation States
-    @State private var isPaidSuccess: Bool = false
-    @State private var isProcessing: Bool = false
-    @State private var showDeleteConfirmation: Bool = false
-    @State private var toastMessage: String? = nil
-    @State private var showToast: Bool = false
-    @State private var toastIcon: String = "checkmark.circle.fill"
-    @State private var toastColor: Color = SpendyColors.incomeGreen
-    @State private var heroPulseScale: CGFloat = 1.0
-    @Namespace private var sheetNamespace
-    
-    // Live subscription lookup so edits and toggles update in real-time
-    private var liveSub: Subscription {
-        store.subscriptions.first(where: { $0.id == sub.id }) ?? sub
+
+    @State private var subscriptionToDelete: Subscription?
+    @State private var paymentRecorded = false
+
+    private var subscription: Subscription {
+        store.subscriptions.first { $0.id == sub.id } ?? sub
     }
-    
-    private var linkedAccount: Account {
-        store.account(for: liveSub.accountId)
+
+    private var status: String {
+        if subscription.isCancelled { return "Cancelled" }
+        if subscription.isPaused { return "Paused" }
+        return subscription.isTrial ? "Free Trial" : "Active"
     }
-    
-    private var linkedCategory: Category? {
-        store.categories.first(where: { $0.id == liveSub.categoryId })
+
+    private var actionTitle: String {
+        if paymentRecorded { return "Payment Recorded" }
+        if subscription.isCancelled { return "Reactivate Subscription" }
+        if subscription.isPaused { return "Resume Subscription" }
+        return subscription.isTrial ? "Convert Trial & Mark as Paid" : "Mark as Paid"
     }
-    
-    private var themeColor: Color {
-        SpendyColors.textPrimary
+
+    private var recordsPayment: Bool {
+        !subscription.isCancelled && !subscription.isPaused
     }
-    
-    private var formattedDueDate: String {
-        SpendyDateFormatterCache.dayMonth.string(from: liveSub.nextBillingDate)
-    }
-    
-    private var daysUntilDue: Int {
-        let calendar = Calendar.current
-        let now = calendar.startOfDay(for: Date())
-        let target = calendar.startOfDay(for: liveSub.nextBillingDate)
-        return calendar.dateComponents([.day], from: now, to: target).day ?? 0
-    }
-    
-    private var relativeDueString: String {
-        if daysUntilDue == 0 {
-            return "today"
-        } else if daysUntilDue == 1 {
-            return "in 1 day"
-        } else if daysUntilDue > 1 {
-            return "in \(daysUntilDue) days"
-        } else {
-            return "\(abs(daysUntilDue)) days ago"
-        }
-    }
-    
-    private var nextPaymentDisplay: String {
-        "\(formattedDueDate) (\(relativeDueString))"
-    }
-    
+
     private var totalSpent: Double {
         store.transactions
-            .filter {
-                ($0.subscriptionId?.lowercased() == liveSub.id.uuidString.lowercased()) ||
-                ($0.title.lowercased() == liveSub.name.lowercased() && $0.type == .expense)
+            .filter { transaction in
+                transaction.subscriptionId?.lowercased() == subscription.id.uuidString.lowercased()
+                    || (transaction.title.lowercased() == subscription.name.lowercased() && transaction.type == .expense)
             }
-            .reduce(0.0) { $0 + $1.amount }
+            .reduce(0) { $0 + $1.amount }
     }
-    
-    private var statusBadgeText: String {
-        if liveSub.isPaused { return "Paused" }
-        if liveSub.isTrial { return "Free Trial" }
-        return "Active"
-    }
-    
-    private var statusBadgeColor: Color {
-        if liveSub.isPaused { return SpendyColors.textTertiary }
-        if liveSub.isTrial { return SpendyColors.warningOrange }
-        return SpendyColors.incomeGreen
-    }
-    
-    // MARK: - Capsule State Properties
-    
-    private var capsuleIcon: String {
-        if liveSub.isPaused {
-            return "play.fill"
-        } else if liveSub.isTrial {
-            return "creditcard.fill"
-        } else {
-            return "checkmark.circle.fill"
-        }
-    }
-    
-    private var capsuleTitle: String {
-        if liveSub.isPaused {
-            return "Resume Subscription"
-        } else if liveSub.isTrial {
-            return "Convert Trial & Mark as Paid"
-        } else {
-            return "Mark as Paid & Record Expense"
-        }
-    }
-    
-    private var capsuleTrailingIcon: String {
-        if liveSub.isPaused {
-            return "arrow.triangle.2.circlepath"
-        } else if liveSub.isTrial {
-            return "arrow.right.circle.fill"
-        } else {
-            return "sparkles"
-        }
-    }
-    
-    private var capsuleBackgroundColor: Color { SpendyColors.elevatedControlFill }
-    private var capsuleContentColor: Color { SpendyColors.elevatedControlForeground }
-    private var capsuleStrokeColor: Color { SpendyColors.separator }
 
-    private var contextualNoteText: String {
-        if liveSub.isPaused {
-            return "Subscription is currently paused. No upcoming expenses will be charged or logged."
-        } else if liveSub.isTrial {
-            if daysUntilDue < 0 {
-                return "Free trial ended \(abs(daysUntilDue)) days ago. Convert to paid anytime to continue tracking."
-            } else if daysUntilDue == 0 {
-                return "Free trial ends today. Convert to paid anytime to continue tracking."
-            } else if daysUntilDue == 1 {
-                return "Free trial active (1 day remaining). Convert to paid anytime to continue tracking."
-            } else {
-                return "Free trial active (\(daysUntilDue) days remaining). Convert to paid anytime to continue tracking."
-            }
-        } else if liveSub.autoDeduct {
-            return "Auto-log is active. Next payment of \(liveSub.amount.formattedCurrency(symbol: store.currencySymbol)) will be recorded from \(linkedAccount.label) on \(formattedDueDate)."
-        } else {
-            return "Manual logging enabled. Next billing is scheduled on \(formattedDueDate). Tap above to record payment now."
-        }
-    }
-    
-    // MARK: - Body
-    
     var body: some View {
-        ZStack(alignment: .top) {
+        VStack(spacing: 0) {
+            SpendyPinnedHeaderLayout {
+                header
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+            } content: {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        summary
+                        details
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                }
+                .accessibilityIdentifier("subscription-detail-scroll")
+            }
 
-            
-            // MARK: - Scrollable Content
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    // Spacer to clear pinned top bar
-                    Spacer().frame(height: 56)
-                    
-                    // MARK: - Hero Section (Standard Spendy Progress Ring Badge)
-                    heroSection
-                        .padding(.top, 4)
-                        .padding(.bottom, 6)
-                    
-                    // MARK: - Grouped Details Card (Consistent with Edit Subscription Sheet)
-                    detailsCard
-                    
-                    // MARK: - Action Capsule Button & Footnote (Image 2)
-                    actionSection
-                        .padding(.top, 4)
+            VStack(spacing: 8) {
+                if recordsPayment || paymentRecorded {
+                    Text(paymentRecorded ? "Expense added to Spendy" : "Records an expense in Spendy")
+                        .font(.footnote)
+                        .foregroundStyle(SpendyColors.textSecondary)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 32)
+                SubscriptionGlassAction(title: actionTitle, isEnabled: !paymentRecorded) {
+                    performPrimaryAction()
+                }
+                .accessibilityIdentifier("subscription-primary-action")
             }
-            
-            // MARK: - Pinned Top Action Bar (✕ on Left, Pen Icon on Right)
-            topActionBar
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-            
-            // MARK: - Floating Toast Feedback
-            if showToast, let toast = toastMessage {
-                feedbackToastView(message: toast, icon: toastIcon, color: toastColor)
-                    .padding(.top, 64)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(200)
-            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
         }
-        .background(Color.clear)
-        .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
-            Button("Delete Subscription", role: .destructive) {
-                HapticsManager.shared.trigger(.warning)
-                store.deleteSubscription(id: liveSub.id)
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete \(liveSub.name)? This action cannot be undone.")
-        }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(500), .large])
+        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(530), .large])
         .presentationDragIndicator(.visible)
-    }
-    
-    // MARK: - Top Action Bar (✕ on Left, Pen Circle on Right)
-    private var topActionBar: some View {
-        SpendyCreateSheetHeader(
-            onClose: { dismiss() },
-            trailing: {
-                GlassCircleButton(
-                    icon: SFIcons.edit,
-                    size: 44,
-                    iconSize: 16,
-                    iconWeight: .bold,
-                    foregroundColor: SpendyColors.textPrimary,
-                    haptic: .selection,
-                    accessibilityLabel: "Edit Subscription"
-                ) {
-                    onEdit(liveSub)
-                }
-            }
-        )
-    }
-    
-    // MARK: - Hero Section (Standard Spendy Progress Ring Badge, Title & Status Pill)
-    private var heroSection: some View {
-        VStack(spacing: 8) {
-            // Existing SubscriptionProgressRingBadge with cycle progress ring
-            SubscriptionProgressRingBadge(
-                subscription: liveSub,
-                size: .large
-            )
-            .scaleEffect(heroPulseScale)
-            .padding(.bottom, 2)
-            
-            // Subscription Name
-            Text(liveSub.name)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
-                .multilineTextAlignment(.center)
-                .lineLimit(1)
-            
-            // Cycle • Price Subtitle
-            Text("\(liveSub.cycle.label) • \(liveSub.amount.formattedCurrency(symbol: store.currencySymbol))")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SpendyColors.textSecondary)
-            
-            // Status Menu Capsule Pill (Active / Free Trial / Paused) pushed to the body itself
-            statusPillMenu
-                .padding(.top, 2)
+        .subscriptionDeleteConfirmation($subscriptionToDelete) { item in
+            store.deleteSubscription(id: item.id)
+            dismiss()
+        }
+        .task(id: paymentRecorded) {
+            guard paymentRecorded else { return }
+            try? await Task.sleep(for: .milliseconds(850))
+            if !Task.isCancelled { dismiss() }
         }
     }
-    
-    // MARK: - Status Pill Menu (In Body)
-    private var statusPillMenu: some View {
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            SubscriptionToolbarButton("Close", icon: SFIcons.close) { dismiss() }
+            Spacer()
+            if !subscription.isCancelled {
+                SubscriptionToolbarButton("Edit Subscription", icon: SFIcons.edit) { onEdit(subscription) }
+            }
+            SubscriptionToolbarButton("Delete Subscription", icon: SFIcons.trash, haptic: .warning) {
+                subscriptionToDelete = subscription
+            }
+        }
+        .disabled(paymentRecorded)
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                SubscriptionProgressRingBadge(subscription: subscription, size: .large)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(subscription.name)
+                        .font(.headline)
+                    Text(subscription.amount.formattedCurrency(symbol: store.currencySymbol))
+                        .font(.largeTitle.weight(.bold).monospacedDigit())
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    billingCycleLabel
+                    statusControl
+                }
+                    .fixedSize()
+                VStack(alignment: .leading, spacing: 6) {
+                    billingCycleLabel
+                    statusControl
+                }
+            }
+        }
+        .foregroundStyle(SpendyColors.textPrimary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var statusControl: some View {
+        if subscription.isCancelled {
+            Text(status)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SpendyColors.textSecondary)
+        } else {
+            statusMenu
+        }
+    }
+
+    private var billingCycleLabel: some View {
+        Text(subscription.cycle.label)
+            .font(.subheadline)
+            .foregroundStyle(SpendyColors.textSecondary)
+    }
+
+    private var statusMenu: some View {
         Menu {
             Button {
-                handleSetActive()
+                setTrial(false)
             } label: {
-                Label("Active", systemImage: "checkmark.circle")
+                Label("Active", systemImage: status == "Active" ? "checkmark" : "checkmark.circle")
             }
-            
             Button {
-                handleSetTrial()
+                setTrial(true)
             } label: {
-                Label("Free Trial", systemImage: "clock")
+                Label("Free Trial", systemImage: status == "Free Trial" ? "checkmark" : "clock")
             }
-            
-            Button {
-                handleTogglePause()
-            } label: {
-                Label(
-                    liveSub.isPaused ? "Resume Subscription" : "Pause Subscription",
-                    systemImage: liveSub.isPaused ? "play.fill" : "pause.fill"
-                )
-            }
-            
-            Divider()
-            
-            Button(role: .destructive) {
-                showDeleteConfirmation = true
-            } label: {
-                Label("Delete Subscription", systemImage: "trash")
+            Button(subscription.isPaused ? "Resume Subscription" : "Pause Subscription",
+                   systemImage: subscription.isPaused ? "play.fill" : "pause.fill") {
+                store.toggleSubscriptionPause(id: subscription.id)
             }
         } label: {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(statusBadgeColor)
-                    .frame(width: 8, height: 8)
-                
-                Text(statusBadgeText)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(SpendyColors.textTertiary)
+            HStack(spacing: 6) {
+                Text(status).font(.subheadline.weight(.semibold))
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
             }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
+            .foregroundStyle(SpendyColors.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .frame(minHeight: 34)
             .nativeLiquidGlassCapsule(isInteractive: true)
-            .contentShape(Capsule())
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-    }
-    
-    // MARK: - Grouped Details Card (Consistent with Edit Subscription Sheet)
-    private var detailsCard: some View {
-        VStack(spacing: 0) {
-            // 1. Amount Row
-            HStack {
-                Text("Amount")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Text(liveSub.amount.formattedCurrency(symbol: store.currencySymbol))
-                    .font(.system(size: 16, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.vertical, 14)
-            
-            Divider().background(SpendyColors.separator)
-            
-            // 2. Next payment Row
-            HStack {
-                Text("Next payment")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Text(nextPaymentDisplay)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.vertical, 14)
-            
-            Divider().background(SpendyColors.separator)
-            
-            // 3. Total spent Row
-            HStack {
-                Text("Total spent")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Text(totalSpent.formattedCurrency(symbol: store.currencySymbol))
-                    .font(.system(size: 16, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(SpendyColors.textPrimary)
-            }
-            .padding(.vertical, 14)
-            
-            Divider().background(SpendyColors.separator)
-            
-            // 4. Notifications Row
-            HStack {
-                Text("Notifications")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                Menu {
-                    Button {
-                        handleToggleAutoDeduct(to: false)
-                    } label: {
-                        Label("Default (Reminders Only)", systemImage: "bell.fill")
-                    }
-                    Button {
-                        handleToggleAutoDeduct(to: true)
-                    } label: {
-                        Label("Auto-Log Payment", systemImage: "bolt.fill")
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(liveSub.autoDeduct ? "Auto-Log" : "Default")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                    .frame(minHeight: 32)
-                    .contentShape(Rectangle())
-                }
-            }
-            .padding(.vertical, 12)
-            
-            Divider().background(SpendyColors.separator)
-            
-            // 5. Category Row
-            HStack {
-                Text("Category")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    SpendyIconBadge(
-                        sfSymbol: linkedCategory?.sfSymbol ?? SFIcons.subscriptions,
-                        color: SpendyColors.textPrimary,
-                        size: .small,
-                        style: .circle,
-                        monogramName: linkedCategory?.label ?? ""
-                    )
-                    
-                    Text(linkedCategory?.label ?? "Subscriptions")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-            }
-            .padding(.vertical, 12)
-            
-            Divider().background(SpendyColors.separator)
-            
-            // 6. Payment Account Row
-            HStack {
-                Text("Payment Account")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(SpendyColors.textSecondary)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    let accountSymbol: String = {
-                        if !linkedAccount.sfSymbol.isEmpty {
-                            return linkedAccount.sfSymbol
-                        }
-                        return linkedAccount.type.defaultSymbol
-                    }()
-                    SpendyIconBadge(
-                        sfSymbol: accountSymbol,
-                        color: SpendyColors.textPrimary,
-                        size: .small,
-                        style: .rounded(),
-                        monogramName: linkedAccount.label
-                    )
-                    
-                    Text(linkedAccount.label)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textPrimary)
-                }
-            }
-            .padding(.vertical, 12)
-        }
-        .padding(.horizontal, 18)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(SpendyColors.separator, lineWidth: 0.8)
-                }
-        }
+        .accessibilityLabel("Subscription status")
+        .accessibilityValue(status)
+        .disabled(paymentRecorded)
     }
 
-    
-    // MARK: - Action Section (Image 2: Capsule Button & Contextual Note)
-    private var actionSection: some View {
-        VStack(spacing: 10) {
-            // Interactive Action Capsule Button
-            Button {
-                handleCapsuleAction()
-            } label: {
-                HStack(spacing: 10) {
-                    if isProcessing {
-                        ProgressView()
-                            .tint(capsuleContentColor)
-                            .scaleEffect(0.85)
-                        Text("Processing...")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(capsuleContentColor)
-                    } else if isPaidSuccess {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(capsuleContentColor)
-                            .contentTransition(.symbolEffect(.replace))
-                        Text(liveSub.isTrial ? "Trial Converted to Paid!" : "Payment Recorded!")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(capsuleContentColor)
-                    } else {
-                        Image(systemName: capsuleIcon)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(capsuleContentColor)
-                            .contentTransition(.symbolEffect(.replace))
-                        
-                        Text(capsuleTitle)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(capsuleContentColor)
-                        
-                        Spacer()
-                        
-                        Image(systemName: capsuleTrailingIcon)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(capsuleContentColor.opacity(0.8))
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                }
-                .padding(.horizontal, 18)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(capsuleBackgroundColor, in: Capsule(style: .continuous))
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(capsuleStrokeColor, lineWidth: 0.8)
-                )
+    private var details: some View {
+        VStack(spacing: 0) {
+            if recordsPayment {
+                detailRow(subscription.isTrial ? "Trial ends" : "Next payment",
+                          value: subscription.nextBillingDate.formatted(date: .abbreviated, time: .omitted))
+                Divider()
             }
-            .buttonStyle(GlassCapsulePressStyle())
-            .disabled(isProcessing || isPaidSuccess)
-            
-            // Contextual Explanatory Note with Fixed Days Logic
-            Text(contextualNoteText)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(SpendyColors.textTertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-    
-    // MARK: - Action Handlers with Rich Spring Animation & Toast Feedback
-    
-    private func handleCapsuleAction() {
-        if liveSub.isPaused {
-            handleTogglePause()
-        } else {
-            handleSettlePayment()
-        }
-    }
-    
-    private func handleSetActive() {
-        HapticsManager.shared.trigger(.selection)
-        var updated = liveSub
-        updated.isPaused = false
-        updated.isTrial = false
-        updated.status = "active"
-        store.updateSubscription(updated)
-        showFeedback(message: "Subscription Set to Active", icon: "checkmark.circle.fill", color: SpendyColors.incomeGreen)
-    }
-    
-    private func handleSetTrial() {
-        HapticsManager.shared.trigger(.selection)
-        var updated = liveSub
-        updated.isTrial = true
-        updated.isPaused = false
-        updated.status = "active"
-        store.updateSubscription(updated)
-        showFeedback(message: "Subscription Marked as Free Trial", icon: "clock.fill", color: SpendyColors.warningOrange)
-    }
-    
-    private func handleTogglePause() {
-        HapticsManager.shared.trigger(.medium)
-        
-        let wasPaused = liveSub.isPaused
-        
-        withAnimation(reduceMotion ? .none : .spring(response: 0.35, dampingFraction: 0.65)) {
-            if !reduceMotion {
-                heroPulseScale = 1.12
-            }
-            store.toggleSubscriptionPause(id: liveSub.id)
-            showFeedback(
-                message: wasPaused ? "Subscription Resumed & Active!" : "Subscription Paused",
-                icon: wasPaused ? "checkmark.circle.fill" : "pause.circle.fill",
-                color: wasPaused ? SpendyColors.incomeGreen : SpendyColors.warningOrange
-            )
-        }
-        
-        if !reduceMotion {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                    heroPulseScale = 1.0
-                }
-            }
-        }
-    }
-    
-    private func handleToggleAutoDeduct(to newValue: Bool? = nil) {
-        HapticsManager.shared.trigger(.light)
-        var updated = liveSub
-        let nextValue = newValue ?? !liveSub.autoDeduct
-        updated.autoDeduct = nextValue
-        
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            store.updateSubscription(updated)
-            showFeedback(
-                message: nextValue ? "Auto-Log Enabled" : "Auto-Log Disabled",
-                icon: nextValue ? "bolt.fill" : "bolt.slash.fill",
-                color: nextValue ? SpendyColors.incomeGreen : SpendyColors.textSecondary
-            )
-        }
-    }
-    
-    private func handleSettlePayment() {
-        HapticsManager.shared.trigger(.heavy)
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isProcessing = true
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            if liveSub.isTrial {
-                store.keepSubscription(id: liveSub.id)
-            } else {
-                store.markSubscriptionAsPaid(id: liveSub.id)
-            }
-            
-            HapticsManager.shared.trigger(.success)
-            
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                isProcessing = false
-                isPaidSuccess = true
-                showFeedback(
-                    message: "Payment Logged for \(liveSub.name)!",
-                    icon: "checkmark.circle.fill",
-                    color: SpendyColors.incomeGreen
-                )
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
-                dismiss()
-            }
-        }
-    }
-    
-    private func showFeedback(message: String, icon: String, color: Color) {
-        toastMessage = message
-        toastIcon = icon
-        toastColor = color
-        withAnimation(.easeInOut(duration: 0.25)) {
-            showToast = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                showToast = false
-            }
-        }
-    }
-    
-    // MARK: - Toast Banner View
-    private func feedbackToastView(message: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(color)
-            
-            Text(message)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+            detailRow("Payment account", value: store.account(for: subscription.accountId).label)
+            Divider()
+            detailRow("Category", value: store.categories.first { $0.id == subscription.categoryId }?.label ?? "Subscriptions")
+            Divider()
+            detailRow("Total spent", value: totalSpent.formattedCurrency(symbol: store.currencySymbol))
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 9)
-        .background {
-            Capsule()
-                .fill(SpendyColors.cardBackgroundSecondary)
-                .overlay(Capsule().stroke(SpendyColors.separator, lineWidth: 0.8))
-                .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
+        .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func detailRow(_ label: String, value: String) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(label).foregroundStyle(SpendyColors.textSecondary).fixedSize()
+                Text(value)
+                    .fixedSize()
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label).foregroundStyle(SpendyColors.textSecondary)
+                Text(value).fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.body)
+        .foregroundStyle(SpendyColors.textPrimary)
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func setTrial(_ isTrial: Bool) {
+        var updated = subscription
+        updated.isTrial = isTrial
+        updated.isPaused = false
+        updated.status = "active"
+        store.updateSubscription(updated)
+    }
+
+    private func performPrimaryAction() {
+        guard !paymentRecorded else { return }
+        if subscription.isCancelled {
+            var updated = subscription
+            updated.status = "active"
+            updated.isPaused = false
+            store.updateSubscription(updated)
+        } else if subscription.isPaused {
+            store.toggleSubscriptionPause(id: subscription.id)
+        } else {
+            paymentRecorded = true
+            if subscription.isTrial {
+                store.keepSubscription(id: subscription.id)
+            } else {
+                store.markSubscriptionAsPaid(id: subscription.id)
+            }
         }
     }
 }
 
-// MARK: - Glass Capsule Press Style
-struct GlassCapsulePressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.65), value: configuration.isPressed)
+struct SubscriptionToolbarButton: View {
+    private let title: String
+    private let icon: String
+    private let haptic: HapticsManager.FeedbackStyle
+    private let action: () -> Void
+
+    init(
+        _ title: String,
+        icon: String,
+        haptic: HapticsManager.FeedbackStyle = .selection,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.haptic = haptic
+        self.action = action
+    }
+
+    var body: some View {
+        GlassCircleButton(
+            icon: icon,
+            size: 44,
+            iconSize: 16,
+            iconWeight: .semibold,
+            haptic: haptic,
+            accessibilityLabel: title,
+            action: action
+        )
+    }
+}
+
+struct SubscriptionGlassAction: View {
+    let title: String
+    var isEnabled = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonSizing(.flexible)
+        .buttonStyle(.glass(.regular.tint(SpendyColors.textPrimary.opacity(0.22))))
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .foregroundStyle(SpendyColors.textPrimary)
+        .disabled(!isEnabled)
+    }
+}
+
+extension View {
+    func subscriptionDeleteConfirmation(
+        _ selection: Binding<Subscription?>,
+        onDelete: @escaping (Subscription) -> Void
+    ) -> some View {
+        alert("Delete Subscription?", isPresented: Binding(
+            get: { selection.wrappedValue != nil },
+            set: { if !$0 { selection.wrappedValue = nil } }
+        ), presenting: selection.wrappedValue) { item in
+            Button("Delete Subscription", role: .destructive) { onDelete(item) }
+            Button("Cancel", role: .cancel) {}
+        } message: { item in
+            Text("Delete \(item.name) from your subscriptions? Recorded expenses will stay in Spendy.")
+        }
     }
 }

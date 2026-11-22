@@ -25,11 +25,9 @@ struct AddSubscriptionSheet: View {
     
     // UI states
     @State private var showIconPickerSheet: Bool = false
-    @State private var showDeleteConfirmation: Bool = false
+    @State private var subscriptionToDelete: Subscription?
     @State private var showDiscardConfirmation: Bool = false
     
-    @Namespace private var headerNamespace
-
     var isEditing: Bool { subscriptionToEdit != nil }
 
     private var hasUnsavedChanges: Bool {
@@ -84,38 +82,29 @@ struct AddSubscriptionSheet: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        VStack(spacing: 0) {
             SpendyPinnedHeaderLayout {
-
-                // Top Header Bar
                 topHeaderBar
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
             } content: {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Hero Circle Avatar
-                        avatarHeroSection
-                            .padding(.top, 52)
-
-                        // Form content
+                ScrollView {
+                    VStack(spacing: 16) {
                         formContentSection
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // Clearance for bottom button
+                    .padding(.vertical, 14)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
 
-            // Bottom Action Button Container (Full Width)
-            VStack(spacing: 0) {
-                bottomActionButton
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .padding(.top, 16)
-            }
+            bottomActionButton
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
         }
-        // Match the currency picker; allow expansion for the longer form.
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.88), .large])
+        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.78), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .sheet(isPresented: $showIconPickerSheet) {
@@ -129,37 +118,41 @@ struct AddSubscriptionSheet: View {
         } message: {
             Text("You have unsaved changes. Are you sure you want to discard them?")
         }
-        .alert("Delete Subscription?", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                if let sub = subscriptionToEdit { store.deleteSubscription(id: sub.id) }
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete this subscription? This action cannot be undone.")
+        .subscriptionDeleteConfirmation($subscriptionToDelete) { item in
+            store.deleteSubscription(id: item.id)
+            dismiss()
         }
     }
 
     // MARK: - Components
 
     private var topHeaderBar: some View {
-        SpendyCreateSheetHeader(
-            title: isEditing ? "Edit Subscription" : "New Subscription",
-            showDelete: isEditing,
-            deleteLabel: "Delete Subscription",
-            onClose: {
+        HStack {
+            SubscriptionToolbarButton("Close", icon: SFIcons.close) {
                 if hasUnsavedChanges {
                     showDiscardConfirmation = true
                 } else {
                     dismiss()
                 }
-            },
-            onDelete: {
-                showDeleteConfirmation = true
             }
-        )
+            Spacer()
+            Text(isEditing ? "Edit Subscription" : "New Subscription")
+                .font(.headline)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            if isEditing {
+                SubscriptionToolbarButton("Delete Subscription", icon: SFIcons.trash, haptic: .warning) {
+                    subscriptionToDelete = subscriptionToEdit
+                }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+            }
+        }
     }
-    
+
     private var previewProgress: Double {
         let calendar = Calendar.current
         let start: Date
@@ -181,186 +174,179 @@ struct AddSubscriptionSheet: View {
     }
 
     private var avatarHeroSection: some View {
-        VStack(spacing: 12) {
-            SpendyEditableHeroIcon(accessibilityLabel: "Edit subscription icon") {
-                showIconPickerSheet = true
-            } icon: {
-                SubscriptionProgressRingBadge(
-                    sfSymbol: selectedSymbol,
-                    color: SpendyColors.textPrimary,
-                    progress: previewProgress,
-                    isPaused: false,
-                    size: .hero,
-                    monogramName: name
-                )
-            }
-
-            Text(name.isEmpty ? "Subscription Name" : name)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(SpendyColors.textPrimary)
+        SpendyEditableHeroIcon(accessibilityLabel: "Edit subscription icon") {
+            showIconPickerSheet = true
+        } icon: {
+            SubscriptionProgressRingBadge(
+                sfSymbol: selectedSymbol,
+                color: SpendyColors.textPrimary,
+                progress: previewProgress,
+                isPaused: false,
+                size: .medium,
+                monogramName: name
+            )
         }
     }
 
     private var formContentSection: some View {
         VStack(spacing: 16) {
-            // Service name
-            HStack {
-                TextField("Service Name (e.g. Netflix, iCloud)", text: $name)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .autocorrectionDisabled()
-
-                Spacer()
-
+            if isEditing {
+                editIdentity
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        avatarHeroSection
+                        VStack(alignment: .leading, spacing: 4) {
+                            fieldLabel("Subscription name")
+                            nameInput
+                        }
+                    }
+                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        fieldLabel("Amount")
+                        amountInput
+                            .font(.title.weight(.semibold).monospacedDigit())
+                    }
+                }
+                .padding(16)
+                .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 20))
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
 
-
-            // Row 2: Amount Field capsule
-            HStack(spacing: 12) {
-                Text(store.currencySymbol)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(SpendyColors.textSecondary)
-
-                TextField("Amount (e.g. 199.00)", text: $amountString)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textPrimary)
-                    .keyboardType(.decimalPad)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(SpendyColors.cardBackgroundSecondary, in: Capsule())
-
-            // Detail Card (Grouped Settings Details)
-            VStack(spacing: 0) {
-                // Billing Cycle
-                HStack {
-                    Text("Billing Cycle")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-
-                    Spacer()
-
-                    Menu {
-                        ForEach(BillingCycle.allCases) { item in
-                            Button(action: {
-                                HapticsManager.shared.trigger(.selection)
-                                cycle = item
-                            }) {
-                                HStack {
-                                    Text(item.label)
-                                    Spacer()
-                                    Image(systemName: cycleIcon(for: item))
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(cycle.label)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 11))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
-                    }
-                }
-                .padding(.vertical, 14)
-
-                Divider().background(SpendyColors.separator)
-
-                // First Payment
-                DatePicker(
-                    selection: $nextBillingDate,
-                    displayedComponents: .date
-                ) {
-                    Text("First Payment")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                .datePickerStyle(.compact)
-                .padding(.vertical, 8)
-
-                Divider().background(SpendyColors.separator)
-
-                // Free Trial
-                Toggle(isOn: $isTrial) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Free Trial")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(SpendyColors.textPrimary)
-                        Text("Remind before trial ends")
-                            .font(.system(size: 12))
-                            .foregroundStyle(SpendyColors.textTertiary)
-                    }
-                }
-                .tint(SpendyColors.switchTint)
-                .padding(.vertical, 8)
-
-                Divider().background(SpendyColors.separator)
-
-                // Payment Account
-                HStack {
-                    Text("Payment Account")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(SpendyColors.textSecondary)
-
-                    Spacer()
-
-                    Menu {
-                        ForEach(store.accounts) { acc in
-                            Button(action: {
-                                selectedAccountId = acc.id
-                                HapticsManager.shared.trigger(.selection)
-                            }) {
-                                HStack {
-                                    Text(acc.label)
-                                    Spacer()
-                                    Image(systemName: acc.sfSymbol)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(selectedAccount?.label ?? "Select Account")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(SpendyColors.textPrimary)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(SpendyColors.textTertiary)
-                        }
-                    }
-                }
-                .padding(.vertical, 14)
-            }
-            .padding(.horizontal, 18)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(SpendyColors.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(SpendyColors.separator, lineWidth: 0.8)
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                if isEditing { sectionTitle("Billing") }
+                billingFields
             }
         }
+        .foregroundStyle(SpendyColors.textPrimary)
+    }
+
+    private var editIdentity: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionTitle("Subscription details")
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    avatarHeroSection
+                    VStack(alignment: .leading, spacing: 4) {
+                        fieldLabel("Subscription name")
+                        nameInput
+                    }
+                }
+                Divider()
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        fieldLabel("Amount")
+                        Spacer(minLength: 4)
+                        amountInput
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        fieldLabel("Amount")
+                        amountInput
+                    }
+                }
+                .font(.body.weight(.semibold).monospacedDigit())
+                .frame(minHeight: 34)
+            }
+            .padding(16)
+            .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 20))
+        }
+    }
+
+    private var nameInput: some View {
+        TextField("e.g. Apple Music", text: $name)
+            .font(.title3.weight(.semibold))
+            .accessibilityLabel("Subscription name")
+            .autocorrectionDisabled()
+    }
+
+    private var amountInput: some View {
+        HStack(spacing: 4) {
+            Text(store.currencySymbol)
+                .foregroundStyle(SpendyColors.textSecondary)
+                .accessibilityHidden(true)
+            TextField("0.00", text: $amountString)
+                .accessibilityLabel("Amount")
+                .keyboardType(.decimalPad)
+                .frame(minWidth: isEditing ? 44 : nil)
+        }
+    }
+
+    private func fieldLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline)
+            .foregroundStyle(SpendyColors.textSecondary)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .padding(.leading, 4)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var billingFields: some View {
+        VStack(spacing: 0) {
+            menuRow("Billing cycle", value: cycle.label) {
+                Picker("Billing cycle", selection: $cycle) {
+                    ForEach(BillingCycle.allCases) { item in
+                        Text(item.label).tag(item)
+                    }
+                }
+            }
+            Divider()
+            Toggle("Free Trial", isOn: $isTrial)
+                .font(.subheadline)
+                .tint(SpendyColors.switchTint)
+                .frame(minHeight: 46)
+            Divider()
+            DatePicker(selection: $nextBillingDate, displayedComponents: .date) {
+                fieldLabel(isTrial ? "Trial ends" : (isEditing ? "Next payment" : "First payment"))
+            }
+            .datePickerStyle(.compact)
+            .frame(minHeight: 48)
+            Divider()
+            menuRow("Payment account", value: selectedAccount?.label ?? "Select account") {
+                Picker("Payment account", selection: $selectedAccountId) {
+                    ForEach(store.accounts) { account in
+                        Label(account.label, systemImage: account.sfSymbol).tag(account.id)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func menuRow(
+        _ title: String,
+        value: String,
+        @ViewBuilder options: () -> some View
+    ) -> some View {
+        Menu(content: options) {
+            HStack(spacing: 8) {
+                fieldLabel(title)
+                Spacer(minLength: 8)
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+            .frame(minHeight: 46)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
     }
 
     private var bottomActionButton: some View {
-        SpendyCreatePrimaryButton(
+        SubscriptionGlassAction(
             title: isEditing ? "Save Changes" : "Create Subscription",
             isEnabled: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (Double(amountString) ?? 0) > 0
         ) {
+            HapticsManager.shared.trigger(.success)
             saveSubscription()
-        }
-    }
-
-    private func cycleIcon(for cycle: BillingCycle) -> String {
-        switch cycle {
-        case .weekly:  return "7.circle"
-        case .monthly: return "30.circle"
-        case .yearly:  return "calendar"
         }
     }
 

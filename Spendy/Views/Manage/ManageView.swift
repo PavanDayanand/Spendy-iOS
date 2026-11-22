@@ -3,7 +3,7 @@
 //  Spendy
 //
 //  Subscriptions dashboard: uncarded monthly total, sentence insights,
-//  and a single grouped list card. Detail sheet is unchanged.
+//  and a single grouped list card.
 //
 
 import SwiftUI
@@ -15,6 +15,7 @@ struct SubscriptionsView: View {
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
     @Environment(\.spendyUsesSystemNavigation) private var usesSystemNavigation
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var isPushed: Bool = false
     var initialSelectedSubscriptionId: String? = nil
@@ -23,7 +24,9 @@ struct SubscriptionsView: View {
     @State private var pendingSubscriptionEdit: Subscription? = nil
     @State private var subscriptionToEdit: Subscription? = nil
     @State private var selectedSubscriptionForDetail: Subscription? = nil
-    @State private var showCancelledSubs: Bool = false
+    @State private var showTrackedSubscriptions = true
+    @State private var showCancelledSubs = false
+    @State private var subscriptionToDelete: Subscription?
     @Namespace private var subscriptionTransitions
     @State private var subscriptionTransitionID: String? = nil
     @Namespace private var subsNamespace
@@ -55,10 +58,10 @@ struct SubscriptionsView: View {
     private var totalAnnual: Double { totalMonthly * 12.0 }
 
     // Top 5 Subscription Badges for Bubble Cluster
-    private var top5SubscriptionBadges: [BadgeItem] {
+    private var summaryBadges: [BadgeItem] {
         activeAndTrialSubs
             .sorted(by: { $0.amount > $1.amount })
-            .prefix(5)
+            .prefix(3)
             .map { sub in
                 BadgeItem(id: sub.id.uuidString, icon: sub.sfSymbol, color: sub.color, name: sub.name)
             }
@@ -110,7 +113,11 @@ struct SubscriptionsView: View {
             surface: .subscriptions,
             currencySymbol: store.currencySymbol
         )
-        return Array(moments.filter { !$0.isInsufficientData }.prefix(5))
+        let featuredRenewal = nextUpcomingSubscription.map { "sub_due_\($0.id.uuidString)" }
+        return Array(moments.filter { moment in
+            !moment.isInsufficientData
+                && moment.candidateId.lowercased() != featuredRenewal?.lowercased()
+        }.prefix(5))
     }
     
     private var groupedCardBackground: some View {
@@ -177,6 +184,7 @@ struct SubscriptionsView: View {
                 selectedSubscriptionForDetail = nil
             }
         }
+        .subscriptionDeleteConfirmation($subscriptionToDelete) { store.deleteSubscription(id: $0.id) }
         .onAppear {
             selectInitialSubscriptionIfNeeded()
         }
@@ -202,50 +210,48 @@ struct SubscriptionsView: View {
     // MARK: - Summary card (amount + icons on one row, insight in the card)
 
     private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Total monthly")
-                        .font(AppTypography.itemTitle)
-                        .foregroundStyle(SpendyColors.textSecondary)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Monthly commitment")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(SpendyColors.textSecondary)
 
-                    Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
-                        .font(.system(size: 32, weight: .heavy, design: .default))
-                        .monospacedDigit()
-                        .tracking(-1.0)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
-                        .contentTransition(.numericText())
-
-                    heroSecondaryLine
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    monthlyAmount.fixedSize()
+                    Spacer(minLength: 0)
+                    if !summaryBadges.isEmpty {
+                        OverlappingBadgeCluster(items: summaryBadges, badgeSize: 32)
+                            .accessibilityHidden(true)
+                    }
                 }
+                monthlyAmount
+            }
+            heroSecondaryLine
 
-                Spacer(minLength: 8)
-
-                if !top5SubscriptionBadges.isEmpty {
-                    OverlappingBadgeCluster(items: top5SubscriptionBadges, badgeSize: 38)
-                        .accessibilityHidden(true)
-                }
+            if let next = nextUpcomingSubscription {
+                Divider().padding(.vertical, 4)
+                nextBillRow(next)
             }
 
             if !cardInsights.isEmpty {
-                Divider()
-                    .overlay(SpendyColors.separator.opacity(0.7))
-                VStack(alignment: .leading, spacing: 8) {
-                    SpendyInsightSummary(moments: cardInsights, onSelect: handleInsightDestination)
-                }
-            } else if let next = nextUpcomingSubscription {
-                Divider()
-                    .overlay(SpendyColors.separator.opacity(0.7))
-                nextBillRow(next)
+                Divider().padding(.vertical, 4)
+                SpendyInsightSummary(moments: cardInsights, onSelect: handleInsightDestination)
             }
         }
-        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
         .background { groupedCardBackground }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Monthly subscription total")
+    }
+
+    private var monthlyAmount: some View {
+        Text(totalMonthly.formattedCurrency(symbol: store.currencySymbol, decimals: 2))
+            .font(.largeTitle.weight(.bold).monospacedDigit())
+            .foregroundStyle(SpendyColors.textPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .contentTransition(.numericText())
     }
 
     private var cardInsights: [InsightMoment] {
@@ -277,48 +283,41 @@ struct SubscriptionsView: View {
     }
 
     private func nextBillRow(_ sub: Subscription) -> some View {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let billDay = calendar.startOfDay(for: sub.nextBillingDate)
-        let daysUntil = calendar.dateComponents([.day], from: today, to: billDay).day ?? 0
-        let daysText = daysUntil <= 0 ? "Today" : (daysUntil == 1 ? "1d" : "\(daysUntil)d")
-        
-        return Button {
+        Button {
             HapticsManager.shared.trigger(.selection)
             subscriptionTransitionID = AppTransitionIDs.nextBill(sub.id)
             selectedSubscriptionForDetail = sub
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(SpendyColors.textTertiary)
-                    .frame(width: 22, height: 22)
-
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Next up \(sub.name)")
-                        .font(.system(size: 15, weight: .semibold))
+                    Text(sub.isTrial ? "Next trial ending" : "Next payment")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Text(sub.name)
+                        .font(.headline)
                         .foregroundStyle(SpendyColors.textPrimary)
-                        .lineLimit(1)
-                    Text("\(sub.amount.formattedCurrency(symbol: store.currencySymbol, decimals: 0)) · \(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))")
-                        .font(AppTypography.footnoteMedium)
+                    Text(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))
+                        .font(.footnote)
                         .foregroundStyle(SpendyColors.textSecondary)
                 }
 
                 Spacer(minLength: 8)
                 
-                Text(daysText)
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(SpendyColors.textSecondary)
+                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(SpendyColors.textPrimary)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(SpendyColors.textTertiary)
             }
+            .frame(minHeight: 48)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .spendyNavigationSource(AppTransitionIDs.nextBill(sub.id), in: subscriptionTransitions)
         .accessibilityLabel("Next up \(sub.name)")
+        .accessibilityValue("\(sub.amount.formattedCurrency(symbol: store.currencySymbol)), \(relativeDueText(for: sub.nextBillingDate, isTrial: sub.isTrial))")
     }
 
     private func handleInsightDestination(_ destination: InsightDestination) {
@@ -337,10 +336,23 @@ struct SubscriptionsView: View {
             if displayedSubscriptions.isEmpty {
                 emptyState
             } else {
-                SpendyGroupedList(items: displayedSubscriptions,
-                    iconWidth: SubscriptionProgressRingBadge.Size.medium.outerDimension,
-                    rowSpacing: 14) { sub in
-                    subscriptionRowCard(sub: sub)
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionDisclosure(
+                        "Tracked subscriptions",
+                        count: displayedSubscriptions.count,
+                        isExpanded: $showTrackedSubscriptions
+                    )
+                    .accessibilityIdentifier("tracked-subscriptions-disclosure")
+
+                    if showTrackedSubscriptions {
+                        SpendyGroupedList(
+                            items: displayedSubscriptions,
+                            iconWidth: SubscriptionProgressRingBadge.Size.medium.outerDimension,
+                            rowSpacing: 14
+                        ) { sub in
+                            subscriptionRowCard(sub: sub)
+                        }
+                    }
                 }
             }
         }
@@ -445,10 +457,7 @@ struct SubscriptionsView: View {
             Divider()
 
             Button(role: .destructive) {
-                HapticsManager.shared.trigger(.warning)
-                withAnimation(AppMotion.snappySpring) {
-                    store.deleteSubscription(id: sub.id)
-                }
+                subscriptionToDelete = sub
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -491,31 +500,8 @@ struct SubscriptionsView: View {
     @ViewBuilder
     private var pastAndCancelledSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                    showCancelledSubs.toggle()
-                }
-            } label: {
-                HStack {
-                    Text("Past & cancelled")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(SpendyColors.textSecondary)
-                    Text("\(cancelledSubs.count)")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                    Spacer()
-                    Image(systemName: SFIcons.chevronDown)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(SpendyColors.textTertiary)
-                        .rotationEffect(.degrees(showCancelledSubs ? 180 : 0))
-                }
-                .padding(.horizontal, 4)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Past and cancelled, \(cancelledSubs.count)")
-            .accessibilityValue(showCancelledSubs ? "Expanded" : "Collapsed")
+            sectionDisclosure("Past & cancelled", count: cancelledSubs.count, isExpanded: $showCancelledSubs)
+                .accessibilityIdentifier("past-subscriptions-disclosure")
 
             if showCancelledSubs {
                 SpendyGroupedList(items: cancelledSubs,
@@ -527,45 +513,79 @@ struct SubscriptionsView: View {
         }
     }
 
-    private func cancelledRow(_ sub: Subscription) -> some View {
-        SpendyRowContent(spacing: 14) {
-            SpendyIconBadge(
-                sfSymbol: sub.sfSymbol,
-                color: SpendyColors.separator,
-                size: .small,
-                style: .circle,
-                monogramName: sub.name
-            )
-
-        } content: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sub.name)
-                    .font(AppTypography.rowTitle)
-                    .foregroundStyle(SpendyColors.textSecondary)
-                Text("Cancelled")
-                    .font(AppTypography.footnoteMedium)
-                    .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
+    private func sectionDisclosure(_ title: String, count: Int, isExpanded: Binding<Bool>) -> some View {
+        Button {
+            HapticsManager.shared.trigger(.selection)
+            withAnimation(reduceMotion ? nil : AppMotion.snappySpring) {
+                isExpanded.wrappedValue.toggle()
             }
-
-        } value: {
-            Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
-                .spendyRowAmount()
-                .foregroundStyle(SpendyColors.textTertiary)
+        } label: {
+            HStack(spacing: 8) {
+                Text(title).font(.headline)
+                Text(count, format: .number)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(SpendyColors.textSecondary)
+                Spacer()
+                Image(systemName: SFIcons.chevronDown)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(SpendyColors.textSecondary)
+                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 180 : 0))
+            }
+            .foregroundStyle(SpendyColors.textPrimary)
+            .padding(.horizontal, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue("\(count), \(isExpanded.wrappedValue ? "Expanded" : "Collapsed")")
+    }
+
+    private func cancelledRow(_ sub: Subscription) -> some View {
+        Button {
+            selectedSubscriptionForDetail = sub
+        } label: {
+            SpendyRowContent(spacing: 14) {
+                SpendyIconBadge(
+                    sfSymbol: sub.sfSymbol,
+                    color: SpendyColors.separator,
+                    size: .small,
+                    style: .circle,
+                    monogramName: sub.name
+                )
+
+            } content: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sub.name)
+                        .font(AppTypography.rowTitle)
+                        .foregroundStyle(SpendyColors.textSecondary)
+                    Text("Cancelled")
+                        .font(AppTypography.footnoteMedium)
+                        .foregroundStyle(SpendyColors.expenseRed.opacity(0.85))
+                }
+
+            } value: {
+                Text(sub.amount.formattedCurrency(symbol: store.currencySymbol))
+                    .spendyRowAmount()
+                    .foregroundStyle(SpendyColors.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .contextMenu {
             Button {
                 var updated = sub
                 updated.status = "active"
+                updated.isPaused = false
                 store.updateSubscription(updated)
             } label: {
                 Label("Reactivate", systemImage: "arrow.clockwise")
             }
             Button(role: .destructive) {
-                store.deleteSubscription(id: sub.id)
+                subscriptionToDelete = sub
             } label: {
                 Label("Delete", systemImage: "trash")
             }

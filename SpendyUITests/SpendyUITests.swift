@@ -729,17 +729,70 @@ final class SpendyUITests: XCTestCase {
     @MainActor func testSubscriptionDetailUsesBottomSheetAndReturns() {
         let app = launch("subscription-detail")
         app.buttons["Subscriptions"].tap()
-        let subscription = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Readiness Music")).allElementsBoundByIndex.first { $0.isHittable }
+        let tracked = app.buttons["tracked-subscriptions-disclosure"]
+        XCTAssertTrue(tracked.waitForExistence(timeout: 5))
+        tracked.tap()
+        XCTAssertTrue((tracked.value as? String)?.contains("Collapsed") == true)
+        let trackedMusic = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Readiness Music,")).firstMatch
+        XCTAssertFalse(trackedMusic.exists)
+        tracked.tap()
+        XCTAssertTrue(trackedMusic.waitForExistence(timeout: 5))
+        let pageShot = XCTAttachment(screenshot: app.screenshot())
+        pageShot.name = "Subscriptions page"
+        pageShot.lifetime = .keepAlways
+        add(pageShot)
+        let subscription = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Readiness Music,")).allElementsBoundByIndex.first { $0.isHittable }
         guard let subscription else { XCTFail("Missing subscription"); return }
         subscription.tap()
         XCTAssertTrue(app.buttons["Edit Subscription"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Close"].isHittable)
+        let paymentAction = app.buttons["subscription-primary-action"]
+        XCTAssertEqual(paymentAction.label, "Mark as Paid")
+        XCTAssertTrue(paymentAction.isHittable)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Subscription detail bottom sheet"
         shot.lifetime = .keepAlways
         add(shot)
+        let delete = app.buttons["Delete Subscription"]
+        XCTAssertTrue(delete.isHittable)
+        delete.tap()
+        let confirmation = app.alerts["Delete Subscription?"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(paymentAction.isHittable)
+        app.buttons["Edit Subscription"].tap()
+        XCTAssertTrue(app.staticTexts["Edit Subscription"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Save Changes"].isHittable)
+        XCTAssertTrue(app.buttons["Billing cycle"].isHittable)
+        XCTAssertTrue(app.buttons["Payment account"].isHittable)
+        let editShot = XCTAttachment(screenshot: app.screenshot())
+        editShot.name = "Edit Subscription sheet"
+        editShot.lifetime = .keepAlways
+        add(editShot)
+        app.switches["Free Trial"].tap()
+        XCTAssertTrue(app.datePickers["Trial ends"].exists || app.staticTexts["Trial ends"].exists)
+        app.switches["Free Trial"].tap()
         app.buttons["Close"].tap()
         XCTAssertTrue(app.buttons["Subscriptions"].isHittable)
+        subscription.press(forDuration: 0.8)
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(subscription.isHittable)
+
+        subscription.press(forDuration: 0.8)
+        app.buttons["Cancel Subscription"].tap()
+        let pastSubscriptions = app.buttons["past-subscriptions-disclosure"]
+        XCTAssertTrue(pastSubscriptions.waitForExistence(timeout: 5))
+        pastSubscriptions.tap()
+        XCTAssertTrue(subscription.waitForExistence(timeout: 5))
+        subscription.tap()
+        XCTAssertTrue(paymentAction.waitForExistence(timeout: 5))
+        XCTAssertEqual(paymentAction.label, "Reactivate Subscription")
+        paymentAction.tap()
+        XCTAssertEqual(paymentAction.label, "Mark as Paid")
+        paymentAction.tap()
+        XCTAssertTrue(app.buttons["Subscriptions"].waitForExistence(timeout: 5))
     }
 
     @MainActor func testCategoryPagesThroughAllFiveInsights() {
