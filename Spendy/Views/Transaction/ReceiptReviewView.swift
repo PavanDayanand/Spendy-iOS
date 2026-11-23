@@ -60,29 +60,33 @@ struct ReceiptReviewView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            if isScanning {
-                loadingView
-            } else if let result = scanResult {
-                reportView(result)
-            }
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                if isScanning {
+                    loadingView
+                } else if let result = scanResult {
+                    reportView(result)
+                }
 
-            topActionBar
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+                topActionBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+            }
+            .frame(maxHeight: .infinity)
+
             if scanResult != nil {
                 Button(action: addResult) {
                     Label("Add transaction", systemImage: "plus")
                         .font(.headline)
                         .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .buttonSizing(.flexible)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
+                .controlSize(.large)
                 .disabled(!canAdd)
-                .opacity(canAdd ? 1 : 0.45)
                 .accessibilityLabel("Add scanned transaction")
                 .accessibilityIdentifier("add-scanned-receipt")
                 .padding(.horizontal, 20)
@@ -130,7 +134,7 @@ struct ReceiptReviewView: View {
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(570), .large])
         .presentationDragIndicator(.hidden)
-        .background(Color.clear)
+        .presentationBackground(SpendyColors.sheetCardBackground)
         .alert(showCurrencyNotice ? "Different currency detected" : "Could not add receipt",
                isPresented: Binding(get: { showCurrencyNotice || addError != nil }, set: {
                    if !$0 { showCurrencyNotice = false; addError = nil }
@@ -247,12 +251,13 @@ struct ReceiptReviewView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(16)
-                    .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+                    .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 18))
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 28)
+            .padding(.bottom, 16)
         }
+        .accessibilityIdentifier("receipt-review-scroll")
     }
 
     private func heroSection(_ result: ReceiptScanResult) -> some View {
@@ -345,7 +350,7 @@ struct ReceiptReviewView: View {
         .padding(.horizontal, 18)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(SpendyColors.cardBackground)
+                .fill(SpendyColors.cardBackgroundSecondary)
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(SpendyColors.separator, lineWidth: 0.8)
@@ -374,7 +379,7 @@ struct ReceiptReviewView: View {
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(SpendyColors.textPrimary)
         .padding(18)
-        .background(SpendyColors.cardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var cardDivider: some View {

@@ -325,11 +325,15 @@ final class SpendyUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Merchant"].exists)
         let title = app.staticTexts["receipt-review-title"]
         XCTAssertTrue(title.exists)
-        XCTAssertEqual(title.frame.midX, app.frame.midX, accuracy: 2)
+        let addButton = app.buttons["add-scanned-receipt"]
+        let report = app.scrollViews["receipt-review-scroll"]
+        XCTAssertTrue(report.exists)
+        XCTAssertEqual(title.frame.midX, addButton.frame.midX, accuracy: 2)
         XCTAssertLessThanOrEqual(title.frame.maxX, app.buttons["edit-scanned-receipt"].frame.minX)
-        XCTAssertTrue(app.buttons["add-scanned-receipt"].isHittable)
-        XCTAssertTrue(app.buttons["add-scanned-receipt"].isEnabled)
-        XCTAssertGreaterThan(app.buttons["add-scanned-receipt"].frame.width, app.frame.width * 0.75)
+        XCTAssertTrue(addButton.isHittable)
+        XCTAssertTrue(addButton.isEnabled)
+        XCTAssertGreaterThan(addButton.frame.width, report.frame.width * 0.75)
+        XCTAssertLessThanOrEqual(report.frame.maxY, addButton.frame.minY)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Receipt review compact controls \(light ? "light" : "dark")"
         shot.lifetime = .keepAlways
