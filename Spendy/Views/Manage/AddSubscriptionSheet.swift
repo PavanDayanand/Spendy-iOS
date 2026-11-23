@@ -82,28 +82,25 @@ struct AddSubscriptionSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SpendyPinnedHeaderLayout {
-                topHeaderBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-            } content: {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        formContentSection
-                    }
+        SpendyPinnedHeaderLayout {
+            topHeaderBar
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+        } content: {
+            ScrollView {
+                formContentSection
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                }
-                .scrollDismissesKeyboard(.interactively)
             }
-
-            bottomActionButton
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaBar(edge: .bottom, spacing: 0) {
+                bottomActionButton
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+            }
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
         }
-        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.78), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)
@@ -182,7 +179,7 @@ struct AddSubscriptionSheet: View {
                 color: SpendyColors.textPrimary,
                 progress: previewProgress,
                 isPaused: false,
-                size: .medium,
+                size: isEditing ? .medium : .large,
                 monogramName: name
             )
         }
@@ -201,15 +198,19 @@ struct AddSubscriptionSheet: View {
                             nameInput
                         }
                     }
-                    Divider()
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background { entryFieldBackground }
+
                     VStack(alignment: .leading, spacing: 4) {
                         fieldLabel("Amount")
                         amountInput
                             .font(.title.weight(.semibold).monospacedDigit())
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background { entryFieldBackground }
                 }
-                .padding(16)
-                .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 20))
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -218,6 +219,12 @@ struct AddSubscriptionSheet: View {
             }
         }
         .foregroundStyle(SpendyColors.textPrimary)
+    }
+
+    private var entryFieldBackground: some View {
+        RoundedRectangle(cornerRadius: 18)
+            .fill(SpendyColors.textPrimary.opacity(0.06))
+            .strokeBorder(SpendyColors.separator, lineWidth: 1)
     }
 
     private var editIdentity: some View {

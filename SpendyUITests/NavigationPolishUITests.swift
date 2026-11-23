@@ -22,7 +22,15 @@ final class NavigationPolishUITests: XCTestCase {
     }
 
     @MainActor func testAnalyticsReusesBackForCategoryAndReturns() {
-        let app = launch()
+        verifyCategoryNavigation(light: false)
+    }
+
+    @MainActor func testAnalyticsCategoryInLightMode() {
+        verifyCategoryNavigation(light: true)
+    }
+
+    @MainActor private func verifyCategoryNavigation(light: Bool) {
+        let app = launch(light: light)
         app.buttons["Analytics and statistics"].tap()
         let back = app.navigationBars.buttons.element(boundBy: 0)
         XCTAssertTrue(back.waitForExistence(timeout: 5))
@@ -43,7 +51,7 @@ final class NavigationPolishUITests: XCTestCase {
         let headerBacks = app.buttons.matching(NSPredicate(format: "identifier == %@", "BackButton"))
             .allElementsBoundByIndex.filter { $0.isHittable && abs($0.frame.midY - originalFrame.midY) < 20 }
         XCTAssertEqual(headerBacks.count, 1, "Only one Back control may occupy the header")
-        capture(app, "Category uses shared Analytics Back")
+        capture(app, light ? "Category Analytics light" : "Category Analytics dark")
         button(app, "analytics-stack-edit").tap()
         XCTAssertTrue(button(app, "Close").waitForExistence(timeout: 5))
         button(app, "Close").tap()
@@ -61,6 +69,31 @@ final class NavigationPolishUITests: XCTestCase {
         capture(app, "Analytics restored after category")
         back.tap()
         XCTAssertTrue(app.buttons["home-profile"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testLongProfileNameKeepsHomeToolbarReachable() {
+        let app = launch()
+        let profile = app.buttons["home-profile"]
+        profile.tap()
+        app.buttons["Edit profile"].tap()
+
+        let nameField = app.textFields.firstMatch
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        let original = nameField.value as? String ?? ""
+        let name = "Alexanderthelongfirstname Two Three Four Five Six Seven Eight Nine"
+        nameField.tap()
+        nameField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count) + name)
+        app.buttons["Save"].tap()
+        app.navigationBars["Settings"].buttons["Close"].tap()
+
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertTrue(profile.isHittable)
+        XCTAssertTrue(profile.label.contains(name))
+        XCTAssertLessThan(profile.frame.width, 180)
+        XCTAssertTrue(app.buttons["Analytics and statistics"].isHittable)
+        capture(app, "Home with a long profile name")
+        profile.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
     }
 
     @MainActor func testExpandedActivityKeepsHomeHeaderStable() {

@@ -333,7 +333,16 @@ final class SpendyUITests: XCTestCase {
         XCTAssertTrue(addButton.isHittable)
         XCTAssertTrue(addButton.isEnabled)
         XCTAssertGreaterThan(addButton.frame.width, report.frame.width * 0.75)
-        XCTAssertLessThanOrEqual(report.frame.maxY, addButton.frame.minY)
+        let footerTop = addButton.frame.minY
+        let receiptImage = app.descendants(matching: .any).matching(identifier: "receipt-review-image").firstMatch
+        for _ in 0..<3 {
+            if receiptImage.isHittable && receiptImage.frame.maxY <= footerTop { break }
+            report.swipeUp()
+        }
+        XCTAssertTrue(receiptImage.isHittable)
+        XCTAssertLessThanOrEqual(receiptImage.frame.maxY, addButton.frame.minY)
+        XCTAssertTrue(addButton.isHittable)
+        XCTAssertEqual(addButton.frame.minY, footerTop, accuracy: 5)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Receipt review compact controls \(light ? "light" : "dark")"
         shot.lifetime = .keepAlways

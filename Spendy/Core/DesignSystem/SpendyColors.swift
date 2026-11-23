@@ -84,6 +84,21 @@ enum SpendyColors {
         dark: UIColor(white: 18.0/255.0, alpha: 1.0)      // #121214 Solid
     ))
 
+    static let surfaceGradientTop = Color(uiColor: .dynamic(
+        light: .white,
+        dark: UIColor(white: 0.15, alpha: 1)
+    ))
+
+    static let sheetBackgroundGradient = LinearGradient(
+        stops: [
+            .init(color: surfaceGradientTop, location: 0),
+            .init(color: sheetCardBackground, location: 0.58),
+            .init(color: sheetCardBackground, location: 1)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     // Native grouped surfaces adapt to light/dark mode and sheet elevation.
     static let settingsBackground = Color(uiColor: .systemGroupedBackground)
     static let settingsCardBackground = Color(uiColor: .secondarySystemGroupedBackground)

@@ -117,7 +117,6 @@ struct TransactionDetailSheet: View {
                     .zIndex(200)
             }
         }
-        .background(Color.clear)
         .alert("Delete Transaction?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
                 HapticsManager.shared.trigger(.warning)
@@ -128,6 +127,7 @@ struct TransactionDetailSheet: View {
         } message: {
             Text("Are you sure you want to delete this transaction? This cannot be undone.")
         }
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(500), .large])
         .presentationDragIndicator(.visible)
         .onChange(of: store.transactions) { _, newTransactions in

@@ -118,6 +118,7 @@ struct AddFolderSheet: View {
                 .padding(.top, 12)
             }
         }
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(350), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)

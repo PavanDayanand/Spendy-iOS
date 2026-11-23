@@ -196,6 +196,7 @@ struct AddAccountSheet: View {
             }
         }
         // Short forms start compact; larger text can use the full sheet.
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(480), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)

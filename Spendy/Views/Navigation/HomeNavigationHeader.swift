@@ -18,6 +18,11 @@ struct HomeNavigationHeader: ToolbarContent {
         return name.isEmpty ? "Personal" : name
     }
 
+    private var profilePillName: String {
+        let words = profileName.split(maxSplits: 8, whereSeparator: \.isWhitespace)
+        return words.count > 8 ? words.prefix(8).joined(separator: " ") + "…" : profileName
+    }
+
     var body: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if usesSystemNavigation {
@@ -28,7 +33,10 @@ struct HomeNavigationHeader: ToolbarContent {
                 Button(action: onSettings) {
                     HStack(spacing: 8) {
                         avatar
-                        Text(profileName).lineLimit(1)
+                        Text(profilePillName)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: 112, alignment: .leading)
                     }
                 }
                 .accessibilityLabel("Profile, \(profileName). Opens settings.")

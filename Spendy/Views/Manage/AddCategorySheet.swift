@@ -178,6 +178,7 @@ struct AddCategorySheet: View {
             }
         }
         // Short forms start compact; larger text can use the full sheet.
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(420), .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(hasUnsavedChanges)

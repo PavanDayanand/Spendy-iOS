@@ -84,6 +84,7 @@ enum AnalyticsSheetSection: String, CaseIterable, Identifiable {
 struct SharedEntityAnalyticsSheet: View {
     @Environment(\.spendyTipsAllowed) private var tipsAllowed
     @Environment(ExpenseStore.self) private var store
+    @Environment(\.colorScheme) private var colorScheme
     
     let entity: AnalyticsEntity
     var isSettingsPage: Bool = false
@@ -392,8 +393,20 @@ struct SharedEntityAnalyticsSheet: View {
     
     // MARK: - Body
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             sheetBackgroundColor.ignoresSafeArea()
+
+            if !entity.isAccount && colorScheme == .dark {
+                LinearGradient(
+                    colors: [SpendyColors.surfaceGradientTop, sheetBackgroundColor],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 430)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {

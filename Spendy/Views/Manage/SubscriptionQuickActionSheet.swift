@@ -42,38 +42,26 @@ struct SubscriptionQuickActionSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SpendyPinnedHeaderLayout {
-                header
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-            } content: {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        summary
-                        details
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
+        SpendyPinnedHeaderLayout {
+            header
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+        } content: {
+            ScrollView {
+                VStack(spacing: 16) {
+                    summary
+                    details
                 }
-                .accessibilityIdentifier("subscription-detail-scroll")
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
-
-            VStack(spacing: 8) {
-                if recordsPayment || paymentRecorded {
-                    Text(paymentRecorded ? "Expense added to Spendy" : "Records an expense in Spendy")
-                        .font(.footnote)
-                        .foregroundStyle(SpendyColors.textSecondary)
-                }
-                SubscriptionGlassAction(title: actionTitle, isEnabled: !paymentRecorded) {
-                    performPrimaryAction()
-                }
-                .accessibilityIdentifier("subscription-primary-action")
+            .accessibilityIdentifier("subscription-detail-scroll")
+            .safeAreaBar(edge: .bottom, spacing: 0) {
+                paymentFooter
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
         }
-        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(530), .large])
         .presentationDragIndicator(.visible)
         .subscriptionDeleteConfirmation($subscriptionToDelete) { item in
@@ -85,6 +73,22 @@ struct SubscriptionQuickActionSheet: View {
             try? await Task.sleep(for: .milliseconds(850))
             if !Task.isCancelled { dismiss() }
         }
+    }
+
+    private var paymentFooter: some View {
+        VStack(spacing: 8) {
+            if recordsPayment || paymentRecorded {
+                Text(paymentRecorded ? "Expense added to Spendy" : "Records an expense in Spendy")
+                    .font(.footnote)
+                    .foregroundStyle(SpendyColors.textSecondary)
+            }
+            SubscriptionGlassAction(title: actionTitle, isEnabled: !paymentRecorded) {
+                performPrimaryAction()
+            }
+            .accessibilityIdentifier("subscription-primary-action")
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
     }
 
     private var header: some View {

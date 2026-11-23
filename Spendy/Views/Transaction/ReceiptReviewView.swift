@@ -60,39 +60,22 @@ struct ReceiptReviewView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                if isScanning {
-                    loadingView
-                } else if let result = scanResult {
-                    reportView(result)
-                }
-
-                topActionBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
+        ZStack(alignment: .top) {
+            if isScanning {
+                loadingView
+            } else if let result = scanResult {
+                reportView(result)
+                    .safeAreaBar(edge: .bottom, spacing: 0) {
+                        addTransactionButton
+                    }
+                    .scrollEdgeEffectStyle(.soft, for: .bottom)
             }
-            .frame(maxHeight: .infinity)
 
-            if scanResult != nil {
-                Button(action: addResult) {
-                    Label("Add transaction", systemImage: "plus")
-                        .font(.headline)
-                        .foregroundStyle(SpendyColors.textPrimary)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonSizing(.flexible)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.capsule)
-                .controlSize(.large)
-                .disabled(!canAdd)
-                .accessibilityLabel("Add scanned transaction")
-                .accessibilityIdentifier("add-scanned-receipt")
+            topActionBar
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-            }
+                .padding(.top, 16)
         }
+        .frame(maxHeight: .infinity)
         .sheet(item: $activeField, onDismiss: {
             if pendingCategoryCreation {
                 pendingCategoryCreation = false
@@ -134,7 +117,7 @@ struct ReceiptReviewView: View {
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(570), .large])
         .presentationDragIndicator(.hidden)
-        .presentationBackground(SpendyColors.sheetCardBackground)
+        .presentationBackground(SpendyColors.sheetBackgroundGradient)
         .alert(showCurrencyNotice ? "Different currency detected" : "Could not add receipt",
                isPresented: Binding(get: { showCurrencyNotice || addError != nil }, set: {
                    if !$0 { showCurrencyNotice = false; addError = nil }
@@ -148,6 +131,25 @@ struct ReceiptReviewView: View {
             }
         }
         .task { await processImages() }
+    }
+
+    private var addTransactionButton: some View {
+        Button(action: addResult) {
+            Label("Add transaction", systemImage: "plus")
+                .font(.headline)
+                .foregroundStyle(SpendyColors.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonSizing(.flexible)
+        .buttonStyle(.glass)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .disabled(!canAdd)
+        .accessibilityLabel("Add scanned transaction")
+        .accessibilityIdentifier("add-scanned-receipt")
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 
     private var topActionBar: some View {
@@ -252,6 +254,7 @@ struct ReceiptReviewView: View {
                     .foregroundStyle(SpendyColors.textSecondary)
                     .padding(16)
                     .background(SpendyColors.cardBackgroundSecondary, in: RoundedRectangle(cornerRadius: 18))
+                    .accessibilityIdentifier("receipt-review-image")
                 }
             }
             .padding(.horizontal, 20)
